@@ -26,3 +26,14 @@ export class AcceptInviteDto {
   password?: string;
   @IsOptional() @IsString() @MaxLength(40) phone?: string;
 }
+
+/** What a member may change about themselves, whatever their role. */
+export class UpdateMyProfileDto {
+  @IsOptional() @IsString() @MaxLength(80) firstName?: string;
+  @IsOptional() @IsString() @MaxLength(80) lastName?: string;
+  /**
+   * Shown to buyers behind the "show number" button on this agent's own listings, in
+   * preference to the agency switchboard. An empty string clears it.
+   */
+  @IsOptional() @IsString() @MaxLength(40) phone?: string;
+}

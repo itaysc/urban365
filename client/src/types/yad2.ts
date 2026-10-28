@@ -77,6 +77,19 @@ export interface Asset {
   createdAt: string;
   updatedAt: string;
   hasFullDetails: boolean;
+  /**
+   * Present only on the detail response, which is why it is optional — the agency-page
+   * scrape produces an Asset without it.
+   *
+   * `hasPhone` rather than the number: the number is fetched from its own route when a
+   * visitor asks, so this payload carries nothing to dial.
+   */
+  agency?: {
+    id: string;
+    name: string;
+    licenseNumber: string | null;
+    hasPhone: boolean;
+  };
 }
 
 export interface AgencyResult {

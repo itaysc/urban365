@@ -1,5 +1,6 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/auth/AuthProvider';
+import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
 
 /**
@@ -43,6 +44,16 @@ export function AppLayout() {
             {user?.agency && (
               <span className="hidden text-sm text-slate-500 sm:inline">{user.agency.name}</span>
             )}
+
+            <NavLink
+              to="/app/profile"
+              className="flex items-center gap-2 rounded-lg px-2 py-1 transition hover:bg-slate-100"
+              title="הפרופיל שלי"
+            >
+              <Avatar size="sm" src={user?.avatarUrl} firstName={user?.firstName} lastName={user?.lastName} />
+              <span className="hidden text-sm text-slate-700 sm:inline">{user?.firstName}</span>
+            </NavLink>
+
             <Button variant="ghost" onClick={() => void onLogout()}>
               יציאה
             </Button>

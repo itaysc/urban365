@@ -168,46 +168,65 @@ describeIfDb('row-level security coverage', () => {
      * now, and this is what says so.
      */
     it('cannot attach an image to another agency\'s listing', async () => {
-      const victim = await prisma.listing.findFirst({
-        where: { status: 'published' },
-        select: { id: true, agencyId: true },
-      });
-      expect(victim, 'no published listing to test against').toBeTruthy();
+      // Seeds its own fixture rather than reaching for whatever happens to be in the
+      // database. It used to pick any published listing, so emptying the table made a
+      // security test fail for a reason that had nothing to do with security.
+      const [victimAgency, otherAgency] = await Promise.all([
+        prisma.agency.create({ data: { name: `rls-victim-${Date.now()}`, status: 'active' } }),
+        prisma.agency.create({ data: { name: `rls-other-${Date.now()}`, status: 'active' } }),
+      ]);
 
-      const other = await prisma.agency.findFirst({
-        where: { id: { not: victim!.agencyId } },
-        select: { id: true },
+      const victim = await prisma.listing.create({
+        data: {
+          agencyId: victimAgency.id,
+          section: 'forsale',
+          status: 'published',
+          lastSeenAt: new Date(),
+        },
       });
-      expect(other, 'need a second agency to test isolation').toBeTruthy();
 
-      await expect(
-        app.$transaction(async (tx) => {
-          await tx.$executeRaw`SELECT set_config('app.current_agency_id', ${other!.id}, true)`;
-          return tx.listingImage.create({
-            data: {
-              listingId: victim!.id,
-              storageKey: `probe/${Date.now()}`,
-              url: 'https://example.test/probe.jpg',
-            },
-          });
-        }),
-      ).rejects.toThrow();
+      try {
+        await expect(
+          app.$transaction(async (tx) => {
+            await tx.$executeRaw`SELECT set_config('app.current_agency_id', ${otherAgency.id}, true)`;
+            return tx.listingImage.create({
+              data: {
+                listingId: victim.id,
+                storageKey: `probe/${Date.now()}`,
+                url: 'https://example.test/probe.jpg',
+              },
+            });
+          }),
+        ).rejects.toThrow();
+      } finally {
+        // Cascades to the listing and any image that did land.
+        await prisma.agency.deleteMany({
+          where: { id: { in: [victimAgency.id, otherAgency.id] } },
+        });
+      }
     });
 
     it('cannot write a listing with no agency in context', async () => {
-      const agency = await prisma.agency.findFirst({ select: { id: true } });
-      expect(agency, 'no agency to test against').toBeTruthy();
+      // Its own agency, for the same reason as above: an empty database must not be
+      // able to turn a security assertion into a failure about missing fixtures.
+      const agency = await prisma.agency.create({
+        data: { name: `rls-write-${Date.now()}`, status: 'active' },
+      });
 
-      await expect(
-        app.listing.create({
-          data: {
-            agencyId: agency!.id,
-            section: 'forsale',
-            lastSeenAt: new Date(),
-            status: 'published',
-          },
-        }),
-      ).rejects.toThrow();
+      try {
+        await expect(
+          app.listing.create({
+            data: {
+              agencyId: agency.id,
+              section: 'forsale',
+              lastSeenAt: new Date(),
+              status: 'published',
+            },
+          }),
+        ).rejects.toThrow();
+      } finally {
+        await prisma.agency.delete({ where: { id: agency.id } });
+      }
     });
   });
 });

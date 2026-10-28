@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma, type Listing, type Section as DbSection } from '@prisma/client';
+import { PrismaService } from '../prisma/prisma.service.js';
 import { TenantPrismaService } from '../tenancy/tenant-prisma.service.js';
 import { listingRowToAsset } from '../yad2/listing-row.js';
 import type { SearchListingsDto, Sort } from './dto/search-listings.dto.js';
@@ -88,7 +89,11 @@ export class ListingsService {
    * public search ran with no policy at all and happily returned draft listings. On this
    * client an anonymous caller matches only `listing_public_read`.
    */
-  constructor(private readonly prisma: TenantPrismaService) {}
+  constructor(
+    private readonly prisma: TenantPrismaService,
+    /** Only for `phoneFor`, which has to read a `User` row — see the note there. */
+    private readonly owner: PrismaService,
+  ) {}
 
   private where(dto: SearchListingsDto): Prisma.ListingWhereInput {
     // Published only, and stated explicitly rather than left to RLS alone: results must
@@ -223,7 +228,10 @@ export class ListingsService {
         id: row.agency.id,
         name: row.agency.name,
         licenseNumber: row.agency.licenseNumber,
-        phone: row.agency.phone,
+        // Deliberately NOT the number. It is fetched on demand from `phoneFor` below,
+        // so a scraper reading this payload gets nothing to dial — which is the whole
+        // point of a reveal button, and is how yad2 behaves too.
+        hasPhone: await this.hasContactPhone(row.id),
       },
       delistedAt: row.delistedAt?.toISOString() ?? null,
     };
@@ -258,5 +266,45 @@ export class ListingsService {
       updatedAt: row.updatedAtSource?.toISOString() ?? null,
       delistedAt: row.delistedAt?.toISOString() ?? null,
     };
+  }
+
+  /**
+   * Whether there is a number to reveal. Shares `contactPhone` with the reveal route, so
+   * the button cannot appear when the call would 404, or be hidden when a number exists.
+   */
+  private async hasContactPhone(id: string): Promise<boolean> {
+    return (await this.contactPhone(id)) !== null;
+  }
+
+  private async contactPhone(id: string): Promise<string | null> {
+    // The OWNER client. `createdBy` joins `User`, which is enabled-with-no-policy and
+    // therefore invisible to the tenant role — and a nested read neither errors nor
+    // returns a partial row, it just comes back null. On the tenant client the agent's
+    // own number silently vanished and every listing fell back to the switchboard.
+    //
+    // The published filter is what keeps this safe without RLS: stated explicitly, and
+    // the same condition `listing_public_read` enforces.
+    const row = await this.owner.listing.findFirst({
+      where: { status: 'published', delistedAt: null, OR: [{ id }, { token: id }] },
+      select: {
+        agency: { select: { phone: true } },
+        createdBy: { select: { phone: true } },
+      },
+    });
+
+    // The agent handling the property before the agency switchboard.
+    return row?.createdBy?.phone ?? row?.agency.phone ?? null;
+  }
+
+  /**
+   * The contact number for a published listing, fetched only when a visitor asks for it.
+   *
+   * The agent who created the listing takes precedence over the agency switchboard: a
+   * buyer calling about one property should reach the person handling it. Scraped
+   * listings have no creator, so they fall back to the agency.
+   */
+  async phoneFor(id: string): Promise<{ phone: string } | null> {
+    const phone = await this.contactPhone(id);
+    return phone ? { phone } : null;
   }
 }

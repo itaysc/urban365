@@ -1,11 +1,25 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Req,
+  UploadedFile,
+  UseGuards,
+  UseInterceptors,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { Throttle } from '@nestjs/throttler';
 import type { Request } from 'express';
 import { Public } from '../auth/decorators/public.decorator.js';
 import type { Principal } from '../auth/types/principal.js';
 import { TenantGuard } from '../tenancy/tenant.guard.js';
 import { TeamService } from './team.service.js';
-import { AcceptInviteDto, ChangeRoleDto, InviteMemberDto } from './dto/team.dto.js';
+import { CurrentUser } from '../auth/decorators/current-user.decorator.js';
+import { AcceptInviteDto, ChangeRoleDto, InviteMemberDto, UpdateMyProfileDto } from './dto/team.dto.js';
 
 @UseGuards(TenantGuard)
 @Controller('my/team')
@@ -25,6 +39,27 @@ export class TeamController {
   @Delete('invites/:id')
   revokeInvite(@Param('id') id: string) {
     return this.team.revokeInvite(id);
+  }
+
+  /**
+   * Your own details. Before `members/:id` so the literal wins, and separate from it
+   * because that route is owner-only — every member may edit themselves.
+   */
+  @Patch('me')
+  updateMe(@Body() dto: UpdateMyProfileDto, @CurrentUser() principal: Principal) {
+    return this.team.updateOwnProfile(principal.userId, dto);
+  }
+
+  /** Your own profile picture. 4 MB is ample for an avatar. */
+  @Post('me/avatar')
+  @UseInterceptors(FileInterceptor('image', { limits: { fileSize: 4 * 1024 * 1024, files: 1 } }))
+  setAvatar(@UploadedFile() file: Express.Multer.File, @CurrentUser() principal: Principal) {
+    return this.team.setOwnAvatar(principal.userId, file);
+  }
+
+  @Delete('me/avatar')
+  removeAvatar(@CurrentUser() principal: Principal) {
+    return this.team.removeOwnAvatar(principal.userId);
   }
 
   @Patch('members/:id')

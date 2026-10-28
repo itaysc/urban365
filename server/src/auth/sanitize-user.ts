@@ -6,6 +6,7 @@ export interface PublicUser {
   firstName: string;
   lastName: string;
   phone: string | null;
+  avatarUrl: string | null;
   emailVerified: boolean;
   platformRole: string | null;
   agency: { id: string; name: string; status: string; role: string; membershipStatus: string } | null;
@@ -28,6 +29,7 @@ export function sanitizeUser(user: WithMembership): PublicUser {
     firstName: user.firstName,
     lastName: user.lastName,
     phone: user.phone,
+    avatarUrl: user.avatarUrl,
     emailVerified: user.emailVerifiedAt !== null,
     platformRole: user.platformRole,
     agency: membership

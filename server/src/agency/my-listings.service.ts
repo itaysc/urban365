@@ -1,9 +1,16 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 import { RequestContextService } from '../tenancy/request-context.service.js';
 import { TenantPrismaService } from '../tenancy/tenant-prisma.service.js';
 import { StorageService } from '../storage/storage.service.js';
 import { can } from '../auth/permissions.js';
+import { duplicateWhere, hasEnoughSignal, type DuplicateCandidate } from './duplicate.js';
 import { listingImageUrl } from './image-url.js';
 import type { UpdateListingDto, UpsertListingDto } from './dto/listing.dto.js';
 
@@ -51,6 +58,7 @@ export class MyListingsService {
 
   async create(dto: UpsertListingDto) {
     this.assertCanWrite();
+    await this.assertNotDuplicate(dto);
     const principal = this.context.getPrincipal();
 
     // The extension fills `agencyId` in anyway; it is stated here because Prisma's
@@ -74,6 +82,9 @@ export class MyListingsService {
   async update(id: string, dto: UpdateListingDto) {
     this.assertCanWrite();
     const existing = await this.requireOwn(id);
+    // Checked against the merged result, not the patch: moving one listing onto
+    // another's address is the same collision as creating it there.
+    await this.assertNotDuplicate({ ...existing, ...dto }, existing.id);
 
     return this.prisma.client.listing.update({
       where: { id: existing.id },
@@ -222,6 +233,9 @@ export class MyListingsService {
     const {
       section: _section,
       status: _status,
+      // Not a column — it is the caller's answer to the duplicate prompt, and spreading
+      // it into `data` below made Prisma reject the whole create as an unknown argument.
+      allowDuplicate: _allowDuplicate,
       amenities,
       tags,
       ...rest
@@ -236,5 +250,36 @@ export class MyListingsService {
         ? { pricePerSquareMeter: Math.round(dto.price / dto.squareMeter) }
         : {}),
     };
+  }
+
+  /**
+   * Refuses a listing that looks like one the agency already has. The response names
+   * the existing one so the client can offer to open it, and carries a code the client
+   * keys on to offer "add anyway" — which comes back as `allowDuplicate`.
+   */
+  private async assertNotDuplicate(
+    // Not the DTO type: `update` passes the stored row merged with the patch, and a
+    // Prisma row carries nulls where a DTO carries undefined.
+    candidate: DuplicateCandidate & { allowDuplicate?: boolean },
+    excludeId?: string,
+  ): Promise<void> {
+    if (candidate.allowDuplicate) return;
+    if (!hasEnoughSignal(candidate)) return;
+
+    const agencyId = this.context.requireAgencyId();
+    const existing = await this.prisma.client.listing.findFirst({
+      where: duplicateWhere(candidate, agencyId, excludeId),
+      select: { id: true, city: true, street: true, houseNumber: true, rooms: true, squareMeter: true, status: true },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    if (!existing) return;
+
+    const address = [existing.street, existing.houseNumber].filter(Boolean).join(' ');
+    throw new ConflictException({
+      code: 'duplicate_listing',
+      message: `נראה שכבר קיים נכס כזה ברשימה שלכם${address ? ` (${address}, ${existing.city})` : ''}.`,
+      existing,
+    });
   }
 }

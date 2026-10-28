@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/Button';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Field, inputClass } from '@/components/ui/Field';
 import { useToast } from '@/components/ui/Toast';
-import { errorMessageOf } from '@/lib/apiError';
+import { errorCodeOf, errorMessageOf } from '@/lib/apiError';
 import {
   archiveListing,
   createListing,
@@ -124,6 +124,8 @@ export function ListingEditorPage() {
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [confirmArchive, setConfirmArchive] = useState(false);
+  /** Held while the duplicate prompt is open, so "add anyway" can retry the same save. */
+  const [duplicate, setDuplicate] = useState<{ message: string; status?: 'draft' | 'published' } | null>(null);
 
   useEffect(() => {
     if (isNew) return;
@@ -158,12 +160,16 @@ export function ListingEditorPage() {
     setSaved(false);
   };
 
-  const save = async (status?: 'draft' | 'published') => {
+  const save = async (status?: 'draft' | 'published', allowDuplicate = false) => {
     setSaving(true);
     setError(null);
 
     try {
-      const input = { ...toInput(form, amenities), ...(status ? { status } : {}) };
+      const input = {
+        ...toInput(form, amenities),
+        ...(status ? { status } : {}),
+        ...(allowDuplicate ? { allowDuplicate: true } : {}),
+      };
 
       if (isNew) {
         const created = await createListing(input);
@@ -183,6 +189,14 @@ export function ListingEditorPage() {
       );
     } catch (e) {
       const message = errorMessageOf(e, 'השמירה נכשלה.');
+
+      // Not an error so much as a question: the match is on address and size, which two
+      // genuinely different units can share, so the agency decides.
+      if (errorCodeOf(e) === 'duplicate_listing') {
+        setDuplicate({ message, status });
+        return;
+      }
+
       setError(message);
       toast.error(message);
     } finally {
@@ -389,6 +403,20 @@ export function ListingEditorPage() {
           </Button>
         )}
       </div>
+
+      <ConfirmDialog
+        open={duplicate !== null}
+        onOpenChange={(open) => !open && setDuplicate(null)}
+        title="נכס דומה כבר קיים"
+        description={`${duplicate?.message ?? ''} אפשר להוסיף אותו בכל זאת אם מדובר ביחידה אחרת.`}
+        confirmLabel="הוסף בכל זאת"
+        busy={saving}
+        onConfirm={() => {
+          const pending = duplicate;
+          setDuplicate(null);
+          void save(pending?.status, true);
+        }}
+      />
 
       <ConfirmDialog
         open={confirmArchive}

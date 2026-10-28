@@ -287,6 +287,10 @@ model User {
   firstName String
   lastName  String
   phone     String?
+  /// Profile picture. `avatarUrl` is a path this API serves; the object lives in the
+  /// private bucket under `avatarStorageKey`. Null means fall back to initials.
+  avatarUrl        String?
+  avatarStorageKey String?
 
   emailVerifiedAt DateTime?
   /// null = ordinary user. Set by seed or SQL only, never through an API.

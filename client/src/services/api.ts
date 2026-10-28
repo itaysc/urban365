@@ -58,8 +58,18 @@ api.interceptors.response.use(
     const original = error.config as RetriableConfig | undefined;
     const status = error.response?.status;
 
-    // Never try to refresh a failing auth call — that is how you get a loop.
-    const isAuthCall = original?.url?.startsWith('/auth/');
+    /**
+     * Only the calls that *establish* a session are excluded. Refreshing a failed
+     * login or a failed refresh is how you get a loop.
+     *
+     * `/auth/me` is NOT one of them: it is an ordinary authenticated read, and the
+     * blanket `/auth/` prefix used to exclude it. The effect was that once the access
+     * token expired, reloading the page 401'd on /auth/me, no refresh was attempted,
+     * and you were shown as logged out — with a valid refresh cookie sitting right
+     * there. That is what "it doesn't remember me" was.
+     */
+    const SESSION_ROUTES = ['/auth/login', '/auth/signup', '/auth/refresh', '/auth/logout'];
+    const isAuthCall = SESSION_ROUTES.some((route) => original?.url?.startsWith(route));
 
     if (status === 401 && original && !original._retry && !isAuthCall) {
       original._retry = true;

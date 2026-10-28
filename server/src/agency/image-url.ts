@@ -10,3 +10,6 @@ export const listingImageUrl = (imageId: string): string => `/api/v1/listings/im
 
 export const agencyCoverUrl = (agencyId: string, version: string): string =>
   `/api/v1/agencies/${agencyId}/cover?v=${version}`;
+
+export const userAvatarUrl = (userId: string, version: string): string =>
+  `/api/v1/users/${userId}/avatar?v=${version}`;

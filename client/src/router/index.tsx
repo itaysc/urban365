@@ -12,6 +12,7 @@ import { DashboardPage } from '@/pages/app/DashboardPage';
 import { MyListingsPage } from '@/pages/app/MyListingsPage';
 import { PendingPage } from '@/pages/app/PendingPage';
 import { AgencyProfilePage } from '@/pages/app/AgencyProfilePage';
+import { MyProfilePage } from '@/pages/app/MyProfilePage';
 import { TeamPage } from '@/pages/app/TeamPage';
 import { DealsPage } from '@/pages/app/DealsPage';
 import { LeadsPage } from '@/pages/app/LeadsPage';
@@ -47,8 +48,10 @@ export const router = createBrowserRouter([
       {
         element: <AppLayout />,
         children: [
-          // Reachable while the agency claim is still pending, which is the point.
+          // Both reachable while the agency claim is still pending: waiting for
+          // approval should not stop you filling in your own details.
           { path: '/app/pending', element: <PendingPage /> },
+          { path: '/app/profile', element: <MyProfilePage /> },
           {
             element: <RequireAuth requireAgency />,
             children: [

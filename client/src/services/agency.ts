@@ -243,3 +243,17 @@ export async function fetchImportJob(jobId: string): Promise<ImportJob> {
   const { data } = await api.get<ImportJob>(`/my/agency/import/jobs/${jobId}`);
   return data;
 }
+
+/** Your own details — any member may change these, unlike the team routes. */
+export const updateMyProfile = (input: { firstName?: string; lastName?: string; phone?: string }) =>
+  api.patch<{ id: string; firstName: string; lastName: string; phone: string | null }>('/my/team/me', input);
+
+export async function uploadMyAvatar(file: File): Promise<{ id: string; avatarUrl: string | null }> {
+  const body = new FormData();
+  body.append('image', file);
+  const { data } = await api.post<{ id: string; avatarUrl: string | null }>('/my/team/me/avatar', body);
+  return data;
+}
+
+export const removeMyAvatar = () =>
+  api.delete<{ id: string; avatarUrl: string | null }>('/my/team/me/avatar');

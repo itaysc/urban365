@@ -13,9 +13,11 @@ import { TenantPrismaService } from '../tenancy/tenant-prisma.service.js';
 import { MailService } from '../mail/mail.service.js';
 import { agencyInviteTemplate, removedFromAgencyTemplate } from '../mail/templates.js';
 import { PasswordService } from '../auth/password.service.js';
+import { StorageService } from '../storage/storage.service.js';
+import { userAvatarUrl } from './image-url.js';
 import { normalizeEmail } from '../auth/normalize-email.js';
 import { can } from '../auth/permissions.js';
-import type { AcceptInviteDto, AgencyRoleValue } from './dto/team.dto.js';
+import type { AcceptInviteDto, AgencyRoleValue, UpdateMyProfileDto } from './dto/team.dto.js';
 
 const sha256 = (v: string): Buffer => createHash('sha256').update(v).digest();
 const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
@@ -44,6 +46,7 @@ export class TeamService {
     private readonly context: RequestContextService,
     private readonly passwords: PasswordService,
     private readonly mail: MailService,
+    private readonly storage: StorageService,
   ) {}
 
   private assertCanManage(): void {
@@ -391,5 +394,81 @@ export class TeamService {
     if (invite.expiresAt.getTime() <= Date.now()) throw invalid;
 
     return invite;
+  }
+
+  /**
+   * A member editing their own record. No role check — this is theirs — but it writes
+   * on the owner client, because `User` is invisible to the tenant role, and the id
+   * comes from the verified token rather than the request body.
+   */
+  async updateOwnProfile(userId: string, dto: UpdateMyProfileDto) {
+    const phone = dto.phone?.trim();
+
+    return this.owner.user.update({
+      where: { id: userId },
+      data: {
+        ...(dto.firstName?.trim() ? { firstName: dto.firstName.trim() } : {}),
+        ...(dto.lastName?.trim() ? { lastName: dto.lastName.trim() } : {}),
+        // An empty string is how the client clears it; undefined means "not sent".
+        ...(dto.phone !== undefined ? { phone: phone || null } : {}),
+      },
+      select: { id: true, firstName: true, lastName: true, phone: true },
+    });
+  }
+
+  /** Replaces the signed-in member's profile picture. Anyone may change their own. */
+  async setOwnAvatar(userId: string, file: { buffer: Buffer }) {
+    if (!file?.buffer?.length) throw new BadRequestException('לא התקבל קובץ.');
+
+    const contentType = this.storage.detectImageType(file.buffer);
+    if (!contentType || !this.storage.extensionFor(contentType)) {
+      throw new BadRequestException('הקובץ אינו תמונה נתמכת.');
+    }
+
+    const existing = await this.owner.user.findUniqueOrThrow({
+      where: { id: userId },
+      select: { avatarStorageKey: true },
+    });
+
+    const storageKey = await this.storage.putObject(`avatars/${userId}`, file.buffer, contentType);
+
+    const updated = await this.owner.user.update({
+      where: { id: userId },
+      // The `v=` stamp changes with each upload, so a replaced picture is not hidden
+      // behind the cached response for the old one.
+      data: { avatarStorageKey: storageKey, avatarUrl: userAvatarUrl(userId, Date.now().toString(36)) },
+      select: { id: true, avatarUrl: true },
+    });
+
+    // Only once the new one is recorded, so a failed upload never leaves them with none.
+    if (existing.avatarStorageKey) await this.storage.deleteObject(existing.avatarStorageKey);
+    return updated;
+  }
+
+  async removeOwnAvatar(userId: string) {
+    const existing = await this.owner.user.findUniqueOrThrow({
+      where: { id: userId },
+      select: { avatarStorageKey: true },
+    });
+
+    const updated = await this.owner.user.update({
+      where: { id: userId },
+      data: { avatarUrl: null, avatarStorageKey: null },
+      select: { id: true, avatarUrl: true },
+    });
+
+    if (existing.avatarStorageKey) await this.storage.deleteObject(existing.avatarStorageKey);
+    return updated;
+  }
+
+  /** Bytes for the public avatar route. */
+  async readAvatar(userId: string) {
+    const user = await this.owner.user.findUnique({
+      where: { id: userId },
+      select: { avatarStorageKey: true },
+    });
+
+    if (!user?.avatarStorageKey) throw new NotFoundException('אין תמונת פרופיל.');
+    return this.storage.getObject(user.avatarStorageKey);
   }
 }

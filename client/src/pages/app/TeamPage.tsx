@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '@/auth/AuthProvider';
+import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Field, inputClass } from '@/components/ui/Field';
@@ -139,12 +140,18 @@ export function TeamPage() {
                 key={member.id}
                 className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-3"
               >
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-slate-900">
-                    {member.user.firstName} {member.user.lastName}
-                    {isSelf && <span className="ms-2 text-xs text-slate-400">(את/ה)</span>}
-                  </p>
-                  <p className="text-xs text-slate-500">{member.user.email}</p>
+                <div className="flex min-w-0 items-center gap-3">
+                  <Avatar firstName={member.user.firstName} lastName={member.user.lastName} />
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-slate-900">
+                      {member.user.firstName} {member.user.lastName}
+                      {isSelf && <span className="ms-2 text-xs text-slate-400">(את/ה)</span>}
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      {member.user.email}
+                      {member.user.phone && ` · ${member.user.phone}`}
+                    </p>
+                  </div>
                 </div>
 
                 <div className="flex items-center gap-2">

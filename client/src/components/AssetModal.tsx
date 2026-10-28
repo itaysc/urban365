@@ -1,4 +1,5 @@
 import { EnquiryForm } from '@/components/EnquiryForm';
+import { RevealPhone } from '@/components/RevealPhone';
 import { useEffect, useRef } from 'react';
 import { AmenityGrid } from '@/components/AmenityGrid';
 import { AssetGallery } from '@/components/AssetGallery';
@@ -146,6 +147,10 @@ export function AssetModal({ asset, onClose }: { asset: Asset; onClose: () => vo
 
           {/* Our own listings have no yad2 url; those get the enquiry form instead, which
               is the point of the whole CRM. Scraped ones still link out. */}
+          {/* The number is not in this payload — the button fetches it, so there is
+              nothing to harvest from the listing itself. */}
+          {asset.agency?.hasPhone && <RevealPhone listingId={asset.id} />}
+
           {asset.listingUrl ? (
             <a
               href={asset.listingUrl}

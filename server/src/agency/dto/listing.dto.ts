@@ -1,6 +1,7 @@
 import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,
+  IsBoolean,
   IsArray,
   IsIn,
   IsInt,
@@ -54,6 +55,13 @@ export class UpsertListingDto {
   @IsOptional() @IsString() @MaxLength(120) contactName?: string;
   @IsOptional() @IsString() @MaxLength(120) brokerName?: string;
   @IsOptional() @IsString() @MaxLength(40) brokerLicenseNumber?: string;
+
+  /**
+   * Set after the agency has been shown a suspected duplicate and said to add it
+   * anyway. Two genuinely different units can look identical on the fields we compare,
+   * so this must stay possible.
+   */
+  @IsOptional() @IsBoolean() allowDuplicate?: boolean;
 }
 
 /** PATCH: every field optional, including the section. */

@@ -128,3 +128,12 @@ export const createDeal = (input: DealInput) => api.post<Deal>('/my/deals', inpu
 export const updateDeal = (id: string, input: Partial<DealInput>) =>
   api.patch<Deal>(`/my/deals/${id}`, input);
 export const deleteDeal = (id: string) => api.delete(`/my/deals/${id}`);
+
+/**
+ * The contact number for a listing, fetched only when the visitor asks. It is not part
+ * of the listing payload, so there is nothing to scrape without making this call.
+ */
+export async function revealPhone(listingId: string): Promise<string> {
+  const { data } = await api.get<{ phone: string }>(`/listings/${listingId}/phone`);
+  return data.phone;
+}

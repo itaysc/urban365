@@ -3,6 +3,7 @@ import type { Response } from 'express';
 import { Public } from '../auth/decorators/public.decorator.js';
 import { TenantPrismaService } from '../tenancy/tenant-prisma.service.js';
 import { StorageService, isNotFoundError } from '../storage/storage.service.js';
+import { TeamService } from './team.service.js';
 
 /**
  * Serves the bytes for images held in the private bucket, the way the reference project
@@ -19,6 +20,7 @@ export class ImagesController {
   constructor(
     private readonly prisma: TenantPrismaService,
     private readonly storage: StorageService,
+    private readonly team: TeamService,
   ) {}
 
   @Public()
@@ -53,6 +55,25 @@ export class ImagesController {
 
     if (!agency?.coverStorageKey) throw new NotFoundException('לא נמצאה תמונת נושא.');
     await this.send(agency.coverStorageKey, res);
+  }
+
+  /**
+   * An agent's picture appears next to their listings, so this is public like the rest.
+   * It reveals only that a given user id has a photo, which the listing already implies.
+   */
+  @Public()
+  @Get('users/:userId/avatar')
+  @Header('Cache-Control', 'public, max-age=86400')
+  @Header('Cross-Origin-Resource-Policy', 'cross-origin')
+  async userAvatar(@Param('userId') userId: string, @Res() res: Response) {
+    try {
+      const { buffer, contentType } = await this.team.readAvatar(userId);
+      res.setHeader('Content-Type', contentType);
+      res.send(buffer);
+    } catch (error) {
+      if (isNotFoundError(error)) throw new NotFoundException('אין תמונת פרופיל.');
+      throw error;
+    }
   }
 
   private async send(storageKey: string, res: Response): Promise<void> {

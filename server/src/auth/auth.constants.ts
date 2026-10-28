@@ -8,7 +8,15 @@ export const JWT_AUDIENCE = 'nadlan-app';
 export const JWT_ALGORITHM = 'HS256' as const;
 
 /** Short, because the access token is deliberately not checked against the DB. */
-export const ACCESS_TOKEN_TTL_SEC = 15 * 60;
+/**
+ * Four hours. The access token is not checked against the database on each request, so
+ * this is also how long a revocation takes to bite on access: logging out everywhere,
+ * removing someone from an agency or changing their role all leave the old token
+ * working until it expires. Refresh checks immediately, so the session still dies at
+ * the next rotation — and the paths where that gap would be felt (approval, removal)
+ * bump `sessionEpoch`, which forces exactly that.
+ */
+export const ACCESS_TOKEN_TTL_SEC = 4 * 60 * 60;
 export const REFRESH_TOKEN_TTL_SEC = 30 * 24 * 60 * 60;
 
 export const ACCESS_COOKIE = 'nadlan_at';
