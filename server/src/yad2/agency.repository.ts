@@ -70,7 +70,18 @@ export class AgencyRepository {
    * in the agency's feed before and are gone now are marked delisted rather than
    * deleted, so price history and past inventory stay queryable.
    */
-  async saveDump(dump: AgencyDump, agencyId: string, section: Section): Promise<void> {
+  /**
+   * `preserveProfile` is set when an agency imports its *own* yad2 page. The scraper
+   * owns these fields for rows it discovered, but an agency that has written its own
+   * name and description must not have them overwritten by what yad2 happens to hold.
+   * Counts, logo, phone and opening hours still come from yad2 either way.
+   */
+  async saveDump(
+    dump: AgencyDump,
+    agencyId: string,
+    section: Section,
+    opts: { preserveProfile?: boolean } = {},
+  ): Promise<void> {
     const summary = toAgencySummary(dump, agencyId, section);
     const team = toTeam(dump);
 
@@ -100,11 +111,10 @@ export class AgencyRepository {
           commercialAssetsCount: summary.counts.commercial,
         },
         update: {
-          name: summary.name,
+          ...(opts.preserveProfile ? {} : { name: summary.name, description: summary.description || null }),
           licenseNumber: summary.licenseNumber || null,
           phone: summary.phone || null,
           logoUrl: summary.logoUrl || null,
-          description: summary.description || null,
           openingHours: summary.openingHours as unknown as Prisma.InputJsonValue,
           assetsForSaleCount: summary.counts.forSale,
           assetsForRentCount: summary.counts.forRent,

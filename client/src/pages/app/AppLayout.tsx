@@ -12,6 +12,7 @@ const navItems = [
   { to: '/app/leads', label: 'פניות' },
   { to: '/app/deals', label: 'עסקאות' },
   { to: '/app/agency', label: 'עמוד הסוכנות' },
+  { to: '/app/team', label: 'צוות' },
 ];
 
 function navClass({ isActive }: { isActive: boolean }) {
@@ -27,14 +28,14 @@ export function AppLayout() {
 
   const onLogout = async () => {
     await logout();
-    navigate('/search', { replace: true });
+    navigate('/', { replace: true });
   };
 
   return (
     <div className="min-h-screen bg-slate-50">
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-8">
-          <NavLink to="/app" className="text-lg font-bold text-slate-900">
+          <NavLink to="/" className="text-lg font-bold text-slate-900">
             נדל״ן
           </NavLink>
 

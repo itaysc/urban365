@@ -64,3 +64,30 @@ export const claimDecisionTemplate = (approved: boolean, agencyName: string, app
       : `<p style="color:#334155;line-height:1.6">בקשת השיוך לסוכנות <strong>${agencyName}</strong> לא אושרה. אפשר לפנות אלינו לבירור.</p>`,
   ),
 });
+
+export const agencyInviteTemplate = (
+  link: string,
+  agencyName: string,
+  inviterName: string,
+  roleLabel: string,
+) => ({
+  subject: `הוזמנת להצטרף ל${agencyName}`,
+  html: shell(
+    'הוזמנת להצטרף לצוות',
+    `<p style="color:#334155;line-height:1.6">
+       ${inviterName} הזמין אותך להצטרף ל<strong>${agencyName}</strong> בתור ${roleLabel}.
+     </p>
+     ${button(link, 'הצטרפות לצוות')}
+     <p style="font-size:12px;color:#64748b">הקישור תקף ל‑7 ימים.</p>`,
+  ),
+});
+
+export const removedFromAgencyTemplate = (agencyName: string) => ({
+  subject: `הוסרת מ${agencyName}`,
+  html: shell(
+    'הגישה שלך הוסרה',
+    `<p style="color:#334155;line-height:1.6">
+       אינך עוד חבר/ה בצוות של <strong>${agencyName}</strong>. החשבון שלך נשאר פעיל.
+     </p>`,
+  ),
+});

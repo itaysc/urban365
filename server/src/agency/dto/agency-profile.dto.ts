@@ -17,3 +17,9 @@ export class PresignCoverDto {
   @IsIn(['image/jpeg', 'image/png', 'image/webp', 'image/avif'])
   contentType!: string;
 }
+
+/** A yad2 agency id, or any link containing one. Parsed server-side. */
+export class ImportYad2Dto {
+  @IsString() @MaxLength(300) input!: string;
+  @IsOptional() @IsIn(['forsale', 'rent', 'commercial']) section?: 'forsale' | 'rent' | 'commercial';
+}

@@ -205,3 +205,79 @@ export async function uploadAgencyCover(file: File): Promise<AgencyProfile> {
 
   return updateAgencyProfile({ coverImageUrl: presigned.url });
 }
+
+// ── team ──────────────────────────────────────────────────────────────────────
+
+export type AgencyRole = 'owner' | 'agent';
+
+export interface TeamMember {
+  id: string;
+  role: AgencyRole;
+  status: 'pending' | 'active' | 'suspended';
+  joinedAt: string | null;
+  createdAt: string;
+  user: { id: string; email: string; firstName: string; lastName: string; phone: string | null };
+}
+
+export interface TeamInvite {
+  id: string;
+  email: string;
+  role: AgencyRole;
+  expiresAt: string;
+  createdAt: string;
+  expired: boolean;
+}
+
+export async function fetchTeam(): Promise<{ members: TeamMember[]; invites: TeamInvite[] }> {
+  const { data } = await api.get<{ members: TeamMember[]; invites: TeamInvite[] }>('/my/team');
+  return data;
+}
+
+export const inviteMember = (email: string, role: AgencyRole) =>
+  api.post<TeamInvite>('/my/team/invites', { email, role });
+export const revokeInvite = (id: string) => api.delete(`/my/team/invites/${id}`);
+export const changeMemberRole = (id: string, role: AgencyRole) =>
+  api.patch(`/my/team/members/${id}`, { role });
+export const removeMember = (id: string) => api.delete(`/my/team/members/${id}`);
+
+// ── accepting an invite (no session needed) ───────────────────────────────────
+
+export interface InvitePreview {
+  email: string;
+  role: AgencyRole;
+  agencyName: string;
+  /** True when the address already has an account, so the page asks them to sign in. */
+  hasAccount: boolean;
+}
+
+export async function fetchInvite(token: string): Promise<InvitePreview> {
+  const { data } = await api.get<InvitePreview>(`/invites/${encodeURIComponent(token)}`);
+  return data;
+}
+
+export const acceptInvite = (
+  token: string,
+  body: { firstName?: string; lastName?: string; password?: string; phone?: string },
+) => api.post(`/invites/${encodeURIComponent(token)}/accept`, body);
+
+// ── importing this agency's own yad2 page ─────────────────────────────────────
+
+export interface ImportJob {
+  status: 'running' | 'done' | 'error';
+  progress: { phase: string; done: number; total: number } | null;
+  error: string | null;
+  errorCode: string | null;
+}
+
+export async function startYad2Import(input: string, section?: string) {
+  const { data } = await api.post<{ jobId: string; yad2Id: string }>('/my/agency/import/yad2', {
+    input,
+    ...(section ? { section } : {}),
+  });
+  return data;
+}
+
+export async function fetchImportJob(jobId: string): Promise<ImportJob> {
+  const { data } = await api.get<ImportJob>(`/my/agency/import/jobs/${jobId}`);
+  return data;
+}

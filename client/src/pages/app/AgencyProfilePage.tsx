@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Yad2ImportPanel } from '@/components/agency/Yad2ImportPanel';
 import { Button } from '@/components/ui/Button';
 import { Field, inputClass } from '@/components/ui/Field';
 import { errorMessageOf } from '@/lib/apiError';
@@ -105,6 +106,14 @@ export function AgencyProfilePage() {
       {error && (
         <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>
       )}
+
+      {/* Importing is an agency action on the agency's own page — it used to be the
+          public home page, where anyone could point it at any yad2 id. */}
+      <Yad2ImportPanel
+        onImported={() => {
+          void fetchAgencyProfile().then(apply).catch(() => undefined);
+        }}
+      />
 
       <section className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4">
         <h2 className="text-sm font-semibold text-slate-900">תמונת נושא</h2>

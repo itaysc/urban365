@@ -136,7 +136,7 @@ export function HomePage() {
             <h1 className="text-2xl font-bold text-slate-900">נדל״ן</h1>
             <p className="text-sm text-slate-500">ייבוא סוכנות נדל״ן מיד2</p>
           </div>
-          <Link to="/search" className="text-sm text-blue-700 hover:underline">
+          <Link to="/" className="text-sm text-blue-700 hover:underline">
             חיפוש בכל הנכסים ←
           </Link>
         </header>

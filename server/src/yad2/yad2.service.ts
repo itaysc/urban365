@@ -48,7 +48,7 @@ export class Yad2Service {
   }
 
   /** Starts a scrape and returns immediately; poll `getJob` for progress. */
-  start(agencyId: string, section: Section): Job {
+  start(agencyId: string, section: Section, opts: { preserveProfile?: boolean } = {}): Job {
     const job: Job = {
       id: randomUUID(),
       agencyId,
@@ -63,11 +63,11 @@ export class Yad2Service {
     };
     this.jobs.set(job.id, job);
 
-    void this.run(job);
+    void this.run(job, opts);
     return job;
   }
 
-  private async run(job: Job): Promise<void> {
+  private async run(job: Job, opts: { preserveProfile?: boolean } = {}): Promise<void> {
     try {
       const dump = await this.scraper.scrape(job.agencyId, job.section, (p) => {
         job.progress = p;
@@ -75,7 +75,7 @@ export class Yad2Service {
       // Keep the untouched payload on disk as well, so a mapping bug can be replayed
       // without re-scraping yad2.
       const cached = await this.cache.write(job.agencyId, job.section, dump);
-      await this.repository.saveDump(dump, job.agencyId, job.section);
+      await this.repository.saveDump(dump, job.agencyId, job.section, opts);
       job.result = toResult(dump, job.agencyId, job.section, 'live', cached.scrapedAt);
       job.status = 'done';
     } catch (e) {

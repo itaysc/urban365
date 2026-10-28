@@ -1,4 +1,4 @@
-import { createBrowserRouter } from 'react-router-dom';
+import { Navigate, createBrowserRouter } from 'react-router-dom';
 import { RequireAdmin, RequireAuth } from '@/auth/RequireAuth';
 import { HomePage } from '@/pages/HomePage';
 import { SearchPage } from '@/pages/SearchPage';
@@ -6,11 +6,13 @@ import { ForgotPasswordPage } from '@/pages/auth/ForgotPasswordPage';
 import { LoginPage } from '@/pages/auth/LoginPage';
 import { ResetPasswordPage } from '@/pages/auth/ResetPasswordPage';
 import { SignupPage } from '@/pages/auth/SignupPage';
+import { AcceptInvitePage } from '@/pages/auth/AcceptInvitePage';
 import { AppLayout } from '@/pages/app/AppLayout';
 import { DashboardPage } from '@/pages/app/DashboardPage';
 import { MyListingsPage } from '@/pages/app/MyListingsPage';
 import { PendingPage } from '@/pages/app/PendingPage';
 import { AgencyProfilePage } from '@/pages/app/AgencyProfilePage';
+import { TeamPage } from '@/pages/app/TeamPage';
 import { DealsPage } from '@/pages/app/DealsPage';
 import { LeadsPage } from '@/pages/app/LeadsPage';
 import { ListingEditorPage } from '@/pages/app/ListingEditorPage';
@@ -18,12 +20,14 @@ import { ModerationPage } from '@/pages/admin/ModerationPage';
 
 export const router = createBrowserRouter([
   // ── public ──────────────────────────────────────────────────────────────────
-  // The agency, the page and the open listing all live in the URL, so any view —
-  // including an open listing modal — can be linked to and survives a reload.
-  { path: '/', element: <HomePage /> },
+  // Search is the front door. Filters live in the query string, so a filtered search
+  // is shareable.
+  { path: '/', element: <SearchPage /> },
+  // Kept so links minted while search lived here keep working.
+  { path: '/search', element: <Navigate to="/" replace /> },
+  // An agency's public page. The yad2 importer used to sit on this component for
+  // anyone to run; it now lives in the agency's own dashboard.
   { path: '/agency/:agencyId', element: <HomePage /> },
-  // Search filters live in the query string too, so a filtered search is shareable.
-  { path: '/search', element: <SearchPage /> },
 
   // Email verification has no page of its own: the server's redirect consumes the token
   // and lands on /login?verified=1, which LoginPage reports.
@@ -31,6 +35,8 @@ export const router = createBrowserRouter([
   { path: '/signup', element: <SignupPage /> },
   { path: '/forgot-password', element: <ForgotPasswordPage /> },
   { path: '/reset-password', element: <ResetPasswordPage /> },
+  // Public: whoever follows the emailed link may not have an account yet.
+  { path: '/accept-invite', element: <AcceptInvitePage /> },
 
   // ── signed in ───────────────────────────────────────────────────────────────
   // RequireAuth is a layout route, so the check runs once for the whole subtree
@@ -54,6 +60,7 @@ export const router = createBrowserRouter([
               { path: '/app/leads', element: <LeadsPage /> },
               { path: '/app/deals', element: <DealsPage /> },
               { path: '/app/agency', element: <AgencyProfilePage /> },
+              { path: '/app/team', element: <TeamPage /> },
             ],
           },
         ],

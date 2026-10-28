@@ -8,5 +8,7 @@ import { Yad2Service } from './yad2.service.js';
 @Module({
   controllers: [Yad2Controller],
   providers: [Yad2Service, Yad2ScraperService, AgencyCacheService, AgencyRepository],
+  // The agency dashboard imports its own yad2 page through this service.
+  exports: [Yad2Service],
 })
 export class Yad2Module {}

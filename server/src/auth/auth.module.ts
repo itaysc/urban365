@@ -16,6 +16,8 @@ import { TokenService } from './token.service.js';
   imports: [JwtModule.register({})],
   controllers: [AuthController],
   providers: [AuthService, PasswordService, TokenService, SessionService, AuthTokenService, CaptchaService],
-  exports: [TokenService, AuthTokenService],
+  // PasswordService is exported for the invite flow, which hashes a password for a
+  // user created outside signup.
+  exports: [TokenService, AuthTokenService, PasswordService],
 })
 export class AuthModule {}

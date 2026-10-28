@@ -53,8 +53,10 @@ export function SearchPage() {
           </div>
 
           <div className="flex items-center gap-3">
-            <Link to="/" className="text-sm text-blue-700 hover:underline">
-              ייבוא סוכנות מיד2 ←
+            {/* The way in for agencies. Importing from yad2 lives behind it, on the
+                agency's own page — it is not something a visitor should trigger. */}
+            <Link to="/login" className="text-sm text-blue-700 hover:underline">
+              כניסת סוכנויות ←
             </Link>
             <select
               value={filters.sort}
