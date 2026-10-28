@@ -18,6 +18,27 @@ export interface StoredObject {
   contentType: string;
 }
 
+/**
+ * Turns an S3 failure into something a caller can act on. Without this a misconfigured
+ * bucket surfaced as a raw AWS SDK error and a 500 with a stack trace — true, but it
+ * told whoever saw it nothing about what to fix.
+ */
+function asStorageError(error: unknown): never {
+  const name = (error as { name?: string })?.name;
+  const status = (error as { $metadata?: { httpStatusCode?: number } })?.$metadata?.httpStatusCode;
+
+  if (name === 'NoSuchBucket') {
+    throw new ServiceUnavailableException(
+      'דלי האחסון אינו קיים. הריצו `npm run storage:init` בשרת.',
+    );
+  }
+  if (name === 'AccessDenied' || name === 'InvalidAccessKeyId' || name === 'SignatureDoesNotMatch' || status === 403) {
+    throw new ServiceUnavailableException('פרטי ההתחברות לאחסון אינם תקינים.');
+  }
+
+  throw error;
+}
+
 export function isNotFoundError(error: unknown): boolean {
   const name = (error as { name?: string })?.name;
   const status = (error as { $metadata?: { httpStatusCode?: number } })?.$metadata?.httpStatusCode;
@@ -118,27 +139,40 @@ export class StorageService {
 
     const storageKey = `${prefix}/${randomUUID()}.${extension}`;
 
-    await this.getClient().send(
-      new PutObjectCommand({
-        Bucket: this.bucket(),
-        Key: storageKey,
-        Body: buffer,
-        ContentType: contentType,
-      }),
-    );
+    try {
+      await this.getClient().send(
+        new PutObjectCommand({
+          Bucket: this.bucket(),
+          Key: storageKey,
+          Body: buffer,
+          ContentType: contentType,
+        }),
+      );
+    } catch (error) {
+      this.logger.error(`Upload to ${this.bucket()} failed: ${(error as Error).message}`);
+      asStorageError(error);
+    }
 
     return storageKey;
   }
 
   async getObject(storageKey: string): Promise<StoredObject> {
-    const result = await this.getClient().send(
-      new GetObjectCommand({ Bucket: this.bucket(), Key: storageKey }),
-    );
+    try {
+      const result = await this.getClient().send(
+        new GetObjectCommand({ Bucket: this.bucket(), Key: storageKey }),
+      );
 
-    return {
-      buffer: await streamToBuffer(result.Body),
-      contentType: result.ContentType ?? 'application/octet-stream',
-    };
+      return {
+        buffer: await streamToBuffer(result.Body),
+        contentType: result.ContentType ?? 'application/octet-stream',
+      };
+    } catch (error) {
+      // A missing *object* is the caller's to handle — it means the row outlived the
+      // file, which the serve route turns into a 404. Only configuration problems are
+      // rewritten here.
+      if (isNotFoundError(error) && (error as { name?: string })?.name !== 'NoSuchBucket') throw error;
+      asStorageError(error);
+    }
   }
 
   /**
