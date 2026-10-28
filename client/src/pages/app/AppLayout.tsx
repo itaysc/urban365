@@ -36,28 +36,35 @@ export function AppLayout() {
     <div className="min-h-screen bg-slate-50">
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-8">
-          <NavLink to="/" className="text-lg font-bold text-slate-900">
-            נדל״ן
-          </NavLink>
-
+          {/*
+            The page is dir="rtl", so the first child renders on the RIGHT. The avatar
+            leads, which is what puts it at the right edge of the nav; the wordmark
+            follows on the left.
+          */}
           <div className="flex items-center gap-3">
+            {/* The avatar alone. `title` and the Avatar's own label carry the name, so
+                nothing is lost for a screen reader by dropping the visible text. */}
+            <NavLink
+              to="/app/profile"
+              className="rounded-full transition hover:opacity-80"
+              title="הפרופיל שלי"
+              aria-label="הפרופיל שלי"
+            >
+              <Avatar size="md" src={user?.avatarUrl} firstName={user?.firstName} lastName={user?.lastName} />
+            </NavLink>
+
             {user?.agency && (
               <span className="hidden text-sm text-slate-500 sm:inline">{user.agency.name}</span>
             )}
-
-            <NavLink
-              to="/app/profile"
-              className="flex items-center gap-2 rounded-lg px-2 py-1 transition hover:bg-slate-100"
-              title="הפרופיל שלי"
-            >
-              <Avatar size="sm" src={user?.avatarUrl} firstName={user?.firstName} lastName={user?.lastName} />
-              <span className="hidden text-sm text-slate-700 sm:inline">{user?.firstName}</span>
-            </NavLink>
 
             <Button variant="ghost" onClick={() => void onLogout()}>
               יציאה
             </Button>
           </div>
+
+          <NavLink to="/" className="text-lg font-bold text-slate-900">
+            נדל״ן
+          </NavLink>
         </div>
       </header>
 
