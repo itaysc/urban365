@@ -1,11 +1,11 @@
 import { randomUUID } from 'node:crypto';
+import { Readable } from 'node:stream';
 import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { DeleteObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import type { StorageConfig } from '../config/configuration.js';
 
-/** What the browser is allowed to PUT. Checked again on the key it asks for. */
+/** What may be uploaded. Checked on the declared type and on the magic bytes. */
 const ALLOWED_TYPES: Record<string, string> = {
   'image/jpeg': 'jpg',
   'image/png': 'png',
@@ -13,28 +13,29 @@ const ALLOWED_TYPES: Record<string, string> = {
   'image/avif': 'avif',
 };
 
-export interface PresignedUpload {
-  /** PUT the bytes here, with the same Content-Type that was requested. */
-  uploadUrl: string;
-  /** Stored on the row; the object key inside the bucket. */
-  storageKey: string;
-  /** The stable public URL the image is served from afterwards. */
-  url: string;
-  expiresInSeconds: number;
+export interface StoredObject {
+  buffer: Buffer;
+  contentType: string;
 }
 
-const UPLOAD_TTL_SECONDS = 300;
+export function isNotFoundError(error: unknown): boolean {
+  const name = (error as { name?: string })?.name;
+  const status = (error as { $metadata?: { httpStatusCode?: number } })?.$metadata?.httpStatusCode;
+  return name === 'NoSuchKey' || name === 'NotFound' || status === 404;
+}
 
 /**
- * Backblaze B2 over its S3-compatible API, the same stack the reference project uses.
+ * Backblaze B2 over its S3-compatible API, following the same shape as the reference
+ * project: the bucket stays **private**, and bytes are read back through this service
+ * and served by our own routes at a stable URL.
  *
- * Two deliberate differences from that project. It keeps the bucket private and presigns
- * every GET, which caps each link at seven days — fine for an invoice, wrong for a photo
- * on a public listing page that should be cacheable and indexable. So the bucket is
- * public-read and the stable URL is stored on the row.
+ * That is the reference's avatar pattern rather than its invoice one. Invoices are
+ * presigned GETs, which cap at seven days — fine for a download link in an email, wrong
+ * for a photo on a listing page, where an expiring URL cannot be cached by a browser or
+ * a CDN and cannot be indexed. Proxying costs us the bandwidth but keeps the URL stable.
  *
- * And uploads are presigned PUTs: the bytes go browser → B2 without passing through this
- * API, which keeps a twenty-photo upload off the request path entirely.
+ * It also means the bucket needs no public-read policy and no separate public base URL:
+ * the five B2_* credentials are the whole configuration.
  */
 @Injectable()
 export class StorageService {
@@ -47,18 +48,40 @@ export class StorageService {
   }
 
   /**
-   * Missing credentials must not crash module load — the scraper, auth and search all
+   * Missing credentials must not crash module load — search, auth and the importer all
    * work without storage, and most dev machines will never set these.
    */
   isConfigured(): boolean {
-    const { keyId, applicationKey, bucket, endpoint, region, publicBaseUrl } = this.config;
-    return [keyId, applicationKey, bucket, endpoint, region, publicBaseUrl].every(
-      (v) => v.trim().length > 0,
-    );
+    const { keyId, applicationKey, bucket, endpoint, region } = this.config;
+    return [keyId, applicationKey, bucket, endpoint, region].every((v) => v.trim().length > 0);
   }
 
   extensionFor(contentType: string): string | null {
     return ALLOWED_TYPES[contentType] ?? null;
+  }
+
+  /**
+   * Sniffs the leading bytes rather than trusting the multipart Content-Type, which the
+   * uploader controls. A file declared `image/png` that is really something else gets no
+   * further than this.
+   */
+  detectImageType(buffer: Buffer): string | null {
+    if (buffer.length < 12) return null;
+
+    if (buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) return 'image/jpeg';
+    if (buffer.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) {
+      return 'image/png';
+    }
+    if (buffer.subarray(0, 4).toString('ascii') === 'RIFF' && buffer.subarray(8, 12).toString('ascii') === 'WEBP') {
+      return 'image/webp';
+    }
+    // AVIF is ISO-BMFF: a `ftyp` box whose brand says avif.
+    if (buffer.subarray(4, 8).toString('ascii') === 'ftyp') {
+      const brand = buffer.subarray(8, 12).toString('ascii');
+      if (brand === 'avif' || brand === 'avis') return 'image/avif';
+    }
+
+    return null;
   }
 
   /** Lazily built, so an unconfigured deployment never constructs one. */
@@ -81,37 +104,40 @@ export class StorageService {
     return this.client;
   }
 
-  publicUrlFor(storageKey: string): string {
-    return `${this.config.publicBaseUrl.trim().replace(/\/$/, '')}/${storageKey}`;
+  private bucket(): string {
+    return this.config.bucket.trim();
   }
 
   /**
-   * A presigned PUT for one object. The key is generated here rather than taken from the
-   * caller: a client-supplied key is a path-traversal and overwrite primitive, and
-   * prefixing by listing keeps deletes simple.
+   * Stores one object and returns its key. The key is generated here rather than taken
+   * from the caller: a client-supplied key is a path-traversal and overwrite primitive.
    */
-  async presignUpload(prefix: string, contentType: string): Promise<PresignedUpload> {
+  async putObject(prefix: string, buffer: Buffer, contentType: string): Promise<string> {
     const extension = this.extensionFor(contentType);
-    if (!extension) {
-      throw new ServiceUnavailableException('סוג קובץ לא נתמך.');
-    }
+    if (!extension) throw new ServiceUnavailableException('סוג קובץ לא נתמך.');
 
     const storageKey = `${prefix}/${randomUUID()}.${extension}`;
-    const uploadUrl = await getSignedUrl(
-      this.getClient(),
+
+    await this.getClient().send(
       new PutObjectCommand({
-        Bucket: this.config.bucket.trim(),
+        Bucket: this.bucket(),
         Key: storageKey,
+        Body: buffer,
         ContentType: contentType,
       }),
-      { expiresIn: UPLOAD_TTL_SECONDS },
+    );
+
+    return storageKey;
+  }
+
+  async getObject(storageKey: string): Promise<StoredObject> {
+    const result = await this.getClient().send(
+      new GetObjectCommand({ Bucket: this.bucket(), Key: storageKey }),
     );
 
     return {
-      uploadUrl,
-      storageKey,
-      url: this.publicUrlFor(storageKey),
-      expiresInSeconds: UPLOAD_TTL_SECONDS,
+      buffer: await streamToBuffer(result.Body),
+      contentType: result.ContentType ?? 'application/octet-stream',
     };
   }
 
@@ -125,10 +151,25 @@ export class StorageService {
 
     try {
       await this.getClient().send(
-        new DeleteObjectCommand({ Bucket: this.config.bucket.trim(), Key: storageKey }),
+        new DeleteObjectCommand({ Bucket: this.bucket(), Key: storageKey }),
       );
     } catch (error) {
       this.logger.warn(`Could not delete ${storageKey}: ${(error as Error).message}`);
     }
   }
+}
+
+async function streamToBuffer(body: unknown): Promise<Buffer> {
+  if (Buffer.isBuffer(body)) return body;
+  if (body instanceof Uint8Array) return Buffer.from(body);
+
+  if (body instanceof Readable) {
+    const chunks: Buffer[] = [];
+    for await (const chunk of body) {
+      chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk as Uint8Array));
+    }
+    return Buffer.concat(chunks);
+  }
+
+  throw new Error('Expected the S3 response body to be a readable stream or a buffer');
 }

@@ -50,12 +50,6 @@ export interface StorageConfig {
   bucket: string;
   endpoint: string;
   region: string;
-  /**
-   * Public base URL for objects, e.g. https://f003.backblazeb2.com/file/<bucket>.
-   * Listing photos live in a public-read bucket and are served from a stable URL —
-   * unlike the reference project, which presigns GETs and so caps every link at 7 days.
-   */
-  publicBaseUrl: string;
 }
 
 export interface Yad2Config {
@@ -110,7 +104,6 @@ export default (): {
     bucket: process.env.B2_BUCKET ?? '',
     endpoint: process.env.B2_ENDPOINT ?? '',
     region: process.env.B2_REGION ?? '',
-    publicBaseUrl: process.env.B2_PUBLIC_BASE_URL ?? '',
   },
   captcha: {
     turnstileSecret: process.env.TURNSTILE_SECRET ?? '',

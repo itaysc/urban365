@@ -1,17 +1,28 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Header,
+  Param,
+  Patch,
+  Post,
+  Query,
+  Res,
+  UploadedFile,
+  UseGuards,
+  UseInterceptors,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import type { Response } from 'express';
+import { Public } from '../auth/decorators/public.decorator.js';
 import { IsIn, IsInt, IsOptional, Max, Min } from 'class-validator';
 import { Type } from 'class-transformer';
 import { RequestContextService } from '../tenancy/request-context.service.js';
 import { TenantGuard } from '../tenancy/tenant.guard.js';
 import { TenantPrismaService } from '../tenancy/tenant-prisma.service.js';
 import { MyListingsService } from './my-listings.service.js';
-import {
-  AttachImageDto,
-  PresignImageDto,
-  ReorderImagesDto,
-  UpdateListingDto,
-  UpsertListingDto,
-} from './dto/listing.dto.js';
+import { ReorderImagesDto, UpdateListingDto, UpsertListingDto } from './dto/listing.dto.js';
 
 class MyListingsQuery {
   @IsOptional() @IsIn(['draft', 'published', 'archived']) status?: string;
@@ -108,17 +119,19 @@ export class MyListingsController {
   }
 
   // ── images ────────────────────────────────────────────────────────────────
-  // Two steps on purpose: the browser PUTs the bytes straight to Backblaze with the
-  // url this returns, then tells us the key. Photos never pass through this API.
-
-  @Post(':id/images/presign')
-  presignImage(@Param('id') id: string, @Body() dto: PresignImageDto) {
-    return this.listings.presignImage(id, dto.contentType);
-  }
+  // The bytes come through this API and are stored in a private bucket, the way the
+  // reference project handles avatars. The alternative — presigned URLs straight to
+  // Backblaze — expires within seven days, which is wrong for a photo on a public
+  // listing page that should be cacheable and indexable.
 
   @Post(':id/images')
-  attachImage(@Param('id') id: string, @Body() dto: AttachImageDto) {
-    return this.listings.attachImage(id, dto);
+  @UseInterceptors(
+    FileInterceptor('image', {
+      limits: { fileSize: 8 * 1024 * 1024, files: 1 },
+    }),
+  )
+  addImage(@Param('id') id: string, @UploadedFile() file: Express.Multer.File) {
+    return this.listings.addImage(id, file);
   }
 
   @Patch(':id/images/order')

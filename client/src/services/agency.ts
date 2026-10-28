@@ -103,55 +103,20 @@ export const archiveListing = (id: string) => api.delete(`/my/listings/${id}`);
 
 // ── images ────────────────────────────────────────────────────────────────────
 
-interface Presigned {
-  uploadUrl: string;
-  storageKey: string;
-  url: string;
-}
-
 /**
- * Presign, PUT straight to Backblaze, then tell the API the key. The bytes never go
- * through our server, so a twenty-photo upload costs it three small JSON calls.
+ * Posts the file to our API, which stores it in a private bucket and serves it back
+ * from a stable path. No presigned URL and no direct call to Backblaze: an expiring
+ * link cannot be cached or indexed, which is wrong for a photo on a public listing.
  *
- * The PUT uses bare fetch rather than the api client: it is cross-origin to the bucket,
- * and sending our credentials or the CSRF header there would be both pointless and wrong.
+ * `Content-Type` is deliberately not set — the browser must add the multipart boundary
+ * itself, and setting the header by hand strips it.
  */
 export async function uploadListingImage(listingId: string, file: File): Promise<ListingDetail> {
-  const { data: presigned } = await api.post<Presigned>(`/my/listings/${listingId}/images/presign`, {
-    contentType: file.type,
-  });
+  const body = new FormData();
+  body.append('image', file);
 
-  const put = await fetch(presigned.uploadUrl, {
-    method: 'PUT',
-    body: file,
-    headers: { 'Content-Type': file.type },
-  });
-  if (!put.ok) throw new Error(`upload failed: ${put.status}`);
-
-  const size = await readImageSize(file).catch(() => null);
-  await api.post(`/my/listings/${listingId}/images`, {
-    storageKey: presigned.storageKey,
-    ...(size ?? {}),
-  });
-
+  await api.post(`/my/listings/${listingId}/images`, body);
   return fetchListing(listingId);
-}
-
-/** Dimensions are read here because the server never sees the bytes. */
-function readImageSize(file: File): Promise<{ width: number; height: number }> {
-  return new Promise((resolve, reject) => {
-    const url = URL.createObjectURL(file);
-    const img = new Image();
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-      resolve({ width: img.naturalWidth, height: img.naturalHeight });
-    };
-    img.onerror = () => {
-      URL.revokeObjectURL(url);
-      reject(new Error('could not read image'));
-    };
-    img.src = url;
-  });
 }
 
 export async function removeListingImage(listingId: string, imageId: string): Promise<ListingDetail> {
@@ -185,25 +150,22 @@ export async function fetchAgencyProfile(): Promise<AgencyProfile> {
   return data;
 }
 
-export async function updateAgencyProfile(input: Partial<AgencyProfile>) {
+export async function updateAgencyProfile(
+  input: Partial<Pick<AgencyProfile, 'name' | 'description' | 'phone' | 'contactEmail'>>,
+) {
   const { data } = await api.patch<AgencyProfile>('/my/agency', input);
   return data;
 }
 
-/** Same two-step upload as listing photos, into the agency's own prefix. */
-export async function uploadAgencyCover(file: File): Promise<AgencyProfile> {
-  const { data: presigned } = await api.post<Presigned>('/my/agency/cover/presign', {
-    contentType: file.type,
-  });
+export const removeAgencyCover = () => api.delete<{ id: string; coverImageUrl: string | null }>('/my/agency/cover');
 
-  const put = await fetch(presigned.uploadUrl, {
-    method: 'PUT',
-    body: file,
-    headers: { 'Content-Type': file.type },
-  });
-  if (!put.ok) throw new Error(`upload failed: ${put.status}`);
+/** Same single-request upload as listing photos, into the agency's own prefix. */
+export async function uploadAgencyCover(file: File): Promise<Partial<AgencyProfile>> {
+  const body = new FormData();
+  body.append('image', file);
 
-  return updateAgencyProfile({ coverImageUrl: presigned.url });
+  const { data } = await api.post<{ id: string; coverImageUrl: string | null }>('/my/agency/cover', body);
+  return data;
 }
 
 // ── team ──────────────────────────────────────────────────────────────────────

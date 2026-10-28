@@ -6,6 +6,7 @@ import { errorMessageOf } from '@/lib/apiError';
 import {
   fetchAgencyProfile,
   updateAgencyProfile,
+  removeAgencyCover,
   uploadAgencyCover,
   type AgencyProfile,
 } from '@/services/agency';
@@ -79,9 +80,10 @@ export function AgencyProfilePage() {
 
   const clearCover = async () => {
     try {
-      // An empty string is the agreed "clear this" value; the server turns it into null.
-      const updated = await updateAgencyProfile({ coverImageUrl: '' });
-      setProfile((p) => (p ? { ...p, ...updated } : p));
+      // Its own route rather than a field on the profile patch: the server also has to
+      // remove the object, which a plain field update would leave behind.
+      const { data } = await removeAgencyCover();
+      setProfile((p) => (p ? { ...p, ...data } : p));
     } catch (e) {
       setError(errorMessageOf(e, 'לא הצלחנו להסיר את התמונה.'));
     }

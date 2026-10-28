@@ -61,17 +61,6 @@ export class UpdateListingDto extends UpsertListingDto {
   @IsOptional() @IsIn(SECTIONS) declare section: (typeof SECTIONS)[number];
 }
 
-export class PresignImageDto {
-  @IsIn(['image/jpeg', 'image/png', 'image/webp', 'image/avif'])
-  contentType!: string;
-}
-
-export class AttachImageDto {
-  @IsString() @MaxLength(300) storageKey!: string;
-  @IsOptional() @Type(() => Number) @IsInt() @Min(1) width?: number;
-  @IsOptional() @Type(() => Number) @IsInt() @Min(1) height?: number;
-}
-
 export class ReorderImagesDto {
   @IsArray() @ArrayMaxSize(50) @IsString({ each: true })
   imageIds!: string[];

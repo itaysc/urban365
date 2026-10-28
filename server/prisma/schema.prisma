@@ -113,8 +113,10 @@ model Agency {
   phone         String?
   logoUrl       String?
   /// Banner on the agency's public page. Uploaded here, unlike logoUrl which may still
-  /// point at yad2's CDN for scraped agencies.
-  coverImageUrl String?
+  /// point at yad2's CDN for scraped agencies. The URL is a path this API serves; the
+  /// object itself lives in a private bucket under `coverStorageKey`.
+  coverImageUrl   String?
+  coverStorageKey String?
   description   String?
 
   /// [{ day, open, close }]

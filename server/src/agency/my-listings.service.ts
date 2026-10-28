@@ -1,10 +1,11 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 import { RequestContextService } from '../tenancy/request-context.service.js';
 import { TenantPrismaService } from '../tenancy/tenant-prisma.service.js';
 import { StorageService } from '../storage/storage.service.js';
 import { can } from '../auth/permissions.js';
-import type { AttachImageDto, UpdateListingDto, UpsertListingDto } from './dto/listing.dto.js';
+import { listingImageUrl } from './image-url.js';
+import type { UpdateListingDto, UpsertListingDto } from './dto/listing.dto.js';
 
 /** Returned to the editor; includes drafts and every image. */
 const DETAIL_INCLUDE = {
@@ -105,42 +106,61 @@ export class MyListingsService {
 
   // ── images ──────────────────────────────────────────────────────────────────
 
-  async presignImage(listingId: string, contentType: string) {
+  /**
+   * Takes the bytes, stores them privately, and records the row. The URL handed back is
+   * one of ours — a stable path this API serves — so it caches and can be linked,
+   * unlike a presigned B2 url that would expire within the week.
+   */
+  async addImage(listingId: string, file: { buffer: Buffer; mimetype: string }) {
     this.assertCanWrite();
     const listing = await this.requireOwn(listingId);
 
     if (listing.images.length >= MAX_IMAGES) {
-      throw new ForbiddenException(`אפשר להעלות עד ${MAX_IMAGES} תמונות לנכס.`);
+      throw new BadRequestException(`אפשר להעלות עד ${MAX_IMAGES} תמונות לנכס.`);
+    }
+
+    // The declared Content-Type comes from the uploader, so the bytes decide.
+    const contentType = this.storage.detectImageType(file.buffer);
+    if (!contentType || !this.storage.extensionFor(contentType)) {
+      throw new BadRequestException('הקובץ אינו תמונה נתמכת.');
     }
 
     // Prefixed by listing so every object for a listing can be found and removed
     // together, and so one agency's key can never collide with another's.
-    return this.storage.presignUpload(`listings/${listing.id}`, contentType);
-  }
-
-  /**
-   * Called after the browser's PUT succeeds. The key is checked against the prefix this
-   * listing is allowed to use, so a client cannot claim an object belonging to another
-   * listing by posting its key here.
-   */
-  async attachImage(listingId: string, dto: AttachImageDto) {
-    this.assertCanWrite();
-    const listing = await this.requireOwn(listingId);
-
-    const prefix = `listings/${listing.id}/`;
-    if (!dto.storageKey.startsWith(prefix)) {
-      throw new ForbiddenException('מפתח קובץ לא תקין.');
-    }
-
-    const url = this.storage.publicUrlFor(dto.storageKey);
-    const position = listing.images.length;
+    const storageKey = await this.storage.putObject(`listings/${listing.id}`, file.buffer, contentType);
 
     const image = await this.prisma.client.listingImage.create({
-      data: { listingId: listing.id, storageKey: dto.storageKey, url, width: dto.width, height: dto.height, position },
+      data: {
+        listingId: listing.id,
+        storageKey,
+        url: listingImageUrl(''),
+        position: listing.images.length,
+      },
+    });
+
+    // The public path contains the row id, which only exists after the insert.
+    const withUrl = await this.prisma.client.listingImage.update({
+      where: { id: image.id },
+      data: { url: listingImageUrl(image.id) },
     });
 
     await this.syncImageColumns(listing.id);
-    return image;
+    return withUrl;
+  }
+
+  /**
+   * The bytes behind a listing image, for the public serve route. Reads through the
+   * tenant client so row-level security decides what is visible: images of published
+   * listings are public, everything else is the owning agency's alone.
+   */
+  async readImage(imageId: string) {
+    const image = await this.prisma.client.listingImage.findUnique({
+      where: { id: imageId },
+      select: { storageKey: true },
+    });
+
+    if (!image) throw new NotFoundException('התמונה לא נמצאה.');
+    return this.storage.getObject(image.storageKey);
   }
 
   async removeImage(listingId: string, imageId: string) {
@@ -165,7 +185,7 @@ export class MyListingsService {
 
     const known = new Set(listing.images.map((i) => i.id));
     if (imageIds.length !== known.size || imageIds.some((id) => !known.has(id))) {
-      throw new ForbiddenException('רשימת התמונות אינה תואמת לנכס.');
+      throw new BadRequestException('רשימת התמונות אינה תואמת לנכס.');
     }
 
     // Sequential, not $transaction: an authenticated request is already inside the
