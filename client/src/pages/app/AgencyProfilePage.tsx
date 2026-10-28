@@ -3,6 +3,7 @@ import { Yad2ImportPanel } from '@/components/agency/Yad2ImportPanel';
 import { Button } from '@/components/ui/Button';
 import { Dropzone } from '@/components/ui/Dropzone';
 import { Field, inputClass } from '@/components/ui/Field';
+import { useToast } from '@/components/ui/Toast';
 import { errorMessageOf } from '@/lib/apiError';
 import {
   fetchAgencyProfile,
@@ -14,6 +15,7 @@ import {
 
 /** The agency's own public page: the banner and the description shown to visitors. */
 export function AgencyProfilePage() {
+  const toast = useToast();
   const [profile, setProfile] = useState<AgencyProfile | null>(null);
   const [form, setForm] = useState({ name: '', description: '', phone: '', contactEmail: '' });
   const [loading, setLoading] = useState(true);
@@ -57,8 +59,11 @@ export function AgencyProfilePage() {
       const updated = await updateAgencyProfile(form);
       setProfile((p) => (p ? { ...p, ...updated } : p));
       setSaved(true);
+      toast.success('פרטי הסוכנות נשמרו.');
     } catch (e) {
-      setError(errorMessageOf(e, 'השמירה נכשלה.'));
+      const message = errorMessageOf(e, 'השמירה נכשלה.');
+      setError(message);
+      toast.error(message);
     } finally {
       setSaving(false);
     }
@@ -70,8 +75,11 @@ export function AgencyProfilePage() {
     try {
       const updated = await uploadAgencyCover(file);
       setProfile((p) => (p ? { ...p, ...updated } : p));
+      toast.success('תמונת הנושא עודכנה.');
     } catch (e) {
-      setError(errorMessageOf(e, 'העלאת התמונה נכשלה.'));
+      const message = errorMessageOf(e, 'העלאת התמונה נכשלה.');
+      setError(message);
+      toast.error(message);
     } finally {
       setUploading(false);
     }
@@ -83,8 +91,11 @@ export function AgencyProfilePage() {
       // remove the object, which a plain field update would leave behind.
       const { data } = await removeAgencyCover();
       setProfile((p) => (p ? { ...p, ...data } : p));
+      toast.success('תמונת הנושא הוסרה.');
     } catch (e) {
-      setError(errorMessageOf(e, 'לא הצלחנו להסיר את התמונה.'));
+      const message = errorMessageOf(e, 'לא הצלחנו להסיר את התמונה.');
+      setError(message);
+      toast.error(message);
     }
   };
 

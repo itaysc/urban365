@@ -4,6 +4,7 @@ import { ImageManager } from '@/components/listing/ImageManager';
 import { Button } from '@/components/ui/Button';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Field, inputClass } from '@/components/ui/Field';
+import { useToast } from '@/components/ui/Toast';
 import { errorMessageOf } from '@/lib/apiError';
 import {
   archiveListing,
@@ -112,6 +113,7 @@ function toInput(form: Form, amenities: string[]): ListingInput {
 export function ListingEditorPage() {
   const { listingId } = useParams<{ listingId: string }>();
   const navigate = useNavigate();
+  const toast = useToast();
   const isNew = !listingId || listingId === 'new';
 
   const [listing, setListing] = useState<ListingDetail | null>(null);
@@ -165,6 +167,7 @@ export function ListingEditorPage() {
 
       if (isNew) {
         const created = await createListing(input);
+        toast.success(status === 'published' ? 'הנכס נוצר ופורסם.' : 'הנכס נוצר.');
         // replace, not push: Back from a saved listing should reach the list, not the
         // empty form that no longer applies.
         navigate(`/app/listings/${created.id}`, { replace: true });
@@ -175,8 +178,13 @@ export function ListingEditorPage() {
       setListing(updated);
       setForm(toForm(updated));
       setSaved(true);
+      toast.success(
+        status === 'published' ? 'הנכס פורסם.' : status === 'draft' ? 'הנכס הוסר מפרסום.' : 'הנכס נשמר.',
+      );
     } catch (e) {
-      setError(errorMessageOf(e, 'השמירה נכשלה.'));
+      const message = errorMessageOf(e, 'השמירה נכשלה.');
+      setError(message);
+      toast.error(message);
     } finally {
       setSaving(false);
     }
@@ -186,9 +194,12 @@ export function ListingEditorPage() {
     setConfirmArchive(false);
     try {
       await archiveListing(listingId!);
+      toast.success('הנכס הועבר לארכיון.');
       navigate('/app/listings?status=archived');
     } catch (e) {
-      setError(errorMessageOf(e, 'לא הצלחנו להעביר לארכיון.'));
+      const message = errorMessageOf(e, 'לא הצלחנו להעביר לארכיון.');
+      setError(message);
+      toast.error(message);
     }
   };
 

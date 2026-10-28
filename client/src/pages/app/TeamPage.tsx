@@ -3,6 +3,7 @@ import { useAuth } from '@/auth/AuthProvider';
 import { Button } from '@/components/ui/Button';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Field, inputClass } from '@/components/ui/Field';
+import { useToast } from '@/components/ui/Toast';
 import { errorMessageOf } from '@/lib/apiError';
 import { formatDate } from '@/lib/format';
 import {
@@ -20,11 +21,11 @@ const ROLE_LABEL: Record<AgencyRole, string> = { owner: 'בעלים', agent: 'ס
 
 export function TeamPage() {
   const { user } = useAuth();
+  const toast = useToast();
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [invites, setInvites] = useState<TeamInvite[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
   const [toRemove, setToRemove] = useState<TeamMember | null>(null);
 
   const [email, setEmail] = useState('');
@@ -53,23 +54,28 @@ export function TeamPage() {
     setError(null);
     try {
       await inviteMember(email.trim(), role);
-      setNotice(`נשלחה הזמנה ל${email.trim()}.`);
+      toast.success(`נשלחה הזמנה ל${email.trim()}.`);
       setEmail('');
       load();
     } catch (e) {
-      setError(errorMessageOf(e, 'שליחת ההזמנה נכשלה.'));
+      const message = errorMessageOf(e, 'שליחת ההזמנה נכשלה.');
+      setError(message);
+      toast.error(message);
     } finally {
       setInviting(false);
     }
   };
 
-  const act = async (fn: () => Promise<unknown>, fallback: string) => {
+  const act = async (fn: () => Promise<unknown>, fallback: string, done?: string) => {
     setError(null);
     try {
       await fn();
+      if (done) toast.success(done);
       load();
     } catch (e) {
-      setError(errorMessageOf(e, fallback));
+      const message = errorMessageOf(e, fallback);
+      setError(message);
+      toast.error(message);
     }
   };
 
@@ -79,11 +85,6 @@ export function TeamPage() {
 
       {error && (
         <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>
-      )}
-      {notice && (
-        <p className="rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-800">
-          {notice}
-        </p>
       )}
 
       {canManage && (
@@ -161,6 +162,7 @@ export function TeamPage() {
                         void act(
                           () => changeMemberRole(member.id, e.target.value as AgencyRole),
                           'שינוי התפקיד נכשל.',
+                          'התפקיד עודכן.',
                         )
                       }
                     >
@@ -211,7 +213,7 @@ export function TeamPage() {
                   <button
                     type="button"
                     className="text-xs text-red-700 hover:underline"
-                    onClick={() => void act(() => revokeInvite(invite.id), 'הביטול נכשל.')}
+                    onClick={() => void act(() => revokeInvite(invite.id), 'הביטול נכשל.', 'ההזמנה בוטלה.')}
                   >
                     בטל הזמנה
                   </button>
@@ -235,7 +237,7 @@ export function TeamPage() {
         onConfirm={() => {
           const target = toRemove;
           setToRemove(null);
-          if (target) void act(() => removeMember(target.id), 'ההסרה נכשלה.');
+          if (target) void act(() => removeMember(target.id), 'ההסרה נכשלה.', 'החבר הוסר מהצוות.');
         }}
       />
     </div>

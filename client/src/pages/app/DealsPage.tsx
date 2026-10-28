@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Field, inputClass } from '@/components/ui/Field';
+import { useToast } from '@/components/ui/Toast';
 import { errorMessageOf } from '@/lib/apiError';
 import { formatShekel } from '@/lib/format';
 import {
@@ -23,6 +24,7 @@ const STAGE_TINT: Record<DealStage, string> = {
 };
 
 export function DealsPage() {
+  const toast = useToast();
   const [board, setBoard] = useState<DealBoard | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
@@ -41,18 +43,24 @@ export function DealsPage() {
   const move = async (deal: Deal, stage: DealStage) => {
     try {
       await updateDeal(deal.id, { stage });
+      toast.success('השלב עודכן.');
       load();
     } catch (e) {
-      setError(errorMessageOf(e, 'העדכון נכשל.'));
+      const message = errorMessageOf(e, 'העדכון נכשל.');
+      setError(message);
+      toast.error(message);
     }
   };
 
   const remove = async (deal: Deal) => {
     try {
       await deleteDeal(deal.id);
+      toast.success('העסקה נמחקה.');
       load();
     } catch (e) {
-      setError(errorMessageOf(e, 'המחיקה נכשלה.'));
+      const message = errorMessageOf(e, 'המחיקה נכשלה.');
+      setError(message);
+      toast.error(message);
     }
   };
 
@@ -67,7 +75,16 @@ export function DealsPage() {
         <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>
       )}
 
-      {adding && <NewDealForm onCreated={() => { setAdding(false); load(); }} onError={setError} />}
+      {adding && (
+        <NewDealForm
+          onCreated={() => {
+            setAdding(false);
+            toast.success('העסקה נוספה.');
+            load();
+          }}
+          onError={setError}
+        />
+      )}
 
       {!board && <p className="text-sm text-slate-500">טוען…</p>}
 

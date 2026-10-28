@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/Button';
 import { Field, inputClass } from '@/components/ui/Field';
+import { useToast } from '@/components/ui/Toast';
 import { errorMessageOf } from '@/lib/apiError';
 import { formatDate, formatPrice } from '@/lib/format';
 import {
@@ -34,6 +35,7 @@ const SOURCE_LABEL: Record<Lead['source'], string> = {
 const isStatus = (v: string | null): v is LeadStatus => STATUSES.some((s) => s.value === v);
 
 export function LeadsPage() {
+  const toast = useToast();
   const [params, setParams] = useSearchParams();
   const statusParam = params.get('status');
   const status = isStatus(statusParam) ? statusParam : undefined;
@@ -64,18 +66,24 @@ export function LeadsPage() {
   const changeStatus = async (lead: Lead, next: LeadStatus) => {
     try {
       await updateLead(lead.id, { status: next });
+      toast.success('הסטטוס עודכן.');
       load();
     } catch (e) {
-      setError(errorMessageOf(e, 'העדכון נכשל.'));
+      const message = errorMessageOf(e, 'העדכון נכשל.');
+      setError(message);
+      toast.error(message);
     }
   };
 
   const remove = async (lead: Lead) => {
     try {
       await deleteLead(lead.id);
+      toast.success('הפנייה נמחקה.');
       load();
     } catch (e) {
-      setError(errorMessageOf(e, 'המחיקה נכשלה.'));
+      const message = errorMessageOf(e, 'המחיקה נכשלה.');
+      setError(message);
+      toast.error(message);
     }
   };
 
@@ -83,10 +91,16 @@ export function LeadsPage() {
     try {
       // Read in the browser and post the text: the mapping of Hebrew column names
       // lives on the server, so both this and a future API client agree on it.
-      setImportResult(await importLeadsCsv(await file.text()));
+      const result = await importLeadsCsv(await file.text());
+      setImportResult(result);
+      // The panel below keeps the per-row detail; the toast is just the headline, since
+      // the panel can be well below the fold on a long inbox.
+      toast.success(`יובאו ${result.imported} פניות.`);
       load();
     } catch (e) {
-      setError(errorMessageOf(e, 'היבוא נכשל.'));
+      const message = errorMessageOf(e, 'היבוא נכשל.');
+      setError(message);
+      toast.error(message);
     } finally {
       if (fileInput.current) fileInput.current.value = '';
     }
@@ -139,7 +153,16 @@ export function LeadsPage() {
         </div>
       )}
 
-      {adding && <NewLeadForm onCreated={() => { setAdding(false); load(); }} onError={setError} />}
+      {adding && (
+        <NewLeadForm
+          onCreated={() => {
+            setAdding(false);
+            toast.success('הפנייה נוספה.');
+            load();
+          }}
+          onError={setError}
+        />
+      )}
 
       <div className="flex flex-wrap gap-2">
         <FilterChip label="הכול" active={!status} onClick={() => setParams({}, { replace: true })} />
