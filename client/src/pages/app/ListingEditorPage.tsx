@@ -220,7 +220,7 @@ export function ListingEditorPage() {
                 published ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'
               }`}
             >
-              {published ? 'מפורסם' : listing.status === 'draft' ? 'טיוטה' : 'בארכיון'}
+              {published ? 'פורסם' : listing.status === 'draft' ? 'טיוטה' : 'בארכיון'}
             </span>
           )}
         </div>

@@ -4,10 +4,14 @@ import { Pagination } from '@/components/Pagination';
 import { formatPrice } from '@/lib/format';
 import { fetchMyListings, type ListingStatus, type MyListingsPage as Page } from '@/services/agency';
 
-const TABS: { value: ListingStatus; label: string }[] = [
-  { value: 'published', label: 'מפורסמים' },
-  { value: 'draft', label: 'טיוטות' },
-  { value: 'archived', label: 'ארכיון' },
+/**
+ * `label` filters a set, `badge` describes one row — so they differ in number. Reusing
+ * the tab label on a single listing's badge made it read "פורסמו" about one property.
+ */
+const TABS: { value: ListingStatus; label: string; badge: string }[] = [
+  { value: 'published', label: 'פורסמו', badge: 'פורסם' },
+  { value: 'draft', label: 'טיוטות', badge: 'טיוטה' },
+  { value: 'archived', label: 'ארכיון', badge: 'בארכיון' },
 ];
 
 const isStatus = (value: string | null): value is ListingStatus =>
@@ -140,7 +144,7 @@ export function MyListingsPage() {
                 <span
                   className={`shrink-0 rounded-md px-2 py-0.5 text-xs font-medium ${STATUS_BADGE[listing.status]}`}
                 >
-                  {TABS.find((t) => t.value === listing.status)?.label}
+                  {TABS.find((t) => t.value === listing.status)?.badge}
                 </span>
                 </Link>
               </li>

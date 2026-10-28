@@ -37,7 +37,7 @@ export function DashboardPage() {
   }, []);
 
   const cards: { label: string; value: number | null; to: string }[] = [
-    { label: 'מפורסמים', value: counts?.published ?? null, to: '/app/listings?status=published' },
+    { label: 'פורסמו', value: counts?.published ?? null, to: '/app/listings?status=published' },
     { label: 'טיוטות', value: counts?.draft ?? null, to: '/app/listings?status=draft' },
     { label: 'בארכיון', value: counts?.archived ?? null, to: '/app/listings?status=archived' },
   ];
