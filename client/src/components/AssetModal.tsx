@@ -1,3 +1,4 @@
+import { EnquiryForm } from '@/components/EnquiryForm';
 import { useEffect, useRef } from 'react';
 import { AmenityGrid } from '@/components/AmenityGrid';
 import { AssetGallery } from '@/components/AssetGallery';
@@ -143,14 +144,20 @@ export function AssetModal({ asset, onClose }: { asset: Asset; onClose: () => vo
             />
           </div>
 
-          <a
-            href={asset.listingUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="rounded-lg bg-slate-900 px-6 py-3 text-center font-medium text-white"
-          >
-            הצגת המודעה ביד2 ↗
-          </a>
+          {/* Our own listings have no yad2 url; those get the enquiry form instead, which
+              is the point of the whole CRM. Scraped ones still link out. */}
+          {asset.listingUrl ? (
+            <a
+              href={asset.listingUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="rounded-lg bg-slate-900 px-6 py-3 text-center font-medium text-white"
+            >
+              הצגת המודעה ביד2 ↗
+            </a>
+          ) : (
+            <EnquiryForm listingId={asset.id} />
+          )}
         </div>
       </div>
     </div>

@@ -9,6 +9,9 @@ import { Button } from '@/components/ui/Button';
 const navItems = [
   { to: '/app', label: 'סקירה', end: true },
   { to: '/app/listings', label: 'הנכסים שלי' },
+  { to: '/app/leads', label: 'פניות' },
+  { to: '/app/deals', label: 'עסקאות' },
+  { to: '/app/agency', label: 'עמוד הסוכנות' },
 ];
 
 function navClass({ isActive }: { isActive: boolean }) {

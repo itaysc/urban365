@@ -25,9 +25,15 @@ export const TENANT_MODELS = new Set([
 
 const WRITES = new Set(['create', 'createMany', 'createManyAndReturn', 'upsert']);
 
+/**
+ * `agencyId` goes last so caller data cannot override it. RLS would refuse a write under
+ * the wrong tenant anyway, but a request body should never get to decide the question.
+ * Privileged paths are unaffected: they run on the owner client, where there is no
+ * agency in context and this extension no-ops.
+ */
 const withAgency = (data: unknown, agencyId: string): unknown => {
-  if (Array.isArray(data)) return data.map((d) => ({ agencyId, ...(d as object) }));
-  return { agencyId, ...(data as object) };
+  if (Array.isArray(data)) return data.map((d) => ({ ...(d as object), agencyId }));
+  return { ...(data as object), agencyId };
 };
 
 export function tenantExtension(getAgencyId: () => string | undefined) {

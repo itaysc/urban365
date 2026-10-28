@@ -10,6 +10,10 @@ import { AppLayout } from '@/pages/app/AppLayout';
 import { DashboardPage } from '@/pages/app/DashboardPage';
 import { MyListingsPage } from '@/pages/app/MyListingsPage';
 import { PendingPage } from '@/pages/app/PendingPage';
+import { AgencyProfilePage } from '@/pages/app/AgencyProfilePage';
+import { DealsPage } from '@/pages/app/DealsPage';
+import { LeadsPage } from '@/pages/app/LeadsPage';
+import { ListingEditorPage } from '@/pages/app/ListingEditorPage';
 import { ModerationPage } from '@/pages/admin/ModerationPage';
 
 export const router = createBrowserRouter([
@@ -44,6 +48,12 @@ export const router = createBrowserRouter([
             children: [
               { path: '/app', element: <DashboardPage /> },
               { path: '/app/listings', element: <MyListingsPage /> },
+              // `new` before `:listingId` so the literal wins over the parameter.
+              { path: '/app/listings/new', element: <ListingEditorPage /> },
+              { path: '/app/listings/:listingId', element: <ListingEditorPage /> },
+              { path: '/app/leads', element: <LeadsPage /> },
+              { path: '/app/deals', element: <DealsPage /> },
+              { path: '/app/agency', element: <AgencyProfilePage /> },
             ],
           },
         ],

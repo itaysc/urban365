@@ -1,8 +1,27 @@
 import type { Listing } from '@prisma/client';
-import { toAsset } from './yad2.transform.js';
+import { CANONICAL_AMENITIES, EXTRA_AMENITIES, toAsset } from './yad2.transform.js';
 import type { Asset, RawListing } from './yad2.types.js';
 
 const SUBCATEGORY: Record<string, number> = { forsale: 5, rent: 6, commercial: 7 };
+
+/** Hebrew label → the yad2 flag it came from, so a stored label can be turned back. */
+const FLAG_BY_LABEL = new Map(
+  [...CANONICAL_AMENITIES, ...EXTRA_AMENITIES].map((a) => [a.label, a.key]),
+);
+
+/**
+ * A listing created here stores amenities as the labels the agency ticked, while the
+ * detail view derives them from yad2's boolean flags. Without this inversion a manual
+ * listing's amenities showed on the card and vanished in the modal.
+ */
+function toInProperty(labels: string[]): Record<string, boolean> {
+  const flags: Record<string, boolean> = {};
+  for (const label of labels) {
+    const key = FLAG_BY_LABEL.get(label);
+    if (key) flags[key] = true;
+  }
+  return flags;
+}
 
 /**
  * Rebuilds the full Asset shape from a stored row, so the agency view and the search
@@ -45,6 +64,7 @@ export function listingRowToAsset(row: Listing): Asset {
         images: row.imageUrls,
         description: row.description ?? undefined,
       },
+      inProperty: toInProperty(row.amenities),
       customer: { name: row.contactName ?? undefined, brokers: [{ name: row.brokerName ?? undefined }] },
     },
     null,

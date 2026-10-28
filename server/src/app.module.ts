@@ -4,6 +4,8 @@ import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ClsModule } from 'nestjs-cls';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AdminModule } from './admin/admin.module.js';
+import { CrmModule } from './crm/crm.module.js';
+import { StorageModule } from './storage/storage.module.js';
 import { AgencyModule } from './agency/agency.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { CsrfGuard } from './auth/guards/csrf.guard.js';
@@ -20,6 +22,8 @@ import { Yad2Module } from './yad2/yad2.module.js';
 
 @Module({
   imports: [
+    StorageModule,
+    CrmModule,
     ConfigModule.forRoot({ isGlobal: true, load: [configuration] }),
     // In-memory, so per-instance and reset on deploy — correct for one Railway instance.
     // A Postgres-backed limiter would put write amplification on the attacked path.

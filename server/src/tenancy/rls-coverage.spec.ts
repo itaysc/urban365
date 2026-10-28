@@ -161,6 +161,39 @@ describeIfDb('row-level security coverage', () => {
       }
     });
 
+    /**
+     * Regression. The original ListingImage policy asked only whether the parent listing
+     * was *visible*, and every published listing is visible to everyone — so any agency
+     * could attach images to any other agency's listings. The policy checks ownership
+     * now, and this is what says so.
+     */
+    it('cannot attach an image to another agency\'s listing', async () => {
+      const victim = await prisma.listing.findFirst({
+        where: { status: 'published' },
+        select: { id: true, agencyId: true },
+      });
+      expect(victim, 'no published listing to test against').toBeTruthy();
+
+      const other = await prisma.agency.findFirst({
+        where: { id: { not: victim!.agencyId } },
+        select: { id: true },
+      });
+      expect(other, 'need a second agency to test isolation').toBeTruthy();
+
+      await expect(
+        app.$transaction(async (tx) => {
+          await tx.$executeRaw`SELECT set_config('app.current_agency_id', ${other!.id}, true)`;
+          return tx.listingImage.create({
+            data: {
+              listingId: victim!.id,
+              storageKey: `probe/${Date.now()}`,
+              url: 'https://example.test/probe.jpg',
+            },
+          });
+        }),
+      ).rejects.toThrow();
+    });
+
     it('cannot write a listing with no agency in context', async () => {
       const agency = await prisma.agency.findFirst({ select: { id: true } });
       expect(agency, 'no agency to test against').toBeTruthy();

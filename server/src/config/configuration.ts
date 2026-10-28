@@ -44,6 +44,20 @@ export interface CaptchaConfig {
   turnstileSecret: string;
 }
 
+export interface StorageConfig {
+  keyId: string;
+  applicationKey: string;
+  bucket: string;
+  endpoint: string;
+  region: string;
+  /**
+   * Public base URL for objects, e.g. https://f003.backblazeb2.com/file/<bucket>.
+   * Listing photos live in a public-read bucket and are served from a stable URL —
+   * unlike the reference project, which presigns GETs and so caps every link at 7 days.
+   */
+  publicBaseUrl: string;
+}
+
 export interface Yad2Config {
   /**
    * A Chrome DevTools endpoint to attach to, e.g. http://127.0.0.1:9222.
@@ -62,6 +76,7 @@ export default (): {
   database: DatabaseConfig;
   auth: AuthConfig;
   mail: MailConfig;
+  storage: StorageConfig;
   captcha: CaptchaConfig;
   yad2: Yad2Config;
 } => ({
@@ -88,6 +103,14 @@ export default (): {
     appUrl: process.env.APP_URL ?? 'http://localhost:5173',
     // Defaults to the app URL, which is correct in dev where Vite proxies /api.
     apiUrl: process.env.API_URL ?? process.env.APP_URL ?? 'http://localhost:5173',
+  },
+  storage: {
+    keyId: process.env.B2_KEY_ID ?? '',
+    applicationKey: process.env.B2_APPLICATION_KEY ?? '',
+    bucket: process.env.B2_BUCKET ?? '',
+    endpoint: process.env.B2_ENDPOINT ?? '',
+    region: process.env.B2_REGION ?? '',
+    publicBaseUrl: process.env.B2_PUBLIC_BASE_URL ?? '',
   },
   captcha: {
     turnstileSecret: process.env.TURNSTILE_SECRET ?? '',

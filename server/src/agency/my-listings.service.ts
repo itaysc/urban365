@@ -1,0 +1,220 @@
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import type { Prisma } from '@prisma/client';
+import { RequestContextService } from '../tenancy/request-context.service.js';
+import { TenantPrismaService } from '../tenancy/tenant-prisma.service.js';
+import { StorageService } from '../storage/storage.service.js';
+import { can } from '../auth/permissions.js';
+import type { AttachImageDto, UpdateListingDto, UpsertListingDto } from './dto/listing.dto.js';
+
+/** Returned to the editor; includes drafts and every image. */
+const DETAIL_INCLUDE = {
+  images: { orderBy: { position: 'asc' } },
+} satisfies Prisma.ListingInclude;
+
+const MAX_IMAGES = 30;
+
+@Injectable()
+export class MyListingsService {
+  constructor(
+    private readonly prisma: TenantPrismaService,
+    private readonly context: RequestContextService,
+    private readonly storage: StorageService,
+  ) {}
+
+  private assertCanWrite(): void {
+    if (!can(this.context.getPrincipal(), 'listing:write')) {
+      throw new ForbiddenException('אין לך הרשאה לערוך נכסים.');
+    }
+  }
+
+  /**
+   * Every read here goes through the tenant client, so RLS has already narrowed the row
+   * set to this agency. The explicit `agencyId` is defence in depth, and the reason a
+   * miss is a 404 rather than a 403: a listing belonging to someone else should not be
+   * distinguishable from one that does not exist.
+   */
+  private async requireOwn(id: string) {
+    const agencyId = this.context.requireAgencyId();
+    const listing = await this.prisma.client.listing.findFirst({
+      where: { id, agencyId },
+      include: DETAIL_INCLUDE,
+    });
+
+    if (!listing) throw new NotFoundException('הנכס לא נמצא.');
+    return listing;
+  }
+
+  findOne(id: string) {
+    return this.requireOwn(id);
+  }
+
+  async create(dto: UpsertListingDto) {
+    this.assertCanWrite();
+    const principal = this.context.getPrincipal();
+
+    // The extension fills `agencyId` in anyway; it is stated here because Prisma's
+    // generated create type requires it. `source: 'manual'` and a null token are what
+    // distinguish this from a scraped row for the rest of the system.
+    return this.prisma.client.listing.create({
+      data: {
+        agencyId: this.context.requireAgencyId(),
+        ...this.toData(dto),
+        section: dto.section,
+        source: 'manual',
+        status: dto.status ?? 'draft',
+        publishedAt: dto.status === 'published' ? new Date() : null,
+        createdByUserId: principal?.userId ?? null,
+        hasFullDetails: true,
+      },
+      include: DETAIL_INCLUDE,
+    });
+  }
+
+  async update(id: string, dto: UpdateListingDto) {
+    this.assertCanWrite();
+    const existing = await this.requireOwn(id);
+
+    return this.prisma.client.listing.update({
+      where: { id: existing.id },
+      data: {
+        ...this.toData(dto),
+        ...(dto.section ? { section: dto.section } : {}),
+        ...(dto.status ? { status: dto.status } : {}),
+        // Stamped the first time it goes public, and never moved afterwards — it is the
+        // listing's age, which unpublishing and republishing should not reset.
+        ...(dto.status === 'published' && !existing.publishedAt ? { publishedAt: new Date() } : {}),
+      },
+      include: DETAIL_INCLUDE,
+    });
+  }
+
+  /**
+   * Archive rather than delete. A listing may be referenced by leads and deals, and the
+   * agency's own history is worth more than the row it frees.
+   */
+  async archive(id: string) {
+    this.assertCanWrite();
+    const existing = await this.requireOwn(id);
+
+    return this.prisma.client.listing.update({
+      where: { id: existing.id },
+      data: { status: 'archived' },
+      include: DETAIL_INCLUDE,
+    });
+  }
+
+  // ── images ──────────────────────────────────────────────────────────────────
+
+  async presignImage(listingId: string, contentType: string) {
+    this.assertCanWrite();
+    const listing = await this.requireOwn(listingId);
+
+    if (listing.images.length >= MAX_IMAGES) {
+      throw new ForbiddenException(`אפשר להעלות עד ${MAX_IMAGES} תמונות לנכס.`);
+    }
+
+    // Prefixed by listing so every object for a listing can be found and removed
+    // together, and so one agency's key can never collide with another's.
+    return this.storage.presignUpload(`listings/${listing.id}`, contentType);
+  }
+
+  /**
+   * Called after the browser's PUT succeeds. The key is checked against the prefix this
+   * listing is allowed to use, so a client cannot claim an object belonging to another
+   * listing by posting its key here.
+   */
+  async attachImage(listingId: string, dto: AttachImageDto) {
+    this.assertCanWrite();
+    const listing = await this.requireOwn(listingId);
+
+    const prefix = `listings/${listing.id}/`;
+    if (!dto.storageKey.startsWith(prefix)) {
+      throw new ForbiddenException('מפתח קובץ לא תקין.');
+    }
+
+    const url = this.storage.publicUrlFor(dto.storageKey);
+    const position = listing.images.length;
+
+    const image = await this.prisma.client.listingImage.create({
+      data: { listingId: listing.id, storageKey: dto.storageKey, url, width: dto.width, height: dto.height, position },
+    });
+
+    await this.syncImageColumns(listing.id);
+    return image;
+  }
+
+  async removeImage(listingId: string, imageId: string) {
+    this.assertCanWrite();
+    const listing = await this.requireOwn(listingId);
+
+    const image = listing.images.find((i) => i.id === imageId);
+    if (!image) throw new NotFoundException('התמונה לא נמצאה.');
+
+    await this.prisma.client.listingImage.delete({ where: { id: image.id } });
+    await this.syncImageColumns(listing.id);
+    // After the row is gone: an orphaned object costs almost nothing, a failed delete
+    // that rolls back the request costs the user their action.
+    await this.storage.deleteObject(image.storageKey);
+
+    return this.requireOwn(listing.id);
+  }
+
+  async reorderImages(listingId: string, imageIds: string[]) {
+    this.assertCanWrite();
+    const listing = await this.requireOwn(listingId);
+
+    const known = new Set(listing.images.map((i) => i.id));
+    if (imageIds.length !== known.size || imageIds.some((id) => !known.has(id))) {
+      throw new ForbiddenException('רשימת התמונות אינה תואמת לנכס.');
+    }
+
+    // Sequential, not $transaction: an authenticated request is already inside the
+    // transaction the tenant interceptor opened, and Prisma will not nest one. These
+    // updates are therefore still atomic with the rest of the request.
+    for (const [position, id] of imageIds.entries()) {
+      await this.prisma.client.listingImage.update({ where: { id }, data: { position } });
+    }
+
+    await this.syncImageColumns(listing.id);
+    return this.requireOwn(listing.id);
+  }
+
+  /**
+   * `coverImageUrl` and `imagesCount` are denormalised onto Listing because search reads
+   * them on every card and will not join. They are derived, so they are recomputed here
+   * rather than patched at each call site.
+   */
+  private async syncImageColumns(listingId: string): Promise<void> {
+    const images = await this.prisma.client.listingImage.findMany({
+      where: { listingId },
+      orderBy: { position: 'asc' },
+      select: { url: true },
+    });
+
+    await this.prisma.client.listing.update({
+      where: { id: listingId },
+      data: { coverImageUrl: images[0]?.url ?? null, imagesCount: images.length },
+    });
+  }
+
+  /** Shared field mapping. `section` and `status` are handled by the callers. */
+  private toData(dto: UpsertListingDto | UpdateListingDto) {
+    const {
+      section: _section,
+      status: _status,
+      amenities,
+      tags,
+      ...rest
+    } = dto;
+
+    return {
+      ...rest,
+      ...(amenities ? { amenities } : {}),
+      ...(tags ? { tags } : {}),
+      // Kept in step so the "price per m²" sort works for manual listings too.
+      ...(dto.price !== undefined && dto.squareMeter
+        ? { pricePerSquareMeter: Math.round(dto.price / dto.squareMeter) }
+        : {}),
+    };
+  }
+}

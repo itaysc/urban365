@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Pagination } from '@/components/Pagination';
 import { formatPrice } from '@/lib/format';
 import { fetchMyListings, type ListingStatus, type MyListingsPage as Page } from '@/services/agency';
@@ -61,7 +61,15 @@ export function MyListingsPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-xl font-bold text-slate-900">הנכסים שלי</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-xl font-bold text-slate-900">הנכסים שלי</h1>
+        <Link
+          to="/app/listings/new"
+          className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
+        >
+          נכס חדש
+        </Link>
+      </div>
 
       <div className="flex gap-2">
         {TABS.map((tab) => (
@@ -96,10 +104,11 @@ export function MyListingsPage() {
         <>
           <ul className="flex flex-col gap-2">
             {data.items.map((listing) => (
-              <li
-                key={listing.id}
-                className="flex items-center gap-4 rounded-xl border border-slate-200 bg-white p-3"
-              >
+              <li key={listing.id}>
+                <Link
+                  to={`/app/listings/${listing.id}`}
+                  className="flex items-center gap-4 rounded-xl border border-slate-200 bg-white p-3 transition hover:border-slate-900"
+                >
                 {listing.coverImageUrl ? (
                   <img
                     src={listing.coverImageUrl}
@@ -133,6 +142,7 @@ export function MyListingsPage() {
                 >
                   {TABS.find((t) => t.value === listing.status)?.label}
                 </span>
+                </Link>
               </li>
             ))}
           </ul>

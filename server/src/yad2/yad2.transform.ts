@@ -22,6 +22,14 @@ export const agencyPageUrl = (id: string, section: Section, page = 1): string =>
 
 export const listingUrl = (token: string): string => `${BASE}/realestate/item/${token}`;
 
+/**
+ * Null for a listing created here rather than scraped. Building the url unconditionally
+ * produced `.../realestate/item/` for every manual listing — a link to nothing, which
+ * the detail modal then showed in place of the enquiry form.
+ */
+export const listingUrlOrNull = (token: string | null | undefined): string | null =>
+  token ? listingUrl(token) : null;
+
 const num = (v: unknown): number | null => {
   const n = Number(v);
   return v === null || v === undefined || v === '' || Number.isNaN(n) ? null : n;
@@ -33,7 +41,7 @@ const oneLine = (v: unknown): string => str(v).replace(/\s+/g, ' ').trim();
  * The ten rows yad2 always prints under "מה יש בנכס", in its order. They show even when
  * absent (greyed), so the grid reads the same on every listing.
  */
-const CANONICAL_AMENITIES: { key: string; label: string }[] = [
+export const CANONICAL_AMENITIES: { key: string; label: string }[] = [
   { key: 'includeElevator', label: 'מעלית' },
   { key: 'isHandicapped', label: 'גישה לנכים' },
   { key: 'includeTornado', label: 'מזגן טורנדו' },
@@ -50,7 +58,7 @@ const CANONICAL_AMENITIES: { key: string; label: string }[] = [
  * Flags yad2 holds but does not put in that grid. We append them when true rather than
  * drop them — parking is left out on purpose, since it has its own "חניות" count above.
  */
-const EXTRA_AMENITIES: { key: string; label: string }[] = [
+export const EXTRA_AMENITIES: { key: string; label: string }[] = [
   { key: 'includeFurniture', label: 'ריהוט' },
   { key: 'includeBuildingShelter', label: 'מקלט בניין' },
   { key: 'includeFloorShelter', label: 'מקלט קומתי' },
@@ -118,7 +126,7 @@ export function toAsset(card: RawListing, item: RawListing | null): Asset {
   return {
     token: str(src.token),
     adNumber: num(src.adNumber),
-    listingUrl: listingUrl(str(src.token)),
+    listingUrl: listingUrlOrNull(src.token ? str(src.token) : null),
     listingType: SUBCATEGORY_NAMES[src.subcategoryId ?? -1] ?? '',
     price: num(src.price),
     priceBeforeDrop: num(src.priceBeforeTag),

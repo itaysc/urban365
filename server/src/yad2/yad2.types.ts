@@ -126,7 +126,8 @@ export interface Amenity {
 export interface Asset {
   token: string;
   adNumber: number | null;
-  listingUrl: string;
+  /** Null for listings created here: there is no yad2 page to link to. */
+  listingUrl: string | null;
   listingType: string;
   price: number | null;
   priceBeforeDrop: number | null;
