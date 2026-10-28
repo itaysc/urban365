@@ -1,0 +1,27 @@
+[build]
+builder = "dockerfile"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+startCommand = "node dist/main.js"
+healthcheckPath = "/health"
+restartPolicyType = "on_failure"
+
+# Railway dashboard → NestJS API service:
+#   Root Directory: server
+#   Config file:    server/railway.toml
+#   Pre-deploy Command: npx prisma migrate deploy
+#     (runs on each release, before the new container takes traffic; the prisma CLI is a
+#      runtime dependency so this needs no network fetch)
+#
+# Variables:
+#   NODE_ENV=production
+#   DATABASE_URL=${{Postgres.DATABASE_URL}}    — reference the Postgres service in this
+#     project so the connection stays on the private network. If the private host will not
+#     resolve, enable Outbound IPv6 on this service, or fall back to
+#     ${{Postgres.DATABASE_PUBLIC_URL}}.
+#   CORS_ORIGINS=https://<your-client-domain>  (comma-separated for several)
+#   PORT is injected by Railway — do not set it yourself.
+#
+# Add a Postgres service to the same project (New → Database → PostgreSQL) and enable
+# point-in-time recovery from its Backups tab.

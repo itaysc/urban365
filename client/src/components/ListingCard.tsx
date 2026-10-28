@@ -1,0 +1,89 @@
+import { formatAddress, formatPrice } from '@/lib/format';
+import type { SearchListing } from '@/types/search';
+
+const Spec = ({ label, value }: { label: string; value: string | number | null }) =>
+  value === null || value === '' ? null : (
+    <div className="text-center">
+      <div className="font-semibold text-slate-900">{value}</div>
+      <div className="text-xs text-slate-500">{label}</div>
+    </div>
+  );
+
+export function ListingCard({ listing, onOpen }: { listing: SearchListing; onOpen: (l: SearchListing) => void }) {
+  const floor =
+    listing.floor === null
+      ? null
+      : listing.buildingTopFloor
+        ? `${listing.floor}/${listing.buildingTopFloor}`
+        : listing.floor;
+
+  return (
+    <button
+      type="button"
+      onClick={() => onOpen(listing)}
+      className="flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white text-right transition hover:border-slate-400 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-slate-900"
+    >
+      <div className="relative h-44 bg-slate-100">
+        {listing.coverImageUrl ? (
+          <img src={listing.coverImageUrl} alt={listing.propertyType ?? ''} className="h-full w-full object-cover" loading="lazy" />
+        ) : (
+          <div className="flex h-full items-center justify-center text-sm text-slate-400">ללא תמונה</div>
+        )}
+
+        {listing.tags.length > 0 && (
+          <div className="absolute bottom-2 right-2 flex flex-wrap gap-1">
+            {listing.tags.slice(0, 2).map((tag) => (
+              <span key={tag} className="rounded bg-white/90 px-2 py-0.5 text-xs font-medium text-slate-700">
+                {tag}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="flex flex-1 flex-col gap-2 p-4">
+        <div className="flex items-baseline justify-between gap-2">
+          <span className="text-xl font-bold text-slate-900">{formatPrice(listing.price)}</span>
+          {listing.priceBeforeDrop && (
+            <span className="text-sm text-slate-400 line-through">{formatPrice(listing.priceBeforeDrop)}</span>
+          )}
+        </div>
+
+        <div>
+          <div className="font-medium text-slate-800">
+            {[listing.propertyType, listing.city].filter(Boolean).join(', ')}
+          </div>
+          <div className="text-sm text-slate-500">
+            {formatAddress({
+              street: listing.street ?? '',
+              houseNumber: listing.houseNumber,
+              neighborhood: listing.neighborhood ?? '',
+              city: listing.city ?? '',
+            })}
+          </div>
+        </div>
+
+        <div className="mt-auto flex justify-around border-t border-slate-100 pt-3">
+          <Spec label="חדרים" value={listing.rooms} />
+          <Spec label="קומה" value={floor} />
+          <Spec label='מ"ר' value={listing.squareMeter} />
+        </div>
+
+        {listing.amenities.length > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {listing.amenities.slice(0, 4).map((a) => (
+              <span key={a} className="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
+                {a}
+              </span>
+            ))}
+          </div>
+        )}
+
+        <div className="flex items-center justify-between text-xs text-slate-400">
+          <span className="truncate">{listing.agency.name}</span>
+          {listing.pricePerSquareMeter && <span>{listing.pricePerSquareMeter.toLocaleString('he-IL')} ₪/מ״ר</span>}
+        </div>
+      </div>
+    </button>
+  );
+}

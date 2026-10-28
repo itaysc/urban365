@@ -1,0 +1,3 @@
+# SPA: every path (e.g. /agency/6816047?listing=…) is served by index.html and
+# resolved client-side by react-router.
+/*    /index.html   200

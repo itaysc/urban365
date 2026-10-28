@@ -1,0 +1,514 @@
+// Postgres with a typed core plus a raw JSON column per record.
+//
+// The typed columns are the ones we filter, sort and join on. `raw` keeps the exact
+// yad2 payload the record came from, so nothing is lost to the mapping and a new yad2
+// field needs no migration to be captured — only one to start querying it.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Section {
+  forsale
+  rent
+  commercial
+}
+
+enum ListingSource {
+  yad2
+  import
+  manual
+}
+
+/// Where an agency row stands. Scraped rows start `unclaimed` and nobody owns them.
+enum AgencyStatus {
+  unclaimed
+  pending
+  active
+  rejected
+  suspended
+}
+
+enum AgencyRole {
+  owner
+  agent
+}
+
+/// Platform staff, entirely separate from an agency role. Never writable over the API.
+enum PlatformRole {
+  admin
+  support
+}
+
+enum MembershipStatus {
+  pending
+  active
+  suspended
+}
+
+enum ClaimStatus {
+  pending
+  approved
+  rejected
+}
+
+enum AuthTokenPurpose {
+  email_verify
+  password_reset
+  agency_invite
+  email_change
+}
+
+/// A listing is only public while `published`.
+enum ListingStatus {
+  draft
+  published
+  archived
+}
+
+enum LeadSource {
+  web
+  manual
+  import
+}
+
+enum LeadStatus {
+  new
+  contacted
+  viewing
+  offer
+  won
+  lost
+}
+
+enum DealStage {
+  qualified
+  negotiation
+  under_contract
+  closed_won
+  closed_lost
+}
+
+model Agency {
+  id     String  @id @default(cuid())
+  /// yad2's customerId. Null for agencies created here rather than scraped — Postgres
+  /// allows many NULLs under a unique index, so both kinds share the constraint.
+  yad2Id String? @unique
+  /// Public URL segment, assigned when the agency is activated.
+  slug   String? @unique
+
+  status          AgencyStatus @default(unclaimed)
+  contactEmail    String?
+  reviewedAt      DateTime?
+  reviewedBy      User?        @relation("AgencyReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+  reviewedById    String?
+  rejectionReason String?
+
+  name          String
+  licenseNumber String?
+  phone         String?
+  logoUrl       String?
+  /// Banner on the agency's public page. Uploaded here, unlike logoUrl which may still
+  /// point at yad2's CDN for scraped agencies.
+  coverImageUrl String?
+  description   String?
+
+  /// [{ day, open, close }]
+  openingHours Json?
+
+  assetsForSaleCount    Int?
+  assetsForRentCount    Int?
+  commercialAssetsCount Int?
+
+  brokers     Broker[]
+  listings    Listing[]
+  runs        ScrapeRun[]
+  memberships AgencyMembership[]
+  claims      AgencyClaim[]
+  invites     AgencyInvite[]
+  leads       Lead[]
+  deals       Deal[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([name])
+  @@index([status])
+}
+
+model Broker {
+  id       String @id @default(cuid())
+  agency   Agency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  agencyId String
+
+  /// yad2's broker id; unique per agency, not globally.
+  yad2Id            String?
+  name              String
+  licenseNumber     String?
+  activeAssetsCount Int?
+  specialization    String?
+  avatarUrl         String?
+
+  membership AgencyMembership?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([agencyId, yad2Id])
+  @@index([agencyId])
+}
+
+model Listing {
+  id      String        @id @default(cuid())
+  /// yad2's ad token, and the key every scrape upserts on. **Null for listings created
+  /// here** — so `token IS NOT NULL` is exactly "came from yad2". That is why this is
+  /// nullable rather than carrying a synthetic value.
+  token   String?       @unique
+  source  ListingSource @default(yad2)
+  /// Only `published` rows are public. Defaulted so the existing scraped rows stay visible.
+  status  ListingStatus @default(published)
+  section Section
+
+  createdBy       User?     @relation("ListingCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  createdByUserId String?
+  publishedAt     DateTime?
+
+  agency   Agency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  agencyId String
+
+  adNumber   BigInt?
+  listingUrl String?
+
+  // --- the fields search actually filters and sorts on
+  price               Int?
+  priceBeforeDrop     Int?
+  pricePerSquareMeter Int?
+
+  propertyType       String?
+  propertyGroup      String?
+  propertyCondition  String?
+  rooms              Float?
+  floor              Int?
+  buildingTopFloor   Int?
+  squareMeter        Int?
+  squareMeterBuilt   Int?
+  squareMeterGarden  Int?
+  balconiesCount     Int?
+  parkingSpacesCount Int?
+
+  city         String?
+  neighborhood String?
+  street       String?
+  houseNumber  Int?
+  region       String?
+  area         String?
+  latitude     Float?
+  longitude    Float?
+
+  /// Labels of what the property has. A GIN index makes "has מעלית and ממ\"ד" fast.
+  amenities String[]
+  tags      String[]
+
+  description   String?
+  coverImageUrl String?
+  /// yad2 CDN urls, kept only until listings carry our own images.
+  imageUrls     String[]
+  imagesCount   Int      @default(0)
+
+  contactName         String?
+  brokerName          String?
+  brokerLicenseNumber String?
+
+  /// Whether the detail page was read, or only the agency-feed card.
+  hasFullDetails Boolean @default(false)
+
+  /// The yad2 payload exactly as collected.
+  raw Json?
+
+  listedAt        DateTime?
+  updatedAtSource DateTime?
+  firstSeenAt     DateTime  @default(now())
+  lastSeenAt      DateTime  @default(now())
+  /// Set when a listing stops appearing in the feed, instead of deleting history.
+  delistedAt      DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  images ListingImage[]
+  leads  Lead[]
+  deals  Deal[]
+
+  @@index([agencyId, section])
+  @@index([agencyId, status])
+  @@index([city, price])
+  @@index([section, price])
+  @@index([rooms])
+  @@index([delistedAt])
+  @@index([amenities], type: Gin)
+}
+
+/// One row per scrape, so a bad run can be told apart from a shrinking inventory.
+model ScrapeRun {
+  id       String  @id @default(cuid())
+  agency   Agency  @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  agencyId String
+  section  Section
+
+  cardsFound       Int
+  listingsUpserted Int
+  detailsMissing   Int
+  failedTokens     String[]
+
+  startedAt  DateTime  @default(now())
+  finishedAt DateTime?
+
+  @@index([agencyId, section, startedAt])
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Identity and access
+// ──────────────────────────────────────────────────────────────────────────────
+
+model User {
+  id           String @id @default(cuid())
+  /// Always stored lowercased. Postgres unique indexes are case-sensitive, so without
+  /// normalising, Itay@x.com and itay@x.com are two accounts and the anti-enumeration
+  /// responses quietly stop working. Normalise in auth/normalize-email.ts.
+  email        String @unique
+  passwordHash String
+
+  firstName String
+  lastName  String
+  phone     String?
+
+  emailVerifiedAt DateTime?
+  /// null = ordinary user. Set by seed or SQL only, never through an API.
+  platformRole    PlatformRole?
+
+  /// Bumping this invalidates every outstanding token: a cheap "log out everywhere".
+  sessionEpoch     Int       @default(0)
+  failedLoginCount Int       @default(0)
+  lockedUntil      DateTime?
+  lastLoginAt      DateTime?
+  disabledAt       DateTime?
+
+  memberships      AgencyMembership[]
+  sessions         Session[]
+  authTokens       AuthToken[]
+  claims           AgencyClaim[]
+  createdListings  Listing[]          @relation("ListingCreator")
+  assignedLeads    Lead[]             @relation("LeadAssignee")
+  ownedDeals       Deal[]             @relation("DealOwner")
+  reviewedAgencies Agency[]           @relation("AgencyReviewer")
+  reviewedClaims   AgencyClaim[]      @relation("ClaimReviewer")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([platformRole])
+}
+
+/// A user's place in an agency. A join model rather than fields on User, because a
+/// `pending` membership has nowhere to live on the user row, the claim needs an audit
+/// trail, and agents move between agencies.
+model AgencyMembership {
+  id       String @id @default(cuid())
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId   String
+  agency   Agency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  agencyId String
+
+  role   AgencyRole       @default(agent)
+  status MembershipStatus @default(pending)
+
+  /// Display link to the yad2-imported team row — avatar, licence number, counts.
+  /// NEVER an authorization input: the scraper rewrites Broker rows on every run and
+  /// matches some of them on name alone.
+  broker   Broker? @relation(fields: [brokerId], references: [id], onDelete: SetNull)
+  brokerId String? @unique
+
+  invitedById String?
+  joinedAt    DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, agencyId])
+  @@index([agencyId, status])
+}
+
+/// A request to take over an agency that already exists from a scrape. Approving one
+/// attaches the existing row to the claimant — nothing is ever merged or re-parented.
+model AgencyClaim {
+  id       String @id @default(cuid())
+  agency   Agency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  agencyId String
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId   String
+
+  status   ClaimStatus @default(pending)
+  /// Whatever the signup form collected: licence number, office phone, a note.
+  evidence Json?
+
+  reviewedAt      DateTime?
+  reviewedBy      User?     @relation("ClaimReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+  reviewedById    String?
+  rejectionReason String?
+
+  createdAt DateTime @default(now())
+
+  @@unique([agencyId, userId])
+  @@index([status, createdAt])
+}
+
+model AgencyInvite {
+  id          String     @id @default(cuid())
+  agency      Agency     @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  agencyId    String
+  email       String
+  role        AgencyRole @default(agent)
+  invitedById String
+  /// sha256 of the token; the plaintext only ever exists in the email.
+  tokenHash   String     @unique
+  expiresAt   DateTime
+  acceptedAt  DateTime?
+  revokedAt   DateTime?
+  createdAt   DateTime   @default(now())
+
+  @@index([agencyId, acceptedAt])
+}
+
+/// One row per refresh token. A login starts a family; each rotation adds a row and
+/// tombstones its predecessor, so presenting a revoked token is provable reuse.
+model Session {
+  id        String @id @default(cuid())
+  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  /// Constant across every rotation of one login. Reuse kills the whole family.
+  familyId  String
+  /// sha256 of the token's secret half; the plaintext lives only in the cookie.
+  tokenHash String
+
+  expiresAt    DateTime
+  revokedAt    DateTime?
+  replacedById String?   @unique
+  replacedBy   Session?  @relation("SessionChain", fields: [replacedById], references: [id], onDelete: SetNull)
+  replaces     Session?  @relation("SessionChain")
+
+  ip         String?
+  userAgent  String?
+  lastUsedAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+
+  @@index([userId, revokedAt])
+  @@index([familyId])
+  @@index([expiresAt])
+}
+
+/// Email verification, password reset and invite acceptance in one table — one lookup
+/// path and one expiry sweep. Hashes only, compared with timingSafeEqual.
+model AuthToken {
+  id         String           @id @default(cuid())
+  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId     String
+  purpose    AuthTokenPurpose
+  tokenHash  String           @unique
+  expiresAt  DateTime
+  consumedAt DateTime?
+  attempts   Int              @default(0)
+  /// e.g. the proposed address for an email_change.
+  meta       Json?
+  createdAt  DateTime         @default(now())
+
+  @@index([userId, purpose, consumedAt])
+  @@index([expiresAt])
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// CRM
+// ──────────────────────────────────────────────────────────────────────────────
+
+/// Photos an agency uploaded here. Scraped listings keep using Listing.imageUrls,
+/// which are yad2 CDN links and will be retired once agencies upload their own.
+model ListingImage {
+  id         String   @id @default(cuid())
+  listing    Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  listingId  String
+  /// Object key in the bucket; the public URL is derived from it.
+  storageKey String   @unique
+  url        String
+  width      Int?
+  height     Int?
+  position   Int      @default(0)
+  createdAt  DateTime @default(now())
+
+  @@index([listingId, position])
+}
+
+model Lead {
+  id        String   @id @default(cuid())
+  agency    Agency   @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  agencyId  String
+  /// The listing the enquiry came in on, when there was one.
+  listing   Listing? @relation(fields: [listingId], references: [id], onDelete: SetNull)
+  listingId String?
+
+  source LeadSource @default(web)
+  status LeadStatus @default(new)
+
+  name    String
+  phone   String?
+  email   String?
+  message String?
+  notes   String?
+
+  assignedTo   User?   @relation("LeadAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+  assignedToId String?
+
+  deals Deal[]
+
+  contactedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([agencyId, status, createdAt])
+  @@index([listingId])
+  @@index([assignedToId])
+}
+
+model Deal {
+  id       String @id @default(cuid())
+  agency   Agency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  agencyId String
+
+  lead      Lead?    @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  leadId    String?
+  listing   Listing? @relation(fields: [listingId], references: [id], onDelete: SetNull)
+  listingId String?
+
+  stage DealStage @default(qualified)
+  title String
+
+  /// Agreed price, and the agency's commission, both in whole shekels.
+  price      Int?
+  commission Int?
+
+  expectedCloseAt DateTime?
+  closedAt        DateTime?
+  lostReason      String?
+  notes           String?
+
+  owner   User?   @relation("DealOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  ownerId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([agencyId, stage, createdAt])
+  @@index([leadId])
+}

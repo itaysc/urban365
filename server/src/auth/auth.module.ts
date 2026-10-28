@@ -1,0 +1,21 @@
+import { Module } from '@nestjs/common';
+import { JwtModule } from '@nestjs/jwt';
+import { AuthController } from './auth.controller.js';
+import { AuthService } from './auth.service.js';
+import { AuthTokenService } from './auth-token.service.js';
+import { CaptchaService } from './captcha.service.js';
+import { PasswordService } from './password.service.js';
+import { SessionService } from './session.service.js';
+import { TokenService } from './token.service.js';
+
+/**
+ * Deliberately uses the privileged PrismaService: login looks a user up by email before
+ * any agency context exists, so these queries cannot be tenant-scoped.
+ */
+@Module({
+  imports: [JwtModule.register({})],
+  controllers: [AuthController],
+  providers: [AuthService, PasswordService, TokenService, SessionService, AuthTokenService, CaptchaService],
+  exports: [TokenService, AuthTokenService],
+})
+export class AuthModule {}

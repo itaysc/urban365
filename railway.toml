@@ -1,0 +1,7 @@
+# Monorepo: only the server deploys to Railway.
+#
+# NestJS API service (Railway dashboard):
+#   Root Directory: server
+#   Config file:    server/railway.toml
+#
+# The client is a static Vite build (client/dist) and is hosted elsewhere.
