@@ -82,8 +82,9 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       {children}
 
       {/*
-        Bottom-centred rather than to one side: the accessibility toolbar sits at the
-        bottom-left and a toast stacked on it would cover it.
+        Top-centred. Nothing of ours lives up there, so it clears both the accessibility
+        toolbar at the bottom-left and the action buttons at the foot of the long forms
+        that raise most of these messages.
 
         aria-live="polite" so a screen reader announces the message without interrupting,
         and the region exists from first render — one created at the same moment as its
@@ -92,20 +93,20 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       <div
         aria-live="polite"
         aria-atomic="false"
-        className="pointer-events-none fixed inset-x-0 bottom-4 z-[60] flex flex-col items-center gap-2 px-4"
+        className="pointer-events-none fixed inset-x-0 top-6 z-[60] flex flex-col items-center gap-3 px-4"
       >
         {toasts.map((toast) => (
           <div
             key={toast.id}
             role="status"
-            className={`pointer-events-auto flex w-full max-w-sm items-start gap-3 rounded-xl border px-4 py-3 text-sm shadow-lg ${TONE_CLASS[toast.tone]}`}
+            className={`pointer-events-auto flex w-full max-w-lg items-start gap-4 rounded-xl border px-6 py-4 text-base font-medium shadow-xl ${TONE_CLASS[toast.tone]}`}
           >
             <span className="flex-1">{toast.message}</span>
             <button
               type="button"
               onClick={() => dismiss(toast.id)}
               aria-label="סגירה"
-              className="shrink-0 text-lg leading-none opacity-50 transition hover:opacity-100"
+              className="shrink-0 text-2xl leading-none opacity-40 transition hover:opacity-100"
             >
               ×
             </button>
