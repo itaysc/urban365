@@ -47,11 +47,7 @@ export function LoginPage() {
   return (
     <AuthLayout
       title="התחברות"
-      footer={
-        <>
-          אין לך חשבון? <Link to="/signup" className="text-blue-700 hover:underline">הרשמה</Link>
-        </>
-      }
+      subtitle="לניהול הנכסים, הפניות והעסקאות של הסוכנות"
     >
       {verified === '1' && (
         <p className="mb-4 rounded-lg bg-green-50 px-3 py-2 text-sm text-green-800">
@@ -81,6 +77,22 @@ export function LoginPage() {
 
         <Link to="/forgot-password" className="text-center text-xs text-slate-500 hover:underline">
           שכחתי סיסמה
+        </Link>
+
+        {/* Signing up is the other half of this screen, not a footnote: a new agency
+            arrives here first. It used to sit only under the card, below the fold on a
+            short window, where it was easy to miss entirely. */}
+        <div className="flex items-center gap-3 pt-2">
+          <span className="h-px flex-1 bg-slate-200" />
+          <span className="text-xs text-slate-400">או</span>
+          <span className="h-px flex-1 bg-slate-200" />
+        </div>
+
+        <Link
+          to="/signup"
+          className="rounded-lg border border-slate-300 px-4 py-2 text-center text-sm font-medium text-slate-800 transition hover:border-slate-900"
+        >
+          רישום סוכנות חדשה
         </Link>
       </form>
     </AuthLayout>
