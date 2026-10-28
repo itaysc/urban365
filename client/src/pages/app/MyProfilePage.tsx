@@ -149,10 +149,18 @@ export function MyProfilePage() {
           <input id="me-email" className={inputClass} value={user?.email ?? ''} disabled dir="ltr" />
         </Field>
 
-        <Field label="טלפון" htmlFor="me-phone">
-          <input id="me-phone" type="tel" dir="ltr" className={inputClass} value={form.phone}
-                 onChange={(e) => set('phone', e.target.value)} placeholder="050-0000000" />
-        </Field>
+        <div>
+          <Field label="טלפון" htmlFor="me-phone">
+            <input id="me-phone" type="tel" dir="ltr" className={inputClass} value={form.phone}
+                   onChange={(e) => set('phone', e.target.value)} placeholder="050-0000000"
+                   aria-describedby="me-phone-hint" />
+          </Field>
+          {/* Describes the phone field, so it sits under it — and `aria-describedby`
+              ties the two together for anyone not reading by position. */}
+          <p id="me-phone-hint" className="mt-1 text-xs text-slate-500">
+            המספר הזה יוצג לקונים שילחצו על «הצגת מספר טלפון» בנכסים שהעלית.
+          </p>
+        </div>
 
         <div className="sm:col-span-2">
           <Field label="קצת עליי" htmlFor="me-bio">
@@ -178,9 +186,6 @@ export function MyProfilePage() {
         </div>
 
         <div className="sm:col-span-2">
-          <p className="mb-3 text-xs text-slate-500">
-            המספר הזה יוצג לקונים שילחצו על «הצגת מספר טלפון» בנכסים שהעלית.
-          </p>
           <Button disabled={saving} onClick={() => void save()}>
             {saving ? 'שומר…' : 'שמור'}
           </Button>
