@@ -216,7 +216,10 @@ export function ListingsMap({ points, onSelect, onViewportChange }: Props) {
   }, [points]);
 
   return (
-    <div className="relative h-[70vh] w-full overflow-hidden rounded-xl border border-slate-200">
+    // Short on a phone, where it sits above the list and should not take the whole
+    // screen before a single card is visible; tall enough on a desktop to be worth
+    // reading beside the results.
+    <div className="relative h-[45vh] w-full overflow-hidden rounded-xl border border-slate-200 lg:h-[calc(100vh-2rem)]">
       <div ref={container} className="h-full w-full" />
 
       {points.length === 0 && (
