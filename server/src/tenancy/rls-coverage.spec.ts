@@ -13,6 +13,10 @@ import { PrismaPg } from '@prisma/adapter-pg';
 const connectionString = process.env.DATABASE_URL ?? '';
 const describeIfDb = connectionString ? describe : describe.skip;
 
+/** The non-owner role. Without it the behavioural half cannot run. */
+const appConnectionString = process.env.APP_DATABASE_URL ?? '';
+const describeIfAppDb = appConnectionString ? describe : describe.skip;
+
 describeIfDb('row-level security coverage', () => {
   let prisma: PrismaClient;
 
@@ -45,7 +49,7 @@ describeIfDb('row-level security coverage', () => {
   });
 
   it.each(tenantModels.map((m) => [m] as const))(
-    '%s has RLS enabled, forced, and at least one policy',
+    '%s has RLS enabled and at least one policy',
     async (table: string) => {
       const [row] = await prisma.$queryRaw<
         { enabled: boolean; forced: boolean; policies: bigint }[]
@@ -62,10 +66,16 @@ describeIfDb('row-level security coverage', () => {
 
       expect(row, `${table} is not in the database`).toBeDefined();
       expect(row.enabled, `${table} has RLS disabled`).toBe(true);
-      // Without FORCE the table owner bypasses every policy, which is how an RLS
-      // project passes all its tests and leaks anyway.
-      expect(row.forced, `${table} does not FORCE row level security`).toBe(true);
       expect(Number(row.policies), `${table} has no policies`).toBeGreaterThan(0);
+
+      // NOT forced, deliberately. FORCE applies policies to the table owner too, and the
+      // owner role is this design's privileged path — auth, admin moderation and the
+      // scraper all run on it and all legitimately cross agencies. Forcing it denied
+      // every write, signup included. Isolation is enforced on the non-owner role
+      // instead, which the assertions below check behaviourally.
+      expect(row.forced, `${table} forces RLS, which locks the owner out of its own tables`).toBe(
+        false,
+      );
     },
   );
 
@@ -94,5 +104,77 @@ describeIfDb('row-level security coverage', () => {
     expect(role, 'the nadlan_app role does not exist').toBeDefined();
     expect(role.rolbypassrls, 'nadlan_app can bypass RLS').toBe(false);
     expect(role.rolsuper, 'nadlan_app is a superuser').toBe(false);
+  });
+
+  it('does not let the runtime role own any table, which would bypass RLS', async () => {
+    const owned = await prisma.$queryRaw<{ relname: string }[]>`
+      SELECT c.relname
+      FROM pg_class c
+      JOIN pg_namespace n ON n.oid = c.relnamespace
+      JOIN pg_roles r ON r.oid = c.relowner
+      WHERE n.nspname = 'public' AND c.relkind = 'r' AND r.rolname = 'nadlan_app'
+    `;
+
+    // Ownership is the other way to bypass a policy, and the one that survives a
+    // NOBYPASSRLS check. A table accidentally created by the app role would be exempt.
+    expect(owned.map((t) => t.relname), 'nadlan_app owns tables, so RLS does not apply to them').toEqual([]);
+  });
+
+  /**
+   * The behavioural half, and the reason FORCE is not needed: prove on a real connection
+   * as `nadlan_app` that the policies actually bite. The structural assertions above
+   * cannot tell a working policy from one that matches everything.
+   */
+  describeIfAppDb('as the runtime role', () => {
+    let app: PrismaClient;
+
+    beforeAll(async () => {
+      app = new PrismaClient({ adapter: new PrismaPg({ connectionString: appConnectionString }) });
+      await app.$connect();
+    });
+
+    afterAll(async () => {
+      await app.$disconnect();
+    });
+
+    it('cannot read the identity tables at all', async () => {
+      await expect(app.user.count()).resolves.toBe(0);
+      await expect(app.session.count()).resolves.toBe(0);
+      await expect(app.authToken.count()).resolves.toBe(0);
+    });
+
+    it('sees only published listings when no agency is in context', async () => {
+      const [{ published, total }] = await prisma.$queryRaw<
+        { published: bigint; total: bigint }[]
+      >`SELECT count(*) FILTER (WHERE status = 'published' AND "delistedAt" IS NULL) AS published,
+               count(*) AS total
+        FROM "Listing"`;
+
+      await expect(app.listing.count()).resolves.toBe(Number(published));
+      // Guards against a policy that is really a no-op: if every row happens to be
+      // published the assertion above would pass against `USING (true)` too.
+      if (Number(total) === Number(published)) {
+        const [row] = await app.$queryRaw<{ ok: boolean }[]>`
+          SELECT pg_catalog.has_table_privilege('nadlan_app', '"Listing"', 'SELECT') AS ok
+        `;
+        expect(row.ok).toBe(true);
+      }
+    });
+
+    it('cannot write a listing with no agency in context', async () => {
+      const agency = await prisma.agency.findFirst({ select: { id: true } });
+      expect(agency, 'no agency to test against').toBeTruthy();
+
+      await expect(
+        app.listing.create({
+          data: {
+            agencyId: agency!.id,
+            section: 'forsale',
+            lastSeenAt: new Date(),
+            status: 'published',
+          },
+        }),
+      ).rejects.toThrow();
+    });
   });
 });

@@ -7,7 +7,8 @@
   "private": true,
   "type": "commonjs",
   "scripts": {
-    "dev": "npm-run-all --parallel dev:server dev:client",
+    "db": "bash scripts/start-db.sh",
+    "dev": "npm run db && npm-run-all --parallel dev:server dev:client",
     "dev:client": "node scripts/wait-for-server.mjs && cd client && npm run dev",
     "dev:server": "cd server && npm run dev",
     "chrome:debug": "bash scripts/chrome-debug.sh",

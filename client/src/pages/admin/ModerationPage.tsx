@@ -1,0 +1,166 @@
+import { useCallback, useEffect, useState } from 'react';
+import { Button } from '@/components/ui/Button';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { formatDate } from '@/lib/format';
+import {
+  approveAgency,
+  fetchPendingAgencies,
+  rejectAgency,
+  type PendingAgency,
+} from '@/services/admin';
+
+/** The agency being rejected, held while the confirm dialog is open. */
+type PendingReject = { agencyId: string; name: string } | null;
+
+/** One row per person who could be approved, whichever way they arrived. */
+interface Applicant {
+  userId: string;
+  email: string;
+  name: string;
+  evidence: string | null;
+  createdAt: string | null;
+}
+
+/**
+ * A self-signup agency has a pending owner and no claim row; a claim on a scraped agency
+ * has claim rows and no pending owner. Both approve through the same endpoint, so they
+ * are flattened into one list rather than rendered as two different blocks.
+ */
+function applicantsOf(agency: PendingAgency): Applicant[] {
+  if (agency.claims.length > 0) {
+    return agency.claims.map((claim) => ({
+      userId: claim.userId,
+      email: claim.userEmail,
+      name: claim.userName,
+      evidence: typeof claim.evidence === 'string' ? claim.evidence : null,
+      createdAt: claim.createdAt,
+    }));
+  }
+
+  if (agency.pendingOwner) {
+    return [{ ...agency.pendingOwner, evidence: null, createdAt: null }];
+  }
+
+  return [];
+}
+
+export function ModerationPage() {
+  const [agencies, setAgencies] = useState<PendingAgency[] | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [toReject, setToReject] = useState<PendingReject>(null);
+
+  const load = useCallback(() => {
+    void fetchPendingAgencies()
+      .then(setAgencies)
+      .catch(() => setError('לא הצלחנו לטעון את התור.'));
+  }, []);
+
+  useEffect(load, [load]);
+
+  const run = async (key: string, action: () => Promise<unknown>) => {
+    setBusy(key);
+    setError(null);
+    try {
+      await action();
+      load();
+    } catch {
+      setError('הפעולה נכשלה.');
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-4">
+      <h1 className="text-xl font-bold text-slate-900">בקשות ממתינות</h1>
+
+      {error && (
+        <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>
+      )}
+
+      {agencies === null && <p className="text-sm text-slate-500">טוען…</p>}
+
+      {agencies?.length === 0 && (
+        <p className="rounded-xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500">
+          אין בקשות ממתינות.
+        </p>
+      )}
+
+      {agencies?.map((agency) => {
+        const applicants = applicantsOf(agency);
+
+        return (
+          <section key={agency.id} className="rounded-xl border border-slate-200 bg-white p-4">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <h2 className="font-semibold text-slate-900">{agency.name}</h2>
+              <p className="text-xs text-slate-500">
+                {agency.yad2Id ? `יד2 ${agency.yad2Id} · ` : 'הרשמה עצמית · '}
+                {agency.listingCount} נכסים · {formatDate(agency.createdAt)}
+              </p>
+            </div>
+
+            {applicants.length === 0 ? (
+              <p className="mt-3 text-sm text-slate-500">אין מבקש לאשר.</p>
+            ) : (
+              <ul className="mt-3 flex flex-col gap-2">
+                {applicants.map((applicant) => {
+                  const key = `${agency.id}:${applicant.userId}`;
+                  return (
+                    <li
+                      key={applicant.userId}
+                      className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-slate-50 p-3"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-slate-900">{applicant.name}</p>
+                        <p className="text-xs text-slate-500">
+                          {applicant.email}
+                          {applicant.createdAt && ` · ${formatDate(applicant.createdAt)}`}
+                        </p>
+                        {applicant.evidence && (
+                          <p className="mt-1 text-xs text-slate-600">{applicant.evidence}</p>
+                        )}
+                      </div>
+
+                      <Button
+                        disabled={busy !== null}
+                        onClick={() => void run(key, () => approveAgency(agency.id, applicant.userId))}
+                      >
+                        {busy === key ? 'מאשר…' : 'אשר'}
+                      </Button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+
+            <Button
+              variant="ghost"
+              className="mt-3"
+              disabled={busy !== null}
+              onClick={() => setToReject({ agencyId: agency.id, name: agency.name })}
+            >
+              {agency.claims.length > 1 ? 'דחה את כל הבקשות' : 'דחה'}
+            </Button>
+          </section>
+        );
+      })}
+
+      <ConfirmDialog
+        open={toReject !== null}
+        title="לדחות את הבקשה?"
+        description={
+          toReject ? `הבקשות לנהל את ${toReject.name} יידחו, והמבקשים יקבלו הודעה באימייל.` : ''
+        }
+        confirmLabel="דחה"
+        busy={busy !== null}
+        onConfirm={() => {
+          const target = toReject;
+          setToReject(null);
+          if (target) void run(target.agencyId, () => rejectAgency(target.agencyId));
+        }}
+        onOpenChange={(open) => !open && setToReject(null)}
+      />
+    </div>
+  );
+}
