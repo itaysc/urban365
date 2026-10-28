@@ -17,6 +17,16 @@ export class ListingsController {
   }
 
   /**
+   * Pins for the map. Same filters as `search`, plus an optional viewport; returns
+   * points rather than cards, since a map needs all of them at once and none of the
+   * detail a card shows.
+   */
+  @Get('map')
+  mapPoints(@Query() query: SearchListingsDto) {
+    return this.listings.mapPoints(query);
+  }
+
+  /**
    * The contact number, revealed on request rather than shipped with the listing.
    *
    * Throttled: this is the one route that hands out a phone number, so it is the one

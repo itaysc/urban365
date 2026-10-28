@@ -53,6 +53,12 @@ export interface SearchResponse {
 
 const DEFAULT_PAGE_SIZE = 24;
 
+/**
+ * The most pins one response will carry. Well above what a city view holds, and far
+ * below what would make the payload or the browser struggle.
+ */
+const MAP_POINT_LIMIT = 2000;
+
 /** Exported for the sort-order test; not part of the service's API. */
 export const ORDER_BY_FOR_TEST = () => ORDER_BY;
 
@@ -125,6 +131,16 @@ export class ListingsService {
 
     const size = range(dto.minSquareMeter, dto.maxSquareMeter);
     if (size) where.squareMeter = size;
+
+    // A viewport. Both corners are required together — half a box is not a box, and
+    // silently ignoring the other half would quietly return the whole country.
+    if (
+      dto.minLat !== undefined && dto.maxLat !== undefined &&
+      dto.minLng !== undefined && dto.maxLng !== undefined
+    ) {
+      where.latitude = { gte: dto.minLat, lte: dto.maxLat };
+      where.longitude = { gte: dto.minLng, lte: dto.maxLng };
+    }
 
     if (dto.q?.trim()) {
       const contains = dto.q.trim();
@@ -306,5 +322,59 @@ export class ListingsService {
   async phoneFor(id: string): Promise<{ phone: string } | null> {
     const phone = await this.contactPhone(id);
     return phone ? { phone } : null;
+  }
+
+  /**
+   * Every matching listing as a point, for the map.
+   *
+   * Not the paginated card payload: a map needs all the pins in view at once, and a
+   * card carries twenty fields a pin does not. Six fields and a cap keep it small
+   * enough to send in one response — clustering happens in the browser, so the server
+   * does not need to know the zoom level.
+   */
+  async mapPoints(dto: SearchListingsDto) {
+    const base = this.where(dto);
+
+    // A listing with no coordinates cannot be drawn, so it is excluded here rather
+    // than filtered client-side. When a viewport is set, `base` already carries
+    // gte/lte on both axes — which excludes nulls on its own — so the explicit check
+    // is only needed for an unbounded query.
+    const where: Prisma.ListingWhereInput = base.latitude
+      ? base
+      : { ...base, latitude: { not: null }, longitude: { not: null } };
+
+    const rows = await this.prisma.client.listing.findMany({
+      where,
+      take: MAP_POINT_LIMIT,
+      orderBy: { id: 'asc' },
+      select: {
+        id: true,
+        latitude: true,
+        longitude: true,
+        price: true,
+        rooms: true,
+        propertyType: true,
+        city: true,
+        street: true,
+        coverImageUrl: true,
+      },
+    });
+
+    return {
+      points: rows.map((r) => ({
+        id: r.id,
+        lat: r.latitude as number,
+        lng: r.longitude as number,
+        price: r.price,
+        rooms: r.rooms,
+        propertyType: r.propertyType,
+        city: r.city,
+        street: r.street,
+        coverImageUrl: r.coverImageUrl,
+      })),
+      // Tells the client the view is incomplete, so it can say so rather than
+      // silently showing a subset as though it were everything.
+      truncated: rows.length === MAP_POINT_LIMIT,
+    };
   }
 }

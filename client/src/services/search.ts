@@ -38,3 +38,52 @@ export async function fetchListing(id: string): Promise<SearchListing & Record<s
   const { data } = await api.get(`/listings/${id}`);
   return data;
 }
+
+// ── map ───────────────────────────────────────────────────────────────────────
+
+export interface MapPoint {
+  id: string;
+  lat: number;
+  lng: number;
+  price: number | null;
+  rooms: number | null;
+  propertyType: string | null;
+  city: string | null;
+  street: string | null;
+  coverImageUrl: string | null;
+}
+
+export interface MapBounds {
+  minLat: number;
+  maxLat: number;
+  minLng: number;
+  maxLng: number;
+}
+
+export interface MapResponse {
+  points: MapPoint[];
+  /** True when the point cap was hit, so the view is a subset rather than everything. */
+  truncated: boolean;
+}
+
+/**
+ * Pins for the current filters. Takes the same query string as the list so the two
+ * views never disagree about what is being searched; paging is irrelevant to a map and
+ * is left out.
+ */
+export async function fetchMapPoints(
+  filters: SearchFilters,
+  bounds?: MapBounds,
+): Promise<MapResponse> {
+  const params = new URLSearchParams(toQueryParams(filters));
+  params.delete('page');
+  params.delete('pageSize');
+  params.delete('facets');
+
+  if (bounds) {
+    for (const [key, value] of Object.entries(bounds)) params.set(key, String(value));
+  }
+
+  const { data } = await api.get<MapResponse>(`/listings/map?${params.toString()}`);
+  return data;
+}

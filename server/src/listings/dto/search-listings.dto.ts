@@ -4,6 +4,8 @@ import {
   IsBoolean,
   IsIn,
   IsInt,
+  IsLatitude,
+  IsLongitude,
   IsNumber,
   IsOptional,
   IsString,
@@ -108,4 +110,12 @@ export class SearchListingsDto {
   @Transform(toBool)
   @IsBoolean()
   facets?: boolean;
+
+  // ── map viewport ──────────────────────────────────────────────────────────
+  // Set only by the map. Omitted entirely, the search is unbounded as before, so the
+  // list view is unaffected.
+  @IsOptional() @Type(() => Number) @IsLatitude() minLat?: number;
+  @IsOptional() @Type(() => Number) @IsLatitude() maxLat?: number;
+  @IsOptional() @Type(() => Number) @IsLongitude() minLng?: number;
+  @IsOptional() @Type(() => Number) @IsLongitude() maxLng?: number;
 }
