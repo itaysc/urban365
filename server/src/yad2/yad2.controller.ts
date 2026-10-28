@@ -1,5 +1,6 @@
 import { BadRequestException, Body, Controller, Get, Header, NotFoundException, Param, Post, Query, Res } from '@nestjs/common';
 import type { Response } from 'express';
+import { Public } from '../auth/decorators/public.decorator.js';
 import { PlatformAdmin } from '../auth/decorators/roles.decorator.js';
 import { ScrapeAgencyDto } from './dto/scrape-agency.dto.js';
 import { buildCsv, csvFilename, type CsvKind } from './yad2.csv.js';
@@ -9,9 +10,12 @@ import { SECTIONS, type Section } from './yad2.types.js';
 const CSV_KINDS: CsvKind[] = ['assets', 'team', 'agency'];
 
 /**
- * Platform staff only. Every route here can start a Playwright browser that scrapes a
- * third party from our IP and writes to our database — it was reachable anonymously
- * until this change.
+ * Platform staff by default, because the routes that *scrape* can start a Playwright
+ * browser against a third party from our IP and write to our database.
+ *
+ * The routes that only read what we already collected are marked `@Public()`
+ * individually — an agency's page is public data, and locking the reads too took the
+ * agency view down with the scraper.
  */
 @PlatformAdmin()
 @Controller('yad2')
@@ -48,11 +52,15 @@ export class Yad2Controller {
     return { jobId, status, progress, error, errorCode, result, agencyId, section };
   }
 
+  /** A directory of what we hold. Reads our own database; starts nothing. */
+  @Public()
   @Get('agencies')
   listCached() {
     return this.yad2.listCached();
   }
 
+  /** The public agency page: cached data only, and 404 when we have none. */
+  @Public()
   @Get('agency/:agencyId')
   async getAgency(@Param('agencyId') agencyId: string, @Query('section') section?: string) {
     const chosen = (SECTIONS.includes(section as Section) ? section : 'forsale') as Section;
@@ -61,7 +69,13 @@ export class Yad2Controller {
     return cached;
   }
 
-  /** `kind` is one of assets | team | agency. Served as a UTF-8 CSV download. */
+  /**
+   * `kind` is one of assets | team | agency. Served as a UTF-8 CSV download.
+   *
+   * Public, like the agency page it belongs to: it exports exactly the data that page
+   * already renders, so withholding it protects nothing and only leaves a dead button.
+   */
+  @Public()
   @Get('agency/:agencyId/csv/:kind')
   @Header('Content-Type', 'text/csv; charset=utf-8')
   async downloadCsv(

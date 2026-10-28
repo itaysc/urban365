@@ -79,10 +79,36 @@ async function getJob(jobId: string): Promise<JobStatus> {
  * Returns a cached agency straight away, otherwise polls the scrape job until it
  * finishes, reporting progress as it goes.
  */
+/** Cached data only — public, and 404 when we hold nothing for that agency. */
+async function fetchCached(agencyId: string, section: Section): Promise<AgencyResult | null> {
+  try {
+    const { data } = await api.get<AgencyResult>(`/yad2/agency/${agencyId}?section=${section}`);
+    return data;
+  } catch {
+    return null;
+  }
+}
+
 export async function fetchAgency(
   input: string,
   options: { refresh?: boolean; section?: Section; onProgress?: (p: ScrapeProgress) => void } = {},
 ): Promise<AgencyResult> {
+  const section = options.section ?? 'forsale';
+
+  // Read what we already hold before asking for a scrape. Scraping is platform-admin
+  // only — it drives a real browser — so going straight to it made the agency page 401
+  // for everyone else, even when the data was sitting in our own database.
+  if (!options.refresh) {
+    const parsed = /^\d+$/.test(input.trim())
+      ? input.trim()
+      : (input.match(/\/agency\/(\d+)/)?.[1] ?? null);
+
+    if (parsed) {
+      const cached = await fetchCached(parsed, section);
+      if (cached) return cached;
+    }
+  }
+
   const started = await startScrape(input, options.section, options.refresh ?? false);
   if (started.status === 'done' && started.result) return started.result;
   if (!started.jobId) throw new Error('The server did not start a scrape job.');
