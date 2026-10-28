@@ -236,8 +236,43 @@ boundary; the filter is a second line, and it is what protects these routes unti
 policies are applied.
 
 `APP_DATABASE_URL` selects the non-owner role. While it is unset the server logs a warning
-and tenant queries run as the owner, which means RLS does not apply — fine before the
-policy migration, not after.
+and tenant queries run as the owner, which means RLS does not apply.
+
+### The policies
+
+`prisma/migrations/*_rls_policies/migration.sql`, hand-written because Prisma does not
+model policies. Every tenant table is `ENABLE` **and** `FORCE ROW LEVEL SECURITY` — without
+`FORCE` the owner bypasses everything and an RLS project passes all its tests while
+leaking anyway.
+
+- `Listing` — world-readable while `published` and not delisted; otherwise tenant-only.
+  That is what makes drafts invisible to the public search.
+- `Agency`, `Broker` — reads open (they are the public agency page), writes tenant-scoped.
+- `ScrapeRun`, `AgencyMembership`, `AgencyInvite`, `Lead`, `Deal` — tenant-only throughout.
+- `User`, `Session`, `AuthToken`, `AgencyClaim` — RLS on with **no policy at all**, which
+  in Postgres denies everything. The tenant client cannot read them by construction.
+
+Proven rather than asserted, against the live database:
+
+```
+drafts visible to the owning agency   1
+drafts visible to another agency      0
+drafts visible with no agency set     0
+cross-tenant UPDATE                   UPDATE 0
+cross-tenant INSERT                   ERROR: new row violates row-level security policy
+cross-tenant DELETE                   DELETE 0
+```
+
+`src/tenancy/rls-coverage.spec.ts` derives the tenant models from Prisma's DMMF and
+asserts each has RLS enabled, forced and policied, that the deny-all tables have none,
+and that `nadlan_app` is `NOBYPASSRLS` and not a superuser. **A new tenant-scoped model
+that ships without a policy fails CI.**
+
+The public search runs on the tenant client too. It used the owner client at first, which
+bypasses RLS — and a draft listing duly showed up in public results and was readable by
+id. It now carries an explicit `status: 'published'` filter as well, so results do not
+change depending on whether the visitor happens to be signed in to an agency whose drafts
+the tenant policy would also match.
 
 ## Search
 

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma, type Listing, type Section as DbSection } from '@prisma/client';
-import { PrismaService } from '../prisma/prisma.service.js';
+import { TenantPrismaService } from '../tenancy/tenant-prisma.service.js';
 import { listingRowToAsset } from '../yad2/listing-row.js';
 import type { SearchListingsDto, Sort } from './dto/search-listings.dto.js';
 
@@ -83,10 +83,18 @@ const ORDER_BY: Record<Sort, Prisma.ListingOrderByWithRelationInput[]> = {
 
 @Injectable()
 export class ListingsService {
-  constructor(private readonly prisma: PrismaService) {}
+  /**
+   * The tenant client, not the owner one. The owner bypasses row-level security, so the
+   * public search ran with no policy at all and happily returned draft listings. On this
+   * client an anonymous caller matches only `listing_public_read`.
+   */
+  constructor(private readonly prisma: TenantPrismaService) {}
 
   private where(dto: SearchListingsDto): Prisma.ListingWhereInput {
-    const where: Prisma.ListingWhereInput = {};
+    // Published only, and stated explicitly rather than left to RLS alone: results must
+    // not change depending on whether the visitor happens to be logged in to an agency
+    // whose drafts the tenant policy would also match.
+    const where: Prisma.ListingWhereInput = { status: 'published' };
 
     if (!dto.includeDelisted) where.delistedAt = null;
     if (dto.section) where.section = dto.section as DbSection;
@@ -132,9 +140,11 @@ export class ListingsService {
     const page = dto.page ?? 1;
     const pageSize = dto.pageSize ?? DEFAULT_PAGE_SIZE;
 
-    const [total, rows] = await this.prisma.$transaction([
-      this.prisma.listing.count({ where }),
-      this.prisma.listing.findMany({
+    // Promise.all, not $transaction: an authenticated request is already inside the
+    // tenant transaction the interceptor opened, and Prisma will not nest one.
+    const [total, rows] = await Promise.all([
+      this.prisma.client.listing.count({ where }),
+      this.prisma.client.listing.findMany({
         where,
         orderBy: ORDER_BY[dto.sort ?? 'newest'],
         skip: (page - 1) * pageSize,
@@ -158,14 +168,14 @@ export class ListingsService {
   /** Counts for the current filters, so a filter UI can show what each option would return. */
   private async facets(where: Prisma.ListingWhereInput) {
     const [cities, propertyTypes, amenityRows] = await Promise.all([
-      this.prisma.listing.groupBy({
+      this.prisma.client.listing.groupBy({
         by: ['city'],
         where,
         _count: { _all: true },
         orderBy: { _count: { city: 'desc' } },
         take: 30,
       }),
-      this.prisma.listing.groupBy({
+      this.prisma.client.listing.groupBy({
         by: ['propertyType'],
         where,
         _count: { _all: true },
@@ -174,11 +184,11 @@ export class ListingsService {
       }),
       // Amenities are an array column, so they are counted in application code rather
       // than grouped — the result set is already narrowed by `where`.
-      this.prisma.listing.findMany({ where, select: { amenities: true } }),
+      this.prisma.client.listing.findMany({ where, select: { amenities: true } }),
     ]);
 
     const amenityCounts = new Map<string, number>();
-    for (const row of amenityRows) {
+    for (const row of amenityRows as { amenities: string[] }[]) {
       for (const label of row.amenities) amenityCounts.set(label, (amenityCounts.get(label) ?? 0) + 1);
     }
 
@@ -200,8 +210,8 @@ export class ListingsService {
   async findById(id: string) {
     // Links minted before listings had their own public id used the yad2 token, so a
     // miss falls back to a token lookup for one release.
-    const row = await this.prisma.listing.findFirst({
-      where: { OR: [{ id }, { token: id }] },
+    const row = await this.prisma.client.listing.findFirst({
+      where: { status: 'published', delistedAt: null, OR: [{ id }, { token: id }] },
       include: { agency: { select: { id: true, name: true, licenseNumber: true, phone: true } } },
     });
     if (!row) return null;
