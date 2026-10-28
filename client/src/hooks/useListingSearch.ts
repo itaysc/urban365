@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { qk } from '@/queries/keys';
 import { searchListings } from '@/services/search';
 import type { SearchFilters, SearchResponse } from '@/types/search';
 
@@ -8,30 +9,26 @@ interface State {
   error: string | null;
 }
 
-export function useListingSearch(filters: SearchFilters) {
-  const [state, setState] = useState<State>({ status: 'idle', data: null, error: null });
-  const runId = useRef(0);
+/**
+ * The same shape the page already consumes, now backed by the cache.
+ *
+ * `keepPreviousData` is what the hand-rolled version used a `runId` ref for: the last
+ * results stay on screen while the next page loads, so the grid does not collapse and
+ * throw the scroll position on every keystroke. Out-of-order responses are handled by
+ * the cache keying on filters rather than by comparing ids.
+ */
+export function useListingSearch(filters: SearchFilters): State {
+  const { data, isPending, isError, error } = useQuery({
+    queryKey: qk.listings.search(filters),
+    queryFn: () => searchListings(filters),
+    placeholderData: keepPreviousData,
+  });
 
-  // Serialised so the effect re-runs on a real filter change, not on every render.
-  const key = JSON.stringify(filters);
+  if (isError) {
+    return { status: 'error', data: null, error: error instanceof Error ? error.message : String(error) };
+  }
 
-  useEffect(() => {
-    const id = ++runId.current;
-    // Keep the previous results on screen while the next page loads, so the grid
-    // does not collapse and bounce the scroll position on every keystroke.
-    setState((s) => ({ ...s, status: 'loading', error: null }));
+  if (isPending) return { status: 'loading', data: null, error: null };
 
-    searchListings(filters)
-      .then((data) => {
-        if (id === runId.current) setState({ status: 'done', data, error: null });
-      })
-      .catch((e: unknown) => {
-        if (id === runId.current) {
-          setState({ status: 'error', data: null, error: e instanceof Error ? e.message : String(e) });
-        }
-      });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key]);
-
-  return state;
+  return { status: 'done', data: data ?? null, error: null };
 }

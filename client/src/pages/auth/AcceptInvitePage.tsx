@@ -1,4 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { qk } from '@/queries/keys';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/auth/AuthProvider';
 import { Button } from '@/components/ui/Button';
@@ -15,29 +17,22 @@ export function AcceptInvitePage() {
   const navigate = useNavigate();
   const { user, recheck } = useAuth();
 
-  const [invite, setInvite] = useState<InvitePreview | null>(null);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({ firstName: '', lastName: '', password: '', phone: '' });
 
-  useEffect(() => {
-    if (!token) {
-      setError('הקישור אינו תקין.');
-      setLoading(false);
-      return;
-    }
+  const { data: invite = null, isPending, isError } = useQuery({
+    queryKey: qk.invite(token),
+    queryFn: () => fetchInvite(token),
+    enabled: token !== '',
+    // A bad or expired token is an answer, not a transport failure.
+    retry: false,
+    // Single-use: never serve a second read from cache.
+    staleTime: 0,
+    gcTime: 0,
+  });
 
-    let cancelled = false;
-    void fetchInvite(token)
-      .then((result) => !cancelled && setInvite(result))
-      .catch((e) => !cancelled && setError(errorMessageOf(e, 'ההזמנה אינה תקפה או שפג תוקפה.')))
-      .finally(() => !cancelled && setLoading(false));
-
-    return () => {
-      cancelled = true;
-    };
-  }, [token]);
+  const loading = token !== '' && isPending;
 
   const set = (key: keyof typeof form, value: string) => setForm((f) => ({ ...f, [key]: value }));
 
@@ -75,7 +70,10 @@ export function AcceptInvitePage() {
 
   if (!invite) {
     return (
-      <AuthLayout title="ההזמנה אינה תקפה" subtitle={error ?? undefined}>
+      <AuthLayout
+        title="ההזמנה אינה תקפה"
+        subtitle={error ?? (isError || !token ? 'ההזמנה אינה תקפה או שפג תוקפה.' : undefined)}
+      >
         <Link to="/" className="text-sm text-blue-700 hover:underline">
           חזרה לחיפוש
         </Link>

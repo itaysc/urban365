@@ -1,4 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { qk } from '@/queries/keys';
 import { useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/Button';
 import { Field, inputClass } from '@/components/ui/Field';
@@ -41,33 +43,34 @@ export function LeadsPage() {
   const status = isStatus(statusParam) ? statusParam : undefined;
   const page = Math.max(1, Number(params.get('page') ?? 1) || 1);
 
-  const [data, setData] = useState<{ items: Lead[]; total: number; totalPages: number } | null>(null);
-  const [counts, setCounts] = useState<Partial<Record<LeadStatus, number>>>({});
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
+  const queryClient = useQueryClient();
 
-  const load = useCallback(() => {
-    setLoading(true);
-    void Promise.all([fetchLeads({ status, page }), fetchLeadCounts()])
-      .then(([leads, c]) => {
-        setData(leads);
-        setCounts(c);
-        setError(null);
-      })
-      .catch((e) => setError(errorMessageOf(e, 'לא הצלחנו לטעון את הפניות.')))
-      .finally(() => setLoading(false));
-  }, [status, page]);
+  const { data, isPending } = useQuery({
+    queryKey: qk.leads.list(status, page),
+    queryFn: () => fetchLeads({ status, page }),
+  });
 
-  useEffect(load, [load]);
+  // Its own key: the tab counts are shown alongside every page of the list, so they
+  // would be refetched on each page change if they shared one.
+  const { data: counts = {} } = useQuery({
+    queryKey: qk.leads.counts,
+    queryFn: fetchLeadCounts,
+  });
+
+  const loading = isPending;
+
+  /** Both the list and the counts move whenever a lead does. */
+  const reload = () => queryClient.invalidateQueries({ queryKey: qk.leads.all });
 
   const changeStatus = async (lead: Lead, next: LeadStatus) => {
     try {
       await updateLead(lead.id, { status: next });
       toast.success('הסטטוס עודכן.');
-      load();
+      await reload();
     } catch (e) {
       const message = errorMessageOf(e, 'העדכון נכשל.');
       setError(message);
@@ -79,7 +82,7 @@ export function LeadsPage() {
     try {
       await deleteLead(lead.id);
       toast.success('הפנייה נמחקה.');
-      load();
+      await reload();
     } catch (e) {
       const message = errorMessageOf(e, 'המחיקה נכשלה.');
       setError(message);
@@ -96,7 +99,7 @@ export function LeadsPage() {
       // The panel below keeps the per-row detail; the toast is just the headline, since
       // the panel can be well below the fold on a long inbox.
       toast.success(`יובאו ${result.imported} פניות.`);
-      load();
+      await reload();
     } catch (e) {
       const message = errorMessageOf(e, 'היבוא נכשל.');
       setError(message);
@@ -158,7 +161,7 @@ export function LeadsPage() {
           onCreated={() => {
             setAdding(false);
             toast.success('הפנייה נוספה.');
-            load();
+            void reload();
           }}
           onError={setError}
         />

@@ -1,4 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { qk } from '@/queries/keys';
 import { Button } from '@/components/ui/Button';
 import { Field, inputClass } from '@/components/ui/Field';
 import { useToast } from '@/components/ui/Toast';
@@ -25,26 +27,20 @@ const STAGE_TINT: Record<DealStage, string> = {
 
 export function DealsPage() {
   const toast = useToast();
-  const [board, setBoard] = useState<DealBoard | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
+  const queryClient = useQueryClient();
 
-  const load = useCallback(() => {
-    void fetchDealBoard()
-      .then((b) => {
-        setBoard(b);
-        setError(null);
-      })
-      .catch((e) => setError(errorMessageOf(e, 'לא הצלחנו לטעון את העסקאות.')));
-  }, []);
+  const { data: board } = useQuery({ queryKey: qk.deals.board, queryFn: fetchDealBoard });
 
-  useEffect(load, [load]);
+  const reload = () => queryClient.invalidateQueries({ queryKey: qk.deals.all });
+
 
   const move = async (deal: Deal, stage: DealStage) => {
     try {
       await updateDeal(deal.id, { stage });
       toast.success('השלב עודכן.');
-      load();
+      await reload();
     } catch (e) {
       const message = errorMessageOf(e, 'העדכון נכשל.');
       setError(message);
@@ -56,7 +52,7 @@ export function DealsPage() {
     try {
       await deleteDeal(deal.id);
       toast.success('העסקה נמחקה.');
-      load();
+      await reload();
     } catch (e) {
       const message = errorMessageOf(e, 'המחיקה נכשלה.');
       setError(message);
@@ -80,7 +76,7 @@ export function DealsPage() {
           onCreated={() => {
             setAdding(false);
             toast.success('העסקה נוספה.');
-            load();
+            void reload();
           }}
           onError={setError}
         />

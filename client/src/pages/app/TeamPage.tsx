@@ -1,4 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { qk } from '@/queries/keys';
 import { useAuth } from '@/auth/AuthProvider';
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
@@ -23,10 +25,14 @@ const ROLE_LABEL: Record<AgencyRole, string> = { owner: 'בעלים', agent: 'ס
 export function TeamPage() {
   const { user } = useAuth();
   const toast = useToast();
-  const [members, setMembers] = useState<TeamMember[]>([]);
-  const [invites, setInvites] = useState<TeamInvite[]>([]);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+
+  const { data, isPending: loading } = useQuery({ queryKey: qk.team.list, queryFn: fetchTeam });
+  const members = data?.members ?? [];
+  const invites = data?.invites ?? [];
+
+  const reload = () => queryClient.invalidateQueries({ queryKey: qk.team.all });
   const [toRemove, setToRemove] = useState<TeamMember | null>(null);
 
   const [email, setEmail] = useState('');
@@ -36,19 +42,6 @@ export function TeamPage() {
   // Only an owner may manage the team; an agent sees the roster read-only.
   const canManage = user?.agency?.role === 'owner' || user?.platformRole === 'admin';
 
-  const load = useCallback(() => {
-    setLoading(true);
-    void fetchTeam()
-      .then(({ members: m, invites: i }) => {
-        setMembers(m);
-        setInvites(i);
-        setError(null);
-      })
-      .catch((e) => setError(errorMessageOf(e, 'לא הצלחנו לטעון את הצוות.')))
-      .finally(() => setLoading(false));
-  }, []);
-
-  useEffect(load, [load]);
 
   const submitInvite = async () => {
     setInviting(true);
@@ -57,7 +50,7 @@ export function TeamPage() {
       await inviteMember(email.trim(), role);
       toast.success(`נשלחה הזמנה ל${email.trim()}.`);
       setEmail('');
-      load();
+      await reload();
     } catch (e) {
       const message = errorMessageOf(e, 'שליחת ההזמנה נכשלה.');
       setError(message);
@@ -72,7 +65,7 @@ export function TeamPage() {
     try {
       await fn();
       if (done) toast.success(done);
-      load();
+      await reload();
     } catch (e) {
       const message = errorMessageOf(e, fallback);
       setError(message);

@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { qk } from '@/queries/keys';
 import { useAuth } from '@/auth/AuthProvider';
 import { Yad2ImportPanel } from '@/components/agency/Yad2ImportPanel';
 import { Button } from '@/components/ui/Button';
@@ -18,9 +20,9 @@ import {
 export function AgencyProfilePage() {
   const toast = useToast();
   const { refresh } = useAuth();
+  const queryClient = useQueryClient();
   const [profile, setProfile] = useState<AgencyProfile | null>(null);
   const [form, setForm] = useState({ name: '', description: '', phone: '', contactEmail: '' });
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -36,18 +38,20 @@ export function AgencyProfilePage() {
     });
   };
 
+  const { data: fetched, isPending: loading, isError } = useQuery({
+    queryKey: qk.agency.profile,
+    queryFn: fetchAgencyProfile,
+  });
+
+  // The form is a draft the user is editing, so it is seeded from the query rather than
+  // bound to it — re-reading mid-edit would discard their typing.
   useEffect(() => {
-    let cancelled = false;
+    if (fetched) apply(fetched);
+  }, [fetched]);
 
-    void fetchAgencyProfile()
-      .then((p) => !cancelled && apply(p))
-      .catch((e) => !cancelled && setError(errorMessageOf(e, 'לא הצלחנו לטעון את פרטי הסוכנות.')))
-      .finally(() => !cancelled && setLoading(false));
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  useEffect(() => {
+    if (isError) setError('לא הצלחנו לטעון את פרטי הסוכנות.');
+  }, [isError]);
 
   const set = (key: keyof typeof form, value: string) => {
     setForm((f) => ({ ...f, [key]: value }));
@@ -60,6 +64,7 @@ export function AgencyProfilePage() {
     try {
       const updated = await updateAgencyProfile(form);
       setProfile((p) => (p ? { ...p, ...updated } : p));
+      await queryClient.invalidateQueries({ queryKey: qk.agency.all });
       // The agency name is shown from the auth context — the nav bar, the pending page,
       // the team screen — and that is a separate copy of the record. Without re-reading
       // it, renaming the agency here left the old name everywhere else until a reload.
@@ -81,6 +86,7 @@ export function AgencyProfilePage() {
     try {
       const updated = await uploadAgencyCover(file);
       setProfile((p) => (p ? { ...p, ...updated } : p));
+      await queryClient.invalidateQueries({ queryKey: qk.agency.all });
       toast.success('תמונת הנושא עודכנה.');
     } catch (e) {
       const message = errorMessageOf(e, 'העלאת התמונה נכשלה.');
@@ -97,6 +103,7 @@ export function AgencyProfilePage() {
       // remove the object, which a plain field update would leave behind.
       const { data } = await removeAgencyCover();
       setProfile((p) => (p ? { ...p, ...data } : p));
+      await queryClient.invalidateQueries({ queryKey: qk.agency.all });
       toast.success('תמונת הנושא הוסרה.');
     } catch (e) {
       const message = errorMessageOf(e, 'לא הצלחנו להסיר את התמונה.');
@@ -129,7 +136,8 @@ export function AgencyProfilePage() {
           public home page, where anyone could point it at any yad2 id. */}
       <Yad2ImportPanel
         onImported={() => {
-          void fetchAgencyProfile().then(apply).catch(() => undefined);
+          void queryClient.invalidateQueries({ queryKey: qk.agency.all });
+          void queryClient.invalidateQueries({ queryKey: qk.listings.all });
         }}
       />
 

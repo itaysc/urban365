@@ -1,4 +1,6 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useMemo, type ReactNode } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { qk } from '@/queries/keys';
 import { setSessionLostHandler, tryRefresh } from '@/services/api';
 import * as authApi from '@/services/auth';
 import type { AuthUser, SignupInput } from '@/types/auth';
@@ -27,45 +29,68 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 /**
- * One source of truth. The reference project mirrors its store into React state and then
- * silently stops propagating updates; this keeps the user in exactly one place.
+ * The user is a cache entry under `qk.me`, not a second copy in component state.
+ *
+ * That is the whole point of the change: anything that writes to the user — renaming an
+ * agency, uploading an avatar, approving a claim — invalidates `qk.me` at the mutation
+ * site, and every reader updates. Previously each of those had to remember to call
+ * `refresh()`, and twice it did not: the dashboard 403'd after self-approval, and a
+ * renamed agency kept its old name in the nav.
+ *
+ * The context stays so `useAuth()` keeps working everywhere; it is now a thin facade
+ * over the cache rather than a store of its own.
  */
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
 
-  const refresh = useCallback(async () => {
-    setUser(await authApi.fetchMe());
-  }, []);
+  const { data, isPending } = useQuery({
+    queryKey: qk.me,
+    queryFn: authApi.fetchMe,
+    // `fetchMe` already turns a 401 into null — being logged out is an answer, not a
+    // failure — so there is nothing here worth retrying.
+    retry: false,
+    // The session outlives any staleness window; writes invalidate it explicitly.
+    staleTime: Infinity,
+  });
 
-  useEffect(() => {
-    void refresh().finally(() => setLoading(false));
-  }, [refresh]);
+  const user = data ?? null;
 
   // When a refresh fails for good, drop the user so the guards bounce to /login.
   useEffect(() => {
-    setSessionLostHandler(() => setUser(null));
+    setSessionLostHandler(() => queryClient.setQueryData(qk.me, null));
     return () => setSessionLostHandler(null);
-  }, []);
+  }, [queryClient]);
 
-  const value = useMemo<AuthContextValue>(
-    () => ({
+  const value = useMemo<AuthContextValue>(() => {
+    // Writing the response straight into the cache rather than invalidating: login and
+    // signup already return the user, so a refetch would be a second round trip for
+    // something we are holding.
+    const setUser = (next: AuthUser | null) => queryClient.setQueryData(qk.me, next);
+
+    const refresh = async () => {
+      await queryClient.invalidateQueries({ queryKey: qk.me });
+    };
+
+    return {
       user,
-      loading,
+      loading: isPending,
       login: async (email, password) => setUser(await authApi.login(email, password)),
       signup: async (input) => setUser(await authApi.signup(input)),
       logout: async () => {
         await authApi.logout().catch(() => undefined);
         setUser(null);
+        // Everything else in the cache belongs to the account that just left.
+        queryClient.clear();
       },
       refresh,
       recheck: async () => {
         await tryRefresh();
-        await refresh();
+        // The new token may carry a different agency, so every tenant-scoped query is
+        // suspect, not just the user.
+        await queryClient.invalidateQueries();
       },
-    }),
-    [user, loading, refresh],
-  );
+    };
+  }, [user, isPending, queryClient]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

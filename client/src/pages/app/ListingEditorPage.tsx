@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { qk } from '@/queries/keys';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ImageManager } from '@/components/listing/ImageManager';
 import { Button } from '@/components/ui/Button';
@@ -114,12 +116,12 @@ export function ListingEditorPage() {
   const { listingId } = useParams<{ listingId: string }>();
   const navigate = useNavigate();
   const toast = useToast();
+  const queryClient = useQueryClient();
   const isNew = !listingId || listingId === 'new';
 
   const [listing, setListing] = useState<ListingDetail | null>(null);
   const [form, setForm] = useState<Form>(EMPTY);
   const [amenities, setAmenities] = useState<string[]>([]);
-  const [loading, setLoading] = useState(!isNew);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -127,26 +129,32 @@ export function ListingEditorPage() {
   /** Held while the duplicate prompt is open, so "add anyway" can retry the same save. */
   const [duplicate, setDuplicate] = useState<{ message: string; status?: 'draft' | 'published' } | null>(null);
 
+  const { data: fetched, isPending, isError } = useQuery({
+    queryKey: qk.listings.detail(listingId ?? ''),
+    queryFn: () => fetchListing(listingId!),
+    enabled: !isNew,
+  });
+
+  /**
+   * The form is still local state, deliberately: it is a draft the user is editing, not
+   * server data, and overwriting it from the cache mid-edit would discard their typing.
+   * It is seeded from the query once, and again whenever the server returns a new
+   * version after a save.
+   */
   useEffect(() => {
-    if (isNew) return;
+    if (!fetched) return;
+    setListing(fetched);
+    setForm(toForm(fetched));
+    setAmenities(fetched.amenities ?? []);
+  }, [fetched]);
 
-    let cancelled = false;
-    setLoading(true);
+  // Derived, not mirrored into state: a second copy of something Query already tracks
+  // is one more thing that can disagree with it.
+  const loading = !isNew && isPending;
 
-    void fetchListing(listingId)
-      .then((result) => {
-        if (cancelled) return;
-        setListing(result);
-        setForm(toForm(result));
-        setAmenities(result.amenities ?? []);
-      })
-      .catch((e) => !cancelled && setError(errorMessageOf(e, 'הנכס לא נמצא.')))
-      .finally(() => !cancelled && setLoading(false));
-
-    return () => {
-      cancelled = true;
-    };
-  }, [isNew, listingId]);
+  useEffect(() => {
+    if (isError) setError('הנכס לא נמצא.');
+  }, [isError]);
 
   const set = (key: string, value: string) => {
     setForm((f) => ({ ...f, [key]: value }));
@@ -173,6 +181,9 @@ export function ListingEditorPage() {
 
       if (isNew) {
         const created = await createListing(input);
+        // Invalidation sits with the write. Every list of this agency's listings is now
+        // wrong, and `qk.listings.all` is the prefix all of them share.
+        await queryClient.invalidateQueries({ queryKey: qk.listings.all });
         toast.success(status === 'published' ? 'הנכס נוצר ופורסם.' : 'הנכס נוצר.');
         // replace, not push: Back from a saved listing should reach the list, not the
         // empty form that no longer applies.
@@ -181,6 +192,10 @@ export function ListingEditorPage() {
       }
 
       const updated = await updateListing(listingId, input);
+      // The response is the new truth, so it goes into the cache rather than prompting
+      // a refetch of the row we are holding; the lists still need re-reading.
+      queryClient.setQueryData(qk.listings.detail(listingId), updated);
+      await queryClient.invalidateQueries({ queryKey: qk.listings.all });
       setListing(updated);
       setForm(toForm(updated));
       setSaved(true);
@@ -208,6 +223,7 @@ export function ListingEditorPage() {
     setConfirmArchive(false);
     try {
       await archiveListing(listingId!);
+      await queryClient.invalidateQueries({ queryKey: qk.listings.all });
       toast.success('הנכס הועבר לארכיון.');
       navigate('/app/listings?status=archived');
     } catch (e) {

@@ -1,4 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { qk } from '@/queries/keys';
 import { useAuth } from '@/auth/AuthProvider';
 import { Button } from '@/components/ui/Button';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
@@ -47,18 +49,16 @@ function applicantsOf(agency: PendingAgency): Applicant[] {
 
 export function ModerationPage() {
   const { user, recheck } = useAuth();
-  const [agencies, setAgencies] = useState<PendingAgency[] | null>(null);
+  const queryClient = useQueryClient();
+  const { data: agencies = null } = useQuery({
+    queryKey: qk.admin.moderation,
+    queryFn: fetchPendingAgencies,
+  });
+
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [toReject, setToReject] = useState<PendingReject>(null);
 
-  const load = useCallback(() => {
-    void fetchPendingAgencies()
-      .then(setAgencies)
-      .catch(() => setError('לא הצלחנו לטעון את התור.'));
-  }, []);
-
-  useEffect(load, [load]);
 
   /**
    * `affectsMe` is set when the decision is about the admin's own agency, which is the
@@ -73,8 +73,9 @@ export function ModerationPage() {
     setError(null);
     try {
       await action();
+      // `recheck` already invalidates everything, so this is for the other case.
       if (affectsMe) await recheck();
-      load();
+      else await queryClient.invalidateQueries({ queryKey: qk.admin.all });
     } catch {
       setError('הפעולה נכשלה.');
     } finally {

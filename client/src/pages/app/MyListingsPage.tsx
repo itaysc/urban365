@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { qk } from '@/queries/keys';
 import { Pagination } from '@/components/Pagination';
 import { formatPrice } from '@/lib/format';
-import { fetchMyListings, type ListingStatus, type MyListingsPage as Page } from '@/services/agency';
+import { fetchMyListings, type ListingStatus } from '@/services/agency';
 
 /**
  * `label` filters a set, `badge` describes one row — so they differ in number. Reusing
@@ -29,32 +30,17 @@ export function MyListingsPage() {
   const status: ListingStatus = isStatus(statusParam) ? statusParam : 'published';
   const page = Math.max(1, Number(params.get('page') ?? 1) || 1);
 
-  const [data, setData] = useState<Page | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // The key carries the filters, so switching tab or page is a different cache entry
+  // rather than a refetch into shared state — and going back to one already fetched is
+  // instant. The `cancelled` flag the effect needed is gone: Query ignores the result
+  // of a query whose key is no longer mounted.
+  const { data, isPending, isError } = useQuery({
+    queryKey: qk.listings.mine(status, page),
+    queryFn: () => fetchMyListings({ status, page }),
+  });
 
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-
-    void fetchMyListings({ status, page })
-      .then((result) => {
-        if (!cancelled) {
-          setData(result);
-          setError(null);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) setError('לא הצלחנו לטעון את הנכסים.');
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [status, page]);
+  const loading = isPending;
+  const error = isError ? 'לא הצלחנו לטעון את הנכסים.' : null;
 
   // Changing a tab resets paging; `replace` keeps Back out of a tab-by-tab history.
   const selectStatus = (next: ListingStatus) =>
