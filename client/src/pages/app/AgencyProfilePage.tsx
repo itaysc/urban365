@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useAuth } from '@/auth/AuthProvider';
 import { Yad2ImportPanel } from '@/components/agency/Yad2ImportPanel';
 import { Button } from '@/components/ui/Button';
 import { Dropzone } from '@/components/ui/Dropzone';
@@ -16,6 +17,7 @@ import {
 /** The agency's own public page: the banner and the description shown to visitors. */
 export function AgencyProfilePage() {
   const toast = useToast();
+  const { refresh } = useAuth();
   const [profile, setProfile] = useState<AgencyProfile | null>(null);
   const [form, setForm] = useState({ name: '', description: '', phone: '', contactEmail: '' });
   const [loading, setLoading] = useState(true);
@@ -58,6 +60,10 @@ export function AgencyProfilePage() {
     try {
       const updated = await updateAgencyProfile(form);
       setProfile((p) => (p ? { ...p, ...updated } : p));
+      // The agency name is shown from the auth context — the nav bar, the pending page,
+      // the team screen — and that is a separate copy of the record. Without re-reading
+      // it, renaming the agency here left the old name everywhere else until a reload.
+      await refresh();
       setSaved(true);
       toast.success('פרטי הסוכנות נשמרו.');
     } catch (e) {
