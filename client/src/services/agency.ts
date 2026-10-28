@@ -245,7 +245,12 @@ export async function fetchImportJob(jobId: string): Promise<ImportJob> {
 }
 
 /** Your own details — any member may change these, unlike the team routes. */
-export const updateMyProfile = (input: { firstName?: string; lastName?: string; phone?: string }) =>
+export const updateMyProfile = (input: {
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
+  bio?: string;
+}) =>
   api.patch<{ id: string; firstName: string; lastName: string; phone: string | null }>('/my/team/me', input);
 
 export async function uploadMyAvatar(file: File): Promise<{ id: string; avatarUrl: string | null }> {

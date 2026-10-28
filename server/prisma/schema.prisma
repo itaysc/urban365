@@ -291,6 +291,9 @@ model User {
   /// private bucket under `avatarStorageKey`. Null means fall back to initials.
   avatarUrl        String?
   avatarStorageKey String?
+  /// A short self-description shown beside this agent's listings. Capped in the DTO at
+  /// BIO_MAX_LENGTH; the column is unbounded so raising the cap needs no migration.
+  bio              String?
 
   emailVerifiedAt DateTime?
   /// null = ordinary user. Set by seed or SQL only, never through an API.

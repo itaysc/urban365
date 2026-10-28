@@ -1,5 +1,11 @@
 import { IsEmail, IsIn, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
 
+/**
+ * 600 characters: room for three or four sentences about the areas and property types
+ * an agent covers, without the profile turning into an essay a buyer will not read.
+ */
+export const BIO_MAX_LENGTH = 600;
+
 export const AGENCY_ROLES = ['owner', 'agent'] as const;
 export type AgencyRoleValue = (typeof AGENCY_ROLES)[number];
 
@@ -25,6 +31,8 @@ export class AcceptInviteDto {
   @IsOptional() @IsString() @MinLength(10, { message: 'הסיסמה צריכה להיות באורך 10 תווים לפחות.' }) @MaxLength(200)
   password?: string;
   @IsOptional() @IsString() @MaxLength(40) phone?: string;
+  /** An empty string clears it. */
+  @IsOptional() @IsString() @MaxLength(BIO_MAX_LENGTH) bio?: string;
 }
 
 /** What a member may change about themselves, whatever their role. */
@@ -36,4 +44,6 @@ export class UpdateMyProfileDto {
    * preference to the agency switchboard. An empty string clears it.
    */
   @IsOptional() @IsString() @MaxLength(40) phone?: string;
+  /** An empty string clears it. */
+  @IsOptional() @IsString() @MaxLength(BIO_MAX_LENGTH) bio?: string;
 }

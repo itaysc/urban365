@@ -10,6 +10,7 @@ export interface AuthUser {
   lastName: string;
   phone: string | null;
   avatarUrl: string | null;
+  bio: string | null;
   emailVerified: boolean;
   platformRole: PlatformRole | null;
   agency: {

@@ -1,10 +1,14 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useAuth } from '@/auth/AuthProvider';
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
-import { Dropzone } from '@/components/ui/Dropzone';
+import { IMAGE_TYPES } from '@/components/ui/Dropzone';
 import { Field, inputClass } from '@/components/ui/Field';
 import { useToast } from '@/components/ui/Toast';
+import { Camera } from 'lucide-react';
+
+/** Mirrors BIO_MAX_LENGTH on the server; the DTO is what actually enforces it. */
+const BIO_MAX_LENGTH = 600;
 import { errorMessageOf } from '@/lib/apiError';
 import { removeMyAvatar, updateMyProfile, uploadMyAvatar } from '@/services/agency';
 
@@ -21,9 +25,11 @@ export function MyProfilePage() {
     firstName: user?.firstName ?? '',
     lastName: user?.lastName ?? '',
     phone: user?.phone ?? '',
+    bio: user?.bio ?? '',
   });
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const fileInput = useRef<HTMLInputElement>(null);
 
   const set = (key: keyof typeof form, value: string) => setForm((f) => ({ ...f, [key]: value }));
 
@@ -73,28 +79,58 @@ export function MyProfilePage() {
         <h2 className="text-sm font-semibold text-slate-900">תמונת פרופיל</h2>
 
         <div className="flex items-center gap-4">
-          <Avatar
-            size="lg"
-            src={user?.avatarUrl}
-            firstName={user?.firstName}
-            lastName={user?.lastName}
+          <input
+            ref={fileInput}
+            type="file"
+            accept={IMAGE_TYPES.join(',')}
+            hidden
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              // Cleared so choosing the same file twice still fires a change event.
+              e.target.value = '';
+              if (file) void upload(file);
+            }}
           />
-          <p className="text-xs text-slate-500">
-            {user?.avatarUrl ? 'התמונה מוצגת לצד הנכסים שלך.' : 'ללא תמונה מוצגות ראשי התיבות שלך.'}
-          </p>
-        </div>
 
-        <Dropzone disabled={uploading} onFiles={(files) => void upload(files[0])}>
-          {uploading ? 'מעלה…' : 'גררו תמונה לכאן או לחצו לבחירה'}
-        </Dropzone>
+          {/* The picture is the control. A dropzone the size of the form was a lot of
+              chrome for one 80px image. */}
+          <button
+            type="button"
+            disabled={uploading}
+            onClick={() => fileInput.current?.click()}
+            aria-label={user?.avatarUrl ? 'החלפת תמונת הפרופיל' : 'העלאת תמונת פרופיל'}
+            className="group relative rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-offset-2 disabled:opacity-60"
+          >
+            <Avatar
+              size="lg"
+              src={user?.avatarUrl}
+              firstName={user?.firstName}
+              lastName={user?.lastName}
+            />
 
-        {user?.avatarUrl && (
-          <div>
-            <Button variant="ghost" onClick={() => void remove()}>
-              הסר תמונה
-            </Button>
+            <span className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50 text-white opacity-0 transition group-hover:opacity-100 group-focus-visible:opacity-100">
+              <Camera size={22} aria-hidden />
+            </span>
+          </button>
+
+          <div className="flex flex-col gap-1">
+            <p className="text-xs text-slate-500">
+              {uploading
+                ? 'מעלה…'
+                : user?.avatarUrl
+                  ? 'התמונה מוצגת לצד הנכסים שלך. לחצו עליה כדי להחליף.'
+                  : 'ללא תמונה מוצגות ראשי התיבות שלך. לחצו על העיגול כדי להעלות.'}
+            </p>
+
+            {user?.avatarUrl && (
+              <div>
+                <Button variant="ghost" className="px-0" onClick={() => void remove()}>
+                  הסר תמונה
+                </Button>
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </section>
 
       <section className="grid gap-4 rounded-xl border border-slate-200 bg-white p-4 sm:grid-cols-2">
@@ -117,6 +153,29 @@ export function MyProfilePage() {
           <input id="me-phone" type="tel" dir="ltr" className={inputClass} value={form.phone}
                  onChange={(e) => set('phone', e.target.value)} placeholder="050-0000000" />
         </Field>
+
+        <div className="sm:col-span-2">
+          <Field label="קצת עליי" htmlFor="me-bio">
+            <textarea
+              id="me-bio"
+              rows={4}
+              // Belt and braces with the server's own limit: `maxLength` stops the typing,
+              // the counter explains why, and the DTO refuses anything that gets past both.
+              maxLength={BIO_MAX_LENGTH}
+              className={inputClass}
+              value={form.bio}
+              onChange={(e) => set('bio', e.target.value)}
+              placeholder="באילו אזורים אתם פועלים, באילו סוגי נכסים אתם מתמחים, כמה שנים בתחום."
+            />
+          </Field>
+          <p
+            className={`mt-1 text-xs ${
+              form.bio.length >= BIO_MAX_LENGTH ? 'text-amber-700' : 'text-slate-400'
+            }`}
+          >
+            {form.bio.length}/{BIO_MAX_LENGTH}
+          </p>
+        </div>
 
         <div className="sm:col-span-2">
           <p className="mb-3 text-xs text-slate-500">
