@@ -107,6 +107,9 @@ export class AuthService {
         data: {
           email,
           passwordHash,
+          // Stated, not left to the column default — which is `buyer`, so an agency
+          // signup silently produced a consumer account.
+          accountType: 'agency',
           firstName: dto.firstName.trim(),
           lastName: dto.lastName.trim(),
           phone: dto.phone?.trim() || null,
@@ -150,6 +153,51 @@ export class AuthService {
 
     await this.sendVerificationEmail(user.id, email, user.firstName);
     this.logger.log(`Signed up ${email}`);
+    return this.issue(user, meta);
+  }
+
+  /**
+   * A consumer account. Everything the agency signup does about agencies is absent —
+   * no membership, no claim, no moderation — which is the whole difference. Identity
+   * still lives in `User`, so there is one login, one session family and one reset flow.
+   */
+  async signupBuyer(
+    dto: { email: string; password: string; firstName: string; lastName: string; phone?: string },
+    meta: RequestMeta,
+  ): Promise<AuthResult> {
+    const email = normalizeEmail(dto.email);
+
+    const existing = await this.prisma.user.findUnique({ where: { email } });
+    if (existing) {
+      // Same anti-enumeration answer as the agency path: the response must not confirm
+      // that an address is registered, so the owner is told out of band instead.
+      const app = this.mail.appUrl;
+      void this.mail.send({
+        to: email,
+        ...accountExistsTemplate(`${app}/login`, `${app}/forgot-password`),
+      });
+      throw new BadRequestException('אם הכתובת הזו אינה רשומה, נשלח אליה אימייל להמשך ההרשמה.');
+    }
+
+    const passwordHash = await this.passwords.hash(dto.password);
+
+    const user = await this.prisma.user.create({
+      data: {
+        email,
+        passwordHash,
+        accountType: 'buyer',
+        firstName: dto.firstName.trim(),
+        lastName: dto.lastName.trim(),
+        phone: dto.phone?.trim() || null,
+        // Created eagerly here, unlike the lazy path in BuyerService: a consumer who
+        // just signed up is about to use it.
+        buyerProfile: { create: {} },
+      },
+      include: this.include,
+    });
+
+    await this.sendVerificationEmail(user.id, email, user.firstName);
+    this.logger.log(`Buyer signed up ${email}`);
     return this.issue(user, meta);
   }
 

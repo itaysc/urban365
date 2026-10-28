@@ -23,6 +23,7 @@ import { LoginDto } from './dto/login.dto.js';
 import { ForgotPasswordDto, ResetPasswordDto, VerifyEmailDto } from './dto/password.dto.js';
 import { SignupDto } from './dto/signup.dto.js';
 import type { Principal } from './types/principal.js';
+import { BuyerSignupDto } from '../buyer/dto/buyer.dto.js';
 
 /** Tight limits on the routes worth attacking. */
 const AUTH_THROTTLE = { auth: { limit: 10, ttl: 15 * 60_000 } };
@@ -63,6 +64,25 @@ export class AuthController {
       throw new BadRequestException('אימות אנושיות נכשל. נסו שוב.');
     }
     return this.send(res, await this.auth.signup(dto, this.meta(req)));
+  }
+
+  /**
+   * Consumer signup. A separate route rather than a flag on `/signup`: the two have
+   * different required fields — an agency name or claim is mandatory there and
+   * meaningless here — and one endpoint would validate neither properly.
+   */
+  @Public()
+  @Throttle(AUTH_THROTTLE)
+  @Post('signup/buyer')
+  async signupBuyer(
+    @Body() dto: BuyerSignupDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    if (!(await this.captcha.verify(dto.captchaToken, req.ip))) {
+      throw new BadRequestException('אימות אנושיות נכשל. נסו שוב.');
+    }
+    return this.send(res, await this.auth.signupBuyer(dto, this.meta(req)));
   }
 
   @Public()

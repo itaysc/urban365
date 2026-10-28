@@ -238,7 +238,14 @@ export class TeamService {
         // dashboard that 403s until the token expires.
         await tx.user.update({
           where: { id: existing.id },
-          data: { sessionEpoch: { increment: 1 }, emailVerifiedAt: existing.emailVerifiedAt ?? new Date() },
+          data: {
+            sessionEpoch: { increment: 1 },
+            emailVerifiedAt: existing.emailVerifiedAt ?? new Date(),
+            // A buyer who accepts an agency invitation is now both. The type records
+            // what the account is *for*, and their BuyerProfile is untouched — an agent
+            // looking for their own home keeps their shortlist.
+            accountType: 'agency',
+          },
         });
 
         return { userId: existing.id, created: false };
@@ -256,6 +263,8 @@ export class TeamService {
         data: {
           email: invite.email,
           passwordHash,
+          // Joining a team by invitation is the other way to become agency staff.
+          accountType: 'agency',
           firstName: dto.firstName!.trim(),
           lastName: dto.lastName!.trim(),
           phone: dto.phone?.trim() || null,

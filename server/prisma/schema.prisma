@@ -244,6 +244,7 @@ model Listing {
   images ListingImage[]
   leads  Lead[]
   deals  Deal[]
+  saves  SavedListing[]
 
   @@index([agencyId, section])
   @@index([agencyId, status])
@@ -306,6 +307,23 @@ model User {
   lastLoginAt      DateTime?
   disabledAt       DateTime?
 
+  /// What this account is for. Explicit rather than inferred from "has a membership":
+  /// the inference is true today but silently wrong the moment a buyer is invited to an
+  /// agency, and it cannot be queried or indexed.
+  accountType AccountType @default(buyer)
+
+  /// Set when the account signed in through an identity provider. A row with a
+  /// provider and no usable password came in through Google and must not be offered a
+  /// password reset as though it had one.
+  authProvider   AuthProvider?
+  /// The provider's stable subject id. Never the email — Google addresses can change.
+  authProviderId String?
+
+  /// Present for a consumer: someone searching for a home rather than selling one.
+  /// Identity stays in this table so there is one login, one session and one reset
+  /// flow; only the consumer-specific data lives separately.
+  buyerProfile BuyerProfile?
+
   memberships      AgencyMembership[]
   sessions         Session[]
   authTokens       AuthToken[]
@@ -320,6 +338,58 @@ model User {
   updatedAt DateTime @updatedAt
 
   @@index([platformRole])
+  @@index([accountType])
+  @@unique([authProvider, authProviderId])
+}
+
+enum AuthProvider {
+  google
+}
+
+enum AccountType {
+  /// A consumer searching for a home. Has a BuyerProfile, no AgencyMembership.
+  buyer
+  /// Staff of an estate agency. Has a membership; may also have a BuyerProfile.
+  agency
+}
+
+/// Everything a buyer has that an agency member does not. Keeping it out of `User`
+/// means the consumer side can grow — alerts, search history, comparisons — without
+/// widening the table every authentication path reads on each request.
+model BuyerProfile {
+  id     String @id @default(cuid())
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String @unique
+
+  /// Free-text notes on what they are looking for; shown back to them, never public.
+  searchNotes String?
+
+  /// Notification preferences. Separate booleans rather than a JSON blob so they can
+  /// be queried — "who wants a weekly digest" is a real question.
+  notifyOnPriceDrop  Boolean @default(true)
+  notifyOnNewMatches Boolean @default(true)
+  weeklyDigest       Boolean @default(false)
+
+  savedListings SavedListing[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/// A listing a buyer kept. The join carries its own note, which is the point — "nice
+/// kitchen, bad street" is what makes a shortlist useful.
+model SavedListing {
+  id        String       @id @default(cuid())
+  profile   BuyerProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  profileId String
+  listing   Listing      @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  listingId String
+
+  note      String?
+  createdAt DateTime @default(now())
+
+  @@unique([profileId, listingId])
+  @@index([profileId, createdAt])
 }
 
 /// A user's place in an agency. A join model rather than fields on User, because a

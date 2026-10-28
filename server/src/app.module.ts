@@ -4,6 +4,7 @@ import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ClsModule } from 'nestjs-cls';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AdminModule } from './admin/admin.module.js';
+import { BuyerModule } from './buyer/buyer.module.js';
 import { CrmModule } from './crm/crm.module.js';
 import { StorageModule } from './storage/storage.module.js';
 import { AgencyModule } from './agency/agency.module.js';
@@ -23,6 +24,7 @@ import { Yad2Module } from './yad2/yad2.module.js';
 @Module({
   imports: [
     StorageModule,
+    BuyerModule,
     CrmModule,
     ConfigModule.forRoot({ isGlobal: true, load: [configuration] }),
     // In-memory, so per-instance and reset on deploy — correct for one Railway instance.

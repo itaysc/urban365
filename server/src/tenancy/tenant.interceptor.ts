@@ -39,9 +39,14 @@ export class TenantInterceptor implements NestInterceptor {
         this.cls.set('principal', principal);
         this.cls.set('agencyId', principal?.agencyId ?? undefined);
 
-        // Anonymous and agency-less requests need no transaction. The public search is
-        // the hot path and must not pay for BEGIN/COMMIT it cannot use.
-        if (!principal?.agencyId) {
+        // Anonymous requests need no transaction. The public search is the hot path and
+        // must not pay for BEGIN/COMMIT it cannot use.
+        //
+        // Note the condition is the *principal*, not the agency. A buyer is signed in
+        // with no agency at all, and their own rows — BuyerProfile, SavedListing — are
+        // scoped by `app.current_user_id`. Skipping the transaction for them left that
+        // unset, so every policy on those tables matched nothing.
+        if (!principal) {
           return firstValueOfHandler(next);
         }
 
@@ -49,7 +54,10 @@ export class TenantInterceptor implements NestInterceptor {
           async (tx) => {
             // set_config parameterises; `SET LOCAL x = $1` is not valid SQL, which is
             // how this ends up as string interpolation and then as an injection.
-            await tx.$executeRaw`SELECT set_config('app.current_agency_id', ${principal.agencyId}, true)`;
+            //
+            // The agency is an empty string for a buyer, which `app_agency_id()` turns
+            // back into NULL — so no tenant policy matches, which is exactly right.
+            await tx.$executeRaw`SELECT set_config('app.current_agency_id', ${principal.agencyId ?? ''}, true)`;
             await tx.$executeRaw`SELECT set_config('app.current_user_id', ${principal.userId}, true)`;
             await tx.$executeRaw`SELECT set_config('app.current_role', ${principal.role ?? ''}, true)`;
             await tx.$executeRaw`SELECT set_config('app.is_platform_admin', ${
