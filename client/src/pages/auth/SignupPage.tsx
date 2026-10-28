@@ -75,7 +75,7 @@ export function SignupPage() {
     <AuthLayout
       title="הרשמה"
       subtitle="פתיחת חשבון לסוכנות נדל״ן"
-      footer={<>כבר יש חשבון? <Link to="/login" className="text-blue-700 hover:underline">התחברות</Link></>}
+      footer={<>כבר יש חשבון? <Link to="/agency/login" className="text-blue-700 hover:underline">התחברות</Link></>}
     >
       <form onSubmit={formik.handleSubmit} className="flex flex-col gap-4">
         <div className="grid grid-cols-2 gap-3">

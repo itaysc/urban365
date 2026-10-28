@@ -89,7 +89,7 @@ export function LoginPage() {
         </div>
 
         <Link
-          to="/signup"
+          to="/agency/signup"
           className="rounded-lg border border-slate-300 px-4 py-2 text-center text-sm font-medium text-slate-800 transition hover:border-slate-900"
         >
           רישום סוכנות חדשה

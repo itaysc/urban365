@@ -7,6 +7,12 @@ import { config } from '@/config';
  */
 const CSRF_HEADER = { 'X-Requested-With': 'XMLHttpRequest' } as const;
 
+/**
+ * The same base the axios client uses, for the places a link has to be followed by the
+ * browser rather than fetched — the Google redirect, above all.
+ */
+export const apiBaseUrl = `${config.apiUrl}/api/v1`;
+
 export const api = axios.create({
   baseURL: `${config.apiUrl}/api/v1`,
   withCredentials: true,

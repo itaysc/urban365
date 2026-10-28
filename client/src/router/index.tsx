@@ -7,6 +7,8 @@ import { LoginPage } from '@/pages/auth/LoginPage';
 import { ResetPasswordPage } from '@/pages/auth/ResetPasswordPage';
 import { SignupPage } from '@/pages/auth/SignupPage';
 import { AcceptInvitePage } from '@/pages/auth/AcceptInvitePage';
+import { AccountLoginPage } from '@/pages/auth/AccountLoginPage';
+import { AccountSignupPage } from '@/pages/auth/AccountSignupPage';
 import { AppLayout } from '@/pages/app/AppLayout';
 import { DashboardPage } from '@/pages/app/DashboardPage';
 import { MyListingsPage } from '@/pages/app/MyListingsPage';
@@ -32,8 +34,12 @@ export const router = createBrowserRouter([
 
   // Email verification has no page of its own: the server's redirect consumes the token
   // and lands on /login?verified=1, which LoginPage reports.
-  { path: '/login', element: <LoginPage /> },
-  { path: '/signup', element: <SignupPage /> },
+  // Buyers are most people, so they get the short paths. The agency sign-in is a link
+  // from them rather than the other way round — the same arrangement yad2 uses.
+  { path: '/login', element: <AccountLoginPage /> },
+  { path: '/signup', element: <AccountSignupPage /> },
+  { path: '/agency/login', element: <LoginPage /> },
+  { path: '/agency/signup', element: <SignupPage /> },
   { path: '/forgot-password', element: <ForgotPasswordPage /> },
   { path: '/reset-password', element: <ResetPasswordPage /> },
   // Public: whoever follows the emailed link may not have an account yet.

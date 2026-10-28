@@ -17,7 +17,9 @@ import { AuthTokenService } from './auth-token.service.js';
 import { INVALID_CREDENTIALS, LOCKOUT_MINUTES, MAX_FAILED_LOGINS } from './auth.constants.js';
 import { normalizeEmail } from './normalize-email.js';
 import { PasswordService } from './password.service.js';
+import { randomBytes } from 'node:crypto';
 import { RefreshReuseError, SessionService } from './session.service.js';
+import type { GoogleIdentity } from './google.service.js';
 import { sanitizeUser, type PublicUser } from './sanitize-user.js';
 import { TokenService } from './token.service.js';
 import type { SignupDto } from './dto/signup.dto.js';
@@ -199,6 +201,86 @@ export class AuthService {
     await this.sendVerificationEmail(user.id, email, user.firstName);
     this.logger.log(`Buyer signed up ${email}`);
     return this.issue(user, meta);
+  }
+
+  /**
+   * Signs in — or creates — the account behind a verified Google identity.
+   *
+   * Matching order matters, and the second step is where this kind of flow usually goes
+   * wrong. We key on the provider subject first, because an address can change hands
+   * and the subject cannot. Falling back to the email is what lets someone who signed
+   * up with a password later use the Google button, but **only when Google says the
+   * address is verified** — otherwise anyone able to create a Google account claiming
+   * an address could take over the matching local account.
+   */
+  async loginWithGoogle(identity: GoogleIdentity, meta: RequestMeta): Promise<AuthResult> {
+    const email = normalizeEmail(identity.email);
+
+    const byProvider = await this.prisma.user.findFirst({
+      where: { authProvider: 'google', authProviderId: identity.subject },
+      include: this.include,
+    });
+
+    if (byProvider) {
+      if (byProvider.disabledAt) throw new ForbiddenException('החשבון מושבת.');
+      await this.prisma.user.update({ where: { id: byProvider.id }, data: { lastLoginAt: new Date() } });
+      return this.issue(byProvider, meta);
+    }
+
+    const byEmail = await this.prisma.user.findUnique({ where: { email }, include: this.include });
+
+    if (byEmail) {
+      if (byEmail.disabledAt) throw new ForbiddenException('החשבון מושבת.');
+      if (!identity.emailVerified) {
+        throw new BadRequestException(
+          'כתובת האימייל אינה מאומתת אצל Google. התחברו עם סיסמה, או אמתו את הכתובת ב-Google ונסו שוב.',
+        );
+      }
+
+      const linked = await this.prisma.user.update({
+        where: { id: byEmail.id },
+        data: {
+          authProvider: 'google',
+          authProviderId: identity.subject,
+          // Google vouching for the address is as good as our own verification link.
+          emailVerifiedAt: byEmail.emailVerifiedAt ?? new Date(),
+          lastLoginAt: new Date(),
+          // A linked account has proved control of the address twice over; any earlier
+          // lockout from failed password attempts is no longer meaningful.
+          failedLoginCount: 0,
+          lockedUntil: null,
+        },
+        include: this.include,
+      });
+
+      this.logger.log(`Linked Google to existing account ${email}`);
+      return this.issue(linked, meta);
+    }
+
+    if (!identity.emailVerified) {
+      throw new BadRequestException('כתובת האימייל אינה מאומתת אצל Google.');
+    }
+
+    const created = await this.prisma.user.create({
+      data: {
+        email,
+        // Never a usable password. `authProvider` is what tells the reset flow that
+        // there is nothing here to reset.
+        passwordHash: await this.passwords.hash(randomBytes(32).toString('base64url')),
+        authProvider: 'google',
+        authProviderId: identity.subject,
+        accountType: 'buyer',
+        firstName: identity.firstName || email.split('@')[0],
+        lastName: identity.lastName || '',
+        emailVerifiedAt: new Date(),
+        lastLoginAt: new Date(),
+        buyerProfile: { create: {} },
+      },
+      include: this.include,
+    });
+
+    this.logger.log(`Google signup ${email}`);
+    return this.issue(created, meta);
   }
 
   async login(emailRaw: string, password: string, meta: RequestMeta): Promise<AuthResult> {

@@ -3,6 +3,8 @@ export type PlatformRole = 'admin' | 'support';
 export type MembershipStatus = 'pending' | 'active' | 'suspended';
 export type AgencyStatus = 'unclaimed' | 'pending' | 'active' | 'rejected' | 'suspended';
 
+export type AccountType = 'buyer' | 'agency';
+
 export interface AuthUser {
   id: string;
   email: string;
@@ -12,6 +14,7 @@ export interface AuthUser {
   avatarUrl: string | null;
   bio: string | null;
   emailVerified: boolean;
+  accountType: AccountType;
   platformRole: PlatformRole | null;
   agency: {
     id: string;

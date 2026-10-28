@@ -20,6 +20,20 @@ export async function signup(input: SignupInput): Promise<AuthUser> {
   return data.user;
 }
 
+export interface BuyerSignupInput {
+  email: string;
+  password: string;
+  firstName: string;
+  lastName: string;
+  phone?: string;
+}
+
+/** Consumer signup. Separate endpoint from the agency one — different required fields. */
+export async function signupBuyer(input: BuyerSignupInput): Promise<AuthUser> {
+  const { data } = await api.post<{ user: AuthUser }>('/auth/signup/buyer', input);
+  return data.user;
+}
+
 export const logout = () => api.post('/auth/logout');
 export const forgotPassword = (email: string) => api.post('/auth/forgot-password', { email });
 export const resetPassword = (token: string, password: string) =>

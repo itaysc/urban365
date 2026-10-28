@@ -4,6 +4,8 @@ import {
   Controller,
   Get,
   HttpCode,
+  HttpException,
+  Logger,
   Post,
   Query,
   Req,
@@ -24,6 +26,7 @@ import { ForgotPasswordDto, ResetPasswordDto, VerifyEmailDto } from './dto/passw
 import { SignupDto } from './dto/signup.dto.js';
 import type { Principal } from './types/principal.js';
 import { BuyerSignupDto } from '../buyer/dto/buyer.dto.js';
+import { GoogleService } from './google.service.js';
 
 /** Tight limits on the routes worth attacking. */
 const AUTH_THROTTLE = { auth: { limit: 10, ttl: 15 * 60_000 } };
@@ -34,9 +37,12 @@ export class AuthController {
 
   private readonly appUrl: string;
 
+  private readonly logger = new Logger(AuthController.name);
+
   constructor(
     private readonly auth: AuthService,
     private readonly captcha: CaptchaService,
+    private readonly google: GoogleService,
     config: ConfigService,
   ) {
     this.appUrl = (config.get<string>('mail.appUrl') ?? '').replace(/\/$/, '');
@@ -195,4 +201,66 @@ export class AuthController {
   async me(@CurrentUser() principal: Principal) {
     return { user: await this.auth.me(principal.userId) };
   }
+
+  // ── Google ────────────────────────────────────────────────────────────────
+  // A server-side redirect flow: the code is exchanged here, never in the browser, and
+  // the result is the same cookie pair email login sets. Nothing about the session
+  // differs by how it was established.
+
+  /** Whether to offer the button at all. Public: it is asked before signing in. */
+  @Public()
+  @Get('google/available')
+  googleAvailable() {
+    return { available: this.google.isConfigured() };
+  }
+
+  @Public()
+  @Throttle(AUTH_THROTTLE)
+  @Get('google')
+  startGoogle(@Query('returnTo') returnTo: string | undefined, @Res() res: Response) {
+    // Validated before it is signed into the state, so the callback cannot be talked
+    // into bouncing the browser to another origin.
+    res.redirect(this.google.authorizationUrl(safeReturnTo(returnTo)));
+  }
+
+  /**
+   * Google sends the browser here. Errors redirect to the login page with a reason
+   * rather than rendering JSON — whoever lands here is a person, not a client.
+   */
+  @Public()
+  @Throttle(AUTH_THROTTLE)
+  @Get('google/callback')
+  async googleCallback(
+    @Query('code') code: string | undefined,
+    @Query('state') state: string | undefined,
+    @Query('error') error: string | undefined,
+    @Req() req: Request,
+    @Res() res: Response,
+  ) {
+    const appUrl = this.appUrl;
+
+    // The user pressed cancel on Google's screen. Not an error worth a message.
+    if (error || !code || !state) return res.redirect(`${appUrl}/login`);
+
+    try {
+      const { identity, returnTo } = await this.google.exchange(code, state);
+      const result = await this.auth.loginWithGoogle(identity, this.meta(req));
+      setAuthCookies(res, result, this.cookieOpts);
+      return res.redirect(`${appUrl}${safeReturnTo(returnTo)}`);
+    } catch (e) {
+      const message = e instanceof HttpException ? e.message : 'ההתחברות עם Google נכשלה.';
+      this.logger.warn(`Google callback failed: ${message}`);
+      return res.redirect(`${appUrl}/login?googleError=${encodeURIComponent(message)}`);
+    }
+  }
+}
+
+/**
+ * Where the browser may be sent after signing in. Anything that is not a plain in-app
+ * path is discarded — `//evil.com` is protocol-relative and the browser treats it as
+ * another origin, which is the classic open redirect.
+ */
+function safeReturnTo(value: string | undefined): string {
+  if (!value || !value.startsWith('/') || value.startsWith('//')) return '/';
+  return value;
 }

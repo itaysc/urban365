@@ -9,7 +9,11 @@ function Booting() {
 }
 
 /**
- * A layout route around everything that needs a session. It stashes where you were
+ * A layout route around everything that needs a session.
+ *
+ * Sends people to the AGENCY sign-in, not the consumer one: everything behind this
+ * guard is the CRM. Both pages authenticate against the same endpoint, so a buyer who
+ * lands there can still sign in — they simply have no dashboard to reach. It stashes where you were
  * going so login can send you back.
  */
 export function RequireAuth({ requireAgency = false }: { requireAgency?: boolean }) {
@@ -19,7 +23,7 @@ export function RequireAuth({ requireAgency = false }: { requireAgency?: boolean
   if (loading) return <Booting />;
 
   if (!user) {
-    return <Navigate to="/login" replace state={{ from: `${location.pathname}${location.search}` }} />;
+    return <Navigate to="/agency/login" replace state={{ from: `${location.pathname}${location.search}` }} />;
   }
 
   // Signed in, but the agency claim has not been approved yet.
@@ -37,7 +41,7 @@ export function RequireAdmin() {
 
   if (loading) return <Booting />;
   if (!user) {
-    return <Navigate to="/login" replace state={{ from: `${location.pathname}${location.search}` }} />;
+    return <Navigate to="/agency/login" replace state={{ from: `${location.pathname}${location.search}` }} />;
   }
   if (user.platformRole !== 'admin') return <Navigate to="/app" replace />;
 

@@ -44,6 +44,11 @@ export interface CaptchaConfig {
   turnstileSecret: string;
 }
 
+export interface GoogleConfig {
+  clientId: string;
+  clientSecret: string;
+}
+
 export interface StorageConfig {
   keyId: string;
   applicationKey: string;
@@ -70,6 +75,7 @@ export default (): {
   database: DatabaseConfig;
   auth: AuthConfig;
   mail: MailConfig;
+  google: GoogleConfig;
   storage: StorageConfig;
   captcha: CaptchaConfig;
   yad2: Yad2Config;
@@ -97,6 +103,10 @@ export default (): {
     appUrl: process.env.APP_URL ?? 'http://localhost:5173',
     // Defaults to the app URL, which is correct in dev where Vite proxies /api.
     apiUrl: process.env.API_URL ?? process.env.APP_URL ?? 'http://localhost:5173',
+  },
+  google: {
+    clientId: process.env.GOOGLE_CLIENT_ID ?? '',
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? '',
   },
   storage: {
     keyId: process.env.B2_KEY_ID ?? '',

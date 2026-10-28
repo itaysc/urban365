@@ -4,6 +4,7 @@ import { AuthController } from './auth.controller.js';
 import { AuthService } from './auth.service.js';
 import { AuthTokenService } from './auth-token.service.js';
 import { CaptchaService } from './captcha.service.js';
+import { GoogleService } from './google.service.js';
 import { PasswordService } from './password.service.js';
 import { SessionService } from './session.service.js';
 import { TokenService } from './token.service.js';
@@ -15,7 +16,7 @@ import { TokenService } from './token.service.js';
 @Module({
   imports: [JwtModule.register({})],
   controllers: [AuthController],
-  providers: [AuthService, PasswordService, TokenService, SessionService, AuthTokenService, CaptchaService],
+  providers: [AuthService, GoogleService, PasswordService, TokenService, SessionService, AuthTokenService, CaptchaService],
   // PasswordService is exported for the invite flow, which hashes a password for a
   // user created outside signup.
   exports: [TokenService, AuthTokenService, PasswordService],
