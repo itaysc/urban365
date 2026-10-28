@@ -207,6 +207,38 @@ agency invented at signup has nothing to return to and stays `rejected`.
 Cloudflare Turnstile guards signup and forgot-password, and is skipped entirely outside
 production or when no secret is set.
 
+## Tenancy
+
+Agency-scoped data is isolated by **Postgres row-level security**, not by filters written
+by hand in each handler. The reference project does the latter and nothing catches a
+forgotten `where` — one miss is a cross-tenant leak.
+
+- `TenantInterceptor` puts the caller in `nestjs-cls` context and, for an authenticated
+  request that has an agency, runs the **whole handler inside one transaction** with
+  `app.current_agency_id` set on it. `SET LOCAL` lives on a single connection, so a query
+  issued outside that transaction would not be scoped at all. The variables are set with
+  `set_config(...)`, which parameterises — `SET LOCAL x = $1` is not valid SQL, and that
+  is how this ends up as string interpolation and then as an injection.
+- `TenantPrismaService` connects as `nadlan_app`, which does **not** own the tables and so
+  cannot bypass policies. `PrismaService` keeps the owner role and is used only where
+  queries must cross agencies: auth, admin and the yad2 scraper. Two clients rather than
+  one flag means the choice is a visible, greppable import.
+- `prisma-tenant.extension.ts` fills in `agencyId` on writes only. It deliberately does
+  not touch reads: a query extension never fires for nested reads inside an `include`, so
+  pretending it covers reads would be the dangerous kind of half-measure.
+- Anonymous requests open no transaction. The public search is the hot path and must not
+  pay for a `BEGIN`/`COMMIT` it cannot use.
+- `TenantGuard` reads the principal off the **request**, not from CLS — Nest runs guards
+  before interceptors, so the context does not exist yet at that point in the lifecycle.
+
+Scoped routes also keep an explicit `agencyId` filter as **defence in depth**. RLS is the
+boundary; the filter is a second line, and it is what protects these routes until the
+policies are applied.
+
+`APP_DATABASE_URL` selects the non-owner role. While it is unset the server logs a warning
+and tenant queries run as the owner, which means RLS does not apply — fine before the
+policy migration, not after.
+
 ## Search
 
 `GET /api/v1/listings/search` — faceted search across every agency held, read from the

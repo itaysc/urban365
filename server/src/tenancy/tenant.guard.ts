@@ -1,17 +1,21 @@
 import { CanActivate, ExecutionContext, ForbiddenException, Injectable } from '@nestjs/common';
-import { RequestContextService } from './request-context.service.js';
+import type { Request } from 'express';
+import type { Principal } from '../auth/types/principal.js';
 
 /**
  * Put on any controller whose every route is scoped to one agency. It turns "my
  * membership is still pending" into a clear 403 rather than an empty result set that
  * looks like a bug.
+ *
+ * It reads the principal off the request, **not** from CLS: Nest runs guards before
+ * interceptors, so the tenant context does not exist yet at this point in the lifecycle.
  */
 @Injectable()
 export class TenantGuard implements CanActivate {
-  constructor(private readonly context: RequestContextService) {}
+  canActivate(ctx: ExecutionContext): boolean {
+    const { principal } = ctx.switchToHttp().getRequest<Request & { principal?: Principal }>();
 
-  canActivate(_ctx: ExecutionContext): boolean {
-    if (!this.context.getAgencyId()) {
+    if (!principal?.agencyId) {
       throw new ForbiddenException('החשבון עדיין לא משויך לסוכנות מאושרת.');
     }
     return true;
