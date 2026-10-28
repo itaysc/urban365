@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useAuth } from '@/auth/AuthProvider';
 import { Button } from '@/components/ui/Button';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { formatDate } from '@/lib/format';
@@ -45,6 +46,7 @@ function applicantsOf(agency: PendingAgency): Applicant[] {
 }
 
 export function ModerationPage() {
+  const { user, recheck } = useAuth();
   const [agencies, setAgencies] = useState<PendingAgency[] | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -58,11 +60,20 @@ export function ModerationPage() {
 
   useEffect(load, [load]);
 
-  const run = async (key: string, action: () => Promise<unknown>) => {
+  /**
+   * `affectsMe` is set when the decision is about the admin's own agency, which is the
+   * ordinary case for the first account on an instance. Both halves of their identity
+   * go stale at once: `/auth/me` still reports the membership as pending, and the
+   * access token still carries no agency — so the dashboard would redirect back to the
+   * pending page and every tenant route would 403. `recheck()` rotates the token and
+   * re-reads the user, which fixes both.
+   */
+  const run = async (key: string, action: () => Promise<unknown>, affectsMe = false) => {
     setBusy(key);
     setError(null);
     try {
       await action();
+      if (affectsMe) await recheck();
       load();
     } catch {
       setError('הפעולה נכשלה.');
@@ -124,7 +135,13 @@ export function ModerationPage() {
 
                       <Button
                         disabled={busy !== null}
-                        onClick={() => void run(key, () => approveAgency(agency.id, applicant.userId))}
+                        onClick={() =>
+                          void run(
+                            key,
+                            () => approveAgency(agency.id, applicant.userId),
+                            applicant.userId === user?.id,
+                          )
+                        }
                       >
                         {busy === key ? 'מאשר…' : 'אשר'}
                       </Button>
