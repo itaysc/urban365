@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Yad2ImportPanel } from '@/components/agency/Yad2ImportPanel';
 import { Button } from '@/components/ui/Button';
+import { Dropzone } from '@/components/ui/Dropzone';
 import { Field, inputClass } from '@/components/ui/Field';
 import { errorMessageOf } from '@/lib/apiError';
 import {
@@ -20,7 +21,6 @@ export function AgencyProfilePage() {
   const [uploading, setUploading] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const coverInput = useRef<HTMLInputElement>(null);
 
   const apply = (p: AgencyProfile) => {
     setProfile(p);
@@ -74,7 +74,6 @@ export function AgencyProfilePage() {
       setError(errorMessageOf(e, 'העלאת התמונה נכשלה.'));
     } finally {
       setUploading(false);
-      if (coverInput.current) coverInput.current.value = '';
     }
   };
 
@@ -120,35 +119,29 @@ export function AgencyProfilePage() {
       <section className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4">
         <h2 className="text-sm font-semibold text-slate-900">תמונת נושא</h2>
 
-        {profile.coverImageUrl ? (
+        {profile.coverImageUrl && (
           <img
             src={profile.coverImageUrl}
             alt=""
             className="aspect-[3/1] w-full rounded-lg object-cover"
           />
-        ) : (
-          <div className="flex aspect-[3/1] w-full items-center justify-center rounded-lg border border-dashed border-slate-300 text-sm text-slate-400">
-            אין תמונת נושא
-          </div>
         )}
 
-        <div className="flex items-center gap-2">
-          <input
-            ref={coverInput}
-            type="file"
-            accept="image/jpeg,image/png,image/webp,image/avif"
-            hidden
-            onChange={(e) => e.target.files?.[0] && void uploadCover(e.target.files[0])}
-          />
-          <Button variant="secondary" disabled={uploading} onClick={() => coverInput.current?.click()}>
-            {uploading ? 'מעלה…' : profile.coverImageUrl ? 'החלף תמונה' : 'העלה תמונה'}
-          </Button>
-          {profile.coverImageUrl && (
+        <Dropzone disabled={uploading} onFiles={(files) => void uploadCover(files[0])}>
+          {uploading
+            ? 'מעלה…'
+            : profile.coverImageUrl
+              ? 'גררו תמונה להחלפה או לחצו לבחירה'
+              : 'גררו תמונת נושא לכאן או לחצו לבחירה'}
+        </Dropzone>
+
+        {profile.coverImageUrl && (
+          <div>
             <Button variant="ghost" onClick={() => void clearCover()}>
-              הסר
+              הסר תמונה
             </Button>
-          )}
-        </div>
+          </div>
+        )}
       </section>
 
       <section className="grid gap-4 rounded-xl border border-slate-200 bg-white p-4 sm:grid-cols-2">

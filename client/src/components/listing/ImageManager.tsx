@@ -1,5 +1,5 @@
-import { useRef, useState } from 'react';
-import { Button } from '@/components/ui/Button';
+import { useState } from 'react';
+import { Dropzone } from '@/components/ui/Dropzone';
 import { errorMessageOf } from '@/lib/apiError';
 import {
   removeListingImage,
@@ -18,12 +18,11 @@ interface Props {
  * API. The first image is the cover, which is why order is editable at all.
  */
 export function ImageManager({ listing, onChange }: Props) {
-  const input = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
 
-  const upload = async (files: FileList) => {
+  const upload = async (files: File[]) => {
     setBusy(true);
     setError(null);
     setProgress({ done: 0, total: files.length });
@@ -32,7 +31,7 @@ export function ImageManager({ listing, onChange }: Props) {
       // Sequential, not Promise.all: each upload ends in a position computed from the
       // current image count, so running them together would collide on position.
       let latest = listing;
-      for (const [index, file] of [...files].entries()) {
+      for (const [index, file] of files.entries()) {
         latest = await uploadListingImage(listing.id, file);
         setProgress({ done: index + 1, total: files.length });
       }
@@ -42,7 +41,6 @@ export function ImageManager({ listing, onChange }: Props) {
     } finally {
       setBusy(false);
       setProgress(null);
-      if (input.current) input.current.value = '';
     }
   };
 
@@ -80,34 +78,21 @@ export function ImageManager({ listing, onChange }: Props) {
     <section className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-sm font-semibold text-slate-900">תמונות</h2>
-        <div className="flex items-center gap-2">
-          {progress && (
-            <span className="text-xs text-slate-500">
-              מעלה {progress.done}/{progress.total}…
-            </span>
-          )}
-          <input
-            ref={input}
-            type="file"
-            accept="image/jpeg,image/png,image/webp,image/avif"
-            multiple
-            hidden
-            onChange={(e) => e.target.files?.length && void upload(e.target.files)}
-          />
-          <Button variant="secondary" disabled={busy} onClick={() => input.current?.click()}>
-            הוסף תמונות
-          </Button>
-        </div>
+        {progress && (
+          <span className="text-xs text-slate-500">
+            מעלה {progress.done}/{progress.total}…
+          </span>
+        )}
       </div>
+
+      <Dropzone multiple disabled={busy} onFiles={(files) => void upload(files)} />
 
       {error && (
         <p className="rounded-lg border border-red-200 bg-red-50 p-2 text-xs text-red-700">{error}</p>
       )}
 
       {listing.images.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500">
-          אין עדיין תמונות. התמונה הראשונה תופיע ככריכה.
-        </p>
+        <p className="text-center text-xs text-slate-400">התמונה הראשונה תופיע ככריכה.</p>
       ) : (
         <ul className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {listing.images.map((image, index) => (

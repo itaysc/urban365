@@ -209,10 +209,14 @@ export class AuthService {
       throw new UnauthorizedException('ההתחברות פגה. יש להתחבר מחדש.');
     }
 
-    const user = await this.prisma.user.findUniqueOrThrow({
+    // Sessions cascade with the user, so a missing row here means the account went
+    // between the rotation and this read. Same answer: the session is dead.
+    const user = await this.prisma.user.findUnique({
       where: { id: rotated.session.userId },
       include: this.include,
     });
+
+    if (!user) throw new UnauthorizedException('ההתחברות פגה. יש להתחבר מחדש.');
 
     return {
       user: sanitizeUser(user),
@@ -237,7 +241,8 @@ export class AuthService {
   }
 
   async resendVerification(userId: string): Promise<void> {
-    const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new UnauthorizedException('ההתחברות פגה. יש להתחבר מחדש.');
     if (user.emailVerifiedAt) return;
     await this.sendVerificationEmail(user.id, user.email, user.firstName);
   }
@@ -288,10 +293,17 @@ export class AuthService {
   }
 
   async me(userId: string): Promise<PublicUser> {
-    const user = await this.prisma.user.findUniqueOrThrow({
+    // Not findUniqueOrThrow. The id comes from a signed token, and a token stays
+    // cryptographically valid until it expires even if the account is deleted in the
+    // meantime — so the row genuinely may be gone. Throwing Prisma's P2025 turned that
+    // into a 500; it is a dead session, which is a 401, and the client already knows
+    // how to clear state and send the person to the login page on one.
+    const user = await this.prisma.user.findUnique({
       where: { id: userId },
       include: this.include,
     });
+
+    if (!user) throw new UnauthorizedException('ההתחברות פגה. יש להתחבר מחדש.');
     return sanitizeUser(user);
   }
 }
