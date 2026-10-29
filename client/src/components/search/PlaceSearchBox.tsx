@@ -1,8 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { MapPin, X } from 'lucide-react';
+import { Clock, MapPin, Navigation, X } from 'lucide-react';
+import {
+  clearRecentPlaces,
+  readRecentPlaces,
+  rememberPlace,
+  type RecentPlace,
+} from '@/lib/recentPlaces';
 import { qk } from '@/queries/keys';
-import { fetchPlaceSuggestions } from '@/services/search';
+import { fetchCityAt, fetchPlaceSuggestions } from '@/services/search';
 import type { SearchFilters } from '@/types/search';
 
 /**
@@ -51,6 +57,12 @@ export function PlaceSearchBox({ filters, update }: Props) {
   const [open, setOpen] = useState(false);
   const [highlighted, setHighlighted] = useState(0);
   const box = useRef<HTMLDivElement>(null);
+
+  // Read once on mount, then kept in step by `remember` below — reading storage on
+  // every render would re-parse the same JSON on every keystroke.
+  const [recent, setRecent] = useState<RecentPlace[]>(() => readRecentPlaces());
+  const [locating, setLocating] = useState(false);
+  const [locationError, setLocationError] = useState<string | null>(null);
 
   // Debounced, so a word typed at speed is one request rather than one per letter.
   const [debounced, setDebounced] = useState('');
@@ -122,22 +134,74 @@ export function PlaceSearchBox({ filters, update }: Props) {
     return () => document.removeEventListener('pointerdown', onDown);
   }, [open]);
 
-  const choose = (option: (typeof options)[number]) => {
-    if (remaining <= 0) return;
-
-    if (option.kind === 'city') {
-      update({ city: [...filters.city, option.value] });
+  /** Applies a place, whether it came from the suggestions, the recents or geolocation. */
+  const apply = (place: RecentPlace) => {
+    if (place.kind === 'city') {
+      if (!filters.city.includes(place.value)) update({ city: [...filters.city, place.value] });
     } else {
       // The city travels with it: `מרכז העיר` exists in a dozen towns, and without the
       // city the filter would match all of them. It also gives the map an outline to
       // draw, which a neighbourhood on its own does not.
       update({
-        neighborhood: [...filters.neighborhood, option.value],
-        city: filters.city.includes(option.city) ? filters.city : [...filters.city, option.city],
+        neighborhood: filters.neighborhood.includes(place.value)
+          ? filters.neighborhood
+          : [...filters.neighborhood, place.value],
+        city: filters.city.includes(place.city) ? filters.city : [...filters.city, place.city],
       });
     }
 
+    setRecent(rememberPlace(place));
     setTerm('');
+  };
+
+  const choose = (option: (typeof options)[number]) => {
+    if (remaining <= 0) return;
+    apply({
+      kind: option.kind,
+      value: option.value,
+      city: option.city,
+      label: option.label,
+    });
+  };
+
+  /**
+   * "Near my location": the browser gives coordinates, the server says which city they
+   * fall in, and the result is the same search as picking that city by hand — so the
+   * outline, the pins and the list all follow with nothing special about this path.
+   */
+  const useMyLocation = () => {
+    setLocationError(null);
+
+    if (!('geolocation' in navigator)) {
+      setLocationError('הדפדפן לא תומך באיתור מיקום.');
+      return;
+    }
+    if (remaining <= 0) return;
+
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        void fetchCityAt(position.coords.latitude, position.coords.longitude)
+          .then((city) => {
+            if (!city) {
+              setLocationError('לא זיהינו עיר במיקום שלך.');
+              return;
+            }
+            apply({ kind: 'city', value: city, city, label: city });
+          })
+          .catch(() => setLocationError('לא הצלחנו לזהות את המיקום שלך.'))
+          .finally(() => setLocating(false));
+      },
+      (error) => {
+        setLocating(false);
+        setLocationError(
+          error.code === error.PERMISSION_DENIED
+            ? 'לא ניתנה הרשאה לשימוש במיקום.'
+            : 'לא הצלחנו לאתר את המיקום שלך.',
+        );
+      },
+      { timeout: 10_000, maximumAge: 5 * 60_000 },
+    );
   };
 
   const remove = (item: Chosen) => {
@@ -223,7 +287,10 @@ export function PlaceSearchBox({ filters, update }: Props) {
         >
           <div className="border-b border-slate-100 px-4 py-3">
             <p className="text-sm text-slate-500">
-              {remaining > 0 ? `נשארו עוד ${remaining} מיקומים לבחירה` : 'הגעתם למספר המיקומים המרבי'}
+              {remaining === 0 && 'הגעתם למספר המיקומים המרבי'}
+              {/* Hebrew does not take a numeral before a singular noun here. */}
+              {remaining === 1 && 'נשאר עוד מיקום אחד לבחירה'}
+              {remaining > 1 && `נשארו עוד ${remaining} מיקומים לבחירה`}
             </p>
 
             {chosen.length > 0 && (
@@ -248,8 +315,73 @@ export function PlaceSearchBox({ filters, update }: Props) {
             )}
           </div>
 
+          {/*
+            Always first, typed into or not. It is the one row that needs no knowledge
+            of how anywhere is spelled, which is the whole difficulty of a place search
+            in Hebrew.
+          */}
+          <button
+            type="button"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              useMyLocation();
+            }}
+            disabled={locating || remaining <= 0}
+            className="flex w-full items-center gap-2 border-b border-slate-100 px-4 py-3 text-start text-sm font-semibold text-orange-600 transition hover:bg-orange-50 disabled:opacity-50"
+          >
+            <Navigation className="h-4 w-4" aria-hidden />
+            {locating ? 'מאתר…' : 'קרוב למיקום שלי'}
+          </button>
+
+          {locationError && (
+            <p className="border-b border-slate-100 bg-amber-50 px-4 py-2 text-xs text-amber-800">
+              {locationError}
+            </p>
+          )}
+
           <div className="max-h-[60vh] overflow-y-auto">
-            {debounced.length < MIN_TERM && (
+            {/*
+              Nothing typed yet. Rather than an instruction to type something, offer the
+              places this person has already searched — on a search page most returns
+              are to somewhere they looked at before.
+            */}
+            {debounced.length < MIN_TERM && recent.length > 0 && (
+              <>
+                <div className="flex items-center justify-between bg-slate-50 px-4 py-2">
+                  <h3 className="text-sm font-semibold text-slate-900">חיפושים אחרונים</h3>
+                  <button
+                    type="button"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      setRecent(clearRecentPlaces());
+                    }}
+                    className="text-xs text-slate-500 hover:text-slate-700"
+                  >
+                    ניקוי
+                  </button>
+                </div>
+                <ul>
+                  {recent.map((place) => (
+                    <li key={`${place.kind}:${place.value}:${place.city}`}>
+                      <button
+                        type="button"
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          apply(place);
+                        }}
+                        disabled={remaining <= 0}
+                        className="flex w-full items-center gap-2 px-4 py-2.5 text-start text-sm text-slate-600 hover:bg-slate-50 disabled:opacity-40"
+                      >
+                        <Clock className="h-4 w-4 shrink-0 text-slate-400" aria-hidden />
+                        {place.label}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+
+            {debounced.length < MIN_TERM && recent.length === 0 && (
               <p className="px-4 py-6 text-center text-sm text-slate-400">
                 הקלידו שם של עיר או שכונה
               </p>

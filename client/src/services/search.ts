@@ -48,10 +48,15 @@ export interface MapPoint {
   lng: number;
   price: number | null;
   rooms: number | null;
+  floor: number | null;
+  squareMeter: number | null;
   propertyType: string | null;
   city: string | null;
+  neighborhood: string | null;
   street: string | null;
   coverImageUrl: string | null;
+  isExclusive: boolean;
+  agencyName: string | null;
 }
 
 export interface MapBounds {
@@ -123,4 +128,10 @@ export async function fetchPlaceSuggestions(q: string, section?: string): Promis
   if (section) params.set('section', section);
   const { data } = await api.get<PlaceSuggestions>(`/listings/suggest?${params}`);
   return data;
+}
+
+/** The city a coordinate falls in, or null when it is outside every boundary we hold. */
+export async function fetchCityAt(lat: number, lng: number): Promise<string | null> {
+  const { data } = await api.get<{ city: string | null }>(`/listings/city-at?lat=${lat}&lng=${lng}`);
+  return data.city;
 }

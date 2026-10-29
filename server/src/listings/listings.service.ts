@@ -5,6 +5,7 @@ import { TenantPrismaService } from '../tenancy/tenant-prisma.service.js';
 import { listingRowToAsset } from '../yad2/listing-row.js';
 import { type Section } from '../yad2/yad2.types.js';
 import { cityKey } from './city-name.js';
+import { pointInGeometry } from './point-in-polygon.js';
 import type { SearchListingsDto, Sort } from './dto/search-listings.dto.js';
 
 /** Card-shaped result, read straight from the typed columns — `raw` is never touched. */
@@ -435,16 +436,23 @@ export class ListingsService {
       where,
       take: MAP_POINT_LIMIT,
       orderBy: { id: 'asc' },
+      // Enough for the card that opens when a pin is clicked, and no more: the full
+      // listing is a separate request made only once someone opens it.
       select: {
         id: true,
         latitude: true,
         longitude: true,
         price: true,
         rooms: true,
+        floor: true,
+        squareMeter: true,
         propertyType: true,
         city: true,
+        neighborhood: true,
         street: true,
         coverImageUrl: true,
+        isExclusive: true,
+        agency: { select: { name: true } },
       },
     });
 
@@ -459,15 +467,67 @@ export class ListingsService {
         lng: r.longitude as number,
         price: r.price,
         rooms: r.rooms,
+        floor: r.floor,
+        squareMeter: r.squareMeter,
         propertyType: r.propertyType,
         city: r.city,
+        neighborhood: r.neighborhood,
         street: r.street,
         coverImageUrl: r.coverImageUrl,
+        isExclusive: r.isExclusive,
+        agencyName: r.agency?.name ?? null,
       })),
       // Tells the client the view is incomplete, so it can say so rather than
       // silently showing a subset as though it were everything.
       truncated: rows.length === MAP_POINT_LIMIT,
     };
+  }
+
+  /**
+   * Which city a coordinate falls in, for "near my location".
+   *
+   * Answered from `CityBoundary` rather than a geocoding service: the polygons are
+   * already here, it costs a scan of 280 rows, and it keeps a visitor's coordinates
+   * from being handed to a third party.
+   *
+   * The bounding boxes narrow the candidates, then the real test runs — a box overlaps
+   * its neighbours, so Bat Yam's contains points plainly inside Tel Aviv.
+   */
+  async cityAt(lat: number, lng: number): Promise<string | null> {
+    const candidates = await this.prisma.client.cityBoundary.findMany({
+      where: {
+        minLat: { lte: lat },
+        maxLat: { gte: lat },
+        minLng: { lte: lng },
+        maxLng: { gte: lng },
+      },
+      select: { name: true, geometry: true, minLat: true, maxLat: true, minLng: true, maxLng: true },
+    });
+
+    const inside = candidates.filter((row) => pointInGeometry(lng, lat, row.geometry));
+    if (inside.length === 0) return null;
+
+    // Boundaries nest — a town can sit inside a regional council — so the smallest
+    // match is the most specific answer, and the one a person means by "near me".
+    inside.sort(
+      (a, b) =>
+        (a.maxLat - a.minLat) * (a.maxLng - a.minLng) -
+        (b.maxLat - b.minLat) * (b.maxLng - b.minLng),
+    );
+
+    const name = inside[0].name;
+
+    // Returned as the listings spell it when we hold any, because the caller uses this
+    // straight as a `city` filter and that comparison is exact. `תל־אביב–יפו` from
+    // OpenStreetMap would match no row.
+    const held = await this.prisma.client.listing.findMany({
+      where: { status: 'published', delistedAt: null, city: { not: null } },
+      select: { city: true },
+      distinct: ['city'],
+    });
+    const spelled = held.find((row) => cityKey(row.city) === cityKey(name));
+
+    return spelled?.city ?? name;
   }
 
   /**

@@ -1,7 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
-import maplibregl, { type GeoJSONSource, type Map as MapLibreMap } from 'maplibre-gl';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import maplibregl, { type GeoJSONSource, type Map as MapLibreMap, type Popup } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { config } from '@/config';
+import { ListingPopupCard } from '@/components/map/ListingPopupCard';
 import type { CityBoundary, MapPoint } from '@/services/search';
 
 interface Props {
@@ -42,6 +44,14 @@ export function ListingsMap({ points, boundary, onSelect, onViewportChange }: Pr
   // pending, and the obvious `once('load', …)` fallback never fires a second time, so a
   // boundary arriving after the first render was silently dropped.
   const [ready, setReady] = useState(false);
+
+  // The pin whose card is open, held by id rather than by value so a refetch that
+  // replaces every point object does not close it.
+  const [activeId, setActiveId] = useState<string | null>(null);
+  // MapLibre owns the positioning — anchoring, flipping near an edge and keeping the
+  // card pinned to its coordinate through pan and zoom is work worth not redoing.
+  const popup = useRef<Popup | null>(null);
+  const [popupHost, setPopupHost] = useState<HTMLDivElement | null>(null);
   // Held in a ref so the map's own listeners always call the current one without the
   // map having to be rebuilt when the page re-renders.
   const handlers = useRef({ onSelect, onViewportChange });
@@ -160,9 +170,20 @@ export function ListingsMap({ points, boundary, onSelect, onViewportChange }: Pr
         },
       });
 
+      // A card, not the full listing: clicking a pin on a map is a "what is this?",
+      // and a modal over the map loses the place you were looking at. The card opens
+      // the listing when it is clicked in turn.
       instance.on('click', 'points', (e) => {
         const id = e.features?.[0]?.properties?.id;
-        if (typeof id === 'string') handlers.current.onSelect(id);
+        if (typeof id === 'string') setActiveId(id);
+      });
+
+      // Clicking the basemap dismisses it. Registered without a layer so it fires for
+      // anything that is not a pin; the pin handler above runs first and sets the id
+      // again, so clicking one pin while another's card is open just swaps them.
+      instance.on('click', (e) => {
+        const hits = instance.queryRenderedFeatures(e.point, { layers: ['points'] });
+        if (hits.length === 0) setActiveId(null);
       });
 
       // Clicking a cluster zooms into it, which is what every map does and what people
@@ -205,7 +226,15 @@ export function ListingsMap({ points, boundary, onSelect, onViewportChange }: Pr
 
     map.current = instance;
 
+    // MapLibre sizes its canvas once and does not watch the element. The map sits in a
+    // responsive grid column, so anything that changes the column — a window resize,
+    // the filter panel collapsing — left the canvas at its old size and the map blank
+    // beside it until something else forced a redraw.
+    const observer = new ResizeObserver(() => instance.resize());
+    observer.observe(container.current);
+
     return () => {
+      observer.disconnect();
       instance.remove();
       map.current = null;
       setReady(false);
@@ -274,12 +303,63 @@ export function ListingsMap({ points, boundary, onSelect, onViewportChange }: Pr
     instance.fitBounds(bounds, { padding: 60, maxZoom: 15, duration: 0 });
   }, [points, ready]);
 
+  const active = useMemo(() => points.find((p) => p.id === activeId) ?? null, [points, activeId]);
+
+  // A point can vanish from under an open card — a filter change, or panning it out of
+  // the viewport query. Closing is the honest response; leaving a card for a listing no
+  // longer in the results is worse than losing your place.
+  useEffect(() => {
+    if (activeId && !active) setActiveId(null);
+  }, [activeId, active]);
+
+  useEffect(() => {
+    const instance = map.current;
+    if (!instance || !ready) return;
+
+    if (!active) {
+      popup.current?.remove();
+      popup.current = null;
+      setPopupHost(null);
+      return;
+    }
+
+    // React renders into this node through a portal, so the card keeps the router and
+    // query context it needs — `setHTML` with a string would have neither.
+    const host = document.createElement('div');
+
+    const instancePopup = new maplibregl.Popup({
+      closeButton: false,
+      closeOnClick: false,
+      // The card draws its own surface; see `.listing-popup` in index.css, which strips
+      // MapLibre's default padding, background and tip.
+      className: 'listing-popup',
+      maxWidth: 'none',
+      offset: 14,
+    })
+      .setLngLat([active.lng, active.lat])
+      .setDOMContent(host)
+      .addTo(instance);
+
+    popup.current = instancePopup;
+    setPopupHost(host);
+
+    return () => {
+      instancePopup.remove();
+      popup.current = null;
+    };
+  }, [active, ready]);
+
   return (
     // Short on a phone, where it sits above the list and should not take the whole
     // screen before a single card is visible; tall enough on a desktop to be worth
     // reading beside the results.
     <div className="relative h-[45vh] w-full overflow-hidden rounded-xl border border-slate-200 lg:h-[calc(100vh-2rem)]">
       <div ref={container} className="h-full w-full" />
+
+      {active && popupHost && createPortal(
+        <ListingPopupCard point={active} onOpen={(id) => handlers.current.onSelect(id)} />,
+        popupHost,
+      )}
 
       {points.length === 0 && (
         // A quiet line along the bottom rather than a card across the middle. With a city

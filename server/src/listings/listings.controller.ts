@@ -1,4 +1,4 @@
-import { Controller, Get, NotFoundException, Param, Query } from '@nestjs/common';
+import { BadRequestException, Controller, Get, NotFoundException, Param, Query } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { Public } from '../auth/decorators/public.decorator.js';
 import { SearchListingsDto } from './dto/search-listings.dto.js';
@@ -45,6 +45,29 @@ export class ListingsController {
   @Get('suggest')
   suggest(@Query('q') q?: string, @Query('section') section?: string) {
     return this.listings.suggest(q ?? '', isSection(section) ? section : undefined);
+  }
+
+  /**
+   * The city a coordinate falls in, so "near my location" can turn a browser's position
+   * into the same search as picking that city by hand.
+   *
+   * Declared before `:id`, like the two above it.
+   */
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
+  @Get('city-at')
+  async cityAt(@Query('lat') lat?: string, @Query('lng') lng?: string) {
+    const latitude = Number(lat);
+    const longitude = Number(lng);
+
+    // A coordinate off the planet is a caller mistake, not an empty answer.
+    if (!Number.isFinite(latitude) || Math.abs(latitude) > 90) {
+      throw new BadRequestException('קו רוחב לא תקין.');
+    }
+    if (!Number.isFinite(longitude) || Math.abs(longitude) > 180) {
+      throw new BadRequestException('קו אורך לא תקין.');
+    }
+
+    return { city: await this.listings.cityAt(latitude, longitude) };
   }
 
   /**

@@ -26,6 +26,11 @@ export const qk = {
     public: (id: string) => ['listings', 'public', id] as const,
   },
 
+  saved: {
+    all: ['saved'] as const,
+    among: (ids: string[]) => ['saved', 'among', [...ids].sort().join(',')] as const,
+  },
+
   leads: {
     all: ['leads'] as const,
     list: (status: LeadStatus | undefined, page: number) => ['leads', 'list', status ?? 'any', page] as const,
