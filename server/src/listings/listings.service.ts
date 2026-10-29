@@ -3,6 +3,7 @@ import { Prisma, type Listing, type Section as DbSection } from '@prisma/client'
 import { PrismaService } from '../prisma/prisma.service.js';
 import { TenantPrismaService } from '../tenancy/tenant-prisma.service.js';
 import { listingRowToAsset } from '../yad2/listing-row.js';
+import { cityKey } from './city-name.js';
 import type { SearchListingsDto, Sort } from './dto/search-listings.dto.js';
 
 /** Card-shaped result, read straight from the typed columns — `raw` is never touched. */
@@ -361,6 +362,10 @@ export class ListingsService {
     });
 
     return {
+      // Sent with the points rather than from its own route: the map wants both at the
+      // same moment, and a second round trip would draw the pins before the area they
+      // sit in.
+      boundary: await this.boundaryFor(dto.city),
       points: rows.map((r) => ({
         id: r.id,
         lat: r.latitude as number,
@@ -375,6 +380,37 @@ export class ListingsService {
       // Tells the client the view is incomplete, so it can say so rather than
       // silently showing a subset as though it were everything.
       truncated: rows.length === MAP_POINT_LIMIT,
+    };
+  }
+
+  /**
+   * The outline of the area being searched, when exactly one city is filtered on.
+   *
+   * Only one: two cities have no single outline, and drawing both would say less than
+   * drawing neither. Matched on a normalised key because OpenStreetMap writes
+   * `תל־אביב–יפו` while a listing says `תל אביב יפו`.
+   */
+  private async boundaryFor(cities: string[] | undefined) {
+    if (!cities || cities.length !== 1) return null;
+
+    const row = await this.prisma.client.cityBoundary.findUnique({
+      where: { matchKey: cityKey(cities[0]) },
+      select: {
+        name: true,
+        geometry: true,
+        minLat: true,
+        maxLat: true,
+        minLng: true,
+        maxLng: true,
+      },
+    });
+
+    if (!row) return null;
+
+    return {
+      name: row.name,
+      geometry: row.geometry,
+      bounds: { minLat: row.minLat, maxLat: row.maxLat, minLng: row.minLng, maxLng: row.maxLng },
     };
   }
 }

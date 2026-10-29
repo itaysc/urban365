@@ -60,7 +60,16 @@ export interface MapBounds {
   maxLng: number;
 }
 
+export interface CityBoundary {
+  name: string;
+  /** A GeoJSON Polygon or MultiPolygon. */
+  geometry: GeoJSON.Polygon | GeoJSON.MultiPolygon;
+  bounds: MapBounds;
+}
+
 export interface MapResponse {
+  /** The outline of the searched area, when exactly one city is filtered on. */
+  boundary: CityBoundary | null;
   points: MapPoint[];
   /** True when the point cap was hit, so the view is a subset rather than everything. */
   truncated: boolean;

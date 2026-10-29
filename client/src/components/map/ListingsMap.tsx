@@ -3,10 +3,12 @@ import maplibregl, { type GeoJSONSource, type Map as MapLibreMap } from 'maplibr
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { config } from '@/config';
 import { formatPrice } from '@/lib/format';
-import type { MapPoint } from '@/services/search';
+import type { CityBoundary, MapPoint } from '@/services/search';
 
 interface Props {
   points: MapPoint[];
+  /** The searched area's outline, drawn beneath the pins. Null when none applies. */
+  boundary?: CityBoundary | null;
   /** Called when a pin is clicked, so the page can open the same modal the cards do. */
   onSelect: (listingId: string) => void;
   /** Called when the user pans or zooms, so the page can refetch for the new viewport. */
@@ -14,6 +16,7 @@ interface Props {
 }
 
 const SOURCE = 'listings';
+const BOUNDARY_SOURCE = 'area';
 
 /** Roughly Israel, for the first frame before any points arrive. */
 const ISRAEL_CENTER: [number, number] = [34.85, 31.9];
@@ -32,7 +35,7 @@ function shortPrice(value: number | null): string {
   return String(value);
 }
 
-export function ListingsMap({ points, onSelect, onViewportChange }: Props) {
+export function ListingsMap({ points, boundary, onSelect, onViewportChange }: Props) {
   const container = useRef<HTMLDivElement>(null);
   const map = useRef<MapLibreMap | null>(null);
   // Held in a ref so the map's own listeners always call the current one without the
@@ -68,6 +71,28 @@ export function ListingsMap({ points, onSelect, onViewportChange }: Props) {
         cluster: true,
         clusterRadius: 50,
         clusterMaxZoom: 15,
+      });
+
+      instance.addSource(BOUNDARY_SOURCE, {
+        type: 'geojson',
+        data: { type: 'FeatureCollection', features: [] },
+      });
+
+      // A wash and an outline, added before the pins so they sit on top of it. The
+      // fill is faint on purpose: it should say which area is being searched without
+      // competing with the listings for attention.
+      instance.addLayer({
+        id: 'area-fill',
+        type: 'fill',
+        source: BOUNDARY_SOURCE,
+        paint: { 'fill-color': '#ea580c', 'fill-opacity': 0.06 },
+      });
+
+      instance.addLayer({
+        id: 'area-line',
+        type: 'line',
+        source: BOUNDARY_SOURCE,
+        paint: { 'line-color': '#ea580c', 'line-width': 2, 'line-opacity': 0.85 },
       });
 
       instance.addLayer({
@@ -183,6 +208,37 @@ export function ListingsMap({ points, onSelect, onViewportChange }: Props) {
   // Points in, and the first batch frames the view — someone searching "חיפה" should
   // see Haifa, not the whole country.
   const framed = useRef(false);
+
+  // The outline, which also takes over framing when there is one: the area asked for
+  // is a better answer than the extent of whatever listings happen to be in it.
+  useEffect(() => {
+    const instance = map.current;
+    if (!instance) return;
+
+    const apply = () => {
+      const source = instance.getSource(BOUNDARY_SOURCE) as GeoJSONSource | undefined;
+      if (!source) return;
+
+      source.setData(
+        boundary
+          ? { type: 'Feature', geometry: boundary.geometry, properties: { name: boundary.name } }
+          : { type: 'FeatureCollection', features: [] },
+      );
+
+      if (!boundary) return;
+      framed.current = true;
+      instance.fitBounds(
+        [
+          [boundary.bounds.minLng, boundary.bounds.minLat],
+          [boundary.bounds.maxLng, boundary.bounds.maxLat],
+        ],
+        { padding: 40, duration: 400 },
+      );
+    };
+
+    if (instance.isStyleLoaded()) apply();
+    else instance.once('load', apply);
+  }, [boundary]);
 
   useEffect(() => {
     const instance = map.current;

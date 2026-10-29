@@ -152,6 +152,7 @@ export function SearchPage() {
             <div className="lg:sticky lg:top-4">
               <ListingsMap
                 points={mapData?.points ?? []}
+                boundary={mapData?.boundary}
                 onSelect={(id) => void openById(id)}
                 onViewportChange={setBounds}
               />
