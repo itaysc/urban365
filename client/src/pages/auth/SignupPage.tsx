@@ -6,6 +6,7 @@ import { useAuth } from '@/auth/AuthProvider';
 import { Button } from '@/components/ui/Button';
 import { Field, inputClass } from '@/components/ui/Field';
 import { errorMessageOf } from '@/lib/apiError';
+import { TermsCheckbox } from '@/components/auth/TermsCheckbox';
 import { AuthLayout } from '@/pages/auth/AuthLayout';
 import { lookupAgencies, type AgencyLookupResult } from '@/services/auth';
 
@@ -33,7 +34,15 @@ export function SignupPage() {
   }, [agencyQuery, claimed]);
 
   const formik = useFormik({
-    initialValues: { email: '', password: '', firstName: '', lastName: '', phone: '', agencyName: '' },
+    initialValues: {
+      email: '',
+      password: '',
+      firstName: '',
+      lastName: '',
+      phone: '',
+      agencyName: '',
+      acceptedTerms: false,
+    },
     validationSchema: Yup.object({
       email: Yup.string().email('כתובת אימייל לא תקינה').required('שדה חובה'),
       password: Yup.string()
@@ -42,6 +51,7 @@ export function SignupPage() {
         .required('שדה חובה'),
       firstName: Yup.string().required('שדה חובה'),
       lastName: Yup.string().required('שדה חובה'),
+      acceptedTerms: Yup.boolean().oneOf([true], 'יש לאשר את תנאי השימוש ומדיניות הפרטיות'),
     }),
     onSubmit: async (values, helpers) => {
       setFormError(null);
@@ -58,6 +68,7 @@ export function SignupPage() {
           firstName: values.firstName,
           lastName: values.lastName,
           phone: values.phone || undefined,
+          acceptedTerms: values.acceptedTerms,
           ...(claimed ? { claimAgencyId: claimed.id } : { agencyName: values.agencyName }),
         });
         navigate('/app/pending', { replace: true });
@@ -149,9 +160,15 @@ export function SignupPage() {
           )}
         </fieldset>
 
+        <TermsCheckbox
+          id="agency-terms"
+          checked={formik.values.acceptedTerms}
+          onChange={(checked) => void formik.setFieldValue('acceptedTerms', checked)}
+        />
+
         {formError && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">{formError}</p>}
 
-        <Button type="submit" disabled={formik.isSubmitting}>
+        <Button type="submit" disabled={formik.isSubmitting || !formik.values.acceptedTerms}>
           {formik.isSubmitting ? 'נרשם…' : 'הרשמה'}
         </Button>
       </form>

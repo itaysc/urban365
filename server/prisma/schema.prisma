@@ -310,6 +310,12 @@ model User {
 
   emailVerifiedAt DateTime?
   /// null = ordinary user. Set by seed or SQL only, never through an API.
+  /// When this person agreed to the terms and the privacy policy.
+  ///
+  /// A timestamp rather than a boolean: what matters later is *when* they agreed, so a
+  /// change to either document can be told apart from an account that predates it.
+  termsAcceptedAt DateTime?
+
   platformRole    PlatformRole?
 
   /// Bumping this invalidates every outstanding token: a cheap "log out everywhere".

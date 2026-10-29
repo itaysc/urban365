@@ -116,6 +116,9 @@ export class AuthService {
           firstName: dto.firstName.trim(),
           lastName: dto.lastName.trim(),
           phone: dto.phone?.trim() || null,
+          // The DTO already refuses anything but true, so this records when rather than
+          // whether.
+          termsAcceptedAt: new Date(),
         },
       });
 
@@ -192,6 +195,7 @@ export class AuthService {
         firstName: dto.firstName.trim(),
         lastName: dto.lastName.trim(),
         phone: dto.phone?.trim() || null,
+        termsAcceptedAt: new Date(),
         // Created eagerly here, unlike the lazy path in BuyerService: a consumer who
         // just signed up is about to use it.
         buyerProfile: { create: {} },
@@ -279,6 +283,11 @@ export class AuthService {
         passwordHash: await this.passwords.hash(randomBytes(32).toString('base64url')),
         authProvider: 'google',
         authProviderId: identity.subject,
+        // Google is offered from the signup page, where ticking the agreement is
+        // what enables the button. Worth being plain about the limit: the server
+        // cannot enforce that the way it does for the form, because the tick
+        // happened before a redirect it does not control. Recorded, not proven.
+        termsAcceptedAt: new Date(),
         accountType: 'buyer',
         firstName: identity.firstName || email.split('@')[0],
         lastName: identity.lastName || '',

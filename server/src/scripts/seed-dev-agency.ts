@@ -58,10 +58,20 @@ async function main() {
       // The end state of verification, not a way around it: this account never receives
       // mail, so there is no link for it to follow.
       emailVerifiedAt: new Date(),
+      // The fixture should look like an account that went through signup, and
+      // signup cannot complete without agreeing.
+      termsAcceptedAt: new Date(),
     },
-    update: process.argv.includes('--reset')
-      ? { passwordHash, failedLoginCount: 0, lockedUntil: null }
-      : {},
+    update: {
+      // Re-run on an account that already exists: leave the password alone unless
+      // asked, but always put back the two things that make it usable, since an
+      // earlier run of this script may predate either column.
+      emailVerifiedAt: new Date(),
+      termsAcceptedAt: new Date(),
+      ...(process.argv.includes('--reset')
+        ? { passwordHash, failedLoginCount: 0, lockedUntil: null }
+        : {}),
+    },
   });
 
   const agency = await prisma.agency.upsert({

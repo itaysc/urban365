@@ -40,11 +40,33 @@ export function useGoogleAvailable(): boolean {
  * Hidden entirely when the server has no Google credentials, rather than shown and
  * failing: a dead sign-in option is worse than none.
  */
-export function GoogleButton({ returnTo, label }: { returnTo?: string; label?: string }) {
+export function GoogleButton({
+  returnTo,
+  label,
+  disabled = false,
+}: {
+  returnTo?: string;
+  label?: string;
+  /** Used on signup, where the terms have to be agreed before an account can exist. */
+  disabled?: boolean;
+}) {
   const available = useGoogleAvailable();
   if (!available) return null;
 
   const href = `${apiBaseUrl}/auth/google${returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : ''}`;
+
+  // An anchor has no disabled state, so a disabled one stops being a link at all —
+  // rather than looking inert while a middle-click still follows it.
+  if (disabled) {
+    return (
+      <span
+        aria-disabled
+        className="flex cursor-not-allowed items-center justify-center gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-400"
+      >
+        {label ?? 'המשך עם Google'}
+      </span>
+    );
+  }
 
   return (
     <a

@@ -1,4 +1,4 @@
-import { IsBoolean, IsEmail, IsOptional, IsString, Matches, MaxLength, MinLength } from 'class-validator';
+import { Equals, IsBoolean, IsEmail, IsOptional, IsString, Matches, MaxLength, MinLength } from 'class-validator';
 import { PASSWORD_MIN, PASSWORD_PATTERN } from '../../auth/dto/signup.dto.js';
 
 /**
@@ -19,6 +19,11 @@ export class BuyerSignupDto {
   @IsString() @MinLength(1) @MaxLength(80) firstName!: string;
   @IsString() @MinLength(1) @MaxLength(80) lastName!: string;
   @IsOptional() @IsString() @MaxLength(40) phone?: string;
+
+  /** See the note on `SignupDto.acceptedTerms` — enforced here, not only in the form. */
+  @IsBoolean()
+  @Equals(true, { message: 'יש לאשר את תנאי השימוש ומדיניות הפרטיות' })
+  acceptedTerms!: boolean;
 
   /** Cloudflare Turnstile. Only checked in production. */
   @IsOptional() @IsString() captchaToken?: string;

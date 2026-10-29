@@ -31,6 +31,8 @@ export interface SignupInput {
   firstName: string;
   lastName: string;
   phone?: string;
+  /** The server rejects anything but true — see the note on the DTO. */
+  acceptedTerms: boolean;
   agencyName?: string;
   claimAgencyId?: string;
 }

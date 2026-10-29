@@ -1,3 +1,4 @@
+import { PrivacyPage, TermsPage } from '@/pages/LegalPage';
 import { Navigate, createBrowserRouter } from 'react-router-dom';
 import { RequireAdmin, RequireAuth } from '@/auth/RequireAuth';
 import { HomePage } from '@/pages/HomePage';
@@ -36,6 +37,8 @@ export const router = createBrowserRouter([
   // and lands on /login?verified=1, which LoginPage reports.
   // Buyers are most people, so they get the short paths. The agency sign-in is a link
   // from them rather than the other way round — the same arrangement yad2 uses.
+  { path: '/terms', element: <TermsPage /> },
+  { path: '/privacy', element: <PrivacyPage /> },
   { path: '/login', element: <AccountLoginPage /> },
   { path: '/signup', element: <AccountSignupPage /> },
   { path: '/agency/login', element: <LoginPage /> },

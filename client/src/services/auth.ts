@@ -26,6 +26,8 @@ export interface BuyerSignupInput {
   firstName: string;
   lastName: string;
   phone?: string;
+  /** The server rejects anything but true — see the note on the DTO. */
+  acceptedTerms: boolean;
 }
 
 /** Consumer signup. Separate endpoint from the agency one — different required fields. */
