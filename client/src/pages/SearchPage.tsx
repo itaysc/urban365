@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { useAuth } from '@/auth/AuthProvider';
+import { Avatar } from '@/components/ui/Avatar';
 import { AssetModal } from '@/components/AssetModal';
 import { ListingsMap } from '@/components/map/ListingsMap';
 import { ListingCard } from '@/components/ListingCard';
@@ -15,6 +17,7 @@ import type { Asset } from '@/types/yad2';
 
 export function SearchPage() {
   const { filters, update, toggle, reset, activeCount } = useSearchFilters();
+  const { user, logout } = useAuth();
   const { status, data, error } = useListingSearch(filters);
   const [selected, setSelected] = useState<Asset | null>(null);
   const [loadingToken, setLoadingToken] = useState<string | null>(null);
@@ -67,11 +70,37 @@ export function SearchPage() {
           </div>
 
           <div className="flex items-center gap-3">
-            {/* The buyer entrance. Agencies reach theirs from a link on that page,
-                which is where importing from yad2 lives too. */}
-            <Link to="/login" className="text-sm text-blue-700 hover:underline">
-              כניסה / הרשמה ←
-            </Link>
+            {/*
+              Signed in, this has to be the account — not a sign-in link. The login page
+              redirects anyone who already has a session, so offering it here sent you to
+              /login and straight back, which reads as the link being broken.
+
+              Agencies reach their own sign-in from a link on that page, which is also
+              where importing from yad2 lives.
+            */}
+            {user ? (
+              <div className="flex items-center gap-2">
+                <Link
+                  to="/app/profile"
+                  className="flex items-center gap-2 rounded-lg px-2 py-1 transition hover:bg-slate-100"
+                  title={`${user.firstName} ${user.lastName}`.trim()}
+                >
+                  <Avatar size="sm" src={user.avatarUrl} firstName={user.firstName} lastName={user.lastName} />
+                  <span className="hidden text-sm text-slate-700 sm:inline">{user.firstName}</span>
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => void logout()}
+                  className="text-sm text-slate-500 transition hover:text-slate-900"
+                >
+                  יציאה
+                </button>
+              </div>
+            ) : (
+              <Link to="/login" className="text-sm text-blue-700 hover:underline">
+                התחברות
+              </Link>
+            )}
             <select
               value={filters.sort}
               onChange={(e) => update({ sort: e.target.value as (typeof SORTS)[number] })}
