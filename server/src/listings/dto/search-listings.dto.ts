@@ -92,6 +92,15 @@ export class SearchListingsDto {
   @IsString()
   q?: string;
 
+  /**
+   * Only apartments sold by the developer. Absent means every listing, new or not —
+   * "all apartments" is the default rather than a third state to ask for.
+   */
+  @IsOptional()
+  @Transform(toBool)
+  @IsBoolean()
+  isNew?: boolean;
+
   /** Delisted listings are excluded unless this is set. */
   @IsOptional()
   @Transform(toBool)

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { FacetList } from '@/components/FacetList';
 import { RangeInputs } from '@/components/RangeInputs';
+import { RoomsPicker } from '@/components/search/RoomsPicker';
 import { SECTION_LABELS, type SearchFilters, type SearchResponse } from '@/types/search';
 import type { Section } from '@/types/yad2';
 
@@ -55,6 +56,16 @@ export function SearchFilterPanel({ filters, facets, activeCount, onUpdate, onTo
         ))}
       </div>
 
+      <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
+        <input
+          type="checkbox"
+          checked={Boolean(filters.isNew)}
+          onChange={(e) => onUpdate({ isNew: e.target.checked || undefined })}
+          className="h-4 w-4 flex-none"
+        />
+        רק דירות מקבלן
+      </label>
+
       <input
         value={text}
         onChange={(e) => setText(e.target.value)}
@@ -71,13 +82,13 @@ export function SearchFilterPanel({ filters, facets, activeCount, onUpdate, onTo
         onChange={({ min, max }) => onUpdate({ minPrice: min, maxPrice: max })}
       />
 
-      <RangeInputs
-        title="חדרים"
-        step={0.5}
-        min={filters.minRooms}
-        max={filters.maxRooms}
-        onChange={({ min, max }) => onUpdate({ minRooms: min, maxRooms: max })}
-      />
+      <div className="border-t border-slate-100 pt-3">
+        <RoomsPicker
+          min={filters.minRooms}
+          max={filters.maxRooms}
+          onChange={({ min, max }) => onUpdate({ minRooms: min, maxRooms: max })}
+        />
+      </div>
 
       <RangeInputs
         title="שטח"

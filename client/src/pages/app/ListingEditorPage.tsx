@@ -99,8 +99,18 @@ function toForm(listing: ListingDetail): Form {
  * Plain `useState` rather than formik — the house split puts formik on the auth forms
  * only, and this form is mostly numeric fields with no cross-field rules.
  */
-function toInput(form: Form, amenities: string[], isExclusive: boolean): ListingInput {
-  const input: Record<string, unknown> = { section: form.section, amenities, isExclusive };
+function toInput(
+  form: Form,
+  amenities: string[],
+  isExclusive: boolean,
+  isNewFromDeveloper: boolean,
+): ListingInput {
+  const input: Record<string, unknown> = {
+    section: form.section,
+    amenities,
+    isExclusive,
+    isNewFromDeveloper,
+  };
 
   for (const [key, raw] of Object.entries(form)) {
     if (key === 'section') continue;
@@ -125,6 +135,7 @@ export function ListingEditorPage() {
   const [form, setForm] = useState<Form>(EMPTY);
   const [amenities, setAmenities] = useState<string[]>([]);
   const [isExclusive, setIsExclusive] = useState(false);
+  const [isNewFromDeveloper, setIsNewFromDeveloper] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -150,6 +161,7 @@ export function ListingEditorPage() {
     setForm(toForm(fetched));
     setAmenities(fetched.amenities ?? []);
     setIsExclusive(fetched.isExclusive);
+    setIsNewFromDeveloper(fetched.isNewFromDeveloper);
   }, [fetched]);
 
   // Derived, not mirrored into state: a second copy of something Query already tracks
@@ -178,7 +190,7 @@ export function ListingEditorPage() {
 
     try {
       const input = {
-        ...toInput(form, amenities, isExclusive),
+        ...toInput(form, amenities, isExclusive, isNewFromDeveloper),
         ...(status ? { status } : {}),
         ...(allowDuplicate ? { allowDuplicate: true } : {}),
       };
@@ -387,6 +399,25 @@ export function ListingEditorPage() {
           הנכס משווק בבלעדיות על ידי הסוכנות
         </label>
         <p className="text-xs text-slate-500">מוצג כתווית על הנכס בתוצאות החיפוש ובעמוד הנכס.</p>
+      </section>
+
+      <section className="flex flex-col gap-2 rounded-xl border border-slate-200 bg-white p-4">
+        <h2 className="text-sm font-semibold text-slate-900">דירה מקבלן</h2>
+        <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
+          <input
+            type="checkbox"
+            checked={isNewFromDeveloper}
+            onChange={(e) => {
+              setIsNewFromDeveloper(e.target.checked);
+              setSaved(false);
+            }}
+            className="h-4 w-4 flex-none"
+          />
+          הנכס נמכר על ידי הקבלן ולא על ידי בעלים קודם
+        </label>
+        <p className="text-xs text-slate-500">
+          מאפשר למחפשים לסנן דירות מקבלן בלבד, ומוצג כתווית על הנכס.
+        </p>
       </section>
 
       <section className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-4">

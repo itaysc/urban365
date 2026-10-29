@@ -58,6 +58,12 @@ export class UpsertListingDto {
    */
   @IsOptional() @IsBoolean() isExclusive?: boolean;
 
+  /**
+   * Sold by the developer — דירה מקבלן. A plain column with no amenity mirroring: the
+   * yad2 feed has no equivalent, so nothing else has to be kept in step with it.
+   */
+  @IsOptional() @IsBoolean() isNewFromDeveloper?: boolean;
+
   @IsOptional() @IsString() @MaxLength(5000) description?: string;
   @IsOptional() @IsString() @MaxLength(120) contactName?: string;
   @IsOptional() @IsString() @MaxLength(120) brokerName?: string;

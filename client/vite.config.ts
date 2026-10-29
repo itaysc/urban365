@@ -1,4 +1,5 @@
-import { defineConfig } from 'vite';
+// From vitest/config rather than vite, so the `test` block below is typed.
+import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import path from 'node:path';
 
@@ -38,5 +39,13 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     emptyOutDir: true,
+  },
+  test: {
+    // Node, not jsdom: what is worth testing here is logic — the Hebrew a heading is
+    // built from, what a stored value is allowed to be — and none of it touches a DOM.
+    // A test that does will need an environment, and `happy-dom` installs without the
+    // native `canvas` peer that jsdom drags in.
+    environment: 'node',
+    include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
   },
 });

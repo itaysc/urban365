@@ -35,11 +35,23 @@ export function ListingCard({ listing, onOpen }: { listing: SearchListing; onOpe
           <div className="flex h-full items-center justify-center text-sm text-slate-400">ללא תמונה</div>
         )}
 
-        {exclusive && (
-          <span className="absolute top-2 start-2 rounded-md bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800 shadow-sm">
-            {EXCLUSIVE_LABEL}
-          </span>
-        )}
+        {/*
+          Stacked rather than placed in separate corners: a listing can be both, and two
+          badges facing each other across the photo read as unrelated to one another.
+        */}
+        <div className="absolute top-2 start-2 flex flex-col items-start gap-1">
+          {exclusive && (
+            <span className="rounded-md bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800 shadow-sm">
+              {EXCLUSIVE_LABEL}
+            </span>
+          )}
+
+          {listing.isNewFromDeveloper && (
+            <span className="rounded-md bg-sky-100 px-2 py-0.5 text-xs font-semibold text-sky-800 shadow-sm">
+              מקבלן
+            </span>
+          )}
+        </div>
 
         {listing.tags.length > 0 && (
           <div className="absolute bottom-2 right-2 flex flex-wrap gap-1">

@@ -56,6 +56,7 @@ export interface ListingDetail extends MyListing {
   amenities: string[];
   tags: string[];
   isExclusive: boolean;
+  isNewFromDeveloper: boolean;
   description: string | null;
   contactName: string | null;
   brokerName: string | null;
@@ -81,6 +82,7 @@ export interface ListingInput {
   houseNumber?: number;
   amenities?: string[];
   isExclusive?: boolean;
+  isNewFromDeveloper?: boolean;
   description?: string;
   contactName?: string;
   brokerName?: string;

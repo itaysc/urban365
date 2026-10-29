@@ -3,6 +3,8 @@ import { ChevronDown, SlidersHorizontal } from 'lucide-react';
 import { FacetList } from '@/components/FacetList';
 import { RangeInputs } from '@/components/RangeInputs';
 import { PlaceSearchBox } from '@/components/search/PlaceSearchBox';
+import { RoomsPicker } from '@/components/search/RoomsPicker';
+import { roomsLabel } from '@/components/search/roomsRange';
 import { SECTION_LABELS, type SearchFilters, type SearchResponse } from '@/types/search';
 import type { Section } from '@/types/yad2';
 
@@ -36,6 +38,8 @@ interface PopoverProps {
   label: string;
   /** The current setting, shown in the trigger so the bar reads without being opened. */
   value: string | null;
+  /** Panel width. Widened for the rooms row, which is eleven steps across. */
+  width?: string;
   children: React.ReactNode;
 }
 
@@ -46,7 +50,7 @@ interface PopoverProps {
  * only `מחיר ⌄` forces you to open each one to find out what the search is currently
  * doing, which is the thing a collapsed filter bar is supposed to save you.
  */
-function FilterPopover({ label, value, children }: PopoverProps) {
+function FilterPopover({ label, value, width = 'w-72', children }: PopoverProps) {
   const [open, setOpen] = useState(false);
   const wrap = useRef<HTMLDivElement>(null);
 
@@ -91,7 +95,9 @@ function FilterPopover({ label, value, children }: PopoverProps) {
       </button>
 
       {open && (
-        <div className="absolute end-0 top-full z-30 mt-1 w-72 rounded-xl border border-slate-200 bg-white p-4 shadow-lg">
+        <div
+          className={`absolute end-0 top-full z-30 mt-1 max-w-[calc(100vw-2rem)] rounded-xl border border-slate-200 bg-white p-4 shadow-lg ${width}`}
+        >
           {children}
         </div>
       )}
@@ -148,6 +154,32 @@ export function FilterBar({ filters, facets, activeCount, onUpdate, onToggle, on
           ))}
         </div>
 
+        {/*
+          Two states, not three. "All" includes developer-sold apartments rather than
+          excluding them, so this only ever narrows — which is why there is no third
+          button for second-hand only.
+        */}
+        <div className="flex items-center p-1" role="group" aria-label="סוג דירה">
+          {[
+            { value: undefined, label: 'כל הדירות' },
+            { value: true, label: 'מקבלן' },
+          ].map((option) => (
+            <button
+              key={option.label}
+              type="button"
+              aria-pressed={Boolean(filters.isNew) === Boolean(option.value)}
+              onClick={() => onUpdate({ isNew: option.value })}
+              className={`rounded-lg px-3 py-1.5 text-sm transition ${
+                Boolean(filters.isNew) === Boolean(option.value)
+                  ? 'bg-orange-50 font-semibold text-orange-700 ring-1 ring-orange-200'
+                  : 'text-slate-600 hover:bg-slate-50'
+              }`}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+
         <FilterPopover label="מחיר" value={rangeLabel(filters.minPrice, filters.maxPrice)}>
           <RangeInputs
             title="מחיר"
@@ -161,14 +193,10 @@ export function FilterBar({ filters, facets, activeCount, onUpdate, onToggle, on
 
         <FilterPopover
           label="חדרים"
-          // Rooms are 1–10, so the compact notation that suits prices would print "3"
-          // as "3" and "3.5" as "3.5" anyway — but spelling it out avoids a surprise if
-          // someone ever types 1000.
-          value={rangeLabel(filters.minRooms, filters.maxRooms, (n) => String(n))}
+          value={roomsLabel({ min: filters.minRooms, max: filters.maxRooms })}
+          width="w-[31rem]"
         >
-          <RangeInputs
-            title="חדרים"
-            step={0.5}
+          <RoomsPicker
             min={filters.minRooms}
             max={filters.maxRooms}
             onChange={({ min, max }) => onUpdate({ minRooms: min, maxRooms: max })}

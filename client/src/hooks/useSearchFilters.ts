@@ -36,6 +36,9 @@ export function useSearchFilters() {
       minSquareMeter: num(params.get('minSquareMeter')),
       maxSquareMeter: num(params.get('maxSquareMeter')),
       q: params.get('q') ?? undefined,
+      // Only ever true or absent — see the note on the DTO. A `false` in the URL would
+      // be a third state meaning the same as none.
+      isNew: params.get('isNew') === 'true' ? true : undefined,
       sort: SORTS.includes(sort as Sort) ? (sort as Sort) : EMPTY_FILTERS.sort,
       page: num(params.get('page')) ?? 1,
     };
@@ -84,7 +87,16 @@ export function useSearchFilters() {
     filters.neighborhood.length +
     filters.propertyType.length +
     filters.amenities.length +
-    [filters.minPrice, filters.maxPrice, filters.minRooms, filters.maxRooms, filters.minSquareMeter, filters.maxSquareMeter, filters.q]
+    [
+      filters.minPrice,
+      filters.maxPrice,
+      filters.minRooms,
+      filters.maxRooms,
+      filters.minSquareMeter,
+      filters.maxSquareMeter,
+      filters.q,
+      filters.isNew,
+    ]
       .filter((v) => v !== undefined && v !== '').length;
 
   return { filters, update, toggle, reset, activeCount };

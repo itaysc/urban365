@@ -17,6 +17,7 @@ export function toQueryParams(filters: SearchFilters, withFacets = true): URLSea
   set('minSquareMeter', filters.minSquareMeter);
   set('maxSquareMeter', filters.maxSquareMeter);
   set('q', filters.q?.trim() || undefined);
+  if (filters.isNew) params.set('isNew', 'true');
   set('sort', filters.sort);
   set('page', filters.page);
 

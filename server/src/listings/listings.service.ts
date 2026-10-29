@@ -35,6 +35,12 @@ export interface SearchListing {
   coverImageUrl: string | null;
   imagesCount: number;
   brokerName: string | null;
+  /**
+   * Sent as its own field, unlike exclusivity, which the card reads off the בלעדיות
+   * amenity label. There is no amenity for מקבלן — nothing in the yad2 feed carries it —
+   * so the column is the only place it exists.
+   */
+  isNewFromDeveloper: boolean;
   agency: { id: string; name: string };
   updatedAt: string | null;
   delistedAt: string | null;
@@ -115,6 +121,10 @@ export class ListingsService {
     // `agencyId` is Agency.id, not yad2's customerId: scraped and self-signup agencies
     // both need to be addressable, and only `id` exists for every agency.
     if (dto.agencyId) where.agencyId = dto.agencyId;
+
+    // Only ever narrows: `false` and absent both mean "all apartments", so a cleared
+    // toggle does not become a search for second-hand ones.
+    if (dto.isNew) where.isNewFromDeveloper = true;
 
     if (dto.city?.length) where.city = { in: dto.city };
     if (dto.neighborhood?.length) where.neighborhood = { in: dto.neighborhood };
@@ -367,6 +377,7 @@ export class ListingsService {
       coverImageUrl: row.coverImageUrl,
       imagesCount: row.imagesCount,
       brokerName: row.brokerName,
+      isNewFromDeveloper: row.isNewFromDeveloper,
       agency: { id: row.agency.id, name: row.agency.name },
       updatedAt: row.updatedAtSource?.toISOString() ?? null,
       delistedAt: row.delistedAt?.toISOString() ?? null,
@@ -452,6 +463,7 @@ export class ListingsService {
         street: true,
         coverImageUrl: true,
         isExclusive: true,
+        isNewFromDeveloper: true,
         agency: { select: { name: true } },
       },
     });
@@ -475,6 +487,7 @@ export class ListingsService {
         street: r.street,
         coverImageUrl: r.coverImageUrl,
         isExclusive: r.isExclusive,
+        isNewFromDeveloper: r.isNewFromDeveloper,
         agencyName: r.agency?.name ?? null,
       })),
       // Tells the client the view is incomplete, so it can say so rather than

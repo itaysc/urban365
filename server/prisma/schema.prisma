@@ -233,6 +233,12 @@ model Listing {
   /// `amenities` — one column to query, one label the search and the cards already read.
   isExclusive Boolean @default(false)
 
+  /// Sold by the developer rather than by a previous owner — דירה מקבלן.
+  ///
+  /// Set by the agency, not derived: yad2's feed has no equivalent flag, so a scraped
+  /// listing arrives false and stays false until someone who knows says otherwise.
+  isNewFromDeveloper Boolean @default(false)
+
   /// The yad2 payload exactly as collected.
   raw Json?
 

@@ -59,6 +59,7 @@ export interface SearchListing {
   tags: string[];
   coverImageUrl: string | null;
   imagesCount: number;
+  isNewFromDeveloper: boolean;
   brokerName: string | null;
   agency: { id: string; name: string };
   updatedAt: string | null;
@@ -94,6 +95,8 @@ export interface SearchFilters {
   minSquareMeter?: number;
   maxSquareMeter?: number;
   q?: string;
+  /** Only developer-sold apartments. Absent means all of them, new or not. */
+  isNew?: boolean;
   sort: Sort;
   page: number;
 }

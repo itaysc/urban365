@@ -7,6 +7,8 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "lint": "oxlint"
   },
   "dependencies": {
@@ -33,7 +35,8 @@
     "postcss": "^8.5.3",
     "tailwindcss": "3.4.17",
     "typescript": "~6.0.3",
-    "vite": "^8.3.4"
+    "vite": "^8.3.4",
+    "vitest": "4.1.12"
   },
   "description": "Nadlan client (React + TypeScript + Vite)",
   "author": "Itay Schmidt",
