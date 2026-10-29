@@ -25,6 +25,16 @@ export function SearchPage() {
 
   const [bounds, setBounds] = useState<MapBounds | null>(null);
 
+  // Panning narrows the map query to what is on screen. A *new* search has to drop that
+  // narrowing, or choosing a city while the map is parked over somewhere else asks for
+  // listings in the old viewport and comes back empty until the map happens to refit.
+  // Paging is excluded: the map shows every result, not the page you are reading.
+  const { page: _page, ...mapFilters } = filters;
+  const mapFilterKey = JSON.stringify(mapFilters);
+  useEffect(() => {
+    setBounds(null);
+  }, [mapFilterKey]);
+
   const { data: mapData } = useQuery({
     queryKey: [...qk.listings.search(filters), 'map', bounds],
     queryFn: () => fetchMapPoints(filters, bounds ?? undefined),

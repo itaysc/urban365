@@ -85,7 +85,7 @@ export function ListingsMap({ points, boundary, onSelect, onViewportChange }: Pr
         id: 'area-fill',
         type: 'fill',
         source: BOUNDARY_SOURCE,
-        paint: { 'fill-color': '#ea580c', 'fill-opacity': 0.06 },
+        paint: { 'fill-color': '#ea580c', 'fill-opacity': 0.1 },
       });
 
       instance.addLayer({
@@ -225,7 +225,12 @@ export function ListingsMap({ points, boundary, onSelect, onViewportChange }: Pr
           : { type: 'FeatureCollection', features: [] },
       );
 
-      if (!boundary) return;
+      // With no area to frame by, hand framing back to the points: clearing the city
+      // should refit to whatever is now on the map, not leave the last city's view.
+      if (!boundary) {
+        framed.current = false;
+        return;
+      }
       framed.current = true;
       instance.fitBounds(
         [
@@ -279,9 +284,12 @@ export function ListingsMap({ points, boundary, onSelect, onViewportChange }: Pr
       <div ref={container} className="h-full w-full" />
 
       {points.length === 0 && (
-        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-          <p className="rounded-lg bg-white/90 px-4 py-2 text-sm text-slate-600 shadow">
-            אין נכסים עם מיקום באזור הזה.
+        // A quiet line along the bottom rather than a card across the middle. With a city
+        // chosen the map still has something to show — the outline — and covering it to
+        // announce an empty result makes the map read as broken rather than as answered.
+        <div className="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center px-3">
+          <p className="rounded-full bg-white/90 px-3 py-1.5 text-xs text-slate-600 shadow-sm ring-1 ring-slate-200">
+            {boundary ? `אין כרגע נכסים ב${boundary.name}` : 'אין נכסים עם מיקום בתוצאות'}
           </p>
         </div>
       )}
