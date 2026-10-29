@@ -86,6 +86,8 @@ export interface SearchFilters {
   agencyId?: string;
   city: string[];
   neighborhood: string[];
+  /** Regions — "מרכז והשרון". The server expands each to the cities it covers. */
+  district: string[];
   propertyType: string[];
   amenities: string[];
   minPrice?: number;
@@ -105,6 +107,7 @@ export const EMPTY_FILTERS: SearchFilters = {
   section: 'forsale',
   city: [],
   neighborhood: [],
+  district: [],
   propertyType: [],
   amenities: [],
   sort: 'newest',

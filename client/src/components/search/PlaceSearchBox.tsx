@@ -28,7 +28,7 @@ interface Props {
 
 /** A chosen place, flattened so the chip row does not care which list it came from. */
 interface Chosen {
-  kind: 'city' | 'neighborhood';
+  kind: 'city' | 'neighborhood' | 'district';
   value: string;
   label: string;
 }
@@ -82,10 +82,13 @@ export function PlaceSearchBox({ filters, update }: Props) {
 
   const chosen = useMemo<Chosen[]>(
     () => [
+      ...filters.district.map((value) => ({ kind: 'district' as const, value, label: value })),
+      // A region brings its cities with it on the server, not here, so the chips stay
+      // honest: one chip for the region you chose, not thirty for what it contains.
       ...filters.city.map((value) => ({ kind: 'city' as const, value, label: value })),
       ...filters.neighborhood.map((value) => ({ kind: 'neighborhood' as const, value, label: value })),
     ],
-    [filters.city, filters.neighborhood],
+    [filters.district, filters.city, filters.neighborhood],
   );
 
   const remaining = MAX_PLACES - chosen.length;
@@ -94,6 +97,16 @@ export function PlaceSearchBox({ filters, update }: Props) {
   // dropdown rather than stopping at a section boundary. Already-chosen places drop
   // out: offering to add what is already added is a dead row.
   const options = useMemo(() => {
+    const districts = (data?.districts ?? [])
+      .filter((d) => !filters.district.includes(d.value))
+      .map((d) => ({
+        kind: 'district' as const,
+        value: d.value,
+        city: d.value,
+        label: d.value,
+        count: d.count,
+      }));
+
     const hoods = (data?.neighborhoods ?? [])
       .filter((h) => !filters.neighborhood.includes(h.value))
       .map((h) => ({
@@ -114,12 +127,12 @@ export function PlaceSearchBox({ filters, update }: Props) {
         count: c.count,
       }));
 
-    // Cities first. The reference this is modelled on lists neighbourhoods above them,
-    // which works in a near-full-height dropdown; here six neighbourhoods pushed the
-    // city itself below the fold, and the city is the one row that must never be
-    // missed — typing a city name and not being offered the city reads as a bug.
-    return [...cities, ...hoods];
-  }, [data, filters.city, filters.neighborhood]);
+    // Widest first, then narrowing: region, city, neighbourhood. The reference this is
+    // modelled on lists neighbourhoods above cities, which works in a near-full-height
+    // dropdown; here six neighbourhoods pushed the city itself below the fold, and the
+    // city is the one row that must never be missed.
+    return [...districts, ...cities, ...hoods];
+  }, [data, filters.district, filters.city, filters.neighborhood]);
 
   useEffect(() => setHighlighted(0), [options.length]);
 
@@ -136,7 +149,11 @@ export function PlaceSearchBox({ filters, update }: Props) {
 
   /** Applies a place, whether it came from the suggestions, the recents or geolocation. */
   const apply = (place: RecentPlace) => {
-    if (place.kind === 'city') {
+    if (place.kind === 'district') {
+      if (!filters.district.includes(place.value)) {
+        update({ district: [...filters.district, place.value] });
+      }
+    } else if (place.kind === 'city') {
       if (!filters.city.includes(place.value)) update({ city: [...filters.city, place.value] });
     } else {
       // The city travels with it: `מרכז העיר` exists in a dozen towns, and without the
@@ -205,11 +222,12 @@ export function PlaceSearchBox({ filters, update }: Props) {
   };
 
   const remove = (item: Chosen) => {
-    if (item.kind === 'city') update({ city: filters.city.filter((v) => v !== item.value) });
+    if (item.kind === 'district') update({ district: filters.district.filter((v) => v !== item.value) });
+    else if (item.kind === 'city') update({ city: filters.city.filter((v) => v !== item.value) });
     else update({ neighborhood: filters.neighborhood.filter((v) => v !== item.value) });
   };
 
-  const clear = () => update({ city: [], neighborhood: [] });
+  const clear = () => update({ city: [], neighborhood: [], district: [] });
 
   const onKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {
@@ -231,11 +249,13 @@ export function PlaceSearchBox({ filters, update }: Props) {
     }
   };
 
+  const districts = options.filter((o) => o.kind === 'district');
   const cities = options.filter((o) => o.kind === 'city');
   const hoods = options.filter((o) => o.kind === 'neighborhood');
-  // Where the second group starts in the flat list, so the highlighted index lines up
-  // with what is drawn.
-  const hoodOffset = cities.length;
+  // Where each group starts in the flat list, so the highlighted index lines up with
+  // what is drawn.
+  const cityOffset = districts.length;
+  const hoodOffset = districts.length + cities.length;
 
   const row = (option: (typeof options)[number], index: number) => (
     <li key={`${option.kind}:${option.value}:${option.city}`}>
@@ -391,10 +411,17 @@ export function PlaceSearchBox({ filters, update }: Props) {
               <p className="px-4 py-6 text-center text-sm text-slate-400">לא נמצאו מיקומים מתאימים</p>
             )}
 
+            {districts.length > 0 && (
+              <>
+                <h3 className="bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-900">אזור</h3>
+                <ul>{districts.map((o, i) => row(o, i))}</ul>
+              </>
+            )}
+
             {cities.length > 0 && (
               <>
                 <h3 className="bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-900">עיר</h3>
-                <ul>{cities.map((o, i) => row(o, i))}</ul>
+                <ul>{cities.map((o, i) => row(o, cityOffset + i))}</ul>
               </>
             )}
 

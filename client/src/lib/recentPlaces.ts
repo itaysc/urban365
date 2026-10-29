@@ -1,8 +1,8 @@
 /** A place someone searched, in the shape the dropdown needs to offer it again. */
 export interface RecentPlace {
-  kind: 'city' | 'neighborhood';
+  kind: 'city' | 'neighborhood' | 'district';
   value: string;
-  /** The city it belongs to — the same as `value` for a city. */
+  /** The city it belongs to — the same as `value` for a city or a region. */
   city: string;
   label: string;
 }
@@ -39,7 +39,7 @@ export function readRecentPlaces(): RecentPlace[] {
           Boolean(item) &&
           typeof item === 'object' &&
           (item as RecentPlace).kind !== undefined &&
-          ['city', 'neighborhood'].includes((item as RecentPlace).kind) &&
+          ['city', 'neighborhood', 'district'].includes((item as RecentPlace).kind) &&
           typeof (item as RecentPlace).value === 'string' &&
           typeof (item as RecentPlace).city === 'string' &&
           typeof (item as RecentPlace).label === 'string',

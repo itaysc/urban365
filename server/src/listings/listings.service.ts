@@ -110,7 +110,31 @@ export class ListingsService {
     private readonly owner: PrismaService,
   ) {}
 
-  private where(dto: SearchListingsDto): Prisma.ListingWhereInput {
+  /**
+   * The cities a search covers: the ones named directly, plus every city in each region
+   * named. Regions carry their members, so this is one lookup rather than any geometry.
+   *
+   * Resolved before `where` because that is synchronous and this is not — and because a
+   * region expanding to a plain city list is the whole trick: nothing downstream, from
+   * the facets to the map, needs to know regions exist.
+   */
+  private async citiesFor(dto: SearchListingsDto): Promise<string[] | undefined> {
+    if (!dto.district?.length) return dto.city;
+
+    const regions = await this.prisma.client.cityBoundary.findMany({
+      where: { kind: 'district', matchKey: { in: dto.district.map(cityKey) } },
+      select: { memberCities: true },
+    });
+
+    const all = new Set([...(dto.city ?? []), ...regions.flatMap((r) => r.memberCities)]);
+
+    // An unknown region name resolves to nothing, and returning an empty list would
+    // quietly widen the search to the whole country. A name that matches nothing must
+    // match nothing.
+    return all.size > 0 ? [...all] : [];
+  }
+
+  private where(dto: SearchListingsDto, cities?: string[]): Prisma.ListingWhereInput {
     // Published only, and stated explicitly rather than left to RLS alone: results must
     // not change depending on whether the visitor happens to be logged in to an agency
     // whose drafts the tenant policy would also match.
@@ -126,7 +150,11 @@ export class ListingsService {
     // toggle does not become a search for second-hand ones.
     if (dto.isNew) where.isNewFromDeveloper = true;
 
-    if (dto.city?.length) where.city = { in: dto.city };
+    // `cities` is the resolved list when regions were involved; otherwise what was
+    // asked for directly. An empty array is a real answer — a region we do not hold —
+    // and must return nothing rather than everything.
+    const named = cities ?? dto.city;
+    if (named) where.city = { in: named };
     if (dto.neighborhood?.length) where.neighborhood = { in: dto.neighborhood };
     if (dto.propertyType?.length) where.propertyType = { in: dto.propertyType };
 
@@ -170,7 +198,7 @@ export class ListingsService {
   }
 
   async search(dto: SearchListingsDto): Promise<SearchResponse> {
-    const where = this.where(dto);
+    const where = this.where(dto, await this.citiesFor(dto));
     const page = dto.page ?? 1;
     const pageSize = dto.pageSize ?? DEFAULT_PAGE_SIZE;
 
@@ -266,7 +294,7 @@ export class ListingsService {
       ...(section && { section: section as DbSection }),
     };
 
-    const [cityRows, hoodRows, boundaries] = await Promise.all([
+    const [cityRows, hoodRows, boundaries, regions] = await Promise.all([
       this.prisma.client.listing.groupBy({
         by: ['city'],
         where: { ...published, city: { contains: q, mode } },
@@ -291,9 +319,20 @@ export class ListingsService {
         take: limit,
       }),
       this.prisma.client.cityBoundary.findMany({
-        where: { name: { contains: q, mode } },
+        where: { kind: 'city', name: { contains: q, mode } },
         select: { name: true },
         take: limit * 2,
+      }),
+      // Regions match on their own name and on the names of the cities inside them, so
+      // typing `רחובות` offers שפלה as well as the city itself — which is how someone
+      // widens a search without knowing what their region is called.
+      this.prisma.client.cityBoundary.findMany({
+        where: {
+          kind: 'district',
+          OR: [{ name: { contains: q, mode } }, { memberCities: { hasSome: [q] } }],
+        },
+        select: { name: true, memberCities: true },
+        take: limit,
       }),
     ]);
 
@@ -311,7 +350,22 @@ export class ListingsService {
       cities.push({ value: boundary.name, count: 0 });
     }
 
+    // One count per region, in one grouped query rather than one query per region.
+    const regionCities = [...new Set(regions.flatMap((r) => r.memberCities))];
+    const perCity = regionCities.length
+      ? await this.prisma.client.listing.groupBy({
+          by: ['city'],
+          where: { ...published, city: { in: regionCities } },
+          _count: { _all: true },
+        })
+      : [];
+    const countByCity = new Map(perCity.map((row) => [row.city as string, row._count._all]));
+
     return {
+      districts: regions.map((region) => ({
+        value: region.name,
+        count: region.memberCities.reduce((sum, city) => sum + (countByCity.get(city) ?? 0), 0),
+      })),
       cities,
       neighborhoods: hoodRows
         .filter((row) => row.neighborhood && row.city)
@@ -433,7 +487,7 @@ export class ListingsService {
    * does not need to know the zoom level.
    */
   async mapPoints(dto: SearchListingsDto) {
-    const base = this.where(dto);
+    const base = this.where(dto, await this.citiesFor(dto));
 
     // A listing with no coordinates cannot be drawn, so it is excluded here rather
     // than filtered client-side. When a viewport is set, `base` already carries
@@ -472,7 +526,7 @@ export class ListingsService {
       // Sent with the points rather than from its own route: the map wants both at the
       // same moment, and a second round trip would draw the pins before the area they
       // sit in.
-      boundary: await this.boundaryFor(dto.city),
+      boundary: await this.boundaryFor(dto.city, dto.district),
       points: rows.map((r) => ({
         id: r.id,
         lat: r.latitude as number,
@@ -544,17 +598,27 @@ export class ListingsService {
   }
 
   /**
-   * The outline of the area being searched, when exactly one city is filtered on.
+   * The outline of the area being searched: one region, or failing that one city.
    *
-   * Only one: two cities have no single outline, and drawing both would say less than
+   * The region wins when both are set, because selecting a region is what put those
+   * cities in the filter — drawing one of them would answer a question nobody asked.
+   *
+   * Only ever one. Two areas have no single outline, and drawing both says less than
    * drawing neither. Matched on a normalised key because OpenStreetMap writes
    * `תל־אביב–יפו` while a listing says `תל אביב יפו`.
    */
-  private async boundaryFor(cities: string[] | undefined) {
-    if (!cities || cities.length !== 1) return null;
+  private async boundaryFor(cities: string[] | undefined, districts?: string[]) {
+    const target =
+      districts?.length === 1
+        ? { kind: 'district' as const, name: districts[0] }
+        : cities?.length === 1
+          ? { kind: 'city' as const, name: cities[0] }
+          : null;
+
+    if (!target) return null;
 
     const row = await this.prisma.client.cityBoundary.findUnique({
-      where: { kind_matchKey: { kind: 'city', matchKey: cityKey(cities[0]) } },
+      where: { kind_matchKey: { kind: target.kind, matchKey: cityKey(target.name) } },
       select: {
         name: true,
         geometry: true,

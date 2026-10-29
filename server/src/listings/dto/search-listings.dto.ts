@@ -65,6 +65,16 @@ export class SearchListingsDto {
   @IsString({ each: true })
   neighborhood?: string[];
 
+  /**
+   * A region — "מרכז והשרון". Resolved to the cities it covers before the query runs,
+   * so it behaves exactly like naming those cities by hand.
+   */
+  @IsOptional()
+  @Transform(toArray)
+  @IsArray()
+  @IsString({ each: true })
+  district?: string[];
+
   @IsOptional()
   @Transform(toArray)
   @IsArray()

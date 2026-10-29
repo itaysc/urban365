@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { searchTitle, singlePlace } from '@/lib/searchTitle';
 
-const base = { section: 'forsale' as const, city: [] as string[], neighborhood: [] as string[] };
+const base = {
+  section: 'forsale' as const,
+  city: [] as string[],
+  neighborhood: [] as string[],
+  district: [] as string[],
+};
 
 describe('searchTitle', () => {
   it('names a single city', () => {
@@ -36,6 +41,26 @@ describe('searchTitle', () => {
     expect(searchTitle({ ...base, section: undefined, city: ['רחובות'] })).toBe(
       'נדל״ן למכירה ברחובות',
     );
+  });
+});
+
+describe('searchTitle with regions', () => {
+  it('names the region rather than a city inside it', () => {
+    expect(searchTitle({ ...base, district: ['שפלה'], city: ['רחובות', 'רמלה'] })).toBe(
+      'נדל״ן למכירה בשפלה',
+    );
+  });
+
+  it('says several when two regions are chosen', () => {
+    expect(searchTitle({ ...base, district: ['שפלה', 'דרום'] })).toBe(
+      'נדל״ן למכירה במיקומים שנבחרו',
+    );
+  });
+
+  it('falls back to several when a region and a neighbourhood are both chosen', () => {
+    expect(
+      searchTitle({ ...base, district: ['שפלה'], city: ['רחובות'], neighborhood: ['דניה'] }),
+    ).toBe('נדל״ן למכירה במיקומים שנבחרו');
   });
 });
 

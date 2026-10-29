@@ -24,6 +24,7 @@ export function toQueryParams(filters: SearchFilters, withFacets = true): URLSea
   // The API accepts these comma-separated.
   if (filters.city.length) params.set('city', filters.city.join(','));
   if (filters.neighborhood.length) params.set('neighborhood', filters.neighborhood.join(','));
+  if (filters.district.length) params.set('district', filters.district.join(','));
   if (filters.propertyType.length) params.set('propertyType', filters.propertyType.join(','));
   if (filters.amenities.length) params.set('amenities', filters.amenities.join(','));
 
@@ -119,7 +120,13 @@ export interface NeighborhoodSuggestion {
   count: number;
 }
 
+export interface DistrictSuggestion {
+  value: string;
+  count: number;
+}
+
 export interface PlaceSuggestions {
+  districts: DistrictSuggestion[];
   cities: CitySuggestion[];
   neighborhoods: NeighborhoodSuggestion[];
 }
