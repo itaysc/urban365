@@ -26,7 +26,7 @@ function resultCount(total: number | undefined): string {
 }
 
 export function SearchPage() {
-  const { filters, update, toggle, reset, activeCount } = useSearchFilters();
+  const { filters, update, reset, activeCount } = useSearchFilters();
   const { user, logout } = useAuth();
   const { status, data, error } = useListingSearch(filters);
   const [selected, setSelected] = useState<Asset | null>(null);
@@ -165,7 +165,6 @@ export function SearchPage() {
           facets={data?.facets}
           activeCount={activeCount}
           onUpdate={update}
-          onToggle={toggle}
           onReset={reset}
         />
 
