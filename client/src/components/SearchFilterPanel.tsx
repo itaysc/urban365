@@ -63,7 +63,7 @@ export function SearchFilterPanel({ filters, facets, activeCount, onUpdate, onTo
           onChange={(e) => onUpdate({ isNew: e.target.checked || undefined })}
           className="h-4 w-4 flex-none"
         />
-        רק דירות מקבלן
+        רק דירות חדשות
       </label>
 
       <input

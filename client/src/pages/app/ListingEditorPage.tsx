@@ -405,7 +405,7 @@ export function ListingEditorPage() {
       </section>
 
       <section className="flex flex-col gap-2 rounded-xl border border-slate-200 bg-white p-4">
-        <h2 className="text-sm font-semibold text-slate-900">דירה מקבלן</h2>
+        <h2 className="text-sm font-semibold text-slate-900">דירה חדשה</h2>
         <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
           <input
             type="checkbox"
@@ -419,7 +419,7 @@ export function ListingEditorPage() {
           הנכס נמכר על ידי הקבלן ולא על ידי בעלים קודם
         </label>
         <p className="text-xs text-slate-500">
-          מאפשר למחפשים לסנן דירות מקבלן בלבד, ומוצג כתווית על הנכס.
+          מאפשר למחפשים לסנן דירות חדשות בלבד, ומוצג כתווית על הנכס.
         </p>
       </section>
 

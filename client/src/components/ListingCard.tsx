@@ -48,7 +48,7 @@ export function ListingCard({ listing, onOpen }: { listing: SearchListing; onOpe
 
           {listing.isNewFromDeveloper && (
             <span className="rounded-md bg-sky-100 px-2 py-0.5 text-xs font-semibold text-sky-800 shadow-sm">
-              מקבלן
+              דירה חדשה
             </span>
           )}
         </div>

@@ -71,10 +71,16 @@ export function SearchPage() {
   // Scroll to the top only when the *page* changes. This used to depend on `status`,
   // which goes to 'done' after any search — so ticking a filter yanked you to the top,
   // away from the filter you were still using.
+  //
+  // Both the column and the window: on a wide screen the results scroll inside their
+  // own column and the window has nowhere to go, while on a phone it is the window that
+  // scrolls and the column is the full list.
+  const results = useRef<HTMLElement>(null);
   const previousPage = useRef(filters.page);
   useEffect(() => {
     if (previousPage.current === filters.page) return;
     previousPage.current = filters.page;
+    results.current?.scrollTo({ top: 0, behavior: 'smooth' });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [filters.page]);
 
@@ -84,8 +90,13 @@ export function SearchPage() {
   const searching = activeCount > 0;
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <div className="mx-auto flex max-w-7xl flex-col gap-6 p-4 sm:p-8">
+    // On a wide screen the page itself does not scroll: the header and the filters stay
+    // put, the results column scrolls on its own and the map stays whole beside it.
+    // Scrolling the whole page first pushed both the filters and the map off the top
+    // before a single new card appeared. On a phone this is an ordinary page again —
+    // one column, nothing to keep beside anything.
+    <div className="bg-slate-50 lg:flex lg:h-screen lg:flex-col lg:overflow-hidden">
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 sm:p-8 lg:min-h-0 lg:flex-1">
         <header className="flex flex-wrap items-baseline justify-between gap-3">
           <div>
             {/*
@@ -174,13 +185,15 @@ export function SearchPage() {
         )}
 
         <div
-          className={`grid gap-6 ${
+          className={`grid gap-6 lg:min-h-0 lg:flex-1 ${
             searching
               ? 'lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]'
               : 'lg:grid-cols-[16rem_minmax(0,1fr)_minmax(0,1.1fr)]'
           }`}
         >
           {!searching && (
+            // Also scrolls: it is taller than the viewport, and the page behind it no
+            // longer scrolls to reveal the rest.
             <SearchFilterPanel
               filters={filters}
               facets={data?.facets}
@@ -191,7 +204,12 @@ export function SearchPage() {
             />
           )}
 
-          <section className="flex flex-col gap-4">
+          {/*
+            `min-h-0` is what makes the overflow work at all: a grid item's default
+            minimum size is its content, so without it the column grows to fit every
+            card and never scrolls.
+          */}
+          <section ref={results} className="flex flex-col gap-4 lg:min-h-0 lg:overflow-y-auto lg:pe-1">
             {status === 'error' && (
               <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-red-800">
                 <p className="font-medium">החיפוש נכשל</p>
@@ -238,12 +256,13 @@ export function SearchPage() {
             different questions about the same results — "where" and "what" — and making
             them alternatives means always being in the wrong one.
 
-            Sticky, so it stays put while the results scroll past it. Order is set
-            explicitly because the grid's source order puts the map last, and on a phone
-            it belongs above the list, not below several screens of cards.
+            It no longer needs to be sticky — the column it sits in does not scroll —
+            so it simply fills the height available. Order is set explicitly because the
+            grid's source order puts the map last, and on a phone it belongs above the
+            list, not below several screens of cards.
           */}
-          <aside className="order-first flex flex-col gap-2 lg:order-none">
-            <div className="lg:sticky lg:top-4">
+          <aside className="order-first flex flex-col gap-2 lg:order-none lg:min-h-0">
+            <div className="flex min-h-0 flex-1 flex-col gap-2">
               <ListingsMap
                 points={mapData?.points ?? []}
                 boundary={mapData?.boundary}

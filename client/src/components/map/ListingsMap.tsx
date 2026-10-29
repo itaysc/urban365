@@ -382,7 +382,8 @@ export function ListingsMap({ points, boundary, onSelect, onViewportChange }: Pr
     // Short on a phone, where it sits above the list and should not take the whole
     // screen before a single card is visible; tall enough on a desktop to be worth
     // reading beside the results.
-    <div className="relative h-[45vh] w-full overflow-hidden rounded-xl border border-slate-200 lg:h-[calc(100vh-2rem)]">
+    <div // Fills the column on a wide screen, which now has a fixed height of its own.
+      className="relative h-[45vh] w-full shrink-0 overflow-hidden rounded-xl border border-slate-200 lg:h-full lg:min-h-0 lg:flex-1">
       <div ref={container} className="h-full w-full" />
 
       {active && (

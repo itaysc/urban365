@@ -162,7 +162,7 @@ export function FilterBar({ filters, facets, activeCount, onUpdate, onToggle, on
         <div className="flex items-center p-1" role="group" aria-label="סוג דירה">
           {[
             { value: undefined, label: 'כל הדירות' },
-            { value: true, label: 'מקבלן' },
+            { value: true, label: 'דירות חדשות' },
           ].map((option) => (
             <button
               key={option.label}
