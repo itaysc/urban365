@@ -75,10 +75,27 @@ export interface CityBoundary {
   bounds: MapBounds;
 }
 
+/** An agency office, drawn on the map under the agency's own name. */
+export interface MapOffice {
+  id: string;
+  label: string | null;
+  city: string;
+  street: string | null;
+  lat: number;
+  lng: number;
+  phone: string | null;
+  agencyId: string;
+  agencyName: string;
+  agencySlug: string | null;
+  logoUrl: string | null;
+}
+
 export interface MapResponse {
   /** The outline of the searched area, when exactly one city is filtered on. */
   boundary: CityBoundary | null;
   points: MapPoint[];
+  /** Offices of the agencies whose listings are in this result. */
+  offices: MapOffice[];
   /** True when the point cap was hit, so the view is a subset rather than everything. */
   truncated: boolean;
 }

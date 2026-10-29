@@ -266,3 +266,44 @@ export async function uploadMyAvatar(file: File): Promise<{ id: string; avatarUr
 
 export const removeMyAvatar = () =>
   api.delete<{ id: string; avatarUrl: string | null }>('/my/team/me/avatar');
+
+// ── offices ───────────────────────────────────────────────────────────────────
+
+export interface AgencyOffice {
+  id: string;
+  label: string | null;
+  city: string;
+  street: string | null;
+  houseNumber: number | null;
+  /** Null when the address could not be placed — the office is then not on the map. */
+  latitude: number | null;
+  longitude: number | null;
+  phone: string | null;
+}
+
+export interface OfficeInput {
+  label?: string;
+  city: string;
+  street?: string;
+  houseNumber?: number;
+  phone?: string;
+}
+
+export async function fetchOffices(): Promise<AgencyOffice[]> {
+  const { data } = await api.get<AgencyOffice[]>('/my/offices');
+  return data;
+}
+
+export async function createOffice(input: OfficeInput): Promise<AgencyOffice> {
+  const { data } = await api.post<AgencyOffice>('/my/offices', input);
+  return data;
+}
+
+export async function updateOffice(id: string, input: OfficeInput): Promise<AgencyOffice> {
+  const { data } = await api.patch<AgencyOffice>(`/my/offices/${id}`, input);
+  return data;
+}
+
+export async function deleteOffice(id: string): Promise<void> {
+  await api.delete(`/my/offices/${id}`);
+}

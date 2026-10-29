@@ -527,6 +527,7 @@ export class ListingsService {
       // same moment, and a second round trip would draw the pins before the area they
       // sit in.
       boundary: await this.boundaryFor(dto.city, dto.district),
+      offices: await this.officesIn(where),
       points: rows.map((r) => ({
         id: r.id,
         lat: r.latitude as number,
@@ -548,6 +549,63 @@ export class ListingsService {
       // silently showing a subset as though it were everything.
       truncated: rows.length === MAP_POINT_LIMIT,
     };
+  }
+
+  /**
+   * The agency offices worth drawing beside the pins.
+   *
+   * Scoped to the agencies that actually have listings in this search rather than to
+   * every agency we hold: an office for an agency with nothing in the area is a shop
+   * front on someone else's map, and at a national zoom it would be every agency in the
+   * country at once.
+   *
+   * Read on the owner client. `AgencyOffice` is public by policy, so the tenant client
+   * would serve it too — but this runs for signed-out visitors where there is no tenant
+   * context at all, and the agency join behind it is the kind of nested read that comes
+   * back null rather than erroring when a policy hides it.
+   */
+  private async officesIn(where: Prisma.ListingWhereInput) {
+    const agencies = await this.prisma.client.listing.findMany({
+      where,
+      select: { agencyId: true },
+      distinct: ['agencyId'],
+      take: 50,
+    });
+
+    if (agencies.length === 0) return [];
+
+    const rows = await this.owner.agencyOffice.findMany({
+      where: {
+        agencyId: { in: agencies.map((row) => row.agencyId) },
+        latitude: { not: null },
+        longitude: { not: null },
+      },
+      select: {
+        id: true,
+        label: true,
+        city: true,
+        street: true,
+        latitude: true,
+        longitude: true,
+        phone: true,
+        agency: { select: { id: true, name: true, logoUrl: true, slug: true } },
+      },
+      take: 200,
+    });
+
+    return rows.map((row) => ({
+      id: row.id,
+      label: row.label,
+      city: row.city,
+      street: row.street,
+      lat: row.latitude as number,
+      lng: row.longitude as number,
+      phone: row.phone,
+      agencyId: row.agency.id,
+      agencyName: row.agency.name,
+      agencySlug: row.agency.slug,
+      logoUrl: row.agency.logoUrl,
+    }));
   }
 
   /**

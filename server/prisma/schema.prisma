@@ -127,6 +127,7 @@ model Agency {
   commercialAssetsCount Int?
 
   brokers     Broker[]
+  offices     AgencyOffice[]
   listings    Listing[]
   runs        ScrapeRun[]
   memberships AgencyMembership[]
@@ -601,6 +602,39 @@ model Deal {
 
   @@index([agencyId, stage, createdAt])
   @@index([leadId])
+}
+
+/// A place an agency works out of, drawn on the public map under the agency's name.
+///
+/// Separate from `Agency.phone` and the rest of the profile because an agency has more
+/// than one: a head office and branches, each in a different town, each worth finding.
+model AgencyOffice {
+  id       String @id @default(cuid())
+  agency   Agency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  agencyId String
+
+  /// "סניף רמת גן". Optional — one office needs no name beyond the agency's own.
+  label String?
+
+  city        String
+  street      String?
+  houseNumber Int?
+
+  /// Worked out from the address when it was saved, not at render time: a map showing
+  /// twenty offices would otherwise be twenty geocoding requests per view.
+  ///
+  /// Null when the address could not be placed. Such an office still exists and still
+  /// shows in the agency's own list — it is simply not drawn.
+  latitude  Float?
+  longitude Float?
+
+  /// A branch number, where it differs from the agency's main line.
+  phone String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([agencyId])
 }
 
 /// Outlines the map draws: municipalities, and the regions people actually search by.

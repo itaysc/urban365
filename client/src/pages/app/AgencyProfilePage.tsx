@@ -15,6 +15,7 @@ import {
   uploadAgencyCover,
   type AgencyProfile,
 } from '@/services/agency';
+import { OfficesPanel } from '@/components/agency/OfficesPanel';
 
 /** The agency's own public page: the banner and the description shown to visitors. */
 export function AgencyProfilePage() {
@@ -203,6 +204,12 @@ export function AgencyProfilePage() {
           </Field>
         </div>
       </section>
+
+      {/*
+        Its own panel with its own save, not part of the profile form: a branch is a row
+        of its own, and pressing "שמור" on the profile should not be what commits one.
+      */}
+      <OfficesPanel />
 
       <div className="flex items-center gap-2">
         <Button disabled={saving} onClick={() => void save()}>

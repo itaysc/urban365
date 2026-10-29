@@ -241,6 +241,7 @@ export function SearchPage() {
             <div className="flex min-h-0 flex-1 flex-col gap-2">
               <ListingsMap
                 points={mapData?.points ?? []}
+                offices={mapData?.offices ?? []}
                 boundary={mapData?.boundary}
                 onSelect={(id) => void openById(id)}
                 onViewportChange={setBounds}

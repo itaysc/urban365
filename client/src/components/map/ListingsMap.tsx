@@ -3,10 +3,12 @@ import maplibregl, { type GeoJSONSource, type Map as MapLibreMap } from 'maplibr
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { config } from '@/config';
 import { ListingPopupCard } from '@/components/map/ListingPopupCard';
-import type { CityBoundary, MapPoint } from '@/services/search';
+import type { CityBoundary, MapOffice, MapPoint } from '@/services/search';
 
 interface Props {
   points: MapPoint[];
+  /** Agency offices, drawn as named markers above the listing pins. */
+  offices?: MapOffice[];
   /** The searched area's outline, drawn beneath the pins. Null when none applies. */
   boundary?: CityBoundary | null;
   /** Called when a pin is clicked, so the page can open the same modal the cards do. */
@@ -35,7 +37,7 @@ function shortPrice(value: number | null): string {
   return String(value);
 }
 
-export function ListingsMap({ points, boundary, onSelect, onViewportChange }: Props) {
+export function ListingsMap({ points, offices = [], boundary, onSelect, onViewportChange }: Props) {
   const container = useRef<HTMLDivElement>(null);
   const map = useRef<MapLibreMap | null>(null);
   // Whether the sources and layers below exist yet. The data effects wait on this
@@ -330,6 +332,54 @@ export function ListingsMap({ points, boundary, onSelect, onViewportChange }: Pr
   useEffect(() => {
     if (activeId && !active) setActiveId(null);
   }, [activeId, active]);
+
+  // Offices are MapLibre markers rather than another symbol layer: each one is a name
+  // and a logo, which is DOM, not a glyph. There are at most a couple of hundred, so the
+  // cost of real elements is affordable where it would not be for the listings.
+  const officeMarkers = useRef<maplibregl.Marker[]>([]);
+
+  useEffect(() => {
+    const instance = map.current;
+    if (!instance || !ready) return;
+
+    for (const marker of officeMarkers.current) marker.remove();
+    officeMarkers.current = [];
+
+    for (const office of offices) {
+      const el = document.createElement('a');
+      el.className =
+        'flex max-w-[11rem] items-center gap-1.5 rounded-lg border-2 border-fuchsia-700 bg-white px-2 py-1 text-xs font-semibold text-slate-900 shadow-md';
+      el.href = office.agencySlug ? `/agency/${office.agencySlug}` : `/agency/${office.agencyId}`;
+      el.title = [office.label, office.street, office.city].filter(Boolean).join(', ');
+
+      if (office.logoUrl) {
+        const logo = document.createElement('img');
+        logo.src = office.logoUrl;
+        logo.alt = '';
+        logo.loading = 'lazy';
+        logo.className = 'h-5 w-5 shrink-0 rounded object-contain';
+        // A logo that will not load must not leave a torn-page glyph inside the marker.
+        logo.onerror = () => logo.remove();
+        el.appendChild(logo);
+      }
+
+      const name = document.createElement('span');
+      name.className = 'truncate';
+      name.textContent = office.agencyName;
+      el.appendChild(name);
+
+      officeMarkers.current.push(
+        new maplibregl.Marker({ element: el, anchor: 'bottom' })
+          .setLngLat([office.lng, office.lat])
+          .addTo(instance),
+      );
+    }
+
+    return () => {
+      for (const marker of officeMarkers.current) marker.remove();
+      officeMarkers.current = [];
+    };
+  }, [offices, ready]);
 
   // Where the active pin currently sits in the map's own pixels. Recomputed on every
   // frame of a pan or zoom, so the card travels with its pin instead of detaching from
