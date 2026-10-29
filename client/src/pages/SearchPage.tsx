@@ -7,10 +7,8 @@ import { selectClass } from '@/components/ui/Field';
 import { AssetModal } from '@/components/AssetModal';
 import { ListingsMap } from '@/components/map/ListingsMap';
 import { FilterBar } from '@/components/search/FilterBar';
-import { PlaceSearchBox } from '@/components/search/PlaceSearchBox';
 import { ListingCard } from '@/components/ListingCard';
 import { Pagination } from '@/components/Pagination';
-import { SearchFilterPanel } from '@/components/SearchFilterPanel';
 import { useListingSearch } from '@/hooks/useListingSearch';
 import { useSearchFilters } from '@/hooks/useSearchFilters';
 import { fetchListing, fetchMapPoints, type MapBounds } from '@/services/search';
@@ -86,9 +84,6 @@ export function SearchPage() {
 
   const items = data?.items ?? [];
 
-  /** Whether anything has been asked for yet — what switches the page to its compact shape. */
-  const searching = activeCount > 0;
-
   return (
     // On a wide screen the page itself does not scroll: the header and the filters stay
     // put, the results column scrolls on its own and the map stays whole beside it.
@@ -157,53 +152,24 @@ export function SearchPage() {
         </header>
 
         {/*
-          Two shapes for the same controls.
+          One filter surface, in both states.
 
-          Nothing searched yet and the page has room to spare, so the place box is given
-          it: choosing where to look is the first decision and everything else narrows
-          what that returns. Once a search is under way the results and the map are what
-          the page is for, and a column of filters down the side is the most expensive
-          thing on it — so the controls collapse into one strip along the top and the
-          space goes to the answers.
-
-          Clearing every filter brings the roomy version back, so this is a state rather
-          than a door that shuts behind you.
+          There used to be a sidebar before the first search and this bar after it, and
+          keeping both meant every filter was built twice — which is how the rooms row,
+          eleven steps wide, ended up overflowing a sixteen-rem column and sitting on
+          top of the results. The bar holds everything the sidebar did, so the sidebar
+          is gone and the space it took goes to the results and the map from the start.
         */}
-        {searching ? (
-          <FilterBar
-            filters={filters}
-            facets={data?.facets}
-            activeCount={activeCount}
-            onUpdate={update}
-            onToggle={toggle}
-            onReset={reset}
-          />
-        ) : (
-          <div className="max-w-xl">
-            <PlaceSearchBox filters={filters} update={update} />
-          </div>
-        )}
+        <FilterBar
+          filters={filters}
+          facets={data?.facets}
+          activeCount={activeCount}
+          onUpdate={update}
+          onToggle={toggle}
+          onReset={reset}
+        />
 
-        <div
-          className={`grid gap-6 lg:min-h-0 lg:flex-1 ${
-            searching
-              ? 'lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]'
-              : 'lg:grid-cols-[16rem_minmax(0,1fr)_minmax(0,1.1fr)]'
-          }`}
-        >
-          {!searching && (
-            // Also scrolls: it is taller than the viewport, and the page behind it no
-            // longer scrolls to reveal the rest.
-            <SearchFilterPanel
-              filters={filters}
-              facets={data?.facets}
-              activeCount={activeCount}
-              onUpdate={update}
-              onToggle={toggle}
-              onReset={reset}
-            />
-          )}
-
+        <div className="grid gap-6 lg:min-h-0 lg:flex-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
           {/*
             `min-h-0` is what makes the overflow work at all: a grid item's default
             minimum size is its content, so without it the column grows to fit every

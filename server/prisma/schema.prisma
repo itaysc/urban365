@@ -603,7 +603,7 @@ model Deal {
   @@index([leadId])
 }
 
-/// Administrative outlines, so the map can show which area a search covers.
+/// Outlines the map draws: municipalities, and the regions people actually search by.
 ///
 /// Pulled from OpenStreetMap once by `npm run boundaries:sync` rather than fetched per
 /// request: Nominatim's policy forbids systematic use, Overpass rate-limits anonymous
@@ -619,12 +619,25 @@ model CityBoundary {
   /// What the lookup actually matches on: `name` with separators and Hebrew
   /// punctuation flattened, because OSM writes `תל־אביב–יפו` and a listing says
   /// `תל אביב יפו`. See `cityKey` in src/listings/city-name.ts — both sides use it.
-  matchKey String @unique
+  ///
+  /// Unique within a kind rather than overall: a region and a city can legitimately
+  /// share a name, and `חיפה` is both a city and part of a region's name.
+  matchKey String
+
+  /// A single municipality, or a region made of several.
+  kind BoundaryKind @default(city)
+
+  /// For a region: every city it covers, so a search for it is an ordinary `city IN`
+  /// and needs no geometry at query time. Worked out during the sync by testing each
+  /// city's centre against the region's outline. Empty for a city, which is itself.
+  memberCities String[]
 
   /// The OSM relation this came from, so a re-sync can tell an update from a new row
-  /// and a human can go and look at the source.
-  osmRelationId BigInt @unique
+  /// and a human can go and look at the source. Null for a region, which is assembled
+  /// from several relations rather than being one.
+  osmRelationId BigInt? @unique
   /// 8 is a municipality. 10 would be a neighbourhood, where Israeli coverage is thin.
+  /// A region carries the level of the units it was built from.
   adminLevel    Int    @default(8)
 
   /// A GeoJSON Polygon or MultiPolygon. Kept whole rather than normalised into points:
@@ -641,6 +654,13 @@ model CityBoundary {
   syncedAt  DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@unique([kind, matchKey])
   @@index([adminLevel])
-  @@index([matchKey])
+  @@index([kind])
+}
+
+/// A municipality, or a marketing region assembled from several sub-districts.
+enum BoundaryKind {
+  city
+  district
 }
