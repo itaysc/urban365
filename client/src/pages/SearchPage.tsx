@@ -6,6 +6,7 @@ import { Avatar } from '@/components/ui/Avatar';
 import { selectClass } from '@/components/ui/Field';
 import { AssetModal } from '@/components/AssetModal';
 import { ListingsMap } from '@/components/map/ListingsMap';
+import { FilterBar } from '@/components/search/FilterBar';
 import { PlaceSearchBox } from '@/components/search/PlaceSearchBox';
 import { ListingCard } from '@/components/ListingCard';
 import { Pagination } from '@/components/Pagination';
@@ -14,8 +15,17 @@ import { useListingSearch } from '@/hooks/useListingSearch';
 import { useSearchFilters } from '@/hooks/useSearchFilters';
 import { fetchListing, fetchMapPoints, type MapBounds } from '@/services/search';
 import { qk } from '@/queries/keys';
+import { searchTitle } from '@/lib/searchTitle';
 import { SORT_LABELS, SORTS, type SearchListing } from '@/types/search';
 import type { Asset } from '@/types/yad2';
+
+/** Hebrew does not take a numeral before a singular noun here. */
+function resultCount(total: number | undefined): string {
+  if (total === undefined) return 'טוען…';
+  if (total === 0) return 'אין תוצאות';
+  if (total === 1) return 'תוצאה אחת';
+  return `${total.toLocaleString('he-IL')} תוצאות`;
+}
 
 export function SearchPage() {
   const { filters, update, toggle, reset, activeCount } = useSearchFilters();
@@ -70,15 +80,22 @@ export function SearchPage() {
 
   const items = data?.items ?? [];
 
+  /** Whether anything has been asked for yet — what switches the page to its compact shape. */
+  const searching = activeCount > 0;
+
   return (
     <div className="min-h-screen bg-slate-50">
       <div className="mx-auto flex max-w-7xl flex-col gap-6 p-4 sm:p-8">
         <header className="flex flex-wrap items-baseline justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">חיפוש נכסים</h1>
-            <p className="text-sm text-slate-500">
-              {data ? `${data.total.toLocaleString('he-IL')} נכסים` : 'טוען…'}
-            </p>
+            {/*
+              The heading says what the search is, not what the page is. "חיפוש נכסים"
+              is true of this page always and so tells you nothing; the place you asked
+              for and the number of answers are the two facts worth the largest type on
+              the screen.
+            */}
+            <h1 className="text-2xl font-bold text-slate-900">{searchTitle(filters)}</h1>
+            <p className="text-sm text-slate-500">{resultCount(data?.total)}</p>
           </div>
 
           <div className="flex items-center gap-3">
@@ -129,16 +146,20 @@ export function SearchPage() {
         </header>
 
         {/*
-          Where a search starts. Above the columns rather than inside the filter panel:
-          choosing where to look is the first decision, and on a phone the panel is
-          collapsed, which would bury it.
-        */}
-        <div className="max-w-xl">
-          <PlaceSearchBox filters={filters} update={update} />
-        </div>
+          Two shapes for the same controls.
 
-        <div className="grid gap-6 lg:grid-cols-[16rem_minmax(0,1fr)_minmax(0,1.1fr)]">
-          <SearchFilterPanel
+          Nothing searched yet and the page has room to spare, so the place box is given
+          it: choosing where to look is the first decision and everything else narrows
+          what that returns. Once a search is under way the results and the map are what
+          the page is for, and a column of filters down the side is the most expensive
+          thing on it — so the controls collapse into one strip along the top and the
+          space goes to the answers.
+
+          Clearing every filter brings the roomy version back, so this is a state rather
+          than a door that shuts behind you.
+        */}
+        {searching ? (
+          <FilterBar
             filters={filters}
             facets={data?.facets}
             activeCount={activeCount}
@@ -146,6 +167,29 @@ export function SearchPage() {
             onToggle={toggle}
             onReset={reset}
           />
+        ) : (
+          <div className="max-w-xl">
+            <PlaceSearchBox filters={filters} update={update} />
+          </div>
+        )}
+
+        <div
+          className={`grid gap-6 ${
+            searching
+              ? 'lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]'
+              : 'lg:grid-cols-[16rem_minmax(0,1fr)_minmax(0,1.1fr)]'
+          }`}
+        >
+          {!searching && (
+            <SearchFilterPanel
+              filters={filters}
+              facets={data?.facets}
+              activeCount={activeCount}
+              onUpdate={update}
+              onToggle={toggle}
+              onReset={reset}
+            />
+          )}
 
           <section className="flex flex-col gap-4">
             {status === 'error' && (

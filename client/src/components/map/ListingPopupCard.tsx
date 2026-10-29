@@ -50,7 +50,8 @@ export function ListingPopupCard({ point, onOpen }: Props) {
   });
 
   return (
-    <div className="w-[22rem] max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl bg-white shadow-xl">
+    <div // max-w-full so the wrapper, which knows the map width, can cap it.
+      className="w-[22rem] max-w-full overflow-hidden rounded-2xl bg-white shadow-xl">
       <div className="flex items-stretch">
         {/*
           Image first in the DOM, which in an RTL column puts it on the right — where

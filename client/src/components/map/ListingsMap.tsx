@@ -1,6 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
-import maplibregl, { type GeoJSONSource, type Map as MapLibreMap, type Popup } from 'maplibre-gl';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import maplibregl, { type GeoJSONSource, type Map as MapLibreMap } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { config } from '@/config';
 import { ListingPopupCard } from '@/components/map/ListingPopupCard';
@@ -48,10 +47,14 @@ export function ListingsMap({ points, boundary, onSelect, onViewportChange }: Pr
   // The pin whose card is open, held by id rather than by value so a refetch that
   // replaces every point object does not close it.
   const [activeId, setActiveId] = useState<string | null>(null);
-  // MapLibre owns the positioning — anchoring, flipping near an edge and keeping the
-  // card pinned to its coordinate through pan and zoom is work worth not redoing.
-  const popup = useRef<Popup | null>(null);
-  const [popupHost, setPopupHost] = useState<HTMLDivElement | null>(null);
+  // The card is positioned by hand rather than with maplibregl.Popup. Popup picks
+  // between eight anchors and no more, so a card wider than the gap between the pin and
+  // the map's edge still hung over the side and was clipped. These three measurements
+  // are what it takes to place it and keep it inside.
+  const card = useRef<HTMLDivElement>(null);
+  const [cardSize, setCardSize] = useState({ width: 0, height: 0 });
+  const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
+  const [anchor, setAnchor] = useState<{ x: number; y: number } | null>(null);
   // Held in a ref so the map's own listeners always call the current one without the
   // map having to be rebuilt when the page re-renders.
   const handlers = useRef({ onSelect, onViewportChange });
@@ -230,7 +233,13 @@ export function ListingsMap({ points, boundary, onSelect, onViewportChange }: Pr
     // responsive grid column, so anything that changes the column — a window resize,
     // the filter panel collapsing — left the canvas at its old size and the map blank
     // beside it until something else forced a redraw.
-    const observer = new ResizeObserver(() => instance.resize());
+    const observer = new ResizeObserver(([entry]) => {
+      instance.resize();
+      setContainerSize({
+        width: entry.contentRect.width,
+        height: entry.contentRect.height,
+      });
+    });
     observer.observe(container.current);
 
     return () => {
@@ -312,42 +321,62 @@ export function ListingsMap({ points, boundary, onSelect, onViewportChange }: Pr
     if (activeId && !active) setActiveId(null);
   }, [activeId, active]);
 
+  // Where the active pin currently sits in the map's own pixels. Recomputed on every
+  // frame of a pan or zoom, so the card travels with its pin instead of detaching from
+  // it and sliding back when the movement stops.
   useEffect(() => {
     const instance = map.current;
-    if (!instance || !ready) return;
-
-    if (!active) {
-      popup.current?.remove();
-      popup.current = null;
-      setPopupHost(null);
+    if (!instance || !ready || !active) {
+      setAnchor(null);
       return;
     }
 
-    // React renders into this node through a portal, so the card keeps the router and
-    // query context it needs — `setHTML` with a string would have neither.
-    const host = document.createElement('div');
+    const place = () => {
+      const projected = instance.project([active.lng, active.lat]);
+      setAnchor({ x: projected.x, y: projected.y });
+    };
 
-    const instancePopup = new maplibregl.Popup({
-      closeButton: false,
-      closeOnClick: false,
-      // The card draws its own surface; see `.listing-popup` in index.css, which strips
-      // MapLibre's default padding, background and tip.
-      className: 'listing-popup',
-      maxWidth: 'none',
-      offset: 14,
-    })
-      .setLngLat([active.lng, active.lat])
-      .setDOMContent(host)
-      .addTo(instance);
-
-    popup.current = instancePopup;
-    setPopupHost(host);
-
+    place();
+    instance.on('move', place);
     return () => {
-      instancePopup.remove();
-      popup.current = null;
+      instance.off('move', place);
     };
   }, [active, ready]);
+
+  // Measured rather than assumed: the card's height depends on how many of the address
+  // lines the listing actually has, and placing it above the pin needs that height
+  // before it is drawn anywhere a person can see it.
+  useLayoutEffect(() => {
+    if (!card.current) return;
+    const { width, height } = card.current.getBoundingClientRect();
+    setCardSize((previous) =>
+      previous.width === width && previous.height === height ? previous : { width, height },
+    );
+  }, [active]);
+
+  /**
+   * The card's position inside the map, clamped so no edge of it can fall outside.
+   *
+   * Above the pin by default, which is where a label belongs and leaves the pin itself
+   * visible. Flipped below when there is no room above, and slid sideways rather than
+   * allowed to overhang — a card half off the map is worse than one not quite centred
+   * on its pin.
+   */
+  const placement = useMemo(() => {
+    if (!anchor || cardSize.width === 0 || containerSize.width === 0) return null;
+
+    const EDGE = 8;
+    const GAP = 16;
+
+    const maxLeft = Math.max(EDGE, containerSize.width - cardSize.width - EDGE);
+    const left = Math.min(Math.max(anchor.x - cardSize.width / 2, EDGE), maxLeft);
+
+    const above = anchor.y - cardSize.height - GAP;
+    const maxTop = Math.max(EDGE, containerSize.height - cardSize.height - EDGE);
+    const top = Math.min(above >= EDGE ? above : anchor.y + GAP, maxTop);
+
+    return { left, top };
+  }, [anchor, cardSize, containerSize]);
 
   return (
     // Short on a phone, where it sits above the list and should not take the whole
@@ -356,9 +385,27 @@ export function ListingsMap({ points, boundary, onSelect, onViewportChange }: Pr
     <div className="relative h-[45vh] w-full overflow-hidden rounded-xl border border-slate-200 lg:h-[calc(100vh-2rem)]">
       <div ref={container} className="h-full w-full" />
 
-      {active && popupHost && createPortal(
-        <ListingPopupCard point={active} onOpen={(id) => handlers.current.onSelect(id)} />,
-        popupHost,
+      {active && (
+        <div
+          ref={card}
+          // Hidden for the frame between rendering and being measured, rather than
+          // flashing at the top-left corner before it is placed.
+          style={{
+            position: 'absolute',
+            // Physical left, not insetInlineStart: the offsets come from map.project(),
+            // which is physical pixels, and in RTL a logical inset would anchor the card
+            // to the right edge and then translate it further right, off the map.
+            left: 0,
+            top: 0,
+            transform: placement ? `translate(${placement.left}px, ${placement.top}px)` : undefined,
+            visibility: placement ? 'visible' : 'hidden',
+            // Never wider than the map it has to stay inside.
+            maxWidth: containerSize.width > 0 ? containerSize.width - 16 : undefined,
+          }}
+          className="z-20"
+        >
+          <ListingPopupCard point={active} onOpen={(id) => handlers.current.onSelect(id)} />
+        </div>
       )}
 
       {points.length === 0 && (

@@ -35,19 +35,3 @@
 [dir='ltr'] .select-chevron {
   background-position: right 0.65rem center;
 }
-
-/*
- * MapLibre's popup ships its own white box, padding and tip. The listing card draws its
- * own surface — rounded, shadowed, with a photo bleeding to the edge — so the wrapper
- * has to get out of the way entirely.
- */
-.listing-popup .maplibregl-popup-content {
-  padding: 0;
-  background: transparent;
-  box-shadow: none;
-  border-radius: 0;
-}
-
-.listing-popup .maplibregl-popup-tip {
-  display: none;
-}

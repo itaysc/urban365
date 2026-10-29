@@ -169,7 +169,7 @@ export function PlaceSearchBox({ filters, update }: Props) {
    * fall in, and the result is the same search as picking that city by hand — so the
    * outline, the pins and the list all follow with nothing special about this path.
    */
-  const useMyLocation = () => {
+  const locateMe = () => {
     setLocationError(null);
 
     if (!('geolocation' in navigator)) {
@@ -324,7 +324,7 @@ export function PlaceSearchBox({ filters, update }: Props) {
             type="button"
             onMouseDown={(e) => {
               e.preventDefault();
-              useMyLocation();
+              locateMe();
             }}
             disabled={locating || remaining <= 0}
             className="flex w-full items-center gap-2 border-b border-slate-100 px-4 py-3 text-start text-sm font-semibold text-orange-600 transition hover:bg-orange-50 disabled:opacity-50"
