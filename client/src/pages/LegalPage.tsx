@@ -1,21 +1,33 @@
 import { Link } from 'react-router-dom';
+import { PRIVACY, TERMS, type LegalDocument } from '@/content/legal';
 
-interface Props {
-  title: string;
-  /** What this document will cover, so the placeholder is not simply blank. */
-  outline: string[];
-}
+/** Anything still in `[[…]]` is a blank the business has to fill before this goes live. */
+const PLACEHOLDER = /\[\[[^\]]+\]\]/g;
 
 /**
- * Terms and privacy.
+ * Draws attention to the blanks instead of letting them read as prose.
  *
- * The headings are here and the text is not, deliberately: these two documents say what
- * the business is liable for and what it does with people's data, and neither is
- * something to invent plausible-sounding prose for. Signup links here and the agreement
- * is recorded against the account, so when the real text arrives it drops into the page
- * that people were already pointed at.
+ * A document that ships still saying `[[ח.פ.]]` is obviously unfinished; the same
+ * document with an invented company number would look finished and be worse. Marking
+ * them makes the unfinished state impossible to miss in review.
  */
-function LegalPage({ title, outline }: Props) {
+function withPlaceholders(text: string) {
+  const parts = text.split(PLACEHOLDER);
+  const found = text.match(PLACEHOLDER) ?? [];
+
+  return parts.flatMap((part, i) => [
+    part,
+    found[i] ? (
+      <mark key={i} className="rounded bg-amber-100 px-1 text-amber-900">
+        {found[i]}
+      </mark>
+    ) : null,
+  ]);
+}
+
+function Document({ doc }: { doc: LegalDocument }) {
+  const unfilled = JSON.stringify(doc).match(PLACEHOLDER)?.length ?? 0;
+
   return (
     <div className="min-h-screen bg-slate-50">
       <div className="mx-auto flex max-w-3xl flex-col gap-6 p-6 sm:p-10">
@@ -23,50 +35,56 @@ function LegalPage({ title, outline }: Props) {
           ← חזרה לחיפוש
         </Link>
 
-        <h1 className="text-2xl font-bold text-slate-900">{title}</h1>
+        <header>
+          <h1 className="text-2xl font-bold text-slate-900">{doc.title}</h1>
+          <p className="mt-1 text-sm text-slate-500">עודכן לאחרונה: {doc.updated}</p>
+        </header>
 
-        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-          הנוסח המלא טרם פורסם. עד אז, אלו הנושאים שהמסמך יכסה.
-        </div>
+        {unfilled > 0 && (
+          <p className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+            טיוטה. נותרו {unfilled} פרטים להשלמה (מסומנים ברקע צהוב), והמסמך טעון בדיקה
+            משפטית לפני פרסום.
+          </p>
+        )}
 
-        <ul className="flex list-disc flex-col gap-2 ps-6 text-slate-700">
-          {outline.map((item) => (
-            <li key={item}>{item}</li>
-          ))}
-        </ul>
+        <p className="leading-relaxed text-slate-700">{withPlaceholders(doc.intro)}</p>
+
+        {doc.sections.map((section) => (
+          <section key={section.heading} className="flex flex-col gap-3">
+            <h2 className="text-lg font-semibold text-slate-900">{section.heading}</h2>
+
+            {section.blocks.map((block, i) =>
+              block.type === 'p' ? (
+                <p key={i} className="leading-relaxed text-slate-700">
+                  {withPlaceholders(block.text)}
+                </p>
+              ) : (
+                <ul key={i} className="flex list-disc flex-col gap-2 ps-6 text-slate-700">
+                  {block.items.map((item) => (
+                    <li key={item} className="leading-relaxed">
+                      {withPlaceholders(item)}
+                    </li>
+                  ))}
+                </ul>
+              ),
+            )}
+          </section>
+        ))}
+
+        <footer className="border-t border-slate-200 pt-4 text-sm text-slate-500">
+          <Link to={doc === TERMS ? '/policy' : '/terms'} className="text-blue-700 hover:underline">
+            {doc === TERMS ? 'מדיניות הפרטיות' : 'תנאי השימוש'}
+          </Link>
+        </footer>
       </div>
     </div>
   );
 }
 
 export function TermsPage() {
-  return (
-    <LegalPage
-      title="תנאי שימוש"
-      outline={[
-        'מי רשאי לפתוח חשבון, ומה ההבדל בין חשבון פרטי לחשבון סוכנות.',
-        'האחריות של הסוכנות לנכונות המידע בנכסים שהיא מפרסמת.',
-        'מה מותר ומה אסור לעשות עם המידע שבאתר, לרבות איסוף אוטומטי.',
-        'ייבוא נכסים ממקורות אחרים — באילו תנאים, ובאחריות מי.',
-        'השעיה והסרה של חשבון או של נכס.',
-        'הגבלת אחריות, דין חל וסמכות שיפוט.',
-      ]}
-    />
-  );
+  return <Document doc={TERMS} />;
 }
 
 export function PrivacyPage() {
-  return (
-    <LegalPage
-      title="מדיניות פרטיות"
-      outline={[
-        'איזה מידע נאסף — בהרשמה, בחיפוש, ובפנייה לסוכנות.',
-        'מה נעשה עם המידע, ולמי הוא מועבר (סוכנות שאליה פניתם, ספקי תשתית).',
-        'שימוש במיקום המכשיר, שהוא בבחירת המשתמש בלבד.',
-        'עוגיות וטכנולוגיות מעקב.',
-        'כמה זמן המידע נשמר.',
-        'זכות העיון, התיקון והמחיקה, וכיצד לממש אותן.',
-      ]}
-    />
-  );
+  return <Document doc={PRIVACY} />;
 }

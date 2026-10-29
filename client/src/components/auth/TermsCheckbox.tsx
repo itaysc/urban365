@@ -39,7 +39,7 @@ export function TermsCheckbox({ checked, onChange, id = 'accept-terms' }: Props)
         </Link>{' '}
         ואת{' '}
         <Link
-          to="/privacy"
+          to="/policy"
           target="_blank"
           rel="noreferrer"
           className="text-blue-700 hover:underline"

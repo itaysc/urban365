@@ -38,7 +38,9 @@ export const router = createBrowserRouter([
   // Buyers are most people, so they get the short paths. The agency sign-in is a link
   // from them rather than the other way round — the same arrangement yad2 uses.
   { path: '/terms', element: <TermsPage /> },
-  { path: '/privacy', element: <PrivacyPage /> },
+  { path: '/policy', element: <PrivacyPage /> },
+  // The earlier spelling, kept so links already in the wild still land somewhere.
+  { path: '/privacy', element: <Navigate to="/policy" replace /> },
   { path: '/login', element: <AccountLoginPage /> },
   { path: '/signup', element: <AccountSignupPage /> },
   { path: '/agency/login', element: <LoginPage /> },
