@@ -51,6 +51,13 @@ export class UpsertListingDto {
   @IsOptional() @IsArray() @ArrayMaxSize(20) @IsString({ each: true }) @MaxLength(40, { each: true })
   tags?: string[];
 
+  /**
+   * The agency holds this property exclusively. Separate from `amenities`, which
+   * describes the building: this is a claim about the mandate, and the service keeps
+   * the matching label in step so search still finds it.
+   */
+  @IsOptional() @IsBoolean() isExclusive?: boolean;
+
   @IsOptional() @IsString() @MaxLength(5000) description?: string;
   @IsOptional() @IsString() @MaxLength(120) contactName?: string;
   @IsOptional() @IsString() @MaxLength(120) brokerName?: string;

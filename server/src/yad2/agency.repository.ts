@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Prisma, Section as DbSection, type Listing } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { listingRowToAsset } from './listing-row.js';
-import { toAgencySummary, toAsset, toTeam } from './yad2.transform.js';
+import { EXCLUSIVE_AMENITY, toAgencySummary, toAsset, toTeam } from './yad2.transform.js';
 import type { AgencyDump, AgencyResult, Asset, RawListing, Section } from './yad2.types.js';
 
 const toDbSection = (section: Section): DbSection => section as DbSection;
@@ -49,6 +49,9 @@ export class AgencyRepository {
       latitude: asset.latitude,
       longitude: asset.longitude,
       amenities: asset.amenities.filter((a) => a.present).map((a) => a.label),
+      // Also a column, because exclusivity is queried on its own. yad2 owns the rows it
+      // discovered, so a run that no longer reports it clears the column too.
+      isExclusive: asset.amenities.some((a) => a.key === EXCLUSIVE_AMENITY.key && a.present),
       tags: asset.tags,
       description: asset.description || null,
       coverImageUrl: asset.coverImageUrl || null,

@@ -8,6 +8,7 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Field, inputClass } from '@/components/ui/Field';
 import { useToast } from '@/components/ui/Toast';
 import { errorCodeOf, errorMessageOf } from '@/lib/apiError';
+import { EXCLUSIVE_LABEL } from '@/lib/exclusivity';
 import {
   archiveListing,
   createListing,
@@ -29,7 +30,9 @@ const SECTIONS = [
  * store a label no facet and no modal recognises — "מזגן" instead of "מיזוג" silently
  * creates a second, near-duplicate facet.
  *
- * Parking is absent on purpose: it is a count field above, not a yes/no.
+ * Parking is absent on purpose: it is a count field above, not a yes/no, and so is
+ * exclusivity: it describes the agency's mandate rather than the property, and has its
+ * own toggle below.
  */
 const AMENITIES = [
   'מעלית',
@@ -46,7 +49,6 @@ const AMENITIES = [
   'מקלט בניין',
   'מקלט קומתי',
   'מטבח כשר',
-  'בלעדיות',
   'כניסה מיידית',
 ];
 
@@ -97,8 +99,8 @@ function toForm(listing: ListingDetail): Form {
  * Plain `useState` rather than formik — the house split puts formik on the auth forms
  * only, and this form is mostly numeric fields with no cross-field rules.
  */
-function toInput(form: Form, amenities: string[]): ListingInput {
-  const input: Record<string, unknown> = { section: form.section, amenities };
+function toInput(form: Form, amenities: string[], isExclusive: boolean): ListingInput {
+  const input: Record<string, unknown> = { section: form.section, amenities, isExclusive };
 
   for (const [key, raw] of Object.entries(form)) {
     if (key === 'section') continue;
@@ -122,6 +124,7 @@ export function ListingEditorPage() {
   const [listing, setListing] = useState<ListingDetail | null>(null);
   const [form, setForm] = useState<Form>(EMPTY);
   const [amenities, setAmenities] = useState<string[]>([]);
+  const [isExclusive, setIsExclusive] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -146,6 +149,7 @@ export function ListingEditorPage() {
     setListing(fetched);
     setForm(toForm(fetched));
     setAmenities(fetched.amenities ?? []);
+    setIsExclusive(fetched.isExclusive);
   }, [fetched]);
 
   // Derived, not mirrored into state: a second copy of something Query already tracks
@@ -174,7 +178,7 @@ export function ListingEditorPage() {
 
     try {
       const input = {
-        ...toInput(form, amenities),
+        ...toInput(form, amenities, isExclusive),
         ...(status ? { status } : {}),
         ...(allowDuplicate ? { allowDuplicate: true } : {}),
       };
@@ -366,6 +370,23 @@ export function ListingEditorPage() {
             );
           })}
         </div>
+      </section>
+
+      <section className="flex flex-col gap-2 rounded-xl border border-slate-200 bg-white p-4">
+        <h2 className="text-sm font-semibold text-slate-900">{EXCLUSIVE_LABEL}</h2>
+        <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
+          <input
+            type="checkbox"
+            checked={isExclusive}
+            onChange={(e) => {
+              setIsExclusive(e.target.checked);
+              setSaved(false);
+            }}
+            className="h-4 w-4 flex-none"
+          />
+          הנכס משווק בבלעדיות על ידי הסוכנות
+        </label>
+        <p className="text-xs text-slate-500">מוצג כתווית על הנכס בתוצאות החיפוש ובעמוד הנכס.</p>
       </section>
 
       <section className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-4">

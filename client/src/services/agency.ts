@@ -55,6 +55,7 @@ export interface ListingDetail extends MyListing {
   parkingSpacesCount: number | null;
   amenities: string[];
   tags: string[];
+  isExclusive: boolean;
   description: string | null;
   contactName: string | null;
   brokerName: string | null;
@@ -79,6 +80,7 @@ export interface ListingInput {
   street?: string;
   houseNumber?: number;
   amenities?: string[];
+  isExclusive?: boolean;
   description?: string;
   contactName?: string;
   brokerName?: string;

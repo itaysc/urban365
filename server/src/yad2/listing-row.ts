@@ -1,5 +1,5 @@
 import type { Listing } from '@prisma/client';
-import { CANONICAL_AMENITIES, EXTRA_AMENITIES, toAsset } from './yad2.transform.js';
+import { CANONICAL_AMENITIES, EXCLUSIVE_AMENITY, EXTRA_AMENITIES, toAsset } from './yad2.transform.js';
 import type { Asset, RawListing } from './yad2.types.js';
 
 const SUBCATEGORY: Record<string, number> = { forsale: 5, rent: 6, commercial: 7 };
@@ -24,12 +24,32 @@ function toInProperty(labels: string[]): Record<string, boolean> {
 }
 
 /**
+ * Exclusivity reaches a row two ways: yad2 ships it inside `raw` as a flag, and a
+ * listing managed here carries the `isExclusive` column. Folding the column into the
+ * flags leaves the Asset with one representation, so nothing downstream has to know
+ * which path created the listing.
+ *
+ * The column wins over the payload: it is what the agency itself said, and a scrape
+ * that predates the mandate should not be able to contradict it.
+ */
+function withExclusivity(
+  flags: Record<string, boolean> | undefined,
+  isExclusive: boolean,
+): Record<string, boolean> | undefined {
+  return isExclusive ? { ...flags, [EXCLUSIVE_AMENITY.key]: true } : flags;
+}
+
+/**
  * Rebuilds the full Asset shape from a stored row, so the agency view and the search
  * results open the same modal. The raw payload is used when present; card-only rows fall
  * back to the typed columns.
  */
 export function listingRowToAsset(row: Listing): Asset {
-  if (row.raw) return toAsset(row.raw as RawListing, row.raw as RawListing);
+  if (row.raw) {
+    const raw = row.raw as RawListing;
+    const source = { ...raw, inProperty: withExclusivity(raw.inProperty, row.isExclusive) };
+    return toAsset(source, source);
+  }
 
   return toAsset(
     {
@@ -64,7 +84,7 @@ export function listingRowToAsset(row: Listing): Asset {
         images: row.imageUrls,
         description: row.description ?? undefined,
       },
-      inProperty: toInProperty(row.amenities),
+      inProperty: withExclusivity(toInProperty(row.amenities), row.isExclusive),
       customer: { name: row.contactName ?? undefined, brokers: [{ name: row.brokerName ?? undefined }] },
     },
     null,

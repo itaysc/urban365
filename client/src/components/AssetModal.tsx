@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react';
 import { AmenityGrid } from '@/components/AmenityGrid';
 import { AssetGallery } from '@/components/AssetGallery';
 import { DetailGrid, type Detail } from '@/components/DetailGrid';
+import { EXCLUSIVE_LABEL, isExclusiveAsset } from '@/lib/exclusivity';
 import { formatAddress, formatDate, formatPrice, formatShekel } from '@/lib/format';
 import type { Asset } from '@/types/yad2';
 
@@ -91,6 +92,12 @@ export function AssetModal({ asset, onClose }: { asset: Asset; onClose: () => vo
 
         <div className="flex flex-col gap-5 p-6">
           <div>
+            {isExclusiveAsset(asset.amenities) && (
+              <span className="mb-2 inline-block rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800">
+                {EXCLUSIVE_LABEL}
+              </span>
+            )}
+
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <h2 className="text-2xl font-bold text-slate-900">{formatPrice(asset.price)}</h2>
               {asset.priceBeforeDrop && (

@@ -228,6 +228,11 @@ model Listing {
   /// Whether the detail page was read, or only the agency-feed card.
   hasFullDetails Boolean @default(false)
 
+  /// The agency holds this property exclusively. yad2 ships the same fact as a flag on
+  /// the raw payload, so this column is kept in step with the בלעדיות label in
+  /// `amenities` — one column to query, one label the search and the cards already read.
+  isExclusive Boolean @default(false)
+
   /// The yad2 payload exactly as collected.
   raw Json?
 
@@ -590,4 +595,46 @@ model Deal {
 
   @@index([agencyId, stage, createdAt])
   @@index([leadId])
+}
+
+/// Administrative outlines, so the map can show which area a search covers.
+///
+/// Pulled from OpenStreetMap once by `npm run boundaries:sync` rather than fetched per
+/// request: Nominatim's policy forbids systematic use, Overpass rate-limits anonymous
+/// callers, and a municipal boundary changes about never. Storing them makes the map
+/// independent of either service being up.
+model CityBoundary {
+  id String @id @default(cuid())
+
+  /// The name exactly as OpenStreetMap has it, for display and for tracing a row back.
+  name   String
+  nameEn String?
+
+  /// What the lookup actually matches on: `name` with separators and Hebrew
+  /// punctuation flattened, because OSM writes `תל־אביב–יפו` and a listing says
+  /// `תל אביב יפו`. See `cityKey` in src/listings/city-name.ts — both sides use it.
+  matchKey String @unique
+
+  /// The OSM relation this came from, so a re-sync can tell an update from a new row
+  /// and a human can go and look at the source.
+  osmRelationId BigInt @unique
+  /// 8 is a municipality. 10 would be a neighbourhood, where Israeli coverage is thin.
+  adminLevel    Int    @default(8)
+
+  /// A GeoJSON Polygon or MultiPolygon. Kept whole rather than normalised into points:
+  /// nothing queries inside it, the map just draws it.
+  geometry Json
+
+  /// The bounding box, extracted on write so the map can frame the area without
+  /// parsing the geometry first.
+  minLat Float
+  maxLat Float
+  minLng Float
+  maxLng Float
+
+  syncedAt  DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([adminLevel])
+  @@index([matchKey])
 }

@@ -1,3 +1,4 @@
+import { EXCLUSIVE_LABEL, isExclusiveListing } from '@/lib/exclusivity';
 import { formatAddress, formatPrice } from '@/lib/format';
 import type { SearchListing } from '@/types/search';
 
@@ -17,6 +18,10 @@ export function ListingCard({ listing, onOpen }: { listing: SearchListing; onOpe
         ? `${listing.floor}/${listing.buildingTopFloor}`
         : listing.floor;
 
+  const exclusive = isExclusiveListing(listing.amenities);
+  // The badge over the photo already says it; the chips list what the property has.
+  const amenities = listing.amenities.filter((a) => a !== EXCLUSIVE_LABEL);
+
   return (
     <button
       type="button"
@@ -28,6 +33,12 @@ export function ListingCard({ listing, onOpen }: { listing: SearchListing; onOpe
           <img src={listing.coverImageUrl} alt={listing.propertyType ?? ''} className="h-full w-full object-cover" loading="lazy" />
         ) : (
           <div className="flex h-full items-center justify-center text-sm text-slate-400">ללא תמונה</div>
+        )}
+
+        {exclusive && (
+          <span className="absolute top-2 start-2 rounded-md bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800 shadow-sm">
+            {EXCLUSIVE_LABEL}
+          </span>
         )}
 
         {listing.tags.length > 0 && (
@@ -69,9 +80,9 @@ export function ListingCard({ listing, onOpen }: { listing: SearchListing; onOpe
           <Spec label='מ"ר' value={listing.squareMeter} />
         </div>
 
-        {listing.amenities.length > 0 && (
+        {amenities.length > 0 && (
           <div className="flex flex-wrap gap-1">
-            {listing.amenities.slice(0, 4).map((a) => (
+            {amenities.slice(0, 4).map((a) => (
               <span key={a} className="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
                 {a}
               </span>

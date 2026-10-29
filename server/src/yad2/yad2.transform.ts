@@ -55,6 +55,13 @@ export const CANONICAL_AMENITIES: { key: string; label: string }[] = [
 ];
 
 /**
+ * Exclusivity, named because more than the amenity grid needs it: the `isExclusive`
+ * column and the badge both key on this flag, and a second spelling of either half
+ * would quietly split one fact into two.
+ */
+export const EXCLUSIVE_AMENITY = { key: 'isAssetExclusive', label: 'בלעדיות' } as const;
+
+/**
  * Flags yad2 holds but does not put in that grid. We append them when true rather than
  * drop them — parking is left out on purpose, since it has its own "חניות" count above.
  */
@@ -63,7 +70,7 @@ export const EXTRA_AMENITIES: { key: string; label: string }[] = [
   { key: 'includeBuildingShelter', label: 'מקלט בניין' },
   { key: 'includeFloorShelter', label: 'מקלט קומתי' },
   { key: 'isKitchenKosher', label: 'מטבח כשר' },
-  { key: 'isAssetExclusive', label: 'בלעדיות' },
+  EXCLUSIVE_AMENITY,
   { key: 'isImmediateEntrance', label: 'כניסה מיידית' },
 ];
 

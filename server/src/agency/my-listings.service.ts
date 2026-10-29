@@ -10,6 +10,7 @@ import { RequestContextService } from '../tenancy/request-context.service.js';
 import { TenantPrismaService } from '../tenancy/tenant-prisma.service.js';
 import { StorageService } from '../storage/storage.service.js';
 import { can } from '../auth/permissions.js';
+import { EXCLUSIVE_AMENITY } from '../yad2/yad2.transform.js';
 import { duplicateWhere, hasEnoughSignal, type DuplicateCandidate } from './duplicate.js';
 import { listingImageUrl } from './image-url.js';
 import type { UpdateListingDto, UpsertListingDto } from './dto/listing.dto.js';
@@ -20,6 +21,9 @@ const DETAIL_INCLUDE = {
 } satisfies Prisma.ListingInclude;
 
 const MAX_IMAGES = 30;
+
+/** What the exclusivity sync needs off the stored row when a PATCH omits either half. */
+type ExclusivityState = { amenities: string[]; isExclusive: boolean };
 
 @Injectable()
 export class MyListingsService {
@@ -89,7 +93,7 @@ export class MyListingsService {
     return this.prisma.client.listing.update({
       where: { id: existing.id },
       data: {
-        ...this.toData(dto),
+        ...this.toData(dto, existing),
         ...(dto.section ? { section: dto.section } : {}),
         ...(dto.status ? { status: dto.status } : {}),
         // Stamped the first time it goes public, and never moved afterwards — it is the
@@ -228,14 +232,19 @@ export class MyListingsService {
     });
   }
 
-  /** Shared field mapping. `section` and `status` are handled by the callers. */
-  private toData(dto: UpsertListingDto | UpdateListingDto) {
+  /**
+   * Shared field mapping. `section` and `status` are handled by the callers; `current`
+   * is the stored row on a PATCH, which a create does not have.
+   */
+  private toData(dto: UpsertListingDto | UpdateListingDto, current?: ExclusivityState) {
     const {
       section: _section,
       status: _status,
       // Not a column — it is the caller's answer to the duplicate prompt, and spreading
       // it into `data` below made Prisma reject the whole create as an unknown argument.
       allowDuplicate: _allowDuplicate,
+      // Both are written by `exclusivity` below, which has to see them together.
+      isExclusive: _isExclusive,
       amenities,
       tags,
       ...rest
@@ -243,12 +252,42 @@ export class MyListingsService {
 
     return {
       ...rest,
-      ...(amenities ? { amenities } : {}),
+      ...this.exclusivity(dto, amenities, current),
       ...(tags ? { tags } : {}),
       // Kept in step so the "price per m²" sort works for manual listings too.
       ...(dto.price !== undefined && dto.squareMeter
         ? { pricePerSquareMeter: Math.round(dto.price / dto.squareMeter) }
         : {}),
+    };
+  }
+
+  /**
+   * Keeps the `isExclusive` column and the בלעדיות label saying the same thing.
+   *
+   * The column is what the editor sets; the label is what search, the facets and the
+   * cards read, and what a yad2 scrape writes for the same property. Deriving both from
+   * whichever half the request carried is what lets an exclusive listing created here
+   * look identical to a scraped one everywhere downstream.
+   *
+   * Returns nothing when the request mentioned neither, so a PATCH about the price
+   * leaves both alone.
+   */
+  private exclusivity(
+    dto: UpsertListingDto | UpdateListingDto,
+    amenities: string[] | undefined,
+    current?: ExclusivityState,
+  ): { amenities?: string[]; isExclusive?: boolean } {
+    if (dto.isExclusive === undefined && amenities === undefined) return {};
+
+    // The toggle wins when it is there; a caller sending the label alone still means it.
+    const exclusive = dto.isExclusive ?? amenities!.includes(EXCLUSIVE_AMENITY.label);
+    const labels = (amenities ?? current?.amenities ?? []).filter(
+      (label) => label !== EXCLUSIVE_AMENITY.label,
+    );
+
+    return {
+      isExclusive: exclusive,
+      amenities: exclusive ? [...labels, EXCLUSIVE_AMENITY.label] : labels,
     };
   }
 
