@@ -57,7 +57,20 @@ export class OfficesService {
     // an office pinned to where it used to be.
     const { count } = await this.prisma.client.agencyOffice.updateMany({
       where: { id },
-      data: { ...dto, latitude: null, longitude: null, ...(await this.geocode.locate(dto)) },
+      data: {
+        city: dto.city,
+        // Spread as null rather than undefined. An optional field left out of a PATCH
+        // is Prisma's "leave it alone", which is indistinguishable from the form's
+        // "I cleared this box" — so emptying a street or a house number silently kept
+        // the old value, and the office kept an address nobody had typed.
+        label: dto.label ?? null,
+        street: dto.street ?? null,
+        houseNumber: dto.houseNumber ?? null,
+        phone: dto.phone ?? null,
+        latitude: null,
+        longitude: null,
+        ...(await this.geocode.locate(dto)),
+      },
     });
 
     // updateMany rather than update: the policy turns someone else's id into zero rows

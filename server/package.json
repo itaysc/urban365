@@ -17,6 +17,7 @@
     "db:generate": "prisma generate",
     "import:cache": "node dist/scripts/import-cache.js",
     "grant:admin": "node dist/scripts/grant-admin.js",
+    "seed:dev-agency": "node dist/scripts/seed-dev-agency.js",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
