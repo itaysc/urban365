@@ -44,14 +44,18 @@ function withExclusivity(
  * results open the same modal. The raw payload is used when present; card-only rows fall
  * back to the typed columns.
  */
-export function listingRowToAsset(row: Listing): Asset {
+export function listingRowToAsset(row: Listing): Asset & { id: string } {
+  // `id` is added here rather than inside `toAsset`, which also serves the scraper,
+  // where there is no stored row to take one from. Both callers of *this* function hold
+  // a row, and both need it: the public identifier is `Listing.id`, and the reveal-phone
+  // button and the enquiry form address a listing by it.
   if (row.raw) {
     const raw = row.raw as RawListing;
     const source = { ...raw, inProperty: withExclusivity(raw.inProperty, row.isExclusive) };
-    return toAsset(source, source);
+    return { ...toAsset(source, source), id: row.id };
   }
 
-  return toAsset(
+  return { ...toAsset(
     {
       // RawListing models yad2's payload, where a token is always present. A row with
       // no token was created here, so there is nothing yad2-shaped to carry over.
@@ -88,5 +92,5 @@ export function listingRowToAsset(row: Listing): Asset {
       customer: { name: row.contactName ?? undefined, brokers: [{ name: row.brokerName ?? undefined }] },
     },
     null,
-  );
+  ), id: row.id };
 }

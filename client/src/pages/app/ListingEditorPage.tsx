@@ -86,7 +86,10 @@ const NUMERIC = new Set([
 ]);
 
 function toForm(listing: ListingDetail): Form {
-  const form = { ...EMPTY, section: listing.section };
+  // Annotated: spreading a Record<string, string> into a literal leaves TypeScript with
+  // only the explicit key, so the inferred type was `{ section: string }` and the
+  // assignment below had nothing to index into.
+  const form: Form = { ...EMPTY, section: listing.section };
   for (const key of Object.keys(EMPTY)) {
     if (key === 'section') continue;
     const value = (listing as unknown as Record<string, unknown>)[key];

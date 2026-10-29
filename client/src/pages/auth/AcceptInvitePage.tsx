@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { Field, inputClass } from '@/components/ui/Field';
 import { AuthLayout } from '@/pages/auth/AuthLayout';
 import { errorCodeOf, errorMessageOf } from '@/lib/apiError';
-import { acceptInvite, fetchInvite, type InvitePreview } from '@/services/agency';
+import { acceptInvite, fetchInvite } from '@/services/agency';
 
 const ROLE_LABEL: Record<string, string> = { owner: 'בעלים', agent: 'סוכן' };
 

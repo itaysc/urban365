@@ -13,7 +13,6 @@ import {
   updateDeal,
   DEAL_STAGES,
   type Deal,
-  type DealBoard,
   type DealStage,
 } from '@/services/crm';
 

@@ -31,6 +31,12 @@ export interface Amenity {
 }
 
 export interface Asset {
+  /**
+   * Our own id, and the public identifier — the reveal-phone button and the enquiry
+   * form address a listing by it. Present on everything the API returns; `token` is
+   * yad2's and is null for listings created here.
+   */
+  id: string;
   token: string;
   adNumber: number | null;
   listingUrl: string;

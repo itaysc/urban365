@@ -16,7 +16,6 @@ import {
   removeMember,
   revokeInvite,
   type AgencyRole,
-  type TeamInvite,
   type TeamMember,
 } from '@/services/agency';
 

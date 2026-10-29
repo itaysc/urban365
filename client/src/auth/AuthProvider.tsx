@@ -57,7 +57,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // When a refresh fails for good, drop the user so the guards bounce to /login.
   useEffect(() => {
-    setSessionLostHandler(() => queryClient.setQueryData(qk.me, null));
+    // The type argument is not decoration: a query key carries no type of its own, so
+    // without it `setQueryData` infers `void` and rejects the value being written.
+    setSessionLostHandler(() => queryClient.setQueryData<AuthUser | null>(qk.me, null));
     return () => setSessionLostHandler(null);
   }, [queryClient]);
 
@@ -65,7 +67,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Writing the response straight into the cache rather than invalidating: login and
     // signup already return the user, so a refetch would be a second round trip for
     // something we are holding.
-    const setUser = (next: AuthUser | null) => queryClient.setQueryData(qk.me, next);
+    // Returns void deliberately. As an expression-bodied arrow it returned whatever
+    // `setQueryData` gives back, which made `login` and `signup` resolve to that
+    // instead of to void and stopped them matching the context's own type.
+    const setUser = (next: AuthUser | null): void => {
+      queryClient.setQueryData<AuthUser | null>(qk.me, next);
+    };
 
     const refresh = async () => {
       await queryClient.invalidateQueries({ queryKey: qk.me });
