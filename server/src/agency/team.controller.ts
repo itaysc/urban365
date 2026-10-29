@@ -41,10 +41,34 @@ export class TeamController {
     return this.team.revokeInvite(id);
   }
 
-  /**
-   * Your own details. Before `members/:id` so the literal wins, and separate from it
-   * because that route is owner-only — every member may edit themselves.
-   */
+  @Patch('members/:id')
+  changeRole(@Param('id') id: string, @Body() dto: ChangeRoleDto) {
+    return this.team.changeRole(id, dto.role);
+  }
+
+  @Delete('members/:id')
+  removeMember(@Param('id') id: string) {
+    return this.team.removeMember(id);
+  }
+}
+
+/**
+ * Accepting an invite. Separate controller because these routes run without a tenant —
+ * the agency comes from the invite, and the caller may have no account at all yet.
+ */
+/**
+ * Your own profile. Deliberately NOT behind TenantGuard, unlike the rest of `my/team`:
+ * these routes belong to a person, and a buyer has no agency at all — putting them
+ * behind the tenant guard let a buyer open the profile page and then 403 on saving
+ * anything, including their own picture.
+ *
+ * Nothing here reads or writes agency data; the user id comes from the verified token.
+ */
+@Controller('my/team')
+export class MyProfileController {
+  constructor(private readonly team: TeamService) {}
+
+  /** Name and phone, and the bio shown beside this agent's listings. */
   @Patch('me')
   updateMe(@Body() dto: UpdateMyProfileDto, @CurrentUser() principal: Principal) {
     return this.team.updateOwnProfile(principal.userId, dto);
@@ -61,22 +85,8 @@ export class TeamController {
   removeAvatar(@CurrentUser() principal: Principal) {
     return this.team.removeOwnAvatar(principal.userId);
   }
-
-  @Patch('members/:id')
-  changeRole(@Param('id') id: string, @Body() dto: ChangeRoleDto) {
-    return this.team.changeRole(id, dto.role);
-  }
-
-  @Delete('members/:id')
-  removeMember(@Param('id') id: string) {
-    return this.team.removeMember(id);
-  }
 }
 
-/**
- * Accepting an invite. Separate controller because these routes run without a tenant —
- * the agency comes from the invite, and the caller may have no account at all yet.
- */
 @Controller('invites')
 export class InviteController {
   constructor(private readonly team: TeamService) {}

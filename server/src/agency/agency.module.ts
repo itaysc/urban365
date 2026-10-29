@@ -7,7 +7,7 @@ import { ImagesController } from './images.controller.js';
 import { AgencyService } from './agency.service.js';
 import { MyListingsController } from './my-listings.controller.js';
 import { MyListingsService } from './my-listings.service.js';
-import { InviteController, TeamController } from './team.controller.js';
+import { InviteController, MyProfileController, TeamController } from './team.controller.js';
 import { TeamService } from './team.service.js';
 
 @Module({
@@ -18,6 +18,7 @@ import { TeamService } from './team.service.js';
     ImagesController,
     MyListingsController,
     TeamController,
+    MyProfileController,
     InviteController,
   ],
   providers: [AgencyService, MyListingsService, TeamService],

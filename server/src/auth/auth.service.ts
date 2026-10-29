@@ -20,6 +20,7 @@ import { PasswordService } from './password.service.js';
 import { randomBytes } from 'node:crypto';
 import { RefreshReuseError, SessionService } from './session.service.js';
 import type { GoogleIdentity } from './google.service.js';
+import { shouldAdoptGooglePicture } from './google-avatar.js';
 import { sanitizeUser, type PublicUser } from './sanitize-user.js';
 import { TokenService } from './token.service.js';
 import type { SignupDto } from './dto/signup.dto.js';
@@ -223,7 +224,15 @@ export class AuthService {
 
     if (byProvider) {
       if (byProvider.disabledAt) throw new ForbiddenException('החשבון מושבת.');
-      await this.prisma.user.update({ where: { id: byProvider.id }, data: { lastLoginAt: new Date() } });
+      await this.prisma.user.update({
+        where: { id: byProvider.id },
+        data: {
+          lastLoginAt: new Date(),
+          ...(shouldAdoptGooglePicture(byProvider, identity.picture)
+            ? { avatarUrl: identity.picture }
+            : {}),
+        },
+      });
       return this.issue(byProvider, meta);
     }
 
@@ -245,6 +254,7 @@ export class AuthService {
           // Google vouching for the address is as good as our own verification link.
           emailVerifiedAt: byEmail.emailVerifiedAt ?? new Date(),
           lastLoginAt: new Date(),
+          ...(shouldAdoptGooglePicture(byEmail, identity.picture) ? { avatarUrl: identity.picture } : {}),
           // A linked account has proved control of the address twice over; any earlier
           // lockout from failed password attempts is no longer meaningful.
           failedLoginCount: 0,
@@ -274,6 +284,13 @@ export class AuthService {
         lastName: identity.lastName || '',
         emailVerifiedAt: new Date(),
         lastLoginAt: new Date(),
+        // Google's picture as the starting avatar, stored as its own URL rather than
+        // copied into our bucket: it is a default, and mirroring it would add a fetch
+        // that can fail to the one request where a sign-in must not.
+        //
+        // `avatarStorageKey` stays null, which is what makes replacing it work with no
+        // special case — an upload sets both, and removing it falls back to initials.
+        avatarUrl: identity.picture,
         buyerProfile: { create: {} },
       },
       include: this.include,

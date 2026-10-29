@@ -37,6 +37,10 @@ export function Avatar({ firstName, lastName, src, size = 'md' }: Props) {
         src={src}
         alt={label ?? ''}
         onError={() => setFailed(true)}
+        // A Google sign-in leaves the picture hosted at googleusercontent.com, so this
+        // can be a cross-origin request: no referrer means the page someone is reading
+        // is not reported to Google on every render.
+        referrerPolicy="no-referrer"
         className={`${SIZE[size]} shrink-0 rounded-full object-cover`}
       />
     );

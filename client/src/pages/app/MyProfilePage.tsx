@@ -31,6 +31,11 @@ export function MyProfilePage() {
   const [uploading, setUploading] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
 
+  // A picture we host is served from our own path; anything else came from the identity
+  // provider at sign-in and is worth saying so, since it is a default rather than a
+  // choice they made.
+  const fromGoogle = Boolean(user?.avatarUrl && !user.avatarUrl.startsWith('/api/'));
+
   const set = (key: keyof typeof form, value: string) => setForm((f) => ({ ...f, [key]: value }));
 
   const save = async () => {
@@ -117,9 +122,11 @@ export function MyProfilePage() {
             <p className="text-xs text-slate-500">
               {uploading
                 ? 'מעלה…'
-                : user?.avatarUrl
-                  ? 'התמונה מוצגת לצד הנכסים שלך. לחצו עליה כדי להחליף.'
-                  : 'ללא תמונה מוצגות ראשי התיבות שלך. לחצו על העיגול כדי להעלות.'}
+                : !user?.avatarUrl
+                  ? 'ללא תמונה מוצגות ראשי התיבות שלך. לחצו על העיגול כדי להעלות.'
+                  : fromGoogle
+                    ? 'התמונה מחשבון ה-Google שלך. לחצו עליה כדי להעלות אחרת.'
+                    : 'התמונה מוצגת לצד הנכסים שלך. לחצו עליה כדי להחליף.'}
             </p>
 
             {user?.avatarUrl && (
