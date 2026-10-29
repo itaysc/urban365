@@ -21,6 +21,8 @@ export const qk = {
     mine: (status: ListingStatus, page: number) => ['listings', 'mine', status, page] as const,
     detail: (id: string) => ['listings', 'detail', id] as const,
     search: (filters: SearchFilters) => ['listings', 'search', filters] as const,
+    suggest: (term: string, section: string | undefined) =>
+      ['listings', 'suggest', term, section ?? 'any'] as const,
     public: (id: string) => ['listings', 'public', id] as const,
   },
 

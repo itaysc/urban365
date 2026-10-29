@@ -1,8 +1,7 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import maplibregl, { type GeoJSONSource, type Map as MapLibreMap } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { config } from '@/config';
-import { formatPrice } from '@/lib/format';
 import type { CityBoundary, MapPoint } from '@/services/search';
 
 interface Props {
@@ -38,6 +37,11 @@ function shortPrice(value: number | null): string {
 export function ListingsMap({ points, boundary, onSelect, onViewportChange }: Props) {
   const container = useRef<HTMLDivElement>(null);
   const map = useRef<MapLibreMap | null>(null);
+  // Whether the sources and layers below exist yet. The data effects wait on this
+  // rather than on `isStyleLoaded()`: that goes false again whenever the style has work
+  // pending, and the obvious `once('load', …)` fallback never fires a second time, so a
+  // boundary arriving after the first render was silently dropped.
+  const [ready, setReady] = useState(false);
   // Held in a ref so the map's own listeners always call the current one without the
   // map having to be rebuilt when the page re-renders.
   const handlers = useRef({ onSelect, onViewportChange });
@@ -195,6 +199,8 @@ export function ListingsMap({ points, boundary, onSelect, onViewportChange }: Pr
           maxLng: b.getEast(),
         });
       });
+
+      setReady(true);
     });
 
     map.current = instance;
@@ -202,6 +208,7 @@ export function ListingsMap({ points, boundary, onSelect, onViewportChange }: Pr
     return () => {
       instance.remove();
       map.current = null;
+      setReady(false);
     };
   }, []);
 
@@ -213,68 +220,59 @@ export function ListingsMap({ points, boundary, onSelect, onViewportChange }: Pr
   // is a better answer than the extent of whatever listings happen to be in it.
   useEffect(() => {
     const instance = map.current;
-    if (!instance) return;
+    if (!instance || !ready) return;
 
-    const apply = () => {
-      const source = instance.getSource(BOUNDARY_SOURCE) as GeoJSONSource | undefined;
-      if (!source) return;
+    const source = instance.getSource(BOUNDARY_SOURCE) as GeoJSONSource | undefined;
+    if (!source) return;
 
-      source.setData(
-        boundary
-          ? { type: 'Feature', geometry: boundary.geometry, properties: { name: boundary.name } }
-          : { type: 'FeatureCollection', features: [] },
-      );
+    source.setData(
+      boundary
+        ? { type: 'Feature', geometry: boundary.geometry, properties: { name: boundary.name } }
+        : { type: 'FeatureCollection', features: [] },
+    );
 
-      // With no area to frame by, hand framing back to the points: clearing the city
-      // should refit to whatever is now on the map, not leave the last city's view.
-      if (!boundary) {
-        framed.current = false;
-        return;
-      }
-      framed.current = true;
-      instance.fitBounds(
-        [
-          [boundary.bounds.minLng, boundary.bounds.minLat],
-          [boundary.bounds.maxLng, boundary.bounds.maxLat],
-        ],
-        { padding: 40, duration: 400 },
-      );
-    };
+    // With no area to frame by, hand framing back to the points: clearing the city
+    // should refit to whatever is now on the map, not leave the last city's view.
+    if (!boundary) {
+      framed.current = false;
+      return;
+    }
 
-    if (instance.isStyleLoaded()) apply();
-    else instance.once('load', apply);
-  }, [boundary]);
+    framed.current = true;
+    instance.fitBounds(
+      [
+        [boundary.bounds.minLng, boundary.bounds.minLat],
+        [boundary.bounds.maxLng, boundary.bounds.maxLat],
+      ],
+      { padding: 40, duration: 400 },
+    );
+  }, [boundary, ready]);
 
   useEffect(() => {
     const instance = map.current;
-    if (!instance) return;
+    if (!instance || !ready) return;
 
-    const apply = () => {
-      const source = instance.getSource(SOURCE) as GeoJSONSource | undefined;
-      if (!source) return;
+    const source = instance.getSource(SOURCE) as GeoJSONSource | undefined;
+    if (!source) return;
 
-      source.setData({
-        type: 'FeatureCollection',
-        features: points.map((p) => ({
-          type: 'Feature',
-          geometry: { type: 'Point', coordinates: [p.lng, p.lat] },
-          properties: { id: p.id, label: shortPrice(p.price) },
-        })),
-      });
+    source.setData({
+      type: 'FeatureCollection',
+      features: points.map((p) => ({
+        type: 'Feature',
+        geometry: { type: 'Point', coordinates: [p.lng, p.lat] },
+        properties: { id: p.id, label: shortPrice(p.price) },
+      })),
+    });
 
-      if (framed.current || points.length === 0) return;
-      framed.current = true;
+    if (framed.current || points.length === 0) return;
+    framed.current = true;
 
-      const bounds = points.reduce(
-        (acc, p) => acc.extend([p.lng, p.lat]),
-        new maplibregl.LngLatBounds([points[0].lng, points[0].lat], [points[0].lng, points[0].lat]),
-      );
-      instance.fitBounds(bounds, { padding: 60, maxZoom: 15, duration: 0 });
-    };
-
-    if (instance.isStyleLoaded()) apply();
-    else instance.once('load', apply);
-  }, [points]);
+    const bounds = points.reduce(
+      (acc, p) => acc.extend([p.lng, p.lat]),
+      new maplibregl.LngLatBounds([points[0].lng, points[0].lat], [points[0].lng, points[0].lat]),
+    );
+    instance.fitBounds(bounds, { padding: 60, maxZoom: 15, duration: 0 });
+  }, [points, ready]);
 
   return (
     // Short on a phone, where it sits above the list and should not take the whole

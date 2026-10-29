@@ -22,6 +22,7 @@ export function toQueryParams(filters: SearchFilters, withFacets = true): URLSea
 
   // The API accepts these comma-separated.
   if (filters.city.length) params.set('city', filters.city.join(','));
+  if (filters.neighborhood.length) params.set('neighborhood', filters.neighborhood.join(','));
   if (filters.propertyType.length) params.set('propertyType', filters.propertyType.join(','));
   if (filters.amenities.length) params.set('amenities', filters.amenities.join(','));
 
@@ -94,5 +95,32 @@ export async function fetchMapPoints(
   }
 
   const { data } = await api.get<MapResponse>(`/listings/map?${params.toString()}`);
+  return data;
+}
+
+// ── place suggestions ─────────────────────────────────────────────────────────
+
+export interface CitySuggestion {
+  value: string;
+  /** How many listings we hold there. Zero for a city we only know the outline of. */
+  count: number;
+}
+
+export interface NeighborhoodSuggestion {
+  value: string;
+  /** Travels with the suggestion because a neighbourhood name is unique only inside its city. */
+  city: string;
+  count: number;
+}
+
+export interface PlaceSuggestions {
+  cities: CitySuggestion[];
+  neighborhoods: NeighborhoodSuggestion[];
+}
+
+export async function fetchPlaceSuggestions(q: string, section?: string): Promise<PlaceSuggestions> {
+  const params = new URLSearchParams({ q });
+  if (section) params.set('section', section);
+  const { data } = await api.get<PlaceSuggestions>(`/listings/suggest?${params}`);
   return data;
 }

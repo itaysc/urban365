@@ -26,6 +26,7 @@ export function useSearchFilters() {
       section: isSection(section) ? section : EMPTY_FILTERS.section,
       agencyId: params.get('agencyId') ?? undefined,
       city: list(params.get('city')),
+      neighborhood: list(params.get('neighborhood')),
       propertyType: list(params.get('propertyType')),
       amenities: list(params.get('amenities')),
       minPrice: num(params.get('minPrice')),
@@ -68,7 +69,7 @@ export function useSearchFilters() {
   );
 
   const toggle = useCallback(
-    (key: 'city' | 'propertyType' | 'amenities', value: string) => {
+    (key: 'city' | 'neighborhood' | 'propertyType' | 'amenities', value: string) => {
       const current = filters[key];
       const next = current.includes(value) ? current.filter((v) => v !== value) : [...current, value];
       update({ [key]: next } as Partial<SearchFilters>);
@@ -80,6 +81,7 @@ export function useSearchFilters() {
 
   const activeCount =
     filters.city.length +
+    filters.neighborhood.length +
     filters.propertyType.length +
     filters.amenities.length +
     [filters.minPrice, filters.maxPrice, filters.minRooms, filters.maxRooms, filters.minSquareMeter, filters.maxSquareMeter, filters.q]

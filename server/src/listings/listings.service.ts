@@ -3,6 +3,7 @@ import { Prisma, type Listing, type Section as DbSection } from '@prisma/client'
 import { PrismaService } from '../prisma/prisma.service.js';
 import { TenantPrismaService } from '../tenancy/tenant-prisma.service.js';
 import { listingRowToAsset } from '../yad2/listing-row.js';
+import { type Section } from '../yad2/yad2.types.js';
 import { cityKey } from './city-name.js';
 import type { SearchListingsDto, Sort } from './dto/search-listings.dto.js';
 
@@ -222,6 +223,92 @@ export class ListingsService {
       amenities: [...amenityCounts.entries()]
         .map(([value, count]) => ({ value, count }))
         .sort((a, b) => b.count - a.count),
+    };
+  }
+
+  /**
+   * Place suggestions for the search box: cities and neighbourhoods matching what has
+   * been typed so far.
+   *
+   * Two sources, deliberately. Listings give the places we actually hold inventory in,
+   * with a count worth showing. `CityBoundary` gives the other 280-odd municipalities,
+   * which carry a count of zero — still worth offering, because searching one now draws
+   * its outline on the map rather than answering with nothing at all.
+   *
+   * Counts are for the section being searched, so the number beside a suggestion is
+   * the number of results picking it will give.
+   *
+   * A city's `value` is whatever the *listings* call it when we hold any, not what
+   * OpenStreetMap calls it: the filter compares `Listing.city` exactly, so suggesting
+   * `תל־אביב–יפו` for rows that say `תל אביב יפו` would return an empty search.
+   */
+  async suggest(term: string, section?: Section, limit = 6) {
+    const q = term.trim();
+    if (q.length < 2) return { cities: [], neighborhoods: [] };
+
+    const mode = Prisma.QueryMode.insensitive;
+    // Scoped to the section being searched, or the count beside a suggestion promises
+    // more than the search then delivers — `רחובות 18` followed by fourteen results.
+    const published: Prisma.ListingWhereInput = {
+      status: 'published',
+      delistedAt: null,
+      ...(section && { section: section as DbSection }),
+    };
+
+    const [cityRows, hoodRows, boundaries] = await Promise.all([
+      this.prisma.client.listing.groupBy({
+        by: ['city'],
+        where: { ...published, city: { contains: q, mode } },
+        _count: { _all: true },
+        orderBy: { _count: { city: 'desc' } },
+        take: limit,
+      }),
+      // Grouped by both, because a neighbourhood name is only unique within its city —
+      // several towns have a מרכז העיר. The city travels with the suggestion so picking
+      // one can scope to that city too.
+      this.prisma.client.listing.groupBy({
+        by: ['neighborhood', 'city'],
+        where: {
+          ...published,
+          neighborhood: { not: null },
+          // Matching the city as well is what makes typing a city name list its
+          // neighbourhoods, which is the behaviour the search box is modelled on.
+          OR: [{ neighborhood: { contains: q, mode } }, { city: { contains: q, mode } }],
+        },
+        _count: { _all: true },
+        orderBy: { _count: { neighborhood: 'desc' } },
+        take: limit,
+      }),
+      this.prisma.client.cityBoundary.findMany({
+        where: { name: { contains: q, mode } },
+        select: { name: true },
+        take: limit * 2,
+      }),
+    ]);
+
+    const cities = cityRows
+      .filter((row) => row.city)
+      .map((row) => ({ value: row.city as string, count: row._count._all }));
+
+    // Merged on the normalised key so a boundary does not appear a second time beside
+    // the listings' spelling of the same place.
+    const seen = new Set(cities.map((c) => cityKey(c.value)));
+    for (const boundary of boundaries) {
+      if (cities.length >= limit) break;
+      if (seen.has(cityKey(boundary.name))) continue;
+      seen.add(cityKey(boundary.name));
+      cities.push({ value: boundary.name, count: 0 });
+    }
+
+    return {
+      cities,
+      neighborhoods: hoodRows
+        .filter((row) => row.neighborhood && row.city)
+        .map((row) => ({
+          value: row.neighborhood as string,
+          city: row.city as string,
+          count: row._count._all,
+        })),
     };
   }
 

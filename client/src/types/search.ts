@@ -84,6 +84,7 @@ export interface SearchFilters {
   section?: Section;
   agencyId?: string;
   city: string[];
+  neighborhood: string[];
   propertyType: string[];
   amenities: string[];
   minPrice?: number;
@@ -100,6 +101,7 @@ export interface SearchFilters {
 export const EMPTY_FILTERS: SearchFilters = {
   section: 'forsale',
   city: [],
+  neighborhood: [],
   propertyType: [],
   amenities: [],
   sort: 'newest',

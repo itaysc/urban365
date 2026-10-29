@@ -6,6 +6,7 @@ import { Avatar } from '@/components/ui/Avatar';
 import { selectClass } from '@/components/ui/Field';
 import { AssetModal } from '@/components/AssetModal';
 import { ListingsMap } from '@/components/map/ListingsMap';
+import { PlaceSearchBox } from '@/components/search/PlaceSearchBox';
 import { ListingCard } from '@/components/ListingCard';
 import { Pagination } from '@/components/Pagination';
 import { SearchFilterPanel } from '@/components/SearchFilterPanel';
@@ -126,6 +127,15 @@ export function SearchPage() {
             </select>
           </div>
         </header>
+
+        {/*
+          Where a search starts. Above the columns rather than inside the filter panel:
+          choosing where to look is the first decision, and on a phone the panel is
+          collapsed, which would bury it.
+        */}
+        <div className="max-w-xl">
+          <PlaceSearchBox filters={filters} update={update} />
+        </div>
 
         <div className="grid gap-6 lg:grid-cols-[16rem_minmax(0,1fr)_minmax(0,1.1fr)]">
           <SearchFilterPanel
