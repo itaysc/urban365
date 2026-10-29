@@ -5,6 +5,7 @@ import { useAuth } from '@/auth/AuthProvider';
 import { Avatar } from '@/components/ui/Avatar';
 import { selectClass } from '@/components/ui/Field';
 import { AssetModal } from '@/components/AssetModal';
+import { LoginDialog } from '@/components/auth/LoginDialog';
 import { ListingsMap } from '@/components/map/ListingsMap';
 import { FilterBar } from '@/components/search/FilterBar';
 import { ListingCard } from '@/components/ListingCard';
@@ -33,6 +34,8 @@ export function SearchPage() {
   const [loadingToken, setLoadingToken] = useState<string | null>(null);
 
   const [bounds, setBounds] = useState<MapBounds | null>(null);
+  const [loginOpen, setLoginOpen] = useState(false);
+  const loginButton = useRef<HTMLButtonElement>(null);
 
   // Panning narrows the map query to what is on screen. A *new* search has to drop that
   // narrowing, or choosing a city while the map is parked over somewhere else asks for
@@ -132,9 +135,17 @@ export function SearchPage() {
                 </button>
               </div>
             ) : (
-              <Link to="/login" className="text-sm text-blue-700 hover:underline">
+              // A dialog rather than a link to `/login`: signing in is a detour, and
+              // leaving the page would throw away the search someone has already built
+              // — the places, the price, the rooms.
+              <button
+                ref={loginButton}
+                type="button"
+                onClick={() => setLoginOpen(true)}
+                className="text-sm text-blue-700 hover:underline"
+              >
                 התחברות
-              </Link>
+              </button>
             )}
             <select
               value={filters.sort}
@@ -246,6 +257,8 @@ export function SearchPage() {
       </div>
 
       {selected && <AssetModal asset={selected} onClose={() => setSelected(null)} />}
+
+      <LoginDialog open={loginOpen} onOpenChange={setLoginOpen} returnFocusTo={loginButton} />
     </div>
   );
 }
