@@ -1,20 +1,26 @@
 #!/usr/bin/env node
 /**
- * Pulls Israeli municipal boundaries from OpenStreetMap into the CityBoundary table.
+ * Pulls Israeli boundaries from OpenStreetMap into the CityBoundary table: the
+ * municipalities people search by, and the regions those municipalities sit in.
  *
- *   npm run boundaries:sync             # municipalities (admin_level=8)
+ *   npm run boundaries:sync                 # municipalities and regions — the usual run
+ *   npm run boundaries:sync -- --cities     # municipalities only
+ *   npm run boundaries:sync -- --regions    # regions only, reusing the stored cities
  *   npm run boundaries:sync -- --level 10   # neighbourhoods, where coverage is thin
  *
  * Run occasionally, not on deploy. Overpass rate-limits anonymous callers and a
  * municipal boundary changes about never, so this is a maintenance task rather than
  * part of the application.
  *
- * Idempotent: rows are upserted on the OSM relation id, so a re-run updates in place.
+ * Idempotent: cities upsert on the OSM relation id and regions on their name, so a
+ * re-run updates in place. Everything a deployment needs is here — there is no step
+ * that has to be done by hand against the database.
  */
 import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { readFileSync } from 'node:fs';
 import { cityKey } from '../dist/listings/city-name.js';
+import { pointInGeometry } from '../dist/listings/point-in-polygon.js';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -43,6 +49,44 @@ if (!connectionString) {
 const levelArg = process.argv.indexOf('--level');
 const adminLevel = levelArg === -1 ? 8 : Number(process.argv[levelArg + 1]);
 
+const onlyCities = process.argv.includes('--cities');
+const onlyRegions = process.argv.includes('--regions');
+const doCities = !onlyRegions;
+const doRegions = !onlyCities;
+
+/**
+ * The regions people search by, each one a set of sub-districts (נפות).
+ *
+ * Israel has no official unit with these names. It has six מחוזות and fifteen נפות; the
+ * regions an estate agent or a buyer actually says — "מרכז והשרון", "חיפה והקריות" —
+ * are commercial groupings that match neither. The נפות are the right material to build
+ * them from: they tile the country exactly, so a region is the union of whole units
+ * with no gaps, no overlaps and no geometry to compute beyond collecting polygons.
+ *
+ * This table is the whole definition. Renaming a region or moving a נפה between two of
+ * them is an edit here and another run — there is nothing else to change.
+ *
+ * Names are matched with the same normalisation cities use, so `נפת רמת הגולן` and
+ * `נפת רמת־הגולן` are the same key.
+ */
+const REGIONS = [
+  { name: 'תל אביב והסביבה', parts: ['נפת תל אביב'] },
+  { name: 'מרכז והשרון', parts: ['נפת השרון', 'נפת פתח תקווה'] },
+  { name: 'שפלה', parts: ['נפת רמלה', 'נפת רחובות'] },
+  { name: 'ירושלים והסביבה', parts: ['נפת ירושלים'] },
+  { name: 'חיפה והקריות', parts: ['נפת חיפה'] },
+  { name: 'חדרה והעמקים', parts: ['נפת חדרה', 'נפת יזרעאל'] },
+  { name: 'צפון והגליל', parts: ['נפת עכו', 'נפת צפת', 'נפת כנרת', 'נפת רמת הגולן'] },
+  { name: 'דרום', parts: ['נפת אשקלון', 'נפת באר שבע'] },
+  // The only one not built from נפות: OSM carries it as a single admin_level=4 unit.
+  { name: 'יהודה ושומרון', parts: ['יהודה ושומרון'], level: 4 },
+];
+
+/** Every OSM unit the regions above are built from, and at which level to look for it. */
+const REQUIRED_PARTS = REGIONS.flatMap((region) =>
+  region.parts.map((part) => ({ key: cityKey(part), level: region.level ?? 5 })),
+);
+
 // Mirrors are listed because the main instance refuses anonymous callers under load —
 // it did exactly that while this was being written.
 const ENDPOINTS = [
@@ -60,9 +104,9 @@ const ENDPOINTS = [
  */
 const ISRAEL_BBOX = '29.45,34.20,33.35,35.95';
 
-const query = `
+const queryFor = (level) => `
 [out:json][timeout:300];
-relation["boundary"="administrative"]["admin_level"="${adminLevel}"](${ISRAEL_BBOX});
+relation["boundary"="administrative"]["admin_level"="${level}"](${ISRAEL_BBOX});
 out geom;
 `;
 
@@ -74,7 +118,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
  * written. So it retries across mirrors with a widening pause instead of failing the
  * run, which matters more in production, where nobody is watching to try again.
  */
-async function fetchFromOverpass() {
+async function fetchFromOverpass(level) {
   const ROUNDS = 4;
   let lastError;
 
@@ -91,7 +135,7 @@ async function fetchFromOverpass() {
             // the first thing throttled.
             'User-Agent': 'nadlan-boundaries-sync/1.0 (one-off admin boundary import)',
           },
-          body: new URLSearchParams({ data: query }),
+          body: new URLSearchParams({ data: queryFor(level) }),
           signal: AbortSignal.timeout(300_000),
         });
 
@@ -224,63 +268,178 @@ function boundsOf(geometry) {
   return { minLat, maxLat, minLng, maxLng };
 }
 
-console.log(`\nSyncing admin_level=${adminLevel} boundaries for Israel.\n`);
-
-const elements = await fetchFromOverpass();
 const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString }) });
-
-let written = 0;
 const skipped = [];
 
-for (const relation of elements) {
-  // The Hebrew name is what listings carry, so a relation without one cannot be matched
-  // to anything and is not worth storing.
-  const name = (relation.tags?.['name:he'] ?? relation.tags?.name ?? '').trim();
-  if (!name) {
-    skipped.push(`relation ${relation.id}: no name`);
-    continue;
+/** The Hebrew name is what everything here matches on, so a relation without one is useless. */
+const nameOf = (relation) => (relation.tags?.['name:he'] ?? relation.tags?.name ?? '').trim();
+
+async function syncCities() {
+  console.log(`\nMunicipalities (admin_level=${adminLevel}).\n`);
+
+  const elements = await fetchFromOverpass(adminLevel);
+  let written = 0;
+
+  for (const relation of elements) {
+    const name = nameOf(relation);
+    if (!name) {
+      skipped.push(`relation ${relation.id}: no name`);
+      continue;
+    }
+
+    const geometry = toGeometry(relation);
+    if (!geometry) {
+      skipped.push(`${name}: rings would not close`);
+      continue;
+    }
+
+    const row = {
+      // Kept verbatim for display; `matchKey` is what the lookup compares.
+      name,
+      matchKey: cityKey(name),
+      nameEn: relation.tags?.['name:en'] ?? null,
+      kind: 'city',
+      adminLevel,
+      geometry,
+      ...boundsOf(geometry),
+      syncedAt: new Date(),
+    };
+
+    // Two relations can normalise to the same key — a council and a town of the same
+    // name. The first wins and the clash is reported rather than silently overwriting,
+    // because which one is right is a judgement, not a default.
+    const clash = await prisma.cityBoundary.findUnique({
+      where: { kind_matchKey: { kind: 'city', matchKey: row.matchKey } },
+    });
+    if (clash && clash.osmRelationId !== BigInt(relation.id)) {
+      skipped.push(`${name}: key "${row.matchKey}" already taken by ${clash.name}`);
+      continue;
+    }
+
+    await prisma.cityBoundary.upsert({
+      where: { osmRelationId: BigInt(relation.id) },
+      create: { osmRelationId: BigInt(relation.id), ...row },
+      update: row,
+    });
+
+    written++;
   }
 
-  const geometry = toGeometry(relation);
-  if (!geometry) {
-    skipped.push(`${name}: rings would not close`);
-    continue;
-  }
-
-  const bounds = boundsOf(geometry);
-
-  const row = {
-    // Kept verbatim for display; `matchKey` is what the lookup compares.
-    name,
-    matchKey: cityKey(name),
-    nameEn: relation.tags?.['name:en'] ?? null,
-    adminLevel,
-    geometry,
-    ...bounds,
-    syncedAt: new Date(),
-  };
-
-  // Two relations can normalise to the same key — a council and a town of the same
-  // name. The first wins and the clash is reported rather than silently overwriting,
-  // because which one is right is a judgement, not a default.
-  const clash = await prisma.cityBoundary.findUnique({ where: { matchKey: row.matchKey } });
-  if (clash && clash.osmRelationId !== BigInt(relation.id)) {
-    skipped.push(`${name}: key "${row.matchKey}" already taken by ${clash.name}`);
-    continue;
-  }
-
-  await prisma.cityBoundary.upsert({
-    where: { osmRelationId: BigInt(relation.id) },
-    create: { osmRelationId: BigInt(relation.id), ...row },
-    update: row,
-  });
-
-  written++;
+  console.log(`\n✓ ${written} municipalities stored`);
 }
 
-console.log(`\n✓ ${written} boundaries stored`);
+/**
+ * A point inside a city, for deciding which region it belongs to.
+ *
+ * The centre of the bounding box, which for an irregular outline — a coastal city, one
+ * wrapped around a neighbour — can fall outside the city itself. So it is tested, and a
+ * vertex of the outline is used when it misses. A vertex sits exactly on the border
+ * between two regions only if the city does, which no Israeli municipality does.
+ */
+function insidePoint(boundary) {
+  const centre = [(boundary.minLng + boundary.maxLng) / 2, (boundary.minLat + boundary.maxLat) / 2];
+  if (pointInGeometry(centre[0], centre[1], boundary.geometry)) return centre;
+
+  const rings =
+    boundary.geometry.type === 'Polygon'
+      ? boundary.geometry.coordinates
+      : boundary.geometry.coordinates.flat();
+
+  return rings[0]?.[0] ?? centre;
+}
+
+async function syncRegions() {
+  console.log('\nRegions.\n');
+
+  // Only the levels the table above actually needs, so a run does not fetch a level no
+  // region is built from.
+  const levels = [...new Set(REQUIRED_PARTS.map((part) => part.level))].sort();
+  const parts = new Map();
+
+  for (const level of levels) {
+    for (const relation of await fetchFromOverpass(level)) {
+      const name = nameOf(relation);
+      if (!name) continue;
+
+      const key = cityKey(name);
+      if (!REQUIRED_PARTS.some((part) => part.key === key && part.level === level)) continue;
+
+      const geometry = toGeometry(relation);
+      if (!geometry) {
+        skipped.push(`${name}: rings would not close`);
+        continue;
+      }
+
+      parts.set(key, { name, geometry });
+    }
+  }
+
+  // Every city already stored, so each region can be told which ones it covers.
+  const cities = await prisma.cityBoundary.findMany({
+    where: { kind: 'city' },
+    select: { name: true, geometry: true, minLat: true, maxLat: true, minLng: true, maxLng: true },
+  });
+
+  let written = 0;
+
+  for (const region of REGIONS) {
+    const pieces = region.parts.map((part) => parts.get(cityKey(part))).filter(Boolean);
+
+    if (pieces.length !== region.parts.length) {
+      const missing = region.parts.filter((part) => !parts.has(cityKey(part)));
+      skipped.push(`${region.name}: OpenStreetMap had no ${missing.join(', ')}`);
+      continue;
+    }
+
+    // A MultiPolygon of whole sub-districts rather than a true union. They tile without
+    // overlapping, so the outline is the same shape either way, and keeping the parts
+    // whole means no polygon arithmetic to get subtly wrong.
+    const polygons = pieces.flatMap((piece) =>
+      piece.geometry.type === 'Polygon' ? [piece.geometry.coordinates] : piece.geometry.coordinates,
+    );
+    const geometry = { type: 'MultiPolygon', coordinates: polygons };
+
+    // Worked out here rather than at query time: a search for a region is then an
+    // ordinary `city IN (…)`, with no geometry in the request path at all.
+    const memberCities = cities
+      .filter((city) => {
+        const [lng, lat] = insidePoint(city);
+        return pointInGeometry(lng, lat, geometry);
+      })
+      .map((city) => city.name)
+      .sort();
+
+    const matchKey = cityKey(region.name);
+    const row = {
+      name: region.name,
+      matchKey,
+      nameEn: null,
+      kind: 'district',
+      adminLevel: region.level ?? 5,
+      geometry,
+      memberCities,
+      ...boundsOf(geometry),
+      syncedAt: new Date(),
+    };
+
+    await prisma.cityBoundary.upsert({
+      where: { kind_matchKey: { kind: 'district', matchKey } },
+      create: row,
+      update: row,
+    });
+
+    console.log(`  ${region.name}: ${memberCities.length} cities`);
+    written++;
+  }
+
+  console.log(`\n✓ ${written} regions stored`);
+}
+
+if (doCities) await syncCities();
+if (doRegions) await syncRegions();
+
 if (skipped.length > 0) {
-  console.log(`  ${skipped.length} skipped:`);
+  console.log(`\n  ${skipped.length} skipped:`);
   for (const line of skipped.slice(0, 10)) console.log(`    ${line}`);
   if (skipped.length > 10) console.log(`    … and ${skipped.length - 10} more`);
 }

@@ -256,6 +256,12 @@ export function ListingsMap({ points, boundary, onSelect, onViewportChange }: Pr
 
   // The outline, which also takes over framing when there is one: the area asked for
   // is a better answer than the extent of whatever listings happen to be in it.
+  // The area last framed, by name. Panning refetches for the new viewport, and every
+  // response carries the same boundary as a *new* object — so this effect ran again and
+  // refitted, dragging the map back to the city the moment you moved away from it. The
+  // outline is still redrawn each time; only the framing is held to a real change.
+  const framedArea = useRef<string | null>(null);
+
   useEffect(() => {
     const instance = map.current;
     if (!instance || !ready) return;
@@ -272,9 +278,13 @@ export function ListingsMap({ points, boundary, onSelect, onViewportChange }: Pr
     // With no area to frame by, hand framing back to the points: clearing the city
     // should refit to whatever is now on the map, not leave the last city's view.
     if (!boundary) {
+      framedArea.current = null;
       framed.current = false;
       return;
     }
+
+    if (framedArea.current === boundary.name) return;
+    framedArea.current = boundary.name;
 
     framed.current = true;
     instance.fitBounds(

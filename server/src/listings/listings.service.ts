@@ -554,7 +554,7 @@ export class ListingsService {
     if (!cities || cities.length !== 1) return null;
 
     const row = await this.prisma.client.cityBoundary.findUnique({
-      where: { matchKey: cityKey(cities[0]) },
+      where: { kind_matchKey: { kind: 'city', matchKey: cityKey(cities[0]) } },
       select: {
         name: true,
         geometry: true,
