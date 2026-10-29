@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { qk } from '@/queries/keys';
 import { useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/Button';
-import { Field, inputClass } from '@/components/ui/Field';
+import { Field, inputClass, selectClass } from '@/components/ui/Field';
 import { useToast } from '@/components/ui/Toast';
 import { errorMessageOf } from '@/lib/apiError';
 import { formatDate, formatPrice } from '@/lib/format';
@@ -215,7 +215,7 @@ export function LeadsPage() {
 
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <select
-                className={`${inputClass} py-1 text-xs`}
+                className={`${selectClass} py-1 text-xs`}
                 value={lead.status}
                 onChange={(e) => void changeStatus(lead, e.target.value as LeadStatus)}
               >

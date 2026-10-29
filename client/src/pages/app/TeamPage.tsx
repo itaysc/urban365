@@ -5,7 +5,7 @@ import { useAuth } from '@/auth/AuthProvider';
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
-import { Field, inputClass } from '@/components/ui/Field';
+import { Field, inputClass, selectClass } from '@/components/ui/Field';
 import { useToast } from '@/components/ui/Toast';
 import { errorMessageOf } from '@/lib/apiError';
 import { formatDate } from '@/lib/format';
@@ -104,7 +104,7 @@ export function TeamPage() {
           <Field label="תפקיד" htmlFor="invite-role">
             <select
               id="invite-role"
-              className={inputClass}
+              className={selectClass}
               value={role}
               onChange={(e) => setRole(e.target.value as AgencyRole)}
             >
@@ -156,7 +156,7 @@ export function TeamPage() {
 
                   {canManage && !isSelf ? (
                     <select
-                      className={`${inputClass} py-1 text-xs`}
+                      className={`${selectClass} py-1 text-xs`}
                       value={member.role}
                       onChange={(e) =>
                         void act(

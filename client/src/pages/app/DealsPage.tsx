@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { qk } from '@/queries/keys';
 import { Button } from '@/components/ui/Button';
-import { Field, inputClass } from '@/components/ui/Field';
+import { Field, inputClass, selectClass } from '@/components/ui/Field';
 import { useToast } from '@/components/ui/Toast';
 import { errorMessageOf } from '@/lib/apiError';
 import { formatShekel } from '@/lib/format';
@@ -120,7 +120,7 @@ export function DealsPage() {
                       {deal.lead && <p className="mt-1 text-xs text-slate-500">{deal.lead.name}</p>}
 
                       <select
-                        className={`${inputClass} mt-2 w-full py-1 text-xs`}
+                        className={`${selectClass} mt-2 w-full py-1 text-xs`}
                         value={deal.stage}
                         onChange={(e) => void move(deal, e.target.value as DealStage)}
                       >

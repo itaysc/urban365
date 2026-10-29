@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/Button';
-import { Field, inputClass } from '@/components/ui/Field';
+import { Field, inputClass, selectClass } from '@/components/ui/Field';
 import { errorMessageOf } from '@/lib/apiError';
 import { fetchImportJob, startYad2Import, type ImportJob } from '@/services/agency';
 
@@ -106,7 +106,7 @@ export function Yad2ImportPanel({ onImported }: { onImported: () => void }) {
         <Field label="סוג" htmlFor="yad2-section">
           <select
             id="yad2-section"
-            className={inputClass}
+            className={selectClass}
             value={section}
             onChange={(e) => setSection(e.target.value)}
             disabled={running}

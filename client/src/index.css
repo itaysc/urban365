@@ -6,3 +6,32 @@
   font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   line-height: 1.5;
 }
+
+/*
+ * The chevron on a <select>.
+ *
+ * The browser draws its own hard against the control's edge, which under dir="rtl"
+ * leaves it sitting on the left border with no breathing room — and padding will not
+ * move it, because padding positions the text, not the arrow. So it is switched off and
+ * drawn here, where it can actually be placed.
+ *
+ * In a stylesheet rather than a Tailwind arbitrary value: a data URI full of quotes,
+ * angle brackets and percent signs does not survive that escaping, and silently
+ * produced no image at all.
+ *
+ * `background-position` has no logical keyword, so `left` is literal. This app is RTL
+ * throughout, where left is the inline end.
+ */
+.select-chevron {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%2364748b' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 8l4 4 4-4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-size: 1.1rem 1.1rem;
+  background-position: left 0.65rem center;
+}
+
+/* Left is the inline end only while the document is RTL; if an LTR locale is ever
+   added, the arrow belongs on the other side. */
+[dir='ltr'] .select-chevron {
+  background-position: right 0.65rem center;
+}

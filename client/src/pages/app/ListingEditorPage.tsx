@@ -5,7 +5,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { ImageManager } from '@/components/listing/ImageManager';
 import { Button } from '@/components/ui/Button';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
-import { Field, inputClass } from '@/components/ui/Field';
+import { Field, inputClass, selectClass } from '@/components/ui/Field';
 import { useToast } from '@/components/ui/Toast';
 import { errorCodeOf, errorMessageOf } from '@/lib/apiError';
 import { EXCLUSIVE_LABEL } from '@/lib/exclusivity';
@@ -268,7 +268,7 @@ export function ListingEditorPage() {
         <Field label="סוג עסקה" htmlFor="section" required>
           <select
             id="section"
-            className={inputClass}
+            className={selectClass}
             value={form.section}
             onChange={(e) => set('section', e.target.value)}
           >

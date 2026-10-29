@@ -23,3 +23,10 @@ export function Field({ label, htmlFor, error, required, children }: Props) {
 
 export const inputClass =
   'rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900 disabled:bg-slate-50';
+
+/**
+ * A select. The chevron is ours — see `.select-chevron` in index.css for why the
+ * browser's own could not be used — and `pe-9` keeps a long option from running
+ * underneath it.
+ */
+export const selectClass = `${inputClass} select-chevron pe-9`;
