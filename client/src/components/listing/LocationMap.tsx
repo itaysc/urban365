@@ -16,14 +16,18 @@ interface Props {
 /**
  * Where the listing is, on the listing itself.
  *
- * Not interactive. Someone reading a listing wants to know where it is, not to go
- * exploring — the search page is where panning belongs. Dragging is off so that a
- * scroll down the modal does not get swallowed by the map on the way past, which is the
- * usual complaint about an embedded one.
+ * It opens on the property and can be explored from there — what is up the road, how
+ * far the park is — which is the question an address raises and a fixed picture cannot
+ * answer.
  *
- * Zoom follows precision rather than being fixed. An address with a house number is a
- * building; one with only a street is a street, and a pin dropped at street level and
- * shown at building zoom claims an accuracy nobody has.
+ * `cooperativeGestures` is what makes that safe inside a scrolling modal: dragging and
+ * the zoom buttons work normally, but an ordinary wheel scroll passes through to the
+ * page instead of being eaten by the map, which is the usual complaint about an
+ * embedded one. Zooming by wheel asks for Ctrl, and the map says so when you try.
+ *
+ * The opening zoom follows precision rather than being fixed. An address with a house
+ * number is a building; one with only a street is a street, and a pin dropped at street
+ * level and shown at building zoom claims an accuracy nobody has.
  */
 export function LocationMap({ latitude, longitude, street, houseNumber, city }: Props) {
   const container = useRef<HTMLDivElement>(null);
@@ -41,9 +45,22 @@ export function LocationMap({ latitude, longitude, street, houseNumber, city }: 
       style: config.mapStyleUrl,
       center: [longitude, latitude],
       zoom: exact ? 16 : 14.5,
-      interactive: false,
+      cooperativeGestures: true,
+      // The overlay shown when a wheel scroll is refused, and the only English strings
+      // the map would otherwise put in front of a Hebrew reader.
+      locale: {
+        'CooperativeGesturesHandler.WindowsHelpText': 'החזיקו Ctrl וגללו כדי לשנות זום',
+        'CooperativeGesturesHandler.MacHelpText': 'החזיקו ⌘ וגללו כדי לשנות זום',
+        'CooperativeGesturesHandler.MobileHelpText': 'השתמשו בשתי אצבעות כדי להזיז את המפה',
+      },
       attributionControl: { compact: true },
     });
+
+    instance.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-left');
+    // Rotation on a map of one address answers nothing and is easy to trigger by
+    // accident on a trackpad.
+    instance.dragRotate.disable();
+    instance.touchZoomRotate.disableRotation();
 
     new maplibregl.Marker({ color: '#ea580c' })
       .setLngLat([longitude, latitude])
