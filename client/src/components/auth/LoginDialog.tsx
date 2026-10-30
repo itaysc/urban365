@@ -15,6 +15,17 @@ interface Props {
    * top of the document and a keyboard user had to tab in from the start again.
    */
   returnFocusTo?: RefObject<HTMLElement | null>;
+  /** Why we are asking, when it is not the usual "to save listings". */
+  description?: string;
+  /**
+   * Where a Google sign-in should land, when it is not back on this page.
+   *
+   * Google leaves the site entirely, so `onSignedIn` never runs for it — whatever the
+   * sign-in was *for* has to be expressed as a destination instead.
+   */
+  returnTo?: string;
+  /** Run once there is a session, for a sign-in that was asked for in order to do something. */
+  onSignedIn?: () => void;
 }
 
 /**
@@ -28,12 +39,20 @@ interface Props {
  * opened the dialog, handles Escape and marks the page behind it as inert. Reimplementing
  * that correctly is more code than using it.
  */
-export function LoginDialog({ open, onOpenChange, returnFocusTo }: Props) {
+export function LoginDialog({
+  open,
+  onOpenChange,
+  returnFocusTo,
+  description,
+  returnTo,
+  onSignedIn,
+}: Props) {
   const location = useLocation();
 
-  // A Google sign-in leaves the page entirely, so it has to be told to come back here —
-  // with the search intact, which is why this is the full path and not just `/`.
-  const returnTo = `${location.pathname}${location.search}`;
+  // A Google sign-in leaves the page entirely, so it has to be told where to come back
+  // to — by default here, with the search intact, which is why it is the full path and
+  // not just `/`.
+  const googleReturnTo = returnTo ?? `${location.pathname}${location.search}`;
 
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
@@ -54,7 +73,7 @@ export function LoginDialog({ open, onOpenChange, returnFocusTo }: Props) {
             <div>
               <Dialog.Title className="text-lg font-bold text-slate-900">כניסה</Dialog.Title>
               <Dialog.Description className="mt-1 text-sm text-slate-500">
-                כדי לשמור נכסים ולקבל עדכונים
+                {description ?? 'כדי לשמור נכסים ולקבל עדכונים'}
               </Dialog.Description>
             </div>
 
@@ -67,9 +86,12 @@ export function LoginDialog({ open, onOpenChange, returnFocusTo }: Props) {
           </div>
 
           <AccountLoginForm
-            returnTo={returnTo}
+            returnTo={googleReturnTo}
             idPrefix="dialog"
-            onSuccess={() => onOpenChange(false)}
+            onSuccess={() => {
+              onOpenChange(false);
+              onSignedIn?.();
+            }}
           />
 
           <p className="mt-4 text-center text-sm text-slate-500">

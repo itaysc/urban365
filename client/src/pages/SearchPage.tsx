@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Heart, Plus } from 'lucide-react';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/auth/auth-context';
@@ -20,6 +20,10 @@ import { searchTitle } from '@/lib/searchTitle';
 import { SORT_LABELS, SORTS, type SearchListing } from '@/types/search';
 import type { Asset } from '@/types/yad2';
 
+/** Shared by the link and the button, which are the same control in two states. */
+const publishClass =
+  'flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:text-slate-900';
+
 /** Hebrew does not take a numeral before a singular noun here. */
 function resultCount(total: number | undefined): string {
   if (total === undefined) return 'טוען…';
@@ -31,13 +35,18 @@ function resultCount(total: number | undefined): string {
 export function SearchPage() {
   const { filters, update, reset, activeCount } = useSearchFilters();
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const { status, data, error } = useListingSearch(filters);
   const [selected, setSelected] = useState<Asset | null>(null);
   const [loadingToken, setLoadingToken] = useState<string | null>(null);
 
   const [bounds, setBounds] = useState<MapBounds | null>(null);
   const [loginOpen, setLoginOpen] = useState(false);
+  // What the sign-in is *for*, which decides what the dialog says and where it goes
+  // afterwards. 'account' is somebody signing in for its own sake.
+  const [loginIntent, setLoginIntent] = useState<'account' | 'sell'>('account');
   const loginButton = useRef<HTMLButtonElement>(null);
+  const publishButton = useRef<HTMLButtonElement>(null);
 
   // Panning narrows the map query to what is on screen. A *new* search has to drop that
   // narrowing, or choosing a city while the map is parked over somewhere else asks for
@@ -136,13 +145,44 @@ export function SearchPage() {
               Shown signed out, where the guard on /sell asks for a sign-in and returns.
             */}
             {user?.agency?.membershipStatus !== 'active' && (
-              <Link
-                to="/sell"
-                className="hidden items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:text-slate-900 sm:flex"
-              >
-                <Plus className="h-4 w-4" aria-hidden />
-                פרסום נכס
-              </Link>
+              <div className="group relative hidden sm:block">
+                {user ? (
+                  <Link to="/sell" className={publishClass}>
+                    <Plus className="h-4 w-4" aria-hidden />
+                    פרסום נכס
+                  </Link>
+                ) : (
+                  // The same dialog the header's sign-in opens, for the same reason:
+                  // leaving for /login would throw away the search already built here.
+                  // Once there is a session we carry on to where they were going.
+                  <button
+                    ref={publishButton}
+                    type="button"
+                    onClick={() => {
+                      setLoginIntent('sell');
+                      setLoginOpen(true);
+                    }}
+                    className={publishClass}
+                  >
+                    <Plus className="h-4 w-4" aria-hidden />
+                    פרסום נכס
+                  </button>
+                )}
+
+                {/*
+                  Said on hover rather than after the click, so being asked to sign in is
+                  not a surprise. Only signed out: for someone with an account it is noise
+                  about a condition they already meet.
+                */}
+                {!user && (
+                  <span
+                    role="tooltip"
+                    className="pointer-events-none absolute top-full right-0 z-20 mt-2 w-56 rounded-lg bg-slate-900 px-3 py-2 text-xs leading-snug text-white opacity-0 shadow-lg transition group-focus-within:opacity-100 group-hover:opacity-100"
+                  >
+                    פרסום נכס פתוח למשתמשים רשומים בלבד. נבקש כניסה קצרה ונחזיר אתכם לכאן.
+                  </span>
+                )}
+              </div>
             )}
 
             {/*
@@ -203,7 +243,10 @@ export function SearchPage() {
               <button
                 ref={loginButton}
                 type="button"
-                onClick={() => setLoginOpen(true)}
+                onClick={() => {
+                  setLoginIntent('account');
+                  setLoginOpen(true);
+                }}
                 className="text-sm text-blue-700 hover:underline"
               >
                 התחברות
@@ -326,7 +369,15 @@ export function SearchPage() {
 
       {selected && <AssetModal asset={selected} onClose={() => setSelected(null)} />}
 
-      <LoginDialog open={loginOpen} onOpenChange={setLoginOpen} returnFocusTo={loginButton} />
+      <LoginDialog
+        open={loginOpen}
+        onOpenChange={setLoginOpen}
+        returnFocusTo={loginIntent === 'sell' ? publishButton : loginButton}
+        description={loginIntent === 'sell' ? 'פרסום נכס פתוח למשתמשים רשומים' : undefined}
+        // Google leaves the site, so for it the intent has to travel as a destination.
+        returnTo={loginIntent === 'sell' ? '/sell/new' : undefined}
+        onSignedIn={loginIntent === 'sell' ? () => navigate('/sell/new') : undefined}
+      />
     </div>
   );
 }
