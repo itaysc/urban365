@@ -311,6 +311,14 @@ export function ListingsMap({ points, offices = [], boundary, onSelect, onViewpo
     const instance = map.current;
     if (!instance || !ready) return;
 
+    // `undefined` and `null` are different answers and must not be treated alike.
+    // `null` is the server saying this search covers no single area; `undefined` is
+    // nobody having said yet, which is every moment between asking and being told.
+    // Taken before anything is drawn, so a reply in flight neither erases the outline
+    // nor releases the framing — treating it as "no area" is what made a zoom refit and
+    // snap back where you started.
+    if (boundary === undefined) return;
+
     const source = instance.getSource(BOUNDARY_SOURCE) as GeoJSONSource | undefined;
     if (!source) return;
 
@@ -322,7 +330,7 @@ export function ListingsMap({ points, offices = [], boundary, onSelect, onViewpo
 
     // With no area to frame by, hand framing back to the points: clearing the city
     // should refit to whatever is now on the map, not leave the last city's view.
-    if (!boundary) {
+    if (boundary === null) {
       framedArea.current = null;
       framed.current = false;
       return;

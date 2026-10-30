@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/auth/AuthProvider';
 import { Avatar } from '@/components/ui/Avatar';
 import { selectClass } from '@/components/ui/Field';
@@ -50,6 +50,10 @@ export function SearchPage() {
   const { data: mapData } = useQuery({
     queryKey: [...qk.listings.search(filters), 'map', bounds],
     queryFn: () => fetchMapPoints(filters, bounds ?? undefined),
+    // Panning and zooming change the key, so without this the pins and the outline
+    // vanish and come back on every movement — and the map, told the area was gone and
+    // then told it was back, refitted and dragged you where you started.
+    placeholderData: keepPreviousData,
   });
 
   // Detail is fetched on demand: the search response carries only what a card needs.
