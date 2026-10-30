@@ -8,6 +8,8 @@ interface Props {
   value: string;
   onChange: (value: string) => void;
   id?: string;
+  /** The agency editor saves half-filled drafts; the publish form does not. */
+  required?: boolean;
 }
 
 /** Enough to be worth drawing, few enough to read without scrolling past the field. */
@@ -24,7 +26,7 @@ const MAX_SUGGESTIONS = 8;
  * רמת גן before רמת ישי and both before אבן יהודה — the thing you are most likely to
  * have meant is the thing at the top.
  */
-export function CityBox({ value, onChange, id = 'city' }: Props) {
+export function CityBox({ value, onChange, id = 'city', required = false }: Props) {
   const [open, setOpen] = useState(false);
   const [highlighted, setHighlighted] = useState(0);
   const box = useRef<HTMLDivElement>(null);
@@ -88,7 +90,7 @@ export function CityBox({ value, onChange, id = 'city' }: Props) {
     <div ref={box} className="relative">
       <input
         id={id}
-        required
+        required={required}
         autoComplete="off"
         className={`${inputClass} w-full`}
         value={value}

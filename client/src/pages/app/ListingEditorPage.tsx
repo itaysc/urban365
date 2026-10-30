@@ -5,6 +5,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { ImageManager } from '@/components/listing/ImageManager';
 import { Button } from '@/components/ui/Button';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { CityBox } from '@/components/listing/CityBox';
+import { NeighborhoodBox } from '@/components/listing/NeighborhoodBox';
 import { Field, inputClass, selectClass } from '@/components/ui/Field';
 import { AmenityPicker } from '@/components/listing/AmenityPicker';
 import { useToast } from '@/components/ui/Toast';
@@ -331,12 +333,20 @@ export function ListingEditorPage() {
       </section>
 
       <section className="grid gap-4 rounded-xl border border-slate-200 bg-white p-4 sm:grid-cols-2">
+        {/*
+          The same two boxes the private seller's form uses. `Listing.city` is compared
+          exactly, so an agent's typo is a listing nobody searching that city will find —
+          and an agency typing a hundred of them is where that happens.
+        */}
         <Field label="עיר" htmlFor="city">
-          <input id="city" className={inputClass} value={form.city} onChange={(e) => set('city', e.target.value)} />
+          <CityBox value={form.city} onChange={(value) => set('city', value)} />
         </Field>
         <Field label="שכונה" htmlFor="neighborhood">
-          <input id="neighborhood" className={inputClass} value={form.neighborhood}
-                 onChange={(e) => set('neighborhood', e.target.value)} />
+          <NeighborhoodBox
+            city={form.city}
+            value={form.neighborhood}
+            onChange={(value) => set('neighborhood', value)}
+          />
         </Field>
         <Field label="רחוב" htmlFor="street">
           <input id="street" className={inputClass} value={form.street} onChange={(e) => set('street', e.target.value)} />

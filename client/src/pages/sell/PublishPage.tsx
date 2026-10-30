@@ -286,7 +286,7 @@ export function PublishPage() {
                 searches for is a flat nobody finds.
               */}
               <Field label="עיר" htmlFor="city" required>
-                <CityBox value={form.city} onChange={(value) => set('city', value)} />
+                <CityBox required value={form.city} onChange={(value) => set('city', value)} />
               </Field>
 
               {/*

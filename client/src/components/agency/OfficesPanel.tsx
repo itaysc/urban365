@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { MapPin, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { CityBox } from '@/components/listing/CityBox';
 import { Button } from '@/components/ui/Button';
 import { Field, inputClass } from '@/components/ui/Field';
 import { errorMessageOf } from '@/lib/apiError';
@@ -162,9 +163,15 @@ export function OfficesPanel() {
                    onChange={(e) => set('label', e.target.value)} placeholder="הסניף הראשי" />
           </Field>
 
+          {/* Also from the list: this address is geocoded to put a pin on the map, and
+              a misspelt city is a branch that lands in the wrong place or nowhere. */}
           <Field label="עיר" htmlFor="office-city" required>
-            <input id="office-city" required className={inputClass} value={form.city}
-                   onChange={(e) => set('city', e.target.value)} />
+            <CityBox
+              id="office-city"
+              required
+              value={form.city}
+              onChange={(value) => set('city', value)}
+            />
           </Field>
 
           <Field label="רחוב" htmlFor="office-street">
