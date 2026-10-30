@@ -14,6 +14,7 @@ import { StagedImagePicker } from '@/components/seller/StagedImagePicker';
 import { Button } from '@/components/ui/Button';
 import { Field, inputClass, selectClass } from '@/components/ui/Field';
 import { useLeaveGuard } from '@/hooks/useLeaveGuard';
+import { snapshot } from '@/pages/sell/formSnapshot';
 import { errorMessageOf } from '@/lib/apiError';
 import { qk } from '@/queries/keys';
 import {
@@ -99,6 +100,14 @@ export function PublishPage() {
    */
   const leaving = useRef(false);
 
+  /**
+   * The listing as it was when it loaded, and again after each save.
+   *
+   * Null until it arrives: before that there is nothing to compare against and nothing
+   * anybody could have changed.
+   */
+  const saved = useRef<string | null>(null);
+
   // Anything typed, chosen or dropped in. `section` is excluded — it has a default and
   // is set before anybody touches the page, so counting it would mean warning about an
   // empty form.
@@ -108,13 +117,18 @@ export function PublishPage() {
     acceptedTerms ||
     Object.entries(form).some(([key, value]) => key !== 'section' && value !== undefined && value !== '');
 
-  const blocker = useLeaveGuard(() => !editing && !leaving.current && started());
+  // Editing compares against what was loaded; a new listing has nothing to compare to,
+  // so anything at all counts. Photos differ too: on an existing listing they upload as
+  // they are picked and are already safe, while a new one holds them in the browser.
+  const unsaved = () => (editing ? saved.current !== null && snapshot(form, amenities) !== saved.current : started());
+
+  const blocker = useLeaveGuard(() => !leaving.current && unsaved());
 
   useQuery({
     queryKey: qk.mySale.detail(listingId ?? ''),
     queryFn: async () => {
       const listing = await fetchMyListing(listingId!);
-      setForm({
+      const loaded: SellerListingInput = {
         section: listing.section,
         city: listing.city ?? '',
         street: listing.street ?? undefined,
@@ -129,9 +143,11 @@ export function PublishPage() {
         propertyType: listing.propertyType ?? undefined,
         description: listing.description ?? undefined,
         contactName: listing.contactName ?? undefined,
-      });
+      };
+      setForm(loaded);
       setAmenities(listing.amenities);
       setImages(listing.images);
+      saved.current = snapshot(loaded, listing.amenities);
       return listing;
     },
     enabled: editing,
@@ -162,6 +178,8 @@ export function PublishPage() {
       void queryClient.invalidateQueries({ queryKey: qk.mySale.all });
       setStep(null);
       if (listingId) {
+        // What is on screen is now what is stored, so leaving costs nothing.
+        saved.current = snapshot(form, amenities);
         toast.success('הנכס עודכן.');
       } else {
         toast.success('הנכס פורסם.');
@@ -422,13 +440,15 @@ export function PublishPage() {
         onOpenChange={(open) => {
           if (!open) blocker.reset?.();
         }}
-        title="לצאת בלי לפרסם?"
+        title={editing ? 'לצאת בלי לשמור?' : 'לצאת בלי לפרסם?'}
         description={
-          staged.length > 0
-            ? `הפרטים שמילאתם ו-${staged.length} התמונות שבחרתם יימחקו. הנכס עדיין לא פורסם.`
-            : 'הפרטים שמילאתם יימחקו. הנכס עדיין לא פורסם.'
+          editing
+            ? 'השינויים שערכתם לא נשמרו, והנכס יישאר כפי שהוא עכשיו.'
+            : staged.length > 0
+              ? `הפרטים שמילאתם ו-${staged.length} התמונות שבחרתם יימחקו. הנכס עדיין לא פורסם.`
+              : 'הפרטים שמילאתם יימחקו. הנכס עדיין לא פורסם.'
         }
-        confirmLabel="יציאה ומחיקה"
+        confirmLabel={editing ? 'יציאה בלי לשמור' : 'יציאה ומחיקה'}
         onConfirm={() => blocker.proceed?.()}
       />
     </div>
