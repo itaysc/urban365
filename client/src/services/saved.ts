@@ -34,3 +34,9 @@ export async function fetchSavedListings(): Promise<SearchListing[]> {
   const { data } = await api.get<{ items: SearchListing[] }>('/saves');
   return data.items;
 }
+
+/** How many the caller has saved. Just the number — the header does not need the list. */
+export async function fetchSavedCount(): Promise<number> {
+  const { data } = await api.get<{ count: number }>('/saves/count');
+  return data.count;
+}

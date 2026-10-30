@@ -112,6 +112,11 @@ export class SavesService {
     return { saved: false, savedCount: updated.savedCount };
   }
 
+  /** How many, for the badge in the header — no listing payload needed for a number. */
+  totalFor(owner: SaveOwner): Promise<number> {
+    return this.prisma.savedListing.count({ where: where(owner) });
+  }
+
   /** Everything this owner has saved, newest first. */
   async listIds(owner: SaveOwner): Promise<string[]> {
     const rows = await this.prisma.savedListing.findMany({

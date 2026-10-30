@@ -81,6 +81,18 @@ export class SavesController {
     return { items: await this.listings.cardsByIds(await this.saves.listIds(owner)) };
   }
 
+  /**
+   * Just the number, for the header badge.
+   *
+   * Separate from the list because the header asks on every page and does not need a
+   * single listing to draw a count.
+   */
+  @Get('count')
+  async count(@Req() req: Request, @CurrentUser() principal: Principal | null) {
+    const owner = await this.ownerFor(req, null, principal);
+    return { count: owner ? await this.saves.totalFor(owner) : 0 };
+  }
+
   @Post()
   async save(
     @Body() dto: SaveListingDto,

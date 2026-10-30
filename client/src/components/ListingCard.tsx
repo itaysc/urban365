@@ -43,7 +43,7 @@ export function ListingCard({
         something other than open the listing.
       */}
       <div className="absolute left-2 top-2 z-10">
-        <SaveButton listingId={listing.id} saved={saved} count={listing.savedCount} size="sm" />
+        <SaveButton listingId={listing.id} saved={saved} size="sm" />
       </div>
 
       <button

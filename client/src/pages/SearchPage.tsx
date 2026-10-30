@@ -15,7 +15,7 @@ import { useListingSearch } from '@/hooks/useListingSearch';
 import { useSearchFilters } from '@/hooks/useSearchFilters';
 import { fetchListing, fetchMapPoints, type MapBounds } from '@/services/search';
 import { qk } from '@/queries/keys';
-import { fetchSavedAmong } from '@/services/saved';
+import { fetchSavedAmong, fetchSavedCount } from '@/services/saved';
 import { searchTitle } from '@/lib/searchTitle';
 import { SORT_LABELS, SORTS, type SearchListing } from '@/types/search';
 import type { Asset } from '@/types/yad2';
@@ -95,6 +95,12 @@ export function SearchPage() {
 
   // One request for the page rather than one per card. Works signed out: the server
   // answers from the visitor cookie when there is no account behind the request.
+  // The header's badge: the total this person has saved, not the count on any listing.
+  const { data: savedCount } = useQuery({
+    queryKey: qk.saved.count,
+    queryFn: fetchSavedCount,
+  });
+
   const { data: saved } = useQuery({
     queryKey: qk.saved.among(items.map((i) => i.id)),
     queryFn: () => fetchSavedAmong(items.map((i) => i.id)),
@@ -126,8 +132,24 @@ export function SearchPage() {
               Always there, signed in or not — saving does not require an account, so
               neither does finding what you saved.
             */}
-            <Link to="/saved" className="flex items-center gap-1.5 text-sm text-slate-600 hover:text-slate-900">
-              <Heart className="h-4 w-4" aria-hidden />
+            <Link
+              to="/saved"
+              className="relative flex items-center gap-1.5 text-sm text-slate-600 hover:text-slate-900"
+            >
+              <span className="relative">
+                <Heart className="h-5 w-5" aria-hidden />
+                {(savedCount ?? 0) > 0 && (
+                  // On the icon rather than beside the words, so it reads as a count of
+                  // what is behind the link rather than as part of its label.
+                  <span
+                    dir="ltr"
+                    aria-hidden
+                    className="absolute -right-2 -top-2 flex min-w-[1.1rem] items-center justify-center rounded-full bg-orange-600 px-1 text-[0.65rem] font-bold leading-[1.1rem] text-white ring-2 ring-slate-50"
+                  >
+                    {savedCount! > 99 ? '99+' : savedCount}
+                  </span>
+                )}
+              </span>
               שמורים
             </Link>
 

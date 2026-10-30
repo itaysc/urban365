@@ -94,7 +94,7 @@ export function ListingPopupCard({ point, onOpen }: Props) {
         </button>
 
         <div className="flex items-start p-2">
-          <SaveButton listingId={point.id} saved={isSaved} count={point.savedCount} />
+          <SaveButton listingId={point.id} saved={isSaved} />
         </div>
       </div>
     </div>
