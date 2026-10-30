@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Eye, Heart, MessageSquare, Phone, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatPrice } from '@/lib/format';
+import { SiteHeader } from '@/components/SiteHeader';
 import { errorMessageOf } from '@/lib/apiError';
 import { qk } from '@/queries/keys';
 import {
@@ -88,6 +89,8 @@ export function MySalePage() {
 
   return (
     <div className="min-h-screen bg-slate-50">
+      <SiteHeader />
+
       <div className="mx-auto flex max-w-4xl flex-col gap-6 p-4 sm:p-8">
         <header className="flex flex-wrap items-baseline justify-between gap-3">
           <div>

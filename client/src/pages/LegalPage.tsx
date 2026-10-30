@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { PRIVACY, TERMS, type LegalDocument } from '@/content/legal';
+import { SiteHeader } from '@/components/SiteHeader';
 
 /** Anything still in `[[…]]` is a blank the business has to fill before this goes live. */
 const PLACEHOLDER = /\[\[[^\]]+\]\]/g;
@@ -30,11 +31,9 @@ function Document({ doc }: { doc: LegalDocument }) {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <div className="mx-auto flex max-w-3xl flex-col gap-6 p-6 sm:p-10">
-        <Link to="/" className="text-sm text-blue-700 hover:underline">
-          ← חזרה לחיפוש
-        </Link>
+      <SiteHeader />
 
+      <div className="mx-auto flex max-w-3xl flex-col gap-6 p-6 sm:p-10">
         <header>
           <h1 className="text-2xl font-bold text-slate-900">{doc.title}</h1>
           <p className="mt-1 text-sm text-slate-500">עודכן לאחרונה: {doc.updated}</p>

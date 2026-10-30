@@ -10,6 +10,7 @@ import { CityBox } from '@/components/listing/CityBox';
 import { CountPicker } from '@/components/listing/CountPicker';
 import { NeighborhoodBox } from '@/components/listing/NeighborhoodBox';
 import { RoomsPicker } from '@/components/search/RoomsPicker';
+import { SiteHeader } from '@/components/SiteHeader';
 import { ImageUploader } from '@/components/seller/ImageUploader';
 import { StagedImagePicker } from '@/components/seller/StagedImagePicker';
 import { Button } from '@/components/ui/Button';
@@ -228,6 +229,8 @@ export function PublishPage() {
 
   return (
     <div className="min-h-screen bg-slate-50">
+      <SiteHeader />
+
       <div className="mx-auto flex max-w-3xl flex-col gap-6 p-4 sm:p-8">
         <header className="flex flex-wrap items-baseline justify-between gap-3">
           <div>

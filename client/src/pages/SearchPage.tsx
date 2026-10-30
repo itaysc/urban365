@@ -1,12 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Heart, Plus } from 'lucide-react';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import { useAuth } from '@/auth/auth-context';
-import { Avatar } from '@/components/ui/Avatar';
 import { selectClass } from '@/components/ui/Field';
 import { AssetModal } from '@/components/AssetModal';
-import { LoginDialog } from '@/components/auth/LoginDialog';
+import { SiteHeader } from '@/components/SiteHeader';
 import { ListingsMap } from '@/components/map/ListingsMap';
 import { FilterBar } from '@/components/search/FilterBar';
 import { ListingCard } from '@/components/ListingCard';
@@ -15,14 +11,10 @@ import { useListingSearch } from '@/hooks/useListingSearch';
 import { useSearchFilters } from '@/hooks/useSearchFilters';
 import { fetchListing, fetchMapPoints, type MapBounds } from '@/services/search';
 import { qk } from '@/queries/keys';
-import { fetchSavedAmong, fetchSavedCount } from '@/services/saved';
+import { fetchSavedAmong } from '@/services/saved';
 import { searchTitle } from '@/lib/searchTitle';
 import { SORT_LABELS, SORTS, type SearchListing } from '@/types/search';
 import type { Asset } from '@/types/yad2';
-
-/** Shared by the link and the button, which are the same control in two states. */
-const publishClass =
-  'flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:text-slate-900';
 
 /** Hebrew does not take a numeral before a singular noun here. */
 function resultCount(total: number | undefined): string {
@@ -34,19 +26,11 @@ function resultCount(total: number | undefined): string {
 
 export function SearchPage() {
   const { filters, update, reset, activeCount } = useSearchFilters();
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
   const { status, data, error } = useListingSearch(filters);
   const [selected, setSelected] = useState<Asset | null>(null);
   const [loadingToken, setLoadingToken] = useState<string | null>(null);
 
   const [bounds, setBounds] = useState<MapBounds | null>(null);
-  const [loginOpen, setLoginOpen] = useState(false);
-  // What the sign-in is *for*, which decides what the dialog says and where it goes
-  // afterwards. 'account' is somebody signing in for its own sake.
-  const [loginIntent, setLoginIntent] = useState<'account' | 'sell'>('account');
-  const loginButton = useRef<HTMLButtonElement>(null);
-  const publishButton = useRef<HTMLButtonElement>(null);
 
   // Panning narrows the map query to what is on screen. A *new* search has to drop that
   // narrowing, or choosing a city while the map is parked over somewhere else asks for
@@ -105,10 +89,6 @@ export function SearchPage() {
   // One request for the page rather than one per card. Works signed out: the server
   // answers from the visitor cookie when there is no account behind the request.
   // The header's badge: the total this person has saved, not the count on any listing.
-  const { data: savedCount } = useQuery({
-    queryKey: qk.saved.count,
-    queryFn: fetchSavedCount,
-  });
 
   const { data: saved } = useQuery({
     queryKey: qk.saved.among(items.map((i) => i.id)),
@@ -123,6 +103,8 @@ export function SearchPage() {
     // before a single new card appeared. On a phone this is an ordinary page again —
     // one column, nothing to keep beside anything.
     <div className="bg-slate-50 lg:flex lg:h-screen lg:flex-col lg:overflow-hidden">
+      <SiteHeader />
+
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 sm:p-8 lg:min-h-0 lg:flex-1">
         <header className="flex flex-wrap items-baseline justify-between gap-3">
           <div>
@@ -137,121 +119,6 @@ export function SearchPage() {
           </div>
 
           <div className="flex items-center gap-3">
-            {/*
-              Not shown to agencies: they publish from their own dashboard, and a listing
-              made here would belong to the person rather than to the agency — invisible
-              to their colleagues and missing from their CRM.
-
-              Shown signed out, where the guard on /sell asks for a sign-in and returns.
-            */}
-            {user?.agency?.membershipStatus !== 'active' && (
-              <div className="group relative hidden sm:block">
-                {user ? (
-                  <Link to="/sell" className={publishClass}>
-                    <Plus className="h-4 w-4" aria-hidden />
-                    פרסום נכס
-                  </Link>
-                ) : (
-                  // The same dialog the header's sign-in opens, for the same reason:
-                  // leaving for /login would throw away the search already built here.
-                  // Once there is a session we carry on to where they were going.
-                  <button
-                    ref={publishButton}
-                    type="button"
-                    onClick={() => {
-                      setLoginIntent('sell');
-                      setLoginOpen(true);
-                    }}
-                    className={publishClass}
-                  >
-                    <Plus className="h-4 w-4" aria-hidden />
-                    פרסום נכס
-                  </button>
-                )}
-
-                {/*
-                  Said on hover rather than after the click, so being asked to sign in is
-                  not a surprise. Only signed out: for someone with an account it is noise
-                  about a condition they already meet.
-                */}
-                {!user && (
-                  <span
-                    role="tooltip"
-                    className="pointer-events-none absolute top-full right-0 z-20 mt-2 w-56 rounded-lg bg-slate-900 px-3 py-2 text-xs leading-snug text-white opacity-0 shadow-lg transition group-focus-within:opacity-100 group-hover:opacity-100"
-                  >
-                    פרסום נכס פתוח למשתמשים רשומים בלבד. נבקש כניסה קצרה ונחזיר אתכם לכאן.
-                  </span>
-                )}
-              </div>
-            )}
-
-            {/*
-              Always there, signed in or not — saving does not require an account, so
-              neither does finding what you saved.
-            */}
-            <Link
-              to="/saved"
-              className="relative flex items-center gap-1.5 text-sm text-slate-600 hover:text-slate-900"
-            >
-              <span className="relative">
-                <Heart className="h-5 w-5" aria-hidden />
-                {(savedCount ?? 0) > 0 && (
-                  // On the icon rather than beside the words, so it reads as a count of
-                  // what is behind the link rather than as part of its label.
-                  <span
-                    dir="ltr"
-                    aria-hidden
-                    className="absolute -right-2 -top-2 flex min-w-[1.1rem] items-center justify-center rounded-full bg-orange-600 px-1 text-[0.65rem] font-bold leading-[1.1rem] text-white ring-2 ring-slate-50"
-                  >
-                    {savedCount! > 99 ? '99+' : savedCount}
-                  </span>
-                )}
-              </span>
-              שמורים
-            </Link>
-
-            {/*
-              Signed in, this has to be the account — not a sign-in link. The login page
-              redirects anyone who already has a session, so offering it here sent you to
-              /login and straight back, which reads as the link being broken.
-
-              Agencies reach their own sign-in from a link on that page, which is also
-              where importing from yad2 lives.
-            */}
-            {user ? (
-              <div className="flex items-center gap-2">
-                <Link
-                  to="/app/profile"
-                  className="flex items-center gap-2 rounded-lg px-2 py-1 transition hover:bg-slate-100"
-                  title={`${user.firstName} ${user.lastName}`.trim()}
-                >
-                  <Avatar size="sm" src={user.avatarUrl} firstName={user.firstName} lastName={user.lastName} />
-                  <span className="hidden text-sm text-slate-700 sm:inline">{user.firstName}</span>
-                </Link>
-                <button
-                  type="button"
-                  onClick={() => void logout()}
-                  className="text-sm text-slate-500 transition hover:text-slate-900"
-                >
-                  יציאה
-                </button>
-              </div>
-            ) : (
-              // A dialog rather than a link to `/login`: signing in is a detour, and
-              // leaving the page would throw away the search someone has already built
-              // — the places, the price, the rooms.
-              <button
-                ref={loginButton}
-                type="button"
-                onClick={() => {
-                  setLoginIntent('account');
-                  setLoginOpen(true);
-                }}
-                className="text-sm text-blue-700 hover:underline"
-              >
-                התחברות
-              </button>
-            )}
             <select
               value={filters.sort}
               onChange={(e) => update({ sort: e.target.value as (typeof SORTS)[number] })}
@@ -369,15 +236,6 @@ export function SearchPage() {
 
       {selected && <AssetModal asset={selected} onClose={() => setSelected(null)} />}
 
-      <LoginDialog
-        open={loginOpen}
-        onOpenChange={setLoginOpen}
-        returnFocusTo={loginIntent === 'sell' ? publishButton : loginButton}
-        description={loginIntent === 'sell' ? 'פרסום נכס פתוח למשתמשים רשומים' : undefined}
-        // Google leaves the site, so for it the intent has to travel as a destination.
-        returnTo={loginIntent === 'sell' ? '/sell/new' : undefined}
-        onSignedIn={loginIntent === 'sell' ? () => navigate('/sell/new') : undefined}
-      />
     </div>
   );
 }
