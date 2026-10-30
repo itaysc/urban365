@@ -1,3 +1,4 @@
+import { useAuth } from '@/auth/AuthProvider';
 import { EnquiryForm } from '@/components/EnquiryForm';
 import { LocationMap } from '@/components/listing/LocationMap';
 import { RevealPhone } from '@/components/RevealPhone';
@@ -19,6 +20,12 @@ const Spec = ({ label, value }: { label: string; value: string | number | null }
 
 export function AssetModal({ asset, onClose }: { asset: Asset; onClose: () => void }) {
   const closeRef = useRef<HTMLButtonElement>(null);
+  const { user } = useAuth();
+
+  // `membershipStatus` matters as much as the id: someone whose claim on an agency is
+  // still pending is not yet that agency.
+  const ownsThisListing =
+    user?.agency?.membershipStatus === 'active' && user.agency.id === asset.agency?.id;
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
@@ -153,13 +160,21 @@ export function AssetModal({ asset, onClose }: { asset: Asset; onClose: () => vo
             />
           </div>
 
-          {/* Our own listings have no yad2 url; those get the enquiry form instead, which
-              is the point of the whole CRM. Scraped ones still link out. */}
           {/* The number is not in this payload — the button fetches it, so there is
               nothing to harvest from the listing itself. */}
           {asset.agency?.hasPhone && <RevealPhone listingId={asset.id} />}
 
-          {asset.listingUrl ? (
+          {/*
+            The link out to yad2 is for the agency that owns the listing and nobody
+            else. It is a tool for checking your own posting against where it came
+            from — shown to a buyer it is an invitation to go and deal somewhere else,
+            on a page whose job is to produce an enquiry here.
+
+            Three conditions, all required: the viewer belongs to an agency with an
+            active membership, that agency is this listing's, and the listing actually
+            came from yad2. A listing created here has no url to show.
+          */}
+          {ownsThisListing && asset.listingUrl && (
             <a
               href={asset.listingUrl}
               target="_blank"
@@ -168,9 +183,11 @@ export function AssetModal({ asset, onClose }: { asset: Asset; onClose: () => vo
             >
               הצגת המודעה ביד2 ↗
             </a>
-          ) : (
-            <EnquiryForm listingId={asset.id} />
           )}
+
+          {/* Everyone else gets the enquiry form, which is the point of the whole CRM.
+              An agency does not need to enquire about its own listing. */}
+          {!ownsThisListing && <EnquiryForm listingId={asset.id} />}
 
           {/*
             Last, under everything else. The address is already stated at the top; the
