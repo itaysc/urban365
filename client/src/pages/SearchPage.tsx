@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Heart } from 'lucide-react';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/auth/AuthProvider';
 import { Avatar } from '@/components/ui/Avatar';
@@ -121,6 +122,15 @@ export function SearchPage() {
           </div>
 
           <div className="flex items-center gap-3">
+            {/*
+              Always there, signed in or not — saving does not require an account, so
+              neither does finding what you saved.
+            */}
+            <Link to="/saved" className="flex items-center gap-1.5 text-sm text-slate-600 hover:text-slate-900">
+              <Heart className="h-4 w-4" aria-hidden />
+              שמורים
+            </Link>
+
             {/*
               Signed in, this has to be the account — not a sign-in link. The login page
               redirects anyone who already has a session, so offering it here sent you to

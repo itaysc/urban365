@@ -6,6 +6,7 @@ import { IsString, MaxLength } from 'class-validator';
 import { Public } from '../auth/decorators/public.decorator.js';
 import { CurrentUser } from '../auth/decorators/current-user.decorator.js';
 import type { Principal } from '../auth/types/principal.js';
+import { ListingsService } from '../listings/listings.service.js';
 import { SavesService, VISITOR_COOKIE, type SaveOwner } from './saves.service.js';
 
 export class SaveListingDto {
@@ -29,6 +30,7 @@ export class SavesController {
 
   constructor(
     private readonly saves: SavesService,
+    private readonly listings: ListingsService,
     config: ConfigService,
   ) {
     this.isProduction = config.get<string>('app.env') === 'production';
@@ -68,6 +70,15 @@ export class SavesController {
     });
 
     return visitor;
+  }
+
+  /** Everything the caller has saved — their own list, account or not. */
+  @Get()
+  async list(@Req() req: Request, @CurrentUser() principal: Principal | null) {
+    const owner = await this.ownerFor(req, null, principal);
+    if (!owner) return { items: [] };
+
+    return { items: await this.listings.cardsByIds(await this.saves.listIds(owner)) };
   }
 
   @Post()

@@ -1,4 +1,5 @@
 import { api } from '@/services/api';
+import type { SearchListing } from '@/types/search';
 
 export interface SaveResult {
   saved: boolean;
@@ -26,4 +27,10 @@ export async function saveListing(listingId: string): Promise<SaveResult> {
 export async function unsaveListing(listingId: string): Promise<SaveResult> {
   const { data } = await api.delete<SaveResult>(`/saves/${listingId}`);
   return data;
+}
+
+/** Everything the caller has saved — account or signed-out browser alike. */
+export async function fetchSavedListings(): Promise<SearchListing[]> {
+  const { data } = await api.get<{ items: SearchListing[] }>('/saves');
+  return data.items;
 }

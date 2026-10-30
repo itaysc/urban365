@@ -112,6 +112,17 @@ export class SavesService {
     return { saved: false, savedCount: updated.savedCount };
   }
 
+  /** Everything this owner has saved, newest first. */
+  async listIds(owner: SaveOwner): Promise<string[]> {
+    const rows = await this.prisma.savedListing.findMany({
+      where: where(owner),
+      select: { listingId: true },
+      orderBy: { createdAt: 'desc' },
+      take: 500,
+    });
+    return rows.map((row) => row.listingId);
+  }
+
   /** Which of these the owner has saved — one query for a whole page of results. */
   async savedAmong(owner: SaveOwner | null, listingIds: string[]): Promise<string[]> {
     if (!owner || listingIds.length === 0) return [];

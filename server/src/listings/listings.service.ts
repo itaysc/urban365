@@ -231,6 +231,28 @@ export class ListingsService {
     return response;
   }
 
+  /**
+   * Card-shaped listings for a set of ids, in the order given.
+   *
+   * For the saved list, which knows which listings it wants and not how to describe
+   * them. The order is restored here because `IN` returns rows in whatever order the
+   * planner likes, and a saved list reads newest-saved first.
+   *
+   * Delisted ones are kept: something you saved that has since come off the market is
+   * still worth telling you about, and silently dropping it looks like we lost it.
+   */
+  async cardsByIds(ids: string[]): Promise<SearchListing[]> {
+    if (ids.length === 0) return [];
+
+    const rows = await this.prisma.client.listing.findMany({
+      where: { id: { in: ids }, status: 'published' },
+      include: { agency: { select: { id: true, name: true } } },
+    });
+
+    const byId = new Map(rows.map((row) => [row.id, this.toSearchListing(row)]));
+    return ids.map((id) => byId.get(id)).filter((row): row is SearchListing => Boolean(row));
+  }
+
   /** Counts for the current filters, so a filter UI can show what each option would return. */
   private async facets(where: Prisma.ListingWhereInput) {
     const [cities, propertyTypes, amenityRows] = await Promise.all([

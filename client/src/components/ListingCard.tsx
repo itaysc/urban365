@@ -33,31 +33,30 @@ export function ListingCard({
   const amenities = listing.amenities.filter((a) => a !== EXCLUSIVE_LABEL);
 
   return (
-    <button
-      type="button"
-      onClick={() => onOpen(listing)}
-      className="flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white text-right transition hover:border-slate-400 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-slate-900"
-    >
+    // The heart is a sibling of the card button, not a child of it. A button inside a
+    // button is invalid HTML, and the browser rearranges the tree to cope — the heart
+    // rendered in the right place and received no clicks at all, because hit testing
+    // handed them to the card it was nested in.
+    <div className="relative flex flex-col">
+      {/*
+        Top-left, opposite the badges. It is the one control on a card that does
+        something other than open the listing.
+      */}
+      <div className="absolute left-2 top-2 z-10">
+        <SaveButton listingId={listing.id} saved={saved} count={listing.savedCount} size="sm" />
+      </div>
+
+      <button
+        type="button"
+        onClick={() => onOpen(listing)}
+        className="flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white text-right transition hover:border-slate-400 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-slate-900"
+      >
       <div className="relative h-44 bg-slate-100">
         {listing.coverImageUrl ? (
           <img src={listing.coverImageUrl} alt={listing.propertyType ?? ''} className="h-full w-full object-cover" loading="lazy" />
         ) : (
           <div className="flex h-full items-center justify-center text-sm text-slate-400">ללא תמונה</div>
         )}
-
-        {/*
-          Top-left, opposite the badges. It is the one control on the card that does
-          something other than open the listing, so it stands apart from the labels
-          that only describe it.
-        */}
-        <div className="absolute top-2 left-2 z-10">
-          <SaveButton
-            listingId={listing.id}
-            saved={saved}
-            count={listing.savedCount}
-            size="sm"
-          />
-        </div>
 
         {/*
           Stacked rather than placed in separate corners: a listing can be both, and two
@@ -131,6 +130,7 @@ export function ListingCard({
           {listing.pricePerSquareMeter && <span>{listing.pricePerSquareMeter.toLocaleString('he-IL')} ₪/מ״ר</span>}
         </div>
       </div>
-    </button>
+      </button>
+    </div>
   );
 }
