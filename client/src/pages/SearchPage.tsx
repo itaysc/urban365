@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Heart } from 'lucide-react';
+import { Heart, Plus } from 'lucide-react';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/auth/auth-context';
 import { Avatar } from '@/components/ui/Avatar';
@@ -128,6 +128,23 @@ export function SearchPage() {
           </div>
 
           <div className="flex items-center gap-3">
+            {/*
+              Not shown to agencies: they publish from their own dashboard, and a listing
+              made here would belong to the person rather than to the agency — invisible
+              to their colleagues and missing from their CRM.
+
+              Shown signed out, where the guard on /sell asks for a sign-in and returns.
+            */}
+            {user?.agency?.membershipStatus !== 'active' && (
+              <Link
+                to="/sell"
+                className="hidden items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:text-slate-900 sm:flex"
+              >
+                <Plus className="h-4 w-4" aria-hidden />
+                פרסום נכס
+              </Link>
+            )}
+
             {/*
               Always there, signed in or not — saving does not require an account, so
               neither does finding what you saved.

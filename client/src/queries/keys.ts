@@ -38,6 +38,13 @@ export const qk = {
     list: ['offices', 'list'] as const,
   },
 
+  mySale: {
+    all: ['my-sale'] as const,
+    list: ['my-sale', 'list'] as const,
+    detail: (id: string) => ['my-sale', 'detail', id] as const,
+    stats: ['my-sale', 'stats'] as const,
+  },
+
   leads: {
     all: ['leads'] as const,
     list: (status: LeadStatus | undefined, page: number) => ['leads', 'list', status ?? 'any', page] as const,

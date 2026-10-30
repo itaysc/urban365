@@ -20,7 +20,8 @@ import { REFRESH_COOKIE } from './auth.constants.js';
 import { clearAuthCookies, setAuthCookies } from './cookies.js';
 import { CurrentUser } from './decorators/current-user.decorator.js';
 import { Public } from './decorators/public.decorator.js';
-import { SavesService, VISITOR_COOKIE } from '../saves/saves.service.js';
+import { SavesService } from '../saves/saves.service.js';
+import { VISITOR_COOKIE, VisitorService } from '../visitor/visitor.service.js';
 import { CaptchaService } from './captcha.service.js';
 import { LoginDto } from './dto/login.dto.js';
 import { ForgotPasswordDto, ResetPasswordDto, VerifyEmailDto } from './dto/password.dto.js';
@@ -46,6 +47,7 @@ export class AuthController {
     private readonly google: GoogleService,
     config: ConfigService,
       private readonly saves: SavesService,
+      private readonly visitors: VisitorService,
   ) {
     this.appUrl = (config.get<string>('mail.appUrl') ?? '').replace(/\/$/, '');
     this.cookieOpts = {
@@ -83,7 +85,7 @@ export class AuthController {
 
     // Checked before a profile is created: an agency signing in from a browser that
     // never saved anything should not acquire a buyer profile as a side effect.
-    const visitor = await this.saves.existingVisitor(visitorId);
+    const visitor = await this.visitors.existing(visitorId);
     if (visitor) {
       const profile = await this.saves.profileFor(userId);
       if (profile.kind === 'profile') {

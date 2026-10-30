@@ -1,11 +1,12 @@
-import { BadRequestException, Controller, Get, NotFoundException, Param, Query, Req } from '@nestjs/common';
+import { BadRequestException, Controller, Get, NotFoundException, Param, Query, Req, Res } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
-import type { Request } from 'express';
+import type { Request, Response } from 'express';
 import { Public } from '../auth/decorators/public.decorator.js';
 import { SearchListingsDto } from './dto/search-listings.dto.js';
 import { ListingsService } from './listings.service.js';
 import { EngagementService } from '../seller/engagement.service.js';
-import { VISITOR_COOKIE } from '../saves/saves.service.js';
+import { ConfigService } from '@nestjs/config';
+import { VISITOR_COOKIE, VisitorService, setVisitorCookie } from '../visitor/visitor.service.js';
 import { CurrentUser } from '../auth/decorators/current-user.decorator.js';
 import type { Principal } from '../auth/types/principal.js';
 import { SECTIONS, type Section } from '../yad2/yad2.types.js';
@@ -18,23 +19,35 @@ const isSection = (value: unknown): value is Section =>
 @Public()
 @Controller('listings')
 export class ListingsController {
+  private readonly isProduction: boolean;
+
   constructor(
     private readonly listings: ListingsService,
     private readonly engagement: EngagementService,
-  ) {}
+    private readonly visitors: VisitorService,
+    config: ConfigService,
+  ) {
+    this.isProduction = config.get<string>('app.env') === 'production';
+  }
 
   /**
    * Who is looking, as far as we can tell — for counting, never for identifying.
    *
-   * No cookie is issued here. A visitor who has never saved anything has no id, and
-   * minting one so that a page view can be counted would be tracking somebody who
-   * asked for nothing. Those views simply go uncounted, which is the right trade.
+   * A signed-out browser with no identifier is given one here, because the figure the
+   * seller is shown is "people", and without an identifier there is no way to tell one
+   * person opening a flat four times from four people opening it once. The line is
+   * drawn at opening a particular property: that is something the person did on
+   * purpose. Loading a page of search results mints nothing.
    */
-  private viewer(req: Request, principal: Principal | null) {
-    return {
-      userId: principal?.userId ?? null,
-      visitorId: (req.cookies as Record<string, string> | undefined)?.[VISITOR_COOKIE] ?? null,
-    };
+  private async viewer(req: Request, res: Response, principal: Principal | null) {
+    if (principal?.userId) return { userId: principal.userId, visitorId: null };
+
+    const existing = (req.cookies as Record<string, string> | undefined)?.[VISITOR_COOKIE];
+    if (await this.visitors.existing(existing)) return { userId: null, visitorId: existing };
+
+    const visitor = await this.visitors.create();
+    setVisitorCookie(res, visitor.visitorId, this.isProduction);
+    return { userId: null, visitorId: visitor.visitorId };
   }
 
   /** Faceted search across every agency we hold. */
@@ -107,6 +120,7 @@ export class ListingsController {
   async phone(
     @Param('id') id: string,
     @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
     @CurrentUser() principal: Principal | null,
   ) {
     const result = await this.listings.phoneFor(id);
@@ -114,7 +128,7 @@ export class ListingsController {
 
     // Counted after the number was actually found, so a miss does not register as
     // interest in a listing that never answered.
-    await this.engagement.record(id, 'phone', this.viewer(req, principal));
+    await this.engagement.record(id, 'phone', await this.viewer(req, res, principal));
     return result;
   }
 
@@ -123,13 +137,14 @@ export class ListingsController {
   async byId(
     @Param('id') id: string,
     @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
     @CurrentUser() principal: Principal | null,
   ) {
     const listing = await this.listings.findById(id);
     if (!listing) throw new NotFoundException(`No listing ${id}.`);
 
     // This route is what opening a listing calls, so it is where a view happens.
-    await this.engagement.record(listing.id, 'view', this.viewer(req, principal));
+    await this.engagement.record(listing.id, 'view', await this.viewer(req, res, principal));
     return listing;
   }
 }

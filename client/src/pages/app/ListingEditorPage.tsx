@@ -6,6 +6,7 @@ import { ImageManager } from '@/components/listing/ImageManager';
 import { Button } from '@/components/ui/Button';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Field, inputClass, selectClass } from '@/components/ui/Field';
+import { AmenityPicker } from '@/components/listing/AmenityPicker';
 import { useToast } from '@/components/ui/Toast';
 import { errorCodeOf, errorMessageOf } from '@/lib/apiError';
 import { EXCLUSIVE_LABEL } from '@/lib/exclusivity';
@@ -34,23 +35,6 @@ const SECTIONS = [
  * exclusivity: it describes the agency's mandate rather than the property, and has its
  * own toggle below.
  */
-const AMENITIES = [
-  'מעלית',
-  'גישה לנכים',
-  'מיזוג',
-  'מזגן טורנדו',
-  'סורגים',
-  'מחסן',
-  'דוד שמש',
-  'משופצת',
-  'ממ"ד',
-  'מרפסת',
-  'ריהוט',
-  'מקלט בניין',
-  'מקלט קומתי',
-  'מטבח כשר',
-  'כניסה מיידית',
-];
 
 type Form = Record<string, string>;
 
@@ -365,26 +349,7 @@ export function ListingEditorPage() {
 
       <section className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4">
         <h2 className="text-sm font-semibold text-slate-900">מה יש בנכס</h2>
-        <div className="flex flex-wrap gap-2">
-          {AMENITIES.map((label) => {
-            const on = amenities.includes(label);
-            return (
-              <button
-                key={label}
-                type="button"
-                onClick={() => toggleAmenity(label)}
-                aria-pressed={on}
-                className={`rounded-lg px-3 py-1.5 text-sm transition ${
-                  on
-                    ? 'bg-slate-900 text-white'
-                    : 'border border-slate-300 bg-white text-slate-700 hover:border-slate-900'
-                }`}
-              >
-                {label}
-              </button>
-            );
-          })}
-        </div>
+        <AmenityPicker selected={amenities} onToggle={toggleAmenity} />
       </section>
 
       <section className="flex flex-col gap-2 rounded-xl border border-slate-200 bg-white p-4">

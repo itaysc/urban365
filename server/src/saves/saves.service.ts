@@ -1,14 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
 
-/**
- * The cookie naming a browser that has saved something without an account.
- *
- * Lives here rather than with the auth cookies: it is not a session, it grants nothing,
- * and it is issued by the save route rather than by signing in.
- */
-export const VISITOR_COOKIE = 'nadlan_visitor';
-
 /** Who a save belongs to: an account, or a browser that has not made one. */
 export type SaveOwner =
   | { kind: 'profile'; profileId: string }
@@ -41,26 +33,6 @@ export class SavesService {
       select: { id: true },
     });
     return { kind: 'profile', profileId: profile.id };
-  }
-
-  /** The browser behind this cookie, if it is one we issued and have not already merged. */
-  async existingVisitor(
-    id: string | undefined,
-  ): Promise<Extract<SaveOwner, { kind: 'visitor' }> | null> {
-    if (!id) return null;
-    const visitor = await this.prisma.visitor.findUnique({
-      where: { id },
-      select: { id: true, mergedIntoProfileId: true },
-    });
-    // A merged visitor is spent: its saves now belong to an account, and letting the
-    // same cookie start a second collection would hide them from the person who made them.
-    if (!visitor || visitor.mergedIntoProfileId) return null;
-    return { kind: 'visitor', visitorId: visitor.id };
-  }
-
-  async newVisitor(): Promise<Extract<SaveOwner, { kind: 'visitor' }>> {
-    const visitor = await this.prisma.visitor.create({ data: {}, select: { id: true } });
-    return { kind: 'visitor', visitorId: visitor.id };
   }
 
   async save(owner: SaveOwner, listingId: string) {

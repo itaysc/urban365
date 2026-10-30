@@ -22,6 +22,8 @@ import { DealsPage } from '@/pages/app/DealsPage';
 import { LeadsPage } from '@/pages/app/LeadsPage';
 import { ListingEditorPage } from '@/pages/app/ListingEditorPage';
 import { ModerationPage } from '@/pages/admin/ModerationPage';
+import { MySalePage } from '@/pages/sell/MySalePage';
+import { PublishPage } from '@/pages/sell/PublishPage';
 
 export const router = createBrowserRouter([
   // ── public ──────────────────────────────────────────────────────────────────
@@ -81,6 +83,20 @@ export const router = createBrowserRouter([
           },
         ],
       },
+    ],
+  },
+
+  // ── private sellers ─────────────────────────────────────────────────────────
+  // Outside /app and outside AppLayout: this is somebody selling their own flat, not an
+  // agency using a CRM, and the sidebar full of leads and deals would be furniture they
+  // can never open. The guard sends them to the consumer sign-in for the same reason.
+  {
+    element: <RequireAuth loginPath="/login" />,
+    children: [
+      { path: '/sell', element: <MySalePage /> },
+      // `new` before `:listingId`, so the literal wins over the parameter.
+      { path: '/sell/new', element: <PublishPage /> },
+      { path: '/sell/:listingId', element: <PublishPage /> },
     ],
   },
 

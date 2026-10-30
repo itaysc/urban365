@@ -11,19 +11,28 @@ function Booting() {
 /**
  * A layout route around everything that needs a session.
  *
- * Sends people to the AGENCY sign-in, not the consumer one: everything behind this
+ * Sends people to the AGENCY sign-in by default, because most of what sits behind this
  * guard is the CRM. Both pages authenticate against the same endpoint, so a buyer who
- * lands there can still sign in — they simply have no dashboard to reach. It stashes where you were
- * going so login can send you back.
+ * lands there can still sign in — they simply have no dashboard to reach. Pages that
+ * belong to ordinary people, like publishing your own flat, pass `loginPath="/login"`
+ * so they are not asked for an agency account they do not have.
+ *
+ * It stashes where you were going so login can send you back.
  */
-export function RequireAuth({ requireAgency = false }: { requireAgency?: boolean }) {
+export function RequireAuth({
+  requireAgency = false,
+  loginPath = '/agency/login',
+}: {
+  requireAgency?: boolean;
+  loginPath?: string;
+}) {
   const { user, loading } = useAuth();
   const location = useLocation();
 
   if (loading) return <Booting />;
 
   if (!user) {
-    return <Navigate to="/agency/login" replace state={{ from: `${location.pathname}${location.search}` }} />;
+    return <Navigate to={loginPath} replace state={{ from: `${location.pathname}${location.search}` }} />;
   }
 
   // Signed in, but the agency claim has not been approved yet.
