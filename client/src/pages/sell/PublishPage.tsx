@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useAuth } from '@/auth/auth-context';
 import { AmenityPicker } from '@/components/listing/AmenityPicker';
+import { CountPicker } from '@/components/listing/CountPicker';
 import { NeighborhoodBox } from '@/components/listing/NeighborhoodBox';
 import { RoomsPicker } from '@/components/search/RoomsPicker';
 import { ImageUploader } from '@/components/seller/ImageUploader';
@@ -102,6 +103,7 @@ export function PublishPage() {
         squareMeter: listing.squareMeter ?? undefined,
         floor: listing.floor ?? undefined,
         buildingTopFloor: listing.buildingTopFloor ?? undefined,
+        parkingSpacesCount: listing.parkingSpacesCount ?? undefined,
         propertyType: listing.propertyType ?? undefined,
         description: listing.description ?? undefined,
         contactName: listing.contactName ?? undefined,
@@ -261,12 +263,21 @@ export function PublishPage() {
             same way whichever side of the site you are on — but one value, because a
             flat has a number and only a search has a range.
           */}
-          <section className="rounded-xl border border-slate-200 bg-white p-4">
+          <section className="flex flex-col gap-5 rounded-xl border border-slate-200 bg-white p-4">
             <RoomsPicker
               single
               min={form.rooms}
               max={form.rooms}
               onChange={(next) => setForm((f) => ({ ...f, rooms: next.min }))}
+            />
+
+            {/* Nothing chosen is not zero: "no parking" is a claim a buyer filters on,
+                and not saying is not the same as saying none. */}
+            <CountPicker
+              legend="חניות"
+              value={form.parkingSpacesCount}
+              onChange={(value) => setForm((f) => ({ ...f, parkingSpacesCount: value }))}
+              hint="בלי חניה? בחרו 0. אפשר גם להשאיר ריק."
             />
           </section>
 
