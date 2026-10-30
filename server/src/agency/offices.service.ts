@@ -1,7 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { RequestContextService } from '../tenancy/request-context.service.js';
 import { TenantPrismaService } from '../tenancy/tenant-prisma.service.js';
 import { GeocodeService } from '../geocode/geocode.service.js';
+import { can } from '../auth/permissions.js';
 import type { UpsertOfficeDto } from './dto/office.dto.js';
 
 const SELECT = {
@@ -30,6 +31,17 @@ export class OfficesService {
     private readonly geocode: GeocodeService,
   ) {}
 
+  /**
+   * A branch address is the agency's own detail, not an agent's working data: it is on
+   * the public page and on the map, and changing one moves where the public is told to
+   * turn up. Same bar as the rest of the agency page.
+   */
+  private assertCanManage(): void {
+    if (!can(this.context.getPrincipal(), 'agency:manage')) {
+      throw new ForbiddenException('רק בעלים של הסוכנות יכול לערוך את הסניפים.');
+    }
+  }
+
   list() {
     return this.prisma.client.agencyOffice.findMany({
       select: SELECT,
@@ -38,6 +50,7 @@ export class OfficesService {
   }
 
   async create(dto: UpsertOfficeDto) {
+    this.assertCanManage();
     return this.prisma.client.agencyOffice.create({
       // The extension fills `agencyId` in anyway; it is stated because Prisma's
       // generated create type requires it. Taken from the request context, never from
@@ -52,6 +65,7 @@ export class OfficesService {
   }
 
   async update(id: string, dto: UpsertOfficeDto) {
+    this.assertCanManage();
     // Re-geocoded on every save rather than only when the address looks changed: the
     // comparison would have to know which fields matter, and getting that wrong leaves
     // an office pinned to where it used to be.
@@ -81,6 +95,7 @@ export class OfficesService {
   }
 
   async remove(id: string) {
+    this.assertCanManage();
     const { count } = await this.prisma.client.agencyOffice.deleteMany({ where: { id } });
     if (count === 0) throw new NotFoundException('לא נמצא סניף כזה.');
     return { ok: true };

@@ -137,3 +137,77 @@ export async function revealPhone(listingId: string): Promise<string> {
   const { data } = await api.get<{ phone: string }>(`/listings/${listingId}/phone`);
   return data.phone;
 }
+
+// ── customers ────────────────────────────────────────────────────────────────
+
+export const CUSTOMER_KINDS = ['buyer', 'seller', 'both'] as const;
+export type CustomerKind = (typeof CUSTOMER_KINDS)[number];
+
+/** What a customer is looking for, in the same shape the public search takes filters. */
+export interface CustomerBrief {
+  lookingSection: string | null;
+  lookingCities: string[];
+  lookingTypes: string[];
+  minRooms: number | null;
+  maxRooms: number | null;
+  minPrice: number | null;
+  maxPrice: number | null;
+  minSquareMeter: number | null;
+}
+
+export interface Customer extends CustomerBrief {
+  id: string;
+  name: string;
+  phone: string | null;
+  email: string | null;
+  kind: CustomerKind;
+  notes: string | null;
+  assignedToId: string | null;
+  assignedTo: { id: string; firstName: string; lastName: string } | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CustomerInput {
+  name: string;
+  phone?: string;
+  email?: string;
+  kind?: CustomerKind;
+  notes?: string;
+  assignedToId?: string;
+  lookingSection?: string;
+  lookingCities?: string[];
+  lookingTypes?: string[];
+  minRooms?: number;
+  maxRooms?: number;
+  minPrice?: number;
+  maxPrice?: number;
+  minSquareMeter?: number;
+}
+
+export interface CustomerPage {
+  items: Customer[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+export async function fetchCustomers(params: {
+  q?: string;
+  kind?: CustomerKind;
+  page?: number;
+}): Promise<CustomerPage> {
+  const search = new URLSearchParams();
+  if (params.q) search.set('q', params.q);
+  if (params.kind) search.set('kind', params.kind);
+  if (params.page && params.page > 1) search.set('page', String(params.page));
+
+  const { data } = await api.get<CustomerPage>(`/my/customers?${search}`);
+  return data;
+}
+
+export const createCustomer = (input: CustomerInput) => api.post<Customer>('/my/customers', input);
+export const updateCustomer = (id: string, input: Partial<CustomerInput>) =>
+  api.patch<Customer>(`/my/customers/${id}`, input);
+export const deleteCustomer = (id: string) => api.delete(`/my/customers/${id}`);

@@ -145,6 +145,7 @@ model Agency {
   invites     AgencyInvite[]
   leads       Lead[]
   deals       Deal[]
+  customers   Customer[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -397,6 +398,7 @@ model User {
   ownedListings    Listing[]          @relation("ListingOwner")
   ownedLeads       Lead[]             @relation("LeadOwner")
   assignedLeads    Lead[]             @relation("LeadAssignee")
+  assignedCustomers Customer[]        @relation("CustomerAssignee")
   ownedDeals       Deal[]             @relation("DealOwner")
   reviewedAgencies Agency[]           @relation("AgencyReviewer")
   reviewedClaims   AgencyClaim[]      @relation("ClaimReviewer")
@@ -652,6 +654,64 @@ model ListingImage {
   createdAt  DateTime @default(now())
 
   @@index([listingId, position])
+}
+
+/// Why an agency is talking to somebody. Not a status — a person can be looking to buy
+/// one flat and to sell another at the same time, which is the `both` case.
+enum CustomerKind {
+  buyer
+  seller
+  both
+}
+
+/// A person the agency keeps, as opposed to an enquiry it received.
+///
+/// Distinct from `Lead` on purpose. A lead is an event — somebody asked about one
+/// listing on one day, and it is answered or it goes cold. A customer is a relationship:
+/// the same person over years, several properties, whatever the agent knows about them.
+/// Collapsing the two would mean either losing which listing an enquiry was about, or
+/// carrying a dead listing reference around a person who no longer cares about it.
+model Customer {
+  id       String @id @default(cuid())
+  agency   Agency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  agencyId String
+
+  name  String
+  phone String?
+  email String?
+
+  kind  CustomerKind @default(buyer)
+  notes String?
+
+  // ── what they are looking for ───────────────────────────────────────────────
+  // The brief, in the same shape the public search takes it, so "show me what has
+  // come in for this customer" is the ordinary search with these as its filters
+  // rather than a second thing to keep in step.
+
+  /// Buying, renting or commercial. Null while nobody has asked.
+  lookingSection Section?
+  /// Where. Several, because a brief is usually "Holon or Bat Yam".
+  lookingCities  String[]
+  /// Flat, penthouse, and so on. Empty means no preference stated.
+  lookingTypes   String[]
+
+  minRooms Float?
+  maxRooms Float?
+  minPrice Int?
+  maxPrice Int?
+  minSquareMeter Int?
+
+  /// The agent who looks after them. Optional: a walk-in belongs to the agency before
+  /// anybody has picked them up.
+  assignedTo   User?   @relation("CustomerAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+  assignedToId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  /// The list is "this agency's, newest first", which is the only query there is.
+  @@index([agencyId, createdAt])
+  @@index([assignedToId])
 }
 
 model Lead {

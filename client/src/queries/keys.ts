@@ -54,6 +54,12 @@ export const qk = {
     counts: ['leads', 'counts'] as const,
   },
 
+  customers: {
+    all: ['customers'] as const,
+    list: (q: string, kind: string | undefined, page: number) =>
+      ['customers', 'list', q, kind ?? 'any', page] as const,
+  },
+
   deals: {
     all: ['deals'] as const,
     board: ['deals', 'board'] as const,

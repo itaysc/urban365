@@ -25,6 +25,13 @@ describe('permissions', () => {
     expect(can(principal({ role: 'agent' }), 'team:manage')).toBe(false);
   });
 
+  it('keeps an agency\'s own details to an owner', () => {
+    // The agency page, its branches and the team are what the public sees and who can
+    // act for the agency. An agent sells; they do not get to rename the business.
+    expect(can(principal({ role: 'owner' }), 'agency:manage')).toBe(true);
+    expect(can(principal({ role: 'agent' }), 'agency:manage')).toBe(false);
+  });
+
   it('lets both roles write listings', () => {
     expect(can(principal({ role: 'owner' }), 'listing:write')).toBe(true);
     expect(can(principal({ role: 'agent' }), 'listing:write')).toBe(true);

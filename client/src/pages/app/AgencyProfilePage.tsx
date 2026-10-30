@@ -20,7 +20,12 @@ import { OfficesPanel } from '@/components/agency/OfficesPanel';
 /** The agency's own public page: the banner and the description shown to visitors. */
 export function AgencyProfilePage() {
   const toast = useToast();
-  const { refresh } = useAuth();
+  const { user, refresh } = useAuth();
+
+  // Only an owner may change the agency's own details — the name, the contact details
+  // and the branches are what the public sees and what a buyer rings. The server
+  // refuses an agent either way; this is so they are not shown a form that will.
+  const canManage = user?.agency?.role === 'owner' || user?.platformRole === 'admin';
   const queryClient = useQueryClient();
   const [profile, setProfile] = useState<AgencyProfile | null>(null);
   const [form, setForm] = useState({ name: '', description: '', phone: '', contactEmail: '' });
@@ -153,7 +158,7 @@ export function AgencyProfilePage() {
           />
         )}
 
-        <Dropzone disabled={uploading} onFiles={(files) => void uploadCover(files[0])}>
+        <Dropzone disabled={uploading || !canManage} onFiles={(files) => void uploadCover(files[0])}>
           {uploading
             ? 'מעלה…'
             : profile.coverImageUrl
@@ -161,7 +166,7 @@ export function AgencyProfilePage() {
               : 'גררו תמונת נושא לכאן או לחצו לבחירה'}
         </Dropzone>
 
-        {profile.coverImageUrl && (
+        {profile.coverImageUrl && canManage && (
           <div>
             <Button variant="ghost" onClick={() => void clearCover()}>
               הסר תמונה
@@ -172,7 +177,7 @@ export function AgencyProfilePage() {
 
       <section className="grid gap-4 rounded-xl border border-slate-200 bg-white p-4 sm:grid-cols-2">
         <Field label="שם הסוכנות" htmlFor="agency-name">
-          <input id="agency-name" className={inputClass} value={form.name}
+          <input id="agency-name" disabled={!canManage} className={inputClass} value={form.name}
                  onChange={(e) => set('name', e.target.value)} />
         </Field>
 
@@ -182,12 +187,12 @@ export function AgencyProfilePage() {
         </Field>
 
         <Field label="טלפון" htmlFor="agency-phone">
-          <input id="agency-phone" className={inputClass} value={form.phone}
+          <input id="agency-phone" disabled={!canManage} className={inputClass} value={form.phone}
                  onChange={(e) => set('phone', e.target.value)} />
         </Field>
 
         <Field label="אימייל ליצירת קשר" htmlFor="agency-email">
-          <input id="agency-email" type="email" className={inputClass} value={form.contactEmail}
+          <input id="agency-email" type="email" disabled={!canManage} className={inputClass} value={form.contactEmail}
                  onChange={(e) => set('contactEmail', e.target.value)} />
         </Field>
 
@@ -196,6 +201,7 @@ export function AgencyProfilePage() {
             <textarea
               id="agency-description"
               rows={6}
+              disabled={!canManage}
               className={inputClass}
               value={form.description}
               onChange={(e) => set('description', e.target.value)}
@@ -212,9 +218,15 @@ export function AgencyProfilePage() {
       <OfficesPanel />
 
       <div className="flex items-center gap-2">
-        <Button disabled={saving} onClick={() => void save()}>
-          {saving ? 'שומר…' : 'שמור'}
-        </Button>
+        {canManage ? (
+          <Button disabled={saving} onClick={() => void save()}>
+            {saving ? 'שומר…' : 'שמור'}
+          </Button>
+        ) : (
+          <span className="rounded-lg bg-slate-100 px-3 py-2 text-sm text-slate-600">
+            רק בעלים של הסוכנות יכול לערוך את הפרטים האלה.
+          </span>
+        )}
         <span className="text-xs text-slate-500">
           {profile._count.listings} נכסים · {profile._count.leads} פניות · {profile._count.deals} עסקאות
         </span>

@@ -4,6 +4,7 @@ import { MapPin, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { CityBox } from '@/components/listing/CityBox';
 import { StreetBox } from '@/components/listing/StreetBox';
+import { useAuth } from '@/auth/auth-context';
 import { Button } from '@/components/ui/Button';
 import { Field, inputClass } from '@/components/ui/Field';
 import { errorMessageOf } from '@/lib/apiError';
@@ -28,6 +29,13 @@ const EMPTY: OfficeInput = { label: '', city: '', street: '', phone: '' };
  * that was not saved, and only one of them is fixed by editing the address.
  */
 export function OfficesPanel() {
+  const { user } = useAuth();
+
+  // A branch is on the public page and on the map: changing one moves where the public
+  // is told to turn up, so it is the agency's detail and not an agent's. The server
+  // refuses either way; this keeps the form from being offered.
+  const canManage = user?.agency?.role === 'owner' || user?.platformRole === 'admin';
+
   const queryClient = useQueryClient();
   const [form, setForm] = useState<OfficeInput>(EMPTY);
   const [editing, setEditing] = useState<string | null>(null);
@@ -134,7 +142,7 @@ export function OfficesPanel() {
                 )}
               </div>
 
-              <div className="flex shrink-0 items-center gap-1">
+              <div className={`flex shrink-0 items-center gap-1 ${canManage ? '' : 'hidden'}`}>
                 <button
                   type="button"
                   onClick={() => edit(office)}
@@ -157,7 +165,16 @@ export function OfficesPanel() {
         </ul>
       )}
 
-      <form onSubmit={submit} className="flex flex-col gap-3 border-t border-slate-100 pt-4">
+      {!canManage && (
+        <p className="border-t border-slate-100 pt-4 text-sm text-slate-500">
+          רק בעלים של הסוכנות יכול להוסיף או לערוך סניפים.
+        </p>
+      )}
+
+      <form
+        onSubmit={submit}
+        className={`flex flex-col gap-3 border-t border-slate-100 pt-4 ${canManage ? '' : 'hidden'}`}
+      >
         <div className="grid gap-3 sm:grid-cols-2">
           <Field label="שם הסניף" htmlFor="office-label">
             <input id="office-label" className={inputClass} value={form.label ?? ''}

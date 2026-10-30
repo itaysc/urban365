@@ -19,6 +19,7 @@ import { Field, inputClass, selectClass } from '@/components/ui/Field';
 import { useLeaveGuard } from '@/hooks/useLeaveGuard';
 import { snapshot } from '@/pages/sell/formSnapshot';
 import { errorMessageOf } from '@/lib/apiError';
+import { PROPERTY_TYPES } from '@/lib/propertyTypes';
 import { qk } from '@/queries/keys';
 import {
   createMyListing,
@@ -34,8 +35,6 @@ const SECTIONS = [
   { value: 'forsale', label: 'למכירה' },
   { value: 'rent', label: 'להשכרה' },
 ];
-
-const PROPERTY_TYPES = ['דירה', 'דירת גן', 'פנטהאוז', 'בית פרטי/ קוטג׳', 'דופלקס', 'סטודיו', 'מגרש'];
 
 /**
  * Roughly three hundred words. Long enough for everything true about a flat, short

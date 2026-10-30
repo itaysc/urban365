@@ -1,6 +1,7 @@
 import {
   Building2,
   Contact,
+  ContactRound,
   Handshake,
   LayoutDashboard,
   ShieldCheck,
@@ -17,6 +18,7 @@ export const NAV_ITEMS = [
   { path: '/app', label: 'סקירה', icon: LayoutDashboard, group: 'work', end: true },
   { path: '/app/listings', label: 'הנכסים שלי', icon: Building2, group: 'work' },
   { path: '/app/leads', label: 'פניות', icon: Contact, group: 'work' },
+  { path: '/app/customers', label: 'לקוחות', icon: ContactRound, group: 'work' },
   { path: '/app/deals', label: 'עסקאות', icon: Handshake, group: 'work' },
   { path: '/app/agency', label: 'עמוד הסוכנות', icon: Store, group: 'setup' },
   { path: '/app/team', label: 'צוות', icon: Users, group: 'setup' },
