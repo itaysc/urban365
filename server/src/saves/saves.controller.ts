@@ -32,7 +32,7 @@ export class SavesController {
     private readonly listings: ListingsService,
     config: ConfigService,
   ) {
-    this.isProduction = config.get<string>('app.env') === 'production';
+    this.isProduction = config.get<string>('app.nodeEnv') === 'production';
   }
 
   /**

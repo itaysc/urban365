@@ -27,7 +27,7 @@ export class ListingsController {
     private readonly visitors: VisitorService,
     config: ConfigService,
   ) {
-    this.isProduction = config.get<string>('app.env') === 'production';
+    this.isProduction = config.get<string>('app.nodeEnv') === 'production';
   }
 
   /**

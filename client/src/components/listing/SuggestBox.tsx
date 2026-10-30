@@ -38,6 +38,15 @@ export function SuggestBox({
 }: Props) {
   const [open, setOpen] = useState(false);
   const [highlighted, setHighlighted] = useState(0);
+  /**
+   * Whether the person has actually reached into the list, by arrow key or pointer.
+   *
+   * Until they have, Enter and Tab leave what they typed alone. Someone typing a street
+   * that is not on the list — a new one, or one with a house number after it — would
+   * otherwise have their text replaced by whatever the list happened to be showing,
+   * which is the opposite of allowing free text.
+   */
+  const [reached, setReached] = useState(false);
   const box = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -51,6 +60,7 @@ export function SuggestBox({
   const choose = (option: string) => {
     onChange(option);
     setOpen(false);
+    setReached(false);
   };
 
   const onKeyDown = (e: React.KeyboardEvent) => {
@@ -58,13 +68,16 @@ export function SuggestBox({
 
     if (e.key === 'ArrowDown') {
       e.preventDefault();
-      setHighlighted((i) => (i + 1) % options.length);
+      setReached(true);
+      setHighlighted((i) => (reached ? (i + 1) % options.length : 0));
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
-      setHighlighted((i) => (i - 1 + options.length) % options.length);
-    } else if (e.key === 'Enter' || e.key === 'Tab') {
-      // Enter would otherwise submit the form; here it takes the highlighted option,
-      // which is what somebody halfway through typing a name meant by it.
+      setReached(true);
+      setHighlighted((i) => (reached ? (i - 1 + options.length) % options.length : options.length - 1));
+    } else if ((e.key === 'Enter' || e.key === 'Tab') && reached) {
+      // Only once they have chosen something. Enter on a form would otherwise submit,
+      // so it is still swallowed here — but what it takes is the option they moved to,
+      // never a guess at what they were typing.
       e.preventDefault();
       choose(options[highlighted]);
     } else if (e.key === 'Escape') {
@@ -84,6 +97,7 @@ export function SuggestBox({
         onChange={(e) => {
           onChange(e.target.value);
           setHighlighted(0);
+          setReached(false);
           setOpen(true);
         }}
         onFocus={() => setOpen(true)}
@@ -105,7 +119,10 @@ export function SuggestBox({
                   e.preventDefault();
                   choose(option);
                 }}
-                onMouseEnter={() => setHighlighted(i)}
+                onMouseEnter={() => {
+                  setHighlighted(i);
+                  setReached(true);
+                }}
                 className={`flex w-full items-center gap-2 px-3 py-2 text-right text-sm ${
                   i === highlighted ? 'bg-slate-50' : ''
                 }`}

@@ -428,6 +428,10 @@ and it never closes the last remaining tab, so that state neither happens nor st
 
 ## Deploying the server to Railway
 
+> Everything production needs that a deploy does **not** do for you — the `nadlan_app`
+> password, the reference-data syncs, the storage bucket, the Google callback, the first
+> admin — is in [`PRODUCTION.md`](PRODUCTION.md).
+
 Only the server deploys to Railway; the client is a static `client/dist` build hosted
 elsewhere.
 
