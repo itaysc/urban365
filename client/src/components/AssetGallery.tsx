@@ -1,28 +1,17 @@
 import { useEffect, useState } from 'react';
-
-/**
- * Drawn as SVG rather than the `‹` / `›` characters: those are Bidi_Mirrored, so inside
- * this RTL page the browser flips them and each arrow ends up pointing the wrong way.
- */
-const Chevron = ({ direction }: { direction: 'left' | 'right' }) => (
-  <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
-    <path
-      d={direction === 'left' ? 'M15 5l-7 7 7 7' : 'M9 5l7 7-7 7'}
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-);
+import { Expand } from 'lucide-react';
+import { GalleryLightbox } from '@/components/GalleryLightbox';
+import { Chevron } from '@/components/ui/Chevron';
 
 /** Main image plus thumbnails, with arrow-key and button navigation. */
 export function AssetGallery({ images, alt }: { images: string[]; alt: string }) {
   const [index, setIndex] = useState(0);
+  const [fullScreen, setFullScreen] = useState(false);
 
   useEffect(() => setIndex(0), [images]);
 
+  // One handler for both views: they share `index`, so the arrow keys work the same
+  // whether the gallery is inline or filling the screen.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       // RTL: ArrowLeft advances, ArrowRight goes back.
@@ -43,7 +32,28 @@ export function AssetGallery({ images, alt }: { images: string[]; alt: string })
   return (
     <div>
       <div className="relative h-72 bg-slate-100 sm:h-96">
-        <img src={images[index]} alt={alt} className="h-full w-full object-cover" />
+        {/*
+          The photo itself opens it too. The icon is the affordance people look for, but
+          clicking a photo to enlarge it is what everyone tries first, and the two cost
+          one element between them.
+        */}
+        <button
+          type="button"
+          onClick={() => setFullScreen(true)}
+          aria-label="הצגה במסך מלא"
+          className="block h-full w-full"
+        >
+          <img src={images[index]} alt={alt} className="h-full w-full object-cover" />
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setFullScreen(true)}
+          aria-label="הצגה במסך מלא"
+          className="absolute left-3 top-3 rounded-full bg-black/55 p-2 text-white transition hover:bg-black/75"
+        >
+          <Expand className="h-5 w-5" aria-hidden />
+        </button>
 
         {images.length > 1 && (
           <>
@@ -65,7 +75,11 @@ export function AssetGallery({ images, alt }: { images: string[]; alt: string })
             >
               <Chevron direction="left" />
             </button>
-            <span className="absolute bottom-3 left-3 rounded bg-black/60 px-2 py-0.5 text-xs text-white">
+            {/* LTR, or the bidi algorithm reorders `1 / 9` into `9 / 1`. */}
+            <span
+              dir="ltr"
+              className="absolute bottom-3 left-3 rounded bg-black/60 px-2 py-0.5 text-xs text-white"
+            >
               {index + 1} / {images.length}
             </span>
           </>
@@ -89,6 +103,15 @@ export function AssetGallery({ images, alt }: { images: string[]; alt: string })
           ))}
         </div>
       )}
+
+      <GalleryLightbox
+        images={images}
+        alt={alt}
+        index={index}
+        onIndexChange={setIndex}
+        open={fullScreen}
+        onOpenChange={setFullScreen}
+      />
     </div>
   );
 }
