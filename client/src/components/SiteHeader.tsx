@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Heart, Plus } from 'lucide-react';
@@ -12,17 +12,29 @@ import { fetchSavedCount } from '@/services/saved';
 const publishClass =
   'flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:text-slate-900';
 
+interface Props {
+  /** Put beside the logo. The dashboard's drawer trigger lives here on a phone. */
+  leading?: ReactNode;
+  /** Said beside the logo — the agency name, on the pages that belong to one. */
+  subtitle?: ReactNode;
+  /**
+   * Edge to edge instead of capped.
+   *
+   * App chrome over a sidebar: a bar that stops short of the window leaves the sidebar
+   * floating in from it. The buyer's pages are capped to match their content.
+   */
+  fullWidth?: boolean;
+}
+
 /**
- * The bar across the top of every page a buyer or a private seller sees.
+ * The bar across the top of every page.
  *
  * One component rather than a copy per page: the saved count, the publish entry and
- * who is signed in have to agree everywhere, and three copies of that is three places
- * for them to stop agreeing.
- *
- * The agency dashboard keeps its own chrome. It is a different product with a sidebar
- * full of leads and deals, and this bar would be a second navigation above it.
+ * who is signed in have to agree everywhere, and a copy per page is a place for them
+ * to stop agreeing. The agency dashboard passes its own drawer trigger and agency name
+ * through rather than keeping a second header of its own.
  */
-export function SiteHeader() {
+export function SiteHeader({ leading, subtitle, fullWidth = false }: Props) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
@@ -40,15 +52,29 @@ export function SiteHeader() {
 
   return (
     <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur">
-      <div className="mx-auto flex h-14 w-full max-w-7xl items-center justify-between gap-3 px-4 sm:px-8">
-        {/* Home from anywhere. The one thing on this bar that is always in the same
-            place is the way back. */}
-        <Link
-          to="/"
-          className="text-xl font-extrabold tracking-tight text-blue-700 transition hover:text-blue-800"
-        >
-          Urban<span className="text-blue-500">365</span>
-        </Link>
+      <div
+        className={`flex h-14 w-full items-center justify-between gap-3 px-4 sm:px-8 ${
+          fullWidth ? '' : 'mx-auto max-w-7xl'
+        }`}
+      >
+        <div className="flex items-center gap-3">
+          {leading}
+
+          {/* Home from anywhere. The one thing on this bar that is always in the same
+              place is the way back. */}
+          <Link
+            to="/"
+            className="text-xl font-extrabold tracking-tight text-blue-700 transition hover:text-blue-800"
+          >
+            Urban<span className="text-blue-500">365</span>
+          </Link>
+
+          {subtitle && (
+            <span className="hidden border-s border-slate-200 ps-3 text-sm text-slate-500 sm:inline">
+              {subtitle}
+            </span>
+          )}
+        </div>
 
         <div className="flex items-center gap-3">
           {/*
@@ -141,7 +167,10 @@ export function SiteHeader() {
               </Link>
               <button
                 type="button"
-                onClick={() => void logout()}
+                // Home rather than wherever they were: half the pages behind this bar
+                // need a session, and staying on one only to be bounced to a sign-in
+                // reads as the sign-out having failed.
+                onClick={() => void logout().then(() => navigate('/', { replace: true }))}
                 className="text-sm text-slate-500 transition hover:text-slate-900"
               >
                 יציאה

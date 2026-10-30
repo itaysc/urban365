@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react';
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import { Menu, X } from 'lucide-react';
 import { useAuth } from '@/auth/auth-context';
-import { Avatar } from '@/components/ui/Avatar';
-import { Button } from '@/components/ui/Button';
+import { SiteHeader } from '@/components/SiteHeader';
 import { SidebarNav } from './Sidebar';
 
 const STORAGE_KEY = 'nadlan:sidebar-collapsed';
@@ -22,8 +21,7 @@ function readCollapsed(): boolean {
 }
 
 export function AppLayout() {
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
+  const { user } = useAuth();
   const location = useLocation();
 
   const [collapsed, setCollapsed] = useState(readCollapsed);
@@ -53,52 +51,28 @@ export function AppLayout() {
     return () => window.removeEventListener('keydown', onKey);
   }, [drawerOpen]);
 
-  const onLogout = async () => {
-    await logout();
-    navigate('/', { replace: true });
-  };
-
   return (
     <div className="min-h-screen bg-slate-50">
-      <header className="sticky top-0 z-30 border-b border-slate-200 bg-white">
-        {/* Full width, not a centred max-width: this is app chrome, and a header that
-            stops short of the window edge leaves the sidebar floating in from it. */}
-        <div className="flex items-center justify-between gap-4 px-4 py-3 sm:px-6">
-          <div className="flex items-center gap-3">
-            <NavLink
-              to="/app/profile"
-              className="rounded-full transition hover:opacity-80"
-              title="הפרופיל שלי"
-              aria-label="הפרופיל שלי"
-            >
-              <Avatar size="md" src={user?.avatarUrl} firstName={user?.firstName} lastName={user?.lastName} />
-            </NavLink>
-
-            {/* Phone only — above sm the sidebar is always there. Kept in this group so
-                the trigger sits on the same side as the drawer it opens. */}
-            <button
-              type="button"
-              onClick={() => setDrawerOpen(true)}
-              aria-label="פתיחת התפריט"
-              className="rounded-lg p-2 text-slate-600 transition hover:bg-slate-100 sm:hidden"
-            >
-              <Menu size={22} aria-hidden />
-            </button>
-
-            {user?.agency && (
-              <span className="hidden text-sm text-slate-500 sm:inline">{user.agency.name}</span>
-            )}
-
-            <Button variant="ghost" onClick={() => void onLogout()}>
-              יציאה
-            </Button>
-          </div>
-
-          <NavLink to="/" className="text-lg font-bold text-slate-900">
-            נדל״ן
-          </NavLink>
-        </div>
-      </header>
+      {/*
+        The same bar the rest of the site has, with the two things that only make sense
+        here passed through it: the drawer trigger, which belongs beside the menu it
+        opens, and whose agency this is.
+      */}
+      <SiteHeader
+        fullWidth
+        subtitle={user?.agency?.name}
+        leading={
+          // Phone only — above sm the sidebar is always there.
+          <button
+            type="button"
+            onClick={() => setDrawerOpen(true)}
+            aria-label="פתיחת התפריט"
+            className="rounded-lg p-2 text-slate-600 transition hover:bg-slate-100 sm:hidden"
+          >
+            <Menu size={22} aria-hidden />
+          </button>
+        }
+      />
 
       {!user?.emailVerified && (
         <div className="border-b border-amber-200 bg-amber-50 px-4 py-2 text-center text-sm text-amber-900">
@@ -121,7 +95,7 @@ export function AppLayout() {
           }`}
         >
           {/* Sticky under the header, so the menu stays reachable down a long list. */}
-          <div className="sticky top-[73px] p-3">
+          <div className="sticky top-[57px] p-3">
             <SidebarNav
               collapsed={collapsed}
               onToggle={() => setCollapsed((c) => !c)}
