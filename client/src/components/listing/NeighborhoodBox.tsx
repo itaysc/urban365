@@ -88,7 +88,7 @@ export function NeighborhoodBox({ city, value, onChange, id = 'neighborhood' }: 
     <div ref={box} className="relative">
       <input
         id={id}
-        className={inputClass}
+        className={`${inputClass} w-full`}
         value={value}
         autoComplete="off"
         placeholder={city.trim() ? 'שכונה' : 'קודם בחרו עיר'}

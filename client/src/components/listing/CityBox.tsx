@@ -90,7 +90,7 @@ export function CityBox({ value, onChange, id = 'city' }: Props) {
         id={id}
         required
         autoComplete="off"
-        className={inputClass}
+        className={`${inputClass} w-full`}
         value={value}
         placeholder="עיר או יישוב"
         onChange={(e) => {
