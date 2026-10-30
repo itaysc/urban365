@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useAuth } from '@/auth/auth-context';
+import { TermsCheckbox } from '@/components/auth/TermsCheckbox';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { AmenityPicker } from '@/components/listing/AmenityPicker';
 import { CountPicker } from '@/components/listing/CountPicker';
 import { NeighborhoodBox } from '@/components/listing/NeighborhoodBox';
@@ -11,6 +13,7 @@ import { ImageUploader } from '@/components/seller/ImageUploader';
 import { StagedImagePicker } from '@/components/seller/StagedImagePicker';
 import { Button } from '@/components/ui/Button';
 import { Field, inputClass, selectClass } from '@/components/ui/Field';
+import { useLeaveGuard } from '@/hooks/useLeaveGuard';
 import { errorMessageOf } from '@/lib/apiError';
 import { qk } from '@/queries/keys';
 import {
@@ -83,10 +86,29 @@ export function PublishPage() {
   const [form, setForm] = useState<SellerListingInput>(EMPTY);
   const [amenities, setAmenities] = useState<string[]>([]);
   const [staged, setStaged] = useState<File[]>([]);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [images, setImages] = useState<ListingImage[]>([]);
   const [step, setStep] = useState<string | null>(null);
 
   const editing = Boolean(listingId);
+
+  /**
+   * Set the moment the listing is safely up, so the navigation that follows is not
+   * mistaken for someone abandoning the form. A ref rather than state because the
+   * guard reads it during a navigation that is already under way.
+   */
+  const leaving = useRef(false);
+
+  // Anything typed, chosen or dropped in. `section` is excluded — it has a default and
+  // is set before anybody touches the page, so counting it would mean warning about an
+  // empty form.
+  const started = () =>
+    staged.length > 0 ||
+    amenities.length > 0 ||
+    acceptedTerms ||
+    Object.entries(form).some(([key, value]) => key !== 'section' && value !== undefined && value !== '');
+
+  const blocker = useLeaveGuard(() => !editing && !leaving.current && started());
 
   useQuery({
     queryKey: qk.mySale.detail(listingId ?? ''),
@@ -120,7 +142,7 @@ export function PublishPage() {
       if (listingId) return updateMyListing(listingId, input);
 
       setStep('שומר את פרטי הנכס…');
-      const listing = await createMyListing(input);
+      const listing = await createMyListing({ ...input, acceptedTerms });
 
       if (staged.length > 0) {
         setStep(`מעלה ${staged.length} תמונות…`);
@@ -143,6 +165,9 @@ export function PublishPage() {
         toast.success('הנכס עודכן.');
       } else {
         toast.success('הנכס פורסם.');
+        // Nothing is being abandoned: it is published. Set before navigating, or the
+        // guard stops the very navigation that success is supposed to cause.
+        leaving.current = true;
         navigate('/sell');
       }
     },
@@ -349,8 +374,27 @@ export function PublishPage() {
             )}
           </section>
 
+          {/*
+            Asked here rather than only at signup: publishing a property is the act the
+            terms are about, and it is the last moment before it is public. Not shown
+            while editing — the agreement was given when this listing went up, and
+            asking again on every saved typo would train people to tick without reading.
+          */}
+          {!editing && (
+            <div className="rounded-xl border border-slate-200 bg-white p-4">
+              <TermsCheckbox
+                id="publish-terms"
+                checked={acceptedTerms}
+                onChange={setAcceptedTerms}
+              />
+            </div>
+          )}
+
           <div className="flex items-center gap-3">
-            <Button type="submit" disabled={save.isPending || form.city.trim() === ''}>
+            <Button
+              type="submit"
+              disabled={save.isPending || form.city.trim() === '' || (!editing && !acceptedTerms)}
+            >
               {save.isPending
                 ? (step ?? 'שומר…')
                 : editing
@@ -367,6 +411,26 @@ export function PublishPage() {
           </div>
         </form>
       </div>
+
+      {/*
+        Radix rather than the browser's own confirm, which is unstyled, untranslated and
+        laid out left to right — and which cannot say what is actually at stake here:
+        photos that have not been uploaded anywhere yet.
+      */}
+      <ConfirmDialog
+        open={blocker.state === 'blocked'}
+        onOpenChange={(open) => {
+          if (!open) blocker.reset?.();
+        }}
+        title="לצאת בלי לפרסם?"
+        description={
+          staged.length > 0
+            ? `הפרטים שמילאתם ו-${staged.length} התמונות שבחרתם יימחקו. הנכס עדיין לא פורסם.`
+            : 'הפרטים שמילאתם יימחקו. הנכס עדיין לא פורסם.'
+        }
+        confirmLabel="יציאה ומחיקה"
+        onConfirm={() => blocker.proceed?.()}
+      />
     </div>
   );
 }

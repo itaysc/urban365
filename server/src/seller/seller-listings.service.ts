@@ -3,7 +3,7 @@ import { PrismaService } from '../prisma/prisma.service.js';
 import { GeocodeService } from '../geocode/geocode.service.js';
 import { StorageService } from '../storage/storage.service.js';
 import { listingImageUrl } from '../agency/image-url.js';
-import type { SellerListingDto } from './dto/seller-listing.dto.js';
+import type { CreateSellerListingDto, SellerListingDto } from './dto/seller-listing.dto.js';
 
 /** Ten, as asked. A private sale is one property, not a portfolio. */
 const MAX_IMAGES = 10;
@@ -40,8 +40,13 @@ export class SellerListingsService {
     return this.requireOwn(userId, id);
   }
 
-  async create(userId: string, dto: SellerListingDto) {
-    const { images: _images, ...fields } = dto as SellerListingDto & { images?: unknown };
+  async create(userId: string, dto: CreateSellerListingDto) {
+    // `acceptedTerms` is a claim made on the way in, not a column — it has done its job
+    // by the time validation passed. `images` is not a column either, and a stray key
+    // reaching Prisma is an error rather than something it ignores.
+    const { images: _images, acceptedTerms: _accepted, ...fields } = dto as CreateSellerListingDto & {
+      images?: unknown;
+    };
 
     return this.prisma.listing.create({
       data: {

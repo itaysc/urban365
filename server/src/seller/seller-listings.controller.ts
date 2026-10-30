@@ -6,7 +6,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { Throttle } from '@nestjs/throttler';
 import { CurrentUser } from '../auth/decorators/current-user.decorator.js';
 import type { Principal } from '../auth/types/principal.js';
-import { SellerListingDto } from './dto/seller-listing.dto.js';
+import { CreateSellerListingDto, SellerListingDto } from './dto/seller-listing.dto.js';
 import { SellerListingsService } from './seller-listings.service.js';
 import { SellerStatsService } from './seller-stats.service.js';
 
@@ -42,7 +42,7 @@ export class SellerListingsController {
   // Each write geocodes, which calls a free service run by somebody else.
   @Throttle({ default: { limit: 30, ttl: 60_000 } })
   @Post()
-  create(@CurrentUser() me: Principal, @Body() dto: SellerListingDto) {
+  create(@CurrentUser() me: Principal, @Body() dto: CreateSellerListingDto) {
     return this.listings.create(me.userId, dto);
   }
 

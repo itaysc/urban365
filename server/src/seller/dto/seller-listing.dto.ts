@@ -1,7 +1,9 @@
 import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,
+  Equals,
   IsArray,
+  IsBoolean,
   IsIn,
   IsInt,
   IsNumber,
@@ -48,4 +50,18 @@ export class SellerListingDto {
 
   /** Who to call. Defaults to the name on the account when it is left out. */
   @IsOptional() @IsString() @MaxLength(120) contactName?: string;
+}
+
+/**
+ * Publishing one, which is the moment the terms are actually about.
+ *
+ * Separate from the edit shape so the agreement is required exactly once, where it
+ * means something. Checked here as well as in the form because a tick box is a claim
+ * the client makes, and the record that somebody agreed is worth no more than the
+ * weakest place it is enforced.
+ */
+export class CreateSellerListingDto extends SellerListingDto {
+  @IsBoolean()
+  @Equals(true, { message: 'יש לאשר את תנאי השימוש ומדיניות הפרטיות' })
+  acceptedTerms!: boolean;
 }

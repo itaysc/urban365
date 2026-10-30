@@ -73,7 +73,17 @@ export async function fetchMyStats(): Promise<ListingStats[]> {
   return data;
 }
 
-export async function createMyListing(input: SellerListingInput): Promise<SellerListing> {
+/**
+ * `acceptedTerms` only exists on the way in, and only here.
+ *
+ * The server refuses anything but true, for the reason every agreement is checked twice:
+ * a tick box is a claim the client makes, and the record that somebody agreed is worth
+ * no more than the weakest place it is enforced. Editing a listing does not ask again —
+ * the agreement was given when it went up.
+ */
+export async function createMyListing(
+  input: SellerListingInput & { acceptedTerms: boolean },
+): Promise<SellerListing> {
   const { data } = await api.post<SellerListing>('/me/listings', input);
   return data;
 }
