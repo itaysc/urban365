@@ -26,27 +26,49 @@ interface Props {
  */
 export function SaveButton({ listingId, saved, count, size = 'md' }: Props) {
   const queryClient = useQueryClient();
-  const [local, setLocal] = useState<{ saved: boolean; count: number } | null>(null);
+  // Only the count is local. Whether it is saved lives in the query cache, so every
+  // heart for the same listing — card, map popup, saved page — reads one answer, and a
+  // card that remounts picks the answer back up instead of reverting to whatever prop
+  // it was last rendered with.
+  const [localCount, setLocalCount] = useState<number | null>(null);
 
-  const current = local ?? { saved, count };
+  const setSavedInCache = (next: boolean) => {
+    queryClient.setQueriesData<Set<string>>({ queryKey: qk.saved.all }, (old) => {
+      if (!(old instanceof Set)) return old;
+      const copy = new Set(old);
+      if (next) copy.add(listingId);
+      else copy.delete(listingId);
+      return copy;
+    });
+  };
 
   const toggle = useMutation({
-    mutationFn: () => (current.saved ? unsaveListing(listingId) : saveListing(listingId)),
+    mutationFn: () => (saved ? unsaveListing(listingId) : saveListing(listingId)),
     onMutate: () => {
+      const previous = { saved, count: localCount ?? count };
       // Optimistic, and floored: a count that has drifted must not render as -1.
-      setLocal({
-        saved: !current.saved,
-        count: Math.max(0, current.count + (current.saved ? -1 : 1)),
-      });
+      setSavedInCache(!saved);
+      setLocalCount(Math.max(0, previous.count + (saved ? -1 : 1)));
+      return previous;
     },
     onSuccess: (result) => {
-      setLocal({ saved: result.saved, count: result.savedCount });
-      void queryClient.invalidateQueries({ queryKey: qk.saved.all });
+      setSavedInCache(result.saved);
+      setLocalCount(result.savedCount);
+      // Refetch the lists, but not the `among` sets this just wrote — invalidating
+      // those would ask the server the question we already have the answer to, and a
+      // slow reply would flip the heart back on the way.
+      void queryClient.invalidateQueries({ queryKey: qk.saved.list });
     },
-    // Put back what it was. The click did not happen as far as the server is concerned.
-    onError: () => setLocal({ saved, count }),
+    onError: (_e, _vars, previous) => {
+      // Put back exactly what was there. The click did not happen, as far as the
+      // server is concerned.
+      if (!previous) return;
+      setSavedInCache(previous.saved);
+      setLocalCount(previous.count);
+    },
   });
 
+  const shownCount = localCount ?? count;
   const box = size === 'sm' ? 'h-8 w-8' : 'h-9 w-9';
   const icon = size === 'sm' ? 'h-4 w-4' : 'h-5 w-5';
 
@@ -55,23 +77,23 @@ export function SaveButton({ listingId, saved, count, size = 'md' }: Props) {
       <button
         type="button"
         onClick={(e) => {
-          // The card around it is itself a button that opens the listing.
+          // The card around it opens the listing; this must not.
           e.stopPropagation();
           e.preventDefault();
           toggle.mutate();
         }}
-        aria-pressed={current.saved}
-        aria-label={current.saved ? 'הסרה מהשמורים' : 'שמירת הנכס'}
+        aria-pressed={saved}
+        aria-label={saved ? 'הסרה מהשמורים' : 'שמירת הנכס'}
         className={`${box} flex items-center justify-center rounded-full bg-white/90 shadow-sm transition hover:bg-white`}
       >
         <Heart
-          className={`${icon} ${current.saved ? 'fill-orange-600 text-orange-600' : 'text-slate-500'}`}
+          className={`${icon} ${saved ? 'fill-orange-600 text-orange-600' : 'text-slate-500'}`}
         />
       </button>
 
-      {current.count > 0 && (
+      {shownCount > 0 && (
         <span className="rounded-full bg-white/90 px-1.5 py-0.5 text-xs font-medium text-slate-700 shadow-sm">
-          {current.count}
+          {shownCount}
         </span>
       )}
     </div>

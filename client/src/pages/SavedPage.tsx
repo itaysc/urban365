@@ -5,7 +5,7 @@ import { Heart } from 'lucide-react';
 import { AssetModal } from '@/components/AssetModal';
 import { ListingCard } from '@/components/ListingCard';
 import { qk } from '@/queries/keys';
-import { fetchSavedListings } from '@/services/saved';
+import { fetchSavedAmong, fetchSavedListings } from '@/services/saved';
 import { fetchListing } from '@/services/search';
 import type { SearchListing } from '@/types/search';
 import type { Asset } from '@/types/yad2';
@@ -23,6 +23,15 @@ export function SavedPage() {
   const { data: items, isPending } = useQuery({
     queryKey: qk.saved.list,
     queryFn: fetchSavedListings,
+  });
+
+  // Read from the same cache the hearts write to, so unsaving one here empties it
+  // immediately rather than leaving a filled heart on a listing no longer saved.
+  const ids = (items ?? []).map((item) => item.id);
+  const { data: savedSet } = useQuery({
+    queryKey: qk.saved.among(ids),
+    queryFn: () => fetchSavedAmong(ids),
+    enabled: ids.length > 0,
   });
 
   const open = useCallback(async (listing: SearchListing) => {
@@ -68,9 +77,14 @@ export function SavedPage() {
 
         <div className="grid gap-4 sm:grid-cols-2">
           {(items ?? []).map((listing) => (
-            // Everything here is saved by definition, so the heart starts filled and
-            // unsaving removes it from the list on the next load.
-            <ListingCard key={listing.id} listing={listing} onOpen={open} saved />
+            // Everything here was saved when the page loaded; the heart then follows
+            // the cache, so unsaving one empties it on the spot.
+            <ListingCard
+              key={listing.id}
+              listing={listing}
+              onOpen={open}
+              saved={savedSet?.has(listing.id) ?? true}
+            />
           ))}
         </div>
       </div>
