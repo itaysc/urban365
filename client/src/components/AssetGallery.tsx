@@ -40,8 +40,12 @@ export function AssetGallery({ images, alt }: { images: string[]; alt: string })
         <button
           type="button"
           onClick={() => setFullScreen(true)}
-          aria-label="הצגה במסך מלא"
-          className="block h-full w-full"
+          // Out of the tab order and hidden from assistive technology: the icon beside
+          // it is the same action with the same label, and two identical tab stops that
+          // do one thing is worse than one.
+          tabIndex={-1}
+          aria-hidden
+          className="block h-full w-full cursor-zoom-in"
         >
           <img src={images[index]} alt={alt} className="h-full w-full object-cover" />
         </button>
@@ -50,7 +54,9 @@ export function AssetGallery({ images, alt }: { images: string[]; alt: string })
           type="button"
           onClick={() => setFullScreen(true)}
           aria-label="הצגה במסך מלא"
-          className="absolute left-3 top-3 rounded-full bg-black/55 p-2 text-white transition hover:bg-black/75"
+          // Top-right: the listing modal puts its close button at the top-left, and
+          // the two were landing on each other.
+          className="absolute right-3 top-3 rounded-full bg-black/55 p-2 text-white transition hover:bg-black/75"
         >
           <Expand className="h-5 w-5" aria-hidden />
         </button>
