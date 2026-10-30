@@ -1,10 +1,10 @@
 import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module.js';
+import { GeocodeModule } from '../geocode/geocode.module.js';
 import { Yad2Module } from '../yad2/yad2.module.js';
 import { AgencyController } from './agency.controller.js';
 import { AgencyProfileController } from './agency-profile.controller.js';
 import { ImagesController } from './images.controller.js';
-import { GeocodeService } from './geocode.service.js';
 import { OfficesController } from './offices.controller.js';
 import { OfficesService } from './offices.service.js';
 import { AgencyService } from './agency.service.js';
@@ -14,7 +14,7 @@ import { InviteController, MyProfileController, TeamController } from './team.co
 import { TeamService } from './team.service.js';
 
 @Module({
-  imports: [AuthModule, Yad2Module],
+  imports: [AuthModule, Yad2Module, GeocodeModule],
   controllers: [
     AgencyController,
     AgencyProfileController,
@@ -25,6 +25,6 @@ import { TeamService } from './team.service.js';
     MyProfileController,
     InviteController,
   ],
-  providers: [AgencyService, MyListingsService, TeamService, OfficesService, GeocodeService],
+  providers: [AgencyService, MyListingsService, TeamService, OfficesService],
 })
 export class AgencyModule {}

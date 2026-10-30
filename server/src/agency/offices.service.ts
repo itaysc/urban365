@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { RequestContextService } from '../tenancy/request-context.service.js';
 import { TenantPrismaService } from '../tenancy/tenant-prisma.service.js';
-import { GeocodeService } from './geocode.service.js';
+import { GeocodeService } from '../geocode/geocode.service.js';
 import type { UpsertOfficeDto } from './dto/office.dto.js';
 
 const SELECT = {

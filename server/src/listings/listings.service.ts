@@ -6,6 +6,7 @@ import { listingRowToAsset } from '../yad2/listing-row.js';
 import { type Section } from '../yad2/yad2.types.js';
 import { cityKey } from './city-name.js';
 import { pointInGeometry } from './point-in-polygon.js';
+import { GeocodeService } from '../geocode/geocode.service.js';
 import type { SearchListingsDto, Sort } from './dto/search-listings.dto.js';
 
 /** Card-shaped result, read straight from the typed columns — `raw` is never touched. */
@@ -108,6 +109,7 @@ export class ListingsService {
     private readonly prisma: TenantPrismaService,
     /** Only for `phoneFor`, which has to read a `User` row — see the note there. */
     private readonly owner: PrismaService,
+    private readonly geocode: GeocodeService,
   ) {}
 
   /**
@@ -390,8 +392,12 @@ export class ListingsService {
     });
     if (!row) return null;
 
+    // A listing with an address but no point cannot be put on a map. Resolved once and
+    // written back, so the next reader — and the search map — gets it for free.
+    const located = row.latitude === null ? await this.backfillLocation(row) : row;
+
     return {
-      ...listingRowToAsset(row),
+      ...listingRowToAsset(located),
       section: row.section,
       agency: {
         id: row.agency.id,
@@ -404,6 +410,36 @@ export class ListingsService {
       },
       delistedAt: row.delistedAt?.toISOString() ?? null,
     };
+  }
+
+  /**
+   * Fills in a listing's coordinates from its address, once.
+   *
+   * Scraped rows sometimes arrive without a point, and anything typed into the agency
+   * editor before that path geocoded has none either. Doing it here means a listing is
+   * placed the first time anybody opens it rather than never.
+   *
+   * Written with the owner client: this runs for signed-out visitors, where there is no
+   * tenant context and the policy would refuse the update.
+   *
+   * A failure is not retried within the request and not reported — the listing is
+   * returned exactly as it was, simply without a map.
+   */
+  private async backfillLocation<T extends Listing>(row: T): Promise<T> {
+    if (!row.city) return row;
+
+    const at = await this.geocode.locate({
+      city: row.city,
+      street: row.street,
+      houseNumber: row.houseNumber,
+    });
+    if (!at) return row;
+
+    await this.owner.listing
+      .update({ where: { id: row.id }, data: { latitude: at.latitude, longitude: at.longitude } })
+      .catch(() => undefined);
+
+    return { ...row, latitude: at.latitude, longitude: at.longitude };
   }
 
   private toSearchListing(row: Listing & { agency: { id: string; name: string } }): SearchListing {

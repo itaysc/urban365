@@ -8,6 +8,7 @@ import {
 import type { Prisma } from '@prisma/client';
 import { RequestContextService } from '../tenancy/request-context.service.js';
 import { TenantPrismaService } from '../tenancy/tenant-prisma.service.js';
+import { GeocodeService } from '../geocode/geocode.service.js';
 import { StorageService } from '../storage/storage.service.js';
 import { can } from '../auth/permissions.js';
 import { EXCLUSIVE_AMENITY } from '../yad2/yad2.transform.js';
@@ -31,6 +32,7 @@ export class MyListingsService {
     private readonly prisma: TenantPrismaService,
     private readonly context: RequestContextService,
     private readonly storage: StorageService,
+      private readonly geocode: GeocodeService,
   ) {}
 
   private assertCanWrite(): void {
@@ -72,6 +74,9 @@ export class MyListingsService {
       data: {
         agencyId: this.context.requireAgencyId(),
         ...this.toData(dto),
+        // Without this a listing typed in by an agency has no coordinates at all, and
+        // never appears on the map — the editor asks for an address, not a point.
+        ...(await this.locate(dto)),
         section: dto.section,
         source: 'manual',
         status: dto.status ?? 'draft',
@@ -94,6 +99,7 @@ export class MyListingsService {
       where: { id: existing.id },
       data: {
         ...this.toData(dto, existing),
+        ...(await this.locate({ ...existing, ...dto })),
         ...(dto.section ? { section: dto.section } : {}),
         ...(dto.status ? { status: dto.status } : {}),
         // Stamped the first time it goes public, and never moved afterwards — it is the
@@ -102,6 +108,33 @@ export class MyListingsService {
       },
       include: DETAIL_INCLUDE,
     });
+  }
+
+  /**
+   * Coordinates for an address, when there are any to be had.
+   *
+   * Street-level is a perfectly good answer: a listing with a street and no house
+   * number resolves to the street, which is where it is. Returning nothing at all
+   * because the number is missing would leave the listing off the map entirely.
+   *
+   * An address the geocoder cannot place leaves the columns untouched rather than
+   * nulling them — a scraped listing may already carry coordinates better than
+   * anything an address lookup would produce.
+   */
+  private async locate(address: {
+    city?: string | null;
+    street?: string | null;
+    houseNumber?: number | null;
+  }): Promise<{ latitude: number; longitude: number } | Record<string, never>> {
+    if (!address.city) return {};
+
+    const at = await this.geocode.locate({
+      city: address.city,
+      street: address.street,
+      houseNumber: address.houseNumber,
+    });
+
+    return at ?? {};
   }
 
   /**

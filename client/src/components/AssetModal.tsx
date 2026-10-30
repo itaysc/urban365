@@ -1,4 +1,5 @@
 import { EnquiryForm } from '@/components/EnquiryForm';
+import { LocationMap } from '@/components/listing/LocationMap';
 import { RevealPhone } from '@/components/RevealPhone';
 import { useEffect, useRef } from 'react';
 import { AmenityGrid } from '@/components/AmenityGrid';
@@ -169,6 +170,24 @@ export function AssetModal({ asset, onClose }: { asset: Asset; onClose: () => vo
             </a>
           ) : (
             <EnquiryForm listingId={asset.id} />
+          )}
+
+          {/*
+            Last, under everything else. The address is already stated at the top; the
+            map answers the question that follows from it — what is around there — and
+            that is worth reading after the price and the rooms, not before them.
+
+            Absent when the listing has no point at all: a pin on a city centre would
+            claim a location nobody gave us.
+          */}
+          {asset.latitude !== null && asset.longitude !== null && (
+            <LocationMap
+              latitude={asset.latitude}
+              longitude={asset.longitude}
+              street={asset.street || null}
+              houseNumber={asset.houseNumber ?? null}
+              city={asset.city || null}
+            />
           )}
         </div>
       </div>
