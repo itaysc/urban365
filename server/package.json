@@ -31,7 +31,8 @@
     "storage:init": "node scripts/init-storage.mjs",
     "boundaries:sync": "node scripts/sync-boundaries.mjs",
     "cities:generate": "node scripts/generate-cities.mjs",
-    "neighborhoods:build": "node scripts/merge-neighborhoods.mjs"
+    "neighborhoods:build": "node scripts/merge-neighborhoods.mjs",
+    "streets:sync": "node scripts/sync-streets.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "3.726.1",

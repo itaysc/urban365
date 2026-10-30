@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { CityBox } from '@/components/listing/CityBox';
 import { NeighborhoodBox } from '@/components/listing/NeighborhoodBox';
+import { StreetBox } from '@/components/listing/StreetBox';
 import { Field, inputClass, selectClass } from '@/components/ui/Field';
 import { AmenityPicker } from '@/components/listing/AmenityPicker';
 import { useToast } from '@/components/ui/Toast';
@@ -349,7 +350,11 @@ export function ListingEditorPage() {
           />
         </Field>
         <Field label="רחוב" htmlFor="street">
-          <input id="street" className={inputClass} value={form.street} onChange={(e) => set('street', e.target.value)} />
+          <StreetBox
+            city={form.city}
+            value={form.street}
+            onChange={(value) => set('street', value)}
+          />
         </Field>
         <Field label="מספר בית" htmlFor="houseNumber">
           <input id="houseNumber" type="number" inputMode="numeric" className={inputClass}

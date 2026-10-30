@@ -9,6 +9,7 @@ import { AmenityPicker } from '@/components/listing/AmenityPicker';
 import { CityBox } from '@/components/listing/CityBox';
 import { CountPicker } from '@/components/listing/CountPicker';
 import { NeighborhoodBox } from '@/components/listing/NeighborhoodBox';
+import { StreetBox } from '@/components/listing/StreetBox';
 import { RoomsPicker } from '@/components/search/RoomsPicker';
 import { SiteHeader } from '@/components/SiteHeader';
 import { ImageUploader } from '@/components/seller/ImageUploader';
@@ -303,8 +304,11 @@ export function PublishPage() {
               </Field>
 
               <Field label="רחוב" htmlFor="street">
-                <input id="street" className={inputClass} value={form.street ?? ''}
-                       onChange={(e) => set('street', e.target.value)} />
+                <StreetBox
+                  city={form.city}
+                  value={form.street ?? ''}
+                  onChange={(value) => set('street', value)}
+                />
               </Field>
 
               <Field label="מספר בית" htmlFor="houseNumber">

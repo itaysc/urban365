@@ -1,8 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { MapPin } from 'lucide-react';
+import { useMemo } from 'react';
 import { ISRAELI_CITIES } from '@/data/cities';
-import { inputClass } from '@/components/ui/Field';
-import { highlight } from '@/lib/highlight';
+import { SuggestBox } from '@/components/listing/SuggestBox';
 
 interface Props {
   value: string;
@@ -27,10 +25,6 @@ const MAX_SUGGESTIONS = 8;
  * have meant is the thing at the top.
  */
 export function CityBox({ value, onChange, id = 'city', required = false }: Props) {
-  const [open, setOpen] = useState(false);
-  const [highlighted, setHighlighted] = useState(0);
-  const box = useRef<HTMLDivElement>(null);
-
   const term = value.trim();
 
   const matches = useMemo(() => {
@@ -49,99 +43,30 @@ export function CityBox({ value, onChange, id = 'city', required = false }: Prop
     return [...starts, ...contains].slice(0, MAX_SUGGESTIONS);
   }, [term]);
 
-  // Every locality, so a village of two hundred people is as findable as Tel Aviv. The
-  // filter is a scan over 1,300 strings, which is nothing next to one request.
+  // The filter is a scan over 1,300 strings, which is nothing next to one request — and
+  // it means a village of two hundred people is as findable as Tel Aviv.
   const known = useMemo(() => new Set(ISRAELI_CITIES), []);
-  const unknown = term !== '' && !known.has(term);
-
-  useEffect(() => {
-    const onDocumentClick = (e: MouseEvent) => {
-      if (box.current && !box.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener('mousedown', onDocumentClick);
-    return () => document.removeEventListener('mousedown', onDocumentClick);
-  }, []);
-
-  const choose = (city: string) => {
-    onChange(city);
-    setOpen(false);
-  };
-
-  const onKeyDown = (e: React.KeyboardEvent) => {
-    if (!open || matches.length === 0) return;
-
-    if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      setHighlighted((i) => (i + 1) % matches.length);
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      setHighlighted((i) => (i - 1 + matches.length) % matches.length);
-    } else if (e.key === 'Enter' || e.key === 'Tab') {
-      // Enter in a single-field row would submit the form; here it takes the highlighted
-      // city instead, which is what somebody halfway through typing a name meant.
-      e.preventDefault();
-      choose(matches[highlighted]);
-    } else if (e.key === 'Escape') {
-      setOpen(false);
-    }
-  };
 
   return (
-    <div ref={box} className="relative">
-      <input
-        id={id}
-        required={required}
-        autoComplete="off"
-        className={`${inputClass} w-full`}
-        value={value}
-        placeholder="עיר או יישוב"
-        onChange={(e) => {
-          onChange(e.target.value);
-          setHighlighted(0);
-          setOpen(true);
-        }}
-        onFocus={() => setOpen(true)}
-        onKeyDown={onKeyDown}
-        role="combobox"
-        aria-expanded={open && matches.length > 0}
-        aria-autocomplete="list"
-      />
-
-      {open && matches.length > 0 && (
-        <ul className="absolute z-20 mt-1 max-h-60 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
-          {matches.map((city, i) => (
-            <li key={city}>
-              <button
-                type="button"
-                // mousedown, not click: the input's blur fires first and would close the
-                // list out from under the pointer.
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  choose(city);
-                }}
-                onMouseEnter={() => setHighlighted(i)}
-                className={`flex w-full items-center gap-2 px-3 py-2 text-right text-sm ${
-                  i === highlighted ? 'bg-slate-50' : ''
-                }`}
-              >
-                <MapPin className="h-4 w-4 shrink-0 text-slate-400" aria-hidden />
-                <span>{highlight(city, term)}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-
-      {/*
-        A warning, not a block. The list is every locality the CBS knows about, so a
-        name that is not on it is almost always a typo — but "almost" is doing work, and
-        refusing to let somebody name their own town would be worse than a stray entry.
-      */}
-      {unknown && !open && (
-        <p className="mt-1 text-xs text-amber-700">
-          לא מצאנו יישוב בשם הזה. אפשר להמשיך, אבל ייתכן שהנכס לא יופיע בחיפושים.
-        </p>
-      )}
-    </div>
+    <SuggestBox
+      id={id}
+      value={value}
+      onChange={onChange}
+      options={matches}
+      term={term}
+      required={required}
+      placeholder="עיר או יישוב"
+      footer={
+        // A warning, not a block. The list is every locality the CBS knows about, so a
+        // name that is not on it is almost always a typo — but "almost" is doing work,
+        // and refusing to let somebody name their own town would be worse than a stray
+        // entry.
+        term !== '' && !known.has(term) ? (
+          <p className="mt-1 text-xs text-amber-700">
+            לא מצאנו יישוב בשם הזה. אפשר להמשיך, אבל ייתכן שהנכס לא יופיע בחיפושים.
+          </p>
+        ) : null
+      }
+    />
   );
 }

@@ -133,6 +133,17 @@ export class ListingsController {
   }
 
   /**
+   * Streets inside one city, for the address box on both editors.
+   *
+   * Declared before `:id` — Nest matches in declaration order.
+   */
+  @Get('streets')
+  streets(@Query('city') city: string | undefined, @Query('q') q: string | undefined) {
+    if (!city?.trim()) return [];
+    return this.listings.streetsIn(city, q ?? '');
+  }
+
+  /**
    * Neighbourhoods inside one city, for the box on the publish form.
    *
    * Declared before `:id` — Nest matches in declaration order.

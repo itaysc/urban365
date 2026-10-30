@@ -1,10 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { MapPin } from 'lucide-react';
 import { NEIGHBORHOODS } from '@/data/neighborhoods';
+import { SuggestBox } from '@/components/listing/SuggestBox';
 import { cityKey } from '@/lib/cityKey';
-import { highlight } from '@/lib/highlight';
-import { inputClass } from '@/components/ui/Field';
 import { qk } from '@/queries/keys';
 import { fetchNeighborhoodsIn } from '@/services/search';
 
@@ -36,15 +34,11 @@ const MAX_SUGGESTIONS = 8;
  * they live better than we do.
  */
 export function NeighborhoodBox({ city, value, onChange, id = 'neighborhood' }: Props) {
-  const [open, setOpen] = useState(false);
-  const [highlighted, setHighlighted] = useState(0);
-  const box = useRef<HTMLDivElement>(null);
-
   // Debounced, so a word typed at speed is one request rather than one per letter.
   const [debounced, setDebounced] = useState('');
   useEffect(() => {
-    const id = window.setTimeout(() => setDebounced(value.trim()), 200);
-    return () => window.clearTimeout(id);
+    const timer = window.setTimeout(() => setDebounced(value.trim()), 200);
+    return () => window.clearTimeout(timer);
   }, [value]);
 
   const { data } = useQuery({
@@ -60,7 +54,6 @@ export function NeighborhoodBox({ city, value, onChange, id = 'neighborhood' }: 
   const known = useMemo(() => NEIGHBORHOODS[cityKey(city)] ?? [], [city]);
 
   const options = useMemo(() => {
-    const term = debounced;
     const seen = new Set<string>();
     const out: string[] = [];
 
@@ -69,7 +62,7 @@ export function NeighborhoodBox({ city, value, onChange, id = 'neighborhood' }: 
     // what is in the box.
     for (const name of [...known, ...(data ?? [])]) {
       if (seen.has(name) || name === value.trim()) continue;
-      if (term && !name.includes(term)) continue;
+      if (debounced && !name.includes(debounced)) continue;
       seen.add(name);
       out.push(name);
       if (out.length >= MAX_SUGGESTIONS) break;
@@ -78,82 +71,14 @@ export function NeighborhoodBox({ city, value, onChange, id = 'neighborhood' }: 
     return out;
   }, [known, data, debounced, value]);
 
-  useEffect(() => {
-    const onDocumentClick = (e: MouseEvent) => {
-      if (box.current && !box.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener('mousedown', onDocumentClick);
-    return () => document.removeEventListener('mousedown', onDocumentClick);
-  }, []);
-
-  const choose = (name: string) => {
-    onChange(name);
-    setOpen(false);
-  };
-
-  const onKeyDown = (e: React.KeyboardEvent) => {
-    if (!open || options.length === 0) return;
-
-    if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      setHighlighted((i) => (i + 1) % options.length);
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      setHighlighted((i) => (i - 1 + options.length) % options.length);
-    } else if (e.key === 'Enter') {
-      // Only when something is actually highlighted — otherwise Enter in this field
-      // means "I have finished typing my own answer", not "take the first guess".
-      e.preventDefault();
-      choose(options[highlighted]);
-    } else if (e.key === 'Escape') {
-      setOpen(false);
-    }
-  };
-
   return (
-    <div ref={box} className="relative">
-      <input
-        id={id}
-        className={`${inputClass} w-full`}
-        value={value}
-        autoComplete="off"
-        placeholder={city.trim() ? 'שכונה' : 'קודם בחרו עיר'}
-        onChange={(e) => {
-          onChange(e.target.value);
-          setHighlighted(0);
-          setOpen(true);
-        }}
-        onFocus={() => setOpen(true)}
-        onKeyDown={onKeyDown}
-        role="combobox"
-        aria-expanded={open && options.length > 0}
-        aria-autocomplete="list"
-      />
-
-      {open && options.length > 0 && (
-        <ul className="absolute z-20 mt-1 max-h-60 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
-          {options.map((name, i) => (
-            <li key={name}>
-              <button
-                type="button"
-                // mousedown, not click: the input's blur fires first and would close
-                // the list out from under the pointer.
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  choose(name);
-                }}
-                onMouseEnter={() => setHighlighted(i)}
-                className={`flex w-full items-center gap-2 px-3 py-2 text-right text-sm ${
-                  i === highlighted ? 'bg-slate-50' : ''
-                }`}
-              >
-                <MapPin className="h-4 w-4 shrink-0 text-slate-400" aria-hidden />
-                <span>{highlight(name, debounced)}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
+    <SuggestBox
+      id={id}
+      value={value}
+      onChange={onChange}
+      options={options}
+      term={debounced}
+      placeholder={city.trim() ? 'שכונה' : 'קודם בחרו עיר'}
+    />
   );
 }

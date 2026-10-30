@@ -315,6 +315,46 @@ export class ListingsService {
    * `תל־אביב–יפו` for rows that say `תל אביב יפו` would return an empty search.
    */
   /**
+   * The streets of one city, from the Interior Ministry's register.
+   *
+   * Unlike the neighbourhoods, this is not derived from our own listings — it is the
+   * whole register, 62,000 streets, which is why it is a table and a query rather than
+   * a file in the browser bundle.
+   *
+   * Prefix first, then anywhere in the name: typing `הרצ` should offer הרצל before
+   * דרך הרצליה, because the thing you are most likely to have meant belongs at the top.
+   */
+  async streetsIn(city: string, term = '', limit = 8): Promise<string[]> {
+    const trimmed = city.trim();
+    if (!trimmed) return [];
+
+    const key = cityKey(trimmed);
+    const q = term.trim();
+    const mode = Prisma.QueryMode.insensitive;
+
+    const starts = await this.prisma.client.street.findMany({
+      where: { cityKey: key, ...(q ? { name: { startsWith: q, mode } } : {}) },
+      select: { name: true },
+      orderBy: { name: 'asc' },
+      take: limit,
+    });
+
+    if (!q || starts.length >= limit) return starts.map((row) => row.name);
+
+    const contains = await this.prisma.client.street.findMany({
+      where: {
+        cityKey: key,
+        name: { contains: q, mode, notIn: starts.map((row) => row.name) },
+      },
+      select: { name: true },
+      orderBy: { name: 'asc' },
+      take: limit - starts.length,
+    });
+
+    return [...starts, ...contains].map((row) => row.name);
+  }
+
+  /**
    * The neighbourhoods we hold listings in, inside one city.
    *
    * Separate from `suggest`, which searches the whole country and answers with cities,

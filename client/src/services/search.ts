@@ -174,3 +174,16 @@ export async function fetchNeighborhoodsIn(city: string, q: string): Promise<str
   const { data } = await api.get<string[]>(`/listings/neighborhoods?${params}`);
   return data;
 }
+
+/**
+ * The streets of one city, from the Interior Ministry's register.
+ *
+ * Asked of the server rather than bundled: 62,000 streets is a megabyte, and a form
+ * needs eight of them at a time.
+ */
+export async function fetchStreetsIn(city: string, q: string): Promise<string[]> {
+  const params = new URLSearchParams({ city });
+  if (q) params.set('q', q);
+  const { data } = await api.get<string[]>(`/listings/streets?${params}`);
+  return data;
+}

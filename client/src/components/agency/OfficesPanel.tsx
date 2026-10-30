@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { MapPin, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { CityBox } from '@/components/listing/CityBox';
+import { StreetBox } from '@/components/listing/StreetBox';
 import { Button } from '@/components/ui/Button';
 import { Field, inputClass } from '@/components/ui/Field';
 import { errorMessageOf } from '@/lib/apiError';
@@ -175,8 +176,12 @@ export function OfficesPanel() {
           </Field>
 
           <Field label="רחוב" htmlFor="office-street">
-            <input id="office-street" className={inputClass} value={form.street ?? ''}
-                   onChange={(e) => set('street', e.target.value)} />
+            <StreetBox
+              id="office-street"
+              city={form.city}
+              value={form.street ?? ''}
+              onChange={(value) => set('street', value)}
+            />
           </Field>
 
           <Field label="מספר" htmlFor="office-number">

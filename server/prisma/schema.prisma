@@ -764,6 +764,34 @@ model AgencyOffice {
 /// request: Nominatim's policy forbids systematic use, Overpass rate-limits anonymous
 /// callers, and a municipal boundary changes about never. Storing them makes the map
 /// independent of either service being up.
+/// Every street in Israel, from the Interior Ministry's list via data.gov.il.
+///
+/// A table rather than a file shipped to the browser: 63,000 streets is a megabyte
+/// nobody should download to fill in one address field. The city list is 1,300 names
+/// and goes in the bundle; this one is answered per city, as it is typed.
+model Street {
+  id String @id @default(cuid())
+
+  /// The locality as the source spells it, kept for display and for tracing a row back.
+  city String
+  /// What the lookup matches on — `cityKey(city)`, because the city on a form comes
+  /// from the locality file and the two spellings of a hyphenated name must meet.
+  cityKey String
+  name    String
+
+  /// The Interior Ministry's own code for the street within its locality. Not used for
+  /// anything yet; kept because re-deriving it later would mean another import.
+  code Int?
+
+  syncedAt DateTime @default(now())
+
+  /// One row per street per city. The sync upserts on it, so a re-run updates rather
+  /// than duplicates.
+  @@unique([cityKey, name])
+  /// What the suggestions query filters and orders by.
+  @@index([cityKey, name])
+}
+
 model CityBoundary {
   id String @id @default(cuid())
 
