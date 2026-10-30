@@ -6,6 +6,7 @@ import { useAuth } from '@/auth/auth-context';
 import { TermsCheckbox } from '@/components/auth/TermsCheckbox';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { AmenityPicker } from '@/components/listing/AmenityPicker';
+import { CityBox } from '@/components/listing/CityBox';
 import { CountPicker } from '@/components/listing/CountPicker';
 import { NeighborhoodBox } from '@/components/listing/NeighborhoodBox';
 import { RoomsPicker } from '@/components/search/RoomsPicker';
@@ -171,16 +172,22 @@ export function PublishPage() {
 
       // Last, so the listing never appears in search without its photos.
       setStep('מפרסם…');
-      await publishMyListing(listing.id);
-      return listing;
+      const { published } = await publishMyListing(listing.id);
+      return { ...listing, published };
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       void queryClient.invalidateQueries({ queryKey: qk.mySale.all });
       setStep(null);
       if (listingId) {
         // What is on screen is now what is stored, so leaving costs nothing.
         saved.current = snapshot(form, amenities);
         toast.success('הנכס עודכן.');
+      } else if (result && 'published' in result && result.published === false) {
+        // Saved, not live. Said plainly, and without the reason: whoever is actually
+        // sending spam should not be handed the rule they tripped.
+        toast('הנכס נשמר ונשלח לבדיקה. נעדכן אתכם באימייל לאחר שתאושר.', { duration: 8000 });
+        leaving.current = true;
+        navigate('/sell');
       } else {
         toast.success('הנכס פורסם.');
         // Nothing is being abandoned: it is published. Set before navigating, or the
@@ -270,9 +277,13 @@ export function PublishPage() {
                 </select>
               </Field>
 
+              {/*
+                From the list of every locality in Israel rather than free text: the
+                city column is compared exactly, so a flat filed under a name nobody
+                searches for is a flat nobody finds.
+              */}
               <Field label="עיר" htmlFor="city" required>
-                <input id="city" required className={inputClass} value={form.city}
-                       onChange={(e) => set('city', e.target.value)} />
+                <CityBox value={form.city} onChange={(value) => set('city', value)} />
               </Field>
 
               {/*

@@ -1,12 +1,21 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { GeocodeService } from '../geocode/geocode.service.js';
 import { StorageService } from '../storage/storage.service.js';
 import { listingImageUrl } from '../agency/image-url.js';
+import { ListingReviewService } from '../moderation/listing-review.service.js';
 import type { CreateSellerListingDto, SellerListingDto } from './dto/seller-listing.dto.js';
 
 /** Ten, as asked. A private sale is one property, not a portfolio. */
 const MAX_IMAGES = 10;
+
+/**
+ * How sure the model has to be before a listing is held back.
+ *
+ * A hesitant "this might be spam" is not enough to hide somebody's flat. Set where a
+ * confident objection still lands but an unsure one does not.
+ */
+const FLAG_CONFIDENCE = 60;
 
 const DETAIL = {
   include: { images: { orderBy: { position: 'asc' } } },
@@ -22,10 +31,13 @@ const DETAIL = {
  */
 @Injectable()
 export class SellerListingsService {
+  private readonly logger = new Logger(SellerListingsService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly geocode: GeocodeService,
     private readonly storage: StorageService,
+    private readonly review: ListingReviewService,
   ) {}
 
   list(userId: string) {
@@ -104,22 +116,47 @@ export class SellerListingsService {
    * Put it on the market: the last step of publishing a new listing, and the way back
    * for one that was taken down.
    *
+   * This is also the gate. A private seller's listing is read for spam here rather than
+   * at creation, because here it is finished — the description is written, the photos
+   * are up, and this is the last moment before strangers see it. One flagged listing
+   * stays a draft: saved, with the reason, and shown to nobody.
+   *
    * `publishedAt` is only set the first time. It is when the flat first went on sale,
    * which is what the age of a listing means to a buyer — relisting next month does not
    * make it new.
    */
-  async publish(userId: string, id: string) {
+  async publish(userId: string, id: string): Promise<{ published: boolean }> {
     const listing = await this.requireOwn(userId, id);
+
+    const verdict = await this.review.review(listing);
+
+    // A verdict is needed to flag. No verdict — no key, a timeout, an unreadable reply
+    // — publishes, because refusing a real seller is the worse mistake and a person can
+    // still take a listing down afterwards.
+    const flagged = verdict !== null && !verdict.legit && verdict.confidence >= FLAG_CONFIDENCE;
 
     await this.prisma.listing.update({
       where: { id },
       data: {
-        status: 'published',
-        delistedAt: null,
-        publishedAt: listing.publishedAt ?? new Date(),
+        ...(flagged
+          ? {}
+          : { status: 'published', delistedAt: null, publishedAt: listing.publishedAt ?? new Date() }),
+        ...(verdict
+          ? {
+              reviewStatus: flagged ? ('flagged' as const) : ('clean' as const),
+              reviewReason: verdict.reason || null,
+              reviewConfidence: verdict.confidence,
+              reviewedAt: new Date(),
+            }
+          : {}),
       },
     });
-    return { archived: false };
+
+    if (flagged) {
+      this.logger.warn(`Listing ${id} flagged (${verdict.confidence}): ${verdict.reason}`);
+    }
+
+    return { published: !flagged };
   }
 
   // ── images ──────────────────────────────────────────────────────────────────

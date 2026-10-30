@@ -70,6 +70,16 @@ enum ListingStatus {
   archived
 }
 
+/// What an automated read of a listing concluded about it.
+enum ListingReviewStatus {
+  /// Never looked at. Everything scraped from yad2, and everything an agency writes.
+  unchecked
+  /// Looks like a real property.
+  clean
+  /// Does not. Kept, never shown, and waiting for a person to agree or disagree.
+  flagged
+}
+
 enum LeadSource {
   web
   manual
@@ -200,6 +210,17 @@ model Listing {
   /// from `ListingEngagement`, which is what makes "different people" true.
   viewCount        Int @default(0)
   phoneRevealCount Int @default(0)
+
+  /// What the spam check made of this listing, for the ones that get checked — which is
+  /// private sellers. An agency has a licence and a claim on the line; a stranger with
+  /// an email address does not, and that is the whole difference.
+  reviewStatus ListingReviewStatus @default(unchecked)
+  /// Why, in the model's own words. Kept so a person reviewing the queue can see what
+  /// it objected to rather than re-reading the listing cold.
+  reviewReason String?
+  /// 0–100. How sure it was, not how bad the listing is.
+  reviewConfidence Int?
+  reviewedAt       DateTime?
 
   adNumber   BigInt?
   listingUrl String?

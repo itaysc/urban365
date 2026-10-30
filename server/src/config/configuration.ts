@@ -44,6 +44,16 @@ export interface CaptchaConfig {
   turnstileSecret: string;
 }
 
+export interface LlmConfig {
+  /** Empty switches every model-backed feature off rather than failing a request. */
+  openaiApiKey: string;
+  /**
+   * Somewhere other than OpenAI that speaks its API — a gateway that meters and traces
+   * calls, or a stub in a test. Empty means OpenAI itself.
+   */
+  openaiBaseUrl: string;
+}
+
 export interface GoogleConfig {
   clientId: string;
   clientSecret: string;
@@ -76,6 +86,7 @@ export default (): {
   auth: AuthConfig;
   mail: MailConfig;
   google: GoogleConfig;
+  llm: LlmConfig;
   storage: StorageConfig;
   captcha: CaptchaConfig;
   yad2: Yad2Config;
@@ -107,6 +118,10 @@ export default (): {
   google: {
     clientId: process.env.GOOGLE_CLIENT_ID ?? '',
     clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? '',
+  },
+  llm: {
+    openaiApiKey: process.env.OPENAI_API_KEY ?? '',
+    openaiBaseUrl: process.env.OPENAI_BASE_URL ?? '',
   },
   storage: {
     keyId: process.env.B2_KEY_ID ?? '',

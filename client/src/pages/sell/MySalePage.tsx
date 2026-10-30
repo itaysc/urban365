@@ -63,11 +63,20 @@ export function MySalePage() {
   const byListing = new Map((stats ?? []).map((row) => [row.listingId, row]));
 
   const setPublished = useMutation({
-    mutationFn: ({ id, publish }: { id: string; publish: boolean }) =>
-      publish ? publishMyListing(id) : archiveMyListing(id),
-    onSuccess: (_r, { publish }) => {
+    mutationFn: async ({ id, publish }: { id: string; publish: boolean }) => {
+      if (!publish) {
+        await archiveMyListing(id);
+        return { published: false, archived: true };
+      }
+      // Publishing runs the spam check again, so a listing held back once can be fixed
+      // and sent again — and one that still does not pass stays where it is.
+      return { ...(await publishMyListing(id)), archived: false };
+    },
+    onSuccess: (result) => {
       void queryClient.invalidateQueries({ queryKey: qk.mySale.all });
-      toast.success(publish ? 'הנכס חזר לפרסום.' : 'הנכס הוסר מהפרסום.');
+      if (result.archived) toast.success('הנכס הוסר מהפרסום.');
+      else if (result.published) toast.success('הנכס חזר לפרסום.');
+      else toast('הנכס נשלח לבדיקה. נעדכן אתכם לאחר שתאושר.', { duration: 8000 });
     },
     onError: (e) => toast.error(errorMessageOf(e, 'הפעולה נכשלה.')),
   });
@@ -137,8 +146,17 @@ export function MySalePage() {
                     <div className="flex items-baseline gap-2">
                       <p className="text-lg font-bold text-slate-900">{formatPrice(listing.price)}</p>
                       {!published && (
-                        <span className="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
-                          לא מפורסם
+                        // "Waiting" and "taken down" are different states and a seller
+                        // chose only one of them. Saying "not published" for both reads
+                        // as something they did, when one of them is something we did.
+                        <span
+                          className={`rounded px-2 py-0.5 text-xs ${
+                            listing.reviewStatus === 'flagged'
+                              ? 'bg-amber-100 text-amber-800'
+                              : 'bg-slate-100 text-slate-600'
+                          }`}
+                        >
+                          {listing.reviewStatus === 'flagged' ? 'ממתין לבדיקה' : 'לא מפורסם'}
                         </span>
                       )}
                     </div>

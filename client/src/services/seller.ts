@@ -22,6 +22,12 @@ export interface SellerListing {
   description: string | null;
   contactName: string | null;
   coverImageUrl: string | null;
+  /**
+   * What the spam check made of it. `flagged` is why a listing can be finished and
+   * still not be live.
+   */
+  reviewStatus: 'unchecked' | 'clean' | 'flagged';
+  reviewReason: string | null;
   latitude: number | null;
   images: ListingImage[];
 }
@@ -97,9 +103,17 @@ export async function archiveMyListing(id: string): Promise<void> {
   await api.delete(`/me/listings/${id}`);
 }
 
-/** On the market: the last step of publishing a new listing, and the way back for one taken down. */
-export async function publishMyListing(id: string): Promise<void> {
-  await api.post(`/me/listings/${id}/publish`);
+/**
+ * On the market: the last step of publishing a new listing, and the way back for one
+ * taken down.
+ *
+ * Not always. A private seller's listing is read for spam here, and one that does not
+ * look like a real property stays a draft — which is what `published: false` means. It
+ * is not an error: the listing was saved, it is simply waiting for a person.
+ */
+export async function publishMyListing(id: string): Promise<{ published: boolean }> {
+  const { data } = await api.post<{ published: boolean }>(`/me/listings/${id}/publish`);
+  return data;
 }
 
 /**

@@ -1,3 +1,4 @@
+import { LlmModule } from './llm/llm.module.js';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
@@ -36,6 +37,7 @@ import { Yad2Module } from './yad2/yad2.module.js';
     // and the scrape job runs detached from any request where it would simply throw.
     ClsModule.forRoot({ global: true, middleware: { mount: false } }),
     PrismaModule,
+    LlmModule,
     TenancyModule,
     MailModule,
     AuthModule,
