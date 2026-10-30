@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import maplibregl, { type GeoJSONSource, type Map as MapLibreMap } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { config } from '@/config';
+import { enableRtlMapText } from '@/lib/rtlMapText';
 import { ListingPopupCard } from '@/components/map/ListingPopupCard';
 import type { CityBoundary, MapOffice, MapPoint } from '@/services/search';
 
@@ -67,6 +68,10 @@ export function ListingsMap({ points, offices = [], boundary, onSelect, onViewpo
   // map must not do while someone is reading it.
   useEffect(() => {
     if (!container.current || map.current) return;
+
+    // Before the map exists: the plugin has to be registered while no map is using the
+    // worker, and MapLibre refuses once one is.
+    enableRtlMapText();
 
     const instance = new maplibregl.Map({
       container: container.current,
