@@ -1,7 +1,7 @@
 import { useQueries } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { qk } from '@/queries/keys';
-import { useAuth } from '@/auth/AuthProvider';
+import { useAuth } from '@/auth/auth-context';
 import { fetchMyListings } from '@/services/agency';
 
 const CARDS = [

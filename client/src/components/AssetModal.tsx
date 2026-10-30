@@ -1,4 +1,4 @@
-import { useAuth } from '@/auth/AuthProvider';
+import { useAuth } from '@/auth/auth-context';
 import { EnquiryForm } from '@/components/EnquiryForm';
 import { LocationMap } from '@/components/listing/LocationMap';
 import { RevealPhone } from '@/components/RevealPhone';

@@ -1,5 +1,5 @@
 import { Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { useAuth } from '@/auth/AuthProvider';
+import { useAuth } from '@/auth/auth-context';
 import { AccountLoginForm } from '@/components/auth/AccountLoginForm';
 import { safeReturnTo } from '@/lib/returnTo';
 import { AuthLayout } from '@/pages/auth/AuthLayout';

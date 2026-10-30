@@ -1,32 +1,10 @@
-import { createContext, useContext, useEffect, useMemo, type ReactNode } from 'react';
+import { useEffect, useMemo, type ReactNode } from 'react';
+import { AuthContext, type AuthContextValue } from '@/auth/auth-context';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { qk } from '@/queries/keys';
 import { setSessionLostHandler, tryRefresh } from '@/services/api';
 import * as authApi from '@/services/auth';
-import type { AuthUser, SignupInput } from '@/types/auth';
-
-interface AuthContextValue {
-  user: AuthUser | null;
-  /** True until the first /auth/me resolves, so guards do not redirect prematurely. */
-  loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  signup: (input: SignupInput) => Promise<void>;
-  logout: () => Promise<void>;
-  /** Re-reads the user. Cheap; does not touch the session. */
-  refresh: () => Promise<void>;
-  /**
-   * Rotates the access token first, then re-reads the user.
-   *
-   * The access token carries the agency membership status it was minted with, and
-   * `TenantGuard` trusts it — so after an admin approves a claim, `/auth/me` reports
-   * `active` (it reads the database) while every tenant route still 403s against the
-   * stale token. Rotating first is what makes an approval take effect now instead of
-   * whenever the token happens to expire.
-   */
-  recheck: () => Promise<void>;
-}
-
-const AuthContext = createContext<AuthContextValue | null>(null);
+import type { AuthUser } from '@/types/auth';
 
 /**
  * The user is a cache entry under `qk.me`, not a second copy in component state.
@@ -102,8 +80,3 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
-export function useAuth(): AuthContextValue {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth must be used inside <AuthProvider>');
-  return ctx;
-}

@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { useAuth } from '@/auth/AuthProvider';
+import { useAuth } from '@/auth/auth-context';
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
 import { IMAGE_TYPES } from '@/components/ui/Dropzone';
