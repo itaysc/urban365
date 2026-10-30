@@ -191,20 +191,58 @@ export function ListingsMap({ points, offices = [], boundary, onSelect, onViewpo
         if (hits.length === 0) setActiveId(null);
       });
 
-      // Clicking a cluster zooms into it, which is what every map does and what people
-      // therefore try first.
+      // Clicking a cluster shows what is inside it, which is what every map does and
+      // what people therefore try first.
+      //
+      // Not `getClusterExpansionZoom`, which is the zoom at which the cluster *begins*
+      // to split — frequently one level up, where the same count is still on screen and
+      // the click appears to have done nothing. The listings themselves are asked for
+      // instead, and the map is fitted to the area they actually cover.
       instance.on('click', 'clusters', (e) => {
         const feature = e.features?.[0];
         const clusterId = feature?.properties?.cluster_id;
         if (clusterId === undefined) return;
 
         const source = instance.getSource(SOURCE) as GeoJSONSource;
-        void source.getClusterExpansionZoom(clusterId).then((zoom) => {
-          instance.easeTo({
-            center: (feature!.geometry as GeoJSON.Point).coordinates as [number, number],
-            zoom,
+        const centre = (feature!.geometry as GeoJSON.Point).coordinates as [number, number];
+
+        void source
+          .getClusterLeaves(clusterId, Number(feature!.properties!.point_count) || 100, 0)
+          .then((leaves) => {
+            const points = leaves
+              .map((leaf) => (leaf.geometry as GeoJSON.Point | undefined)?.coordinates)
+              .filter((c): c is number[] => Array.isArray(c));
+
+            if (points.length === 0) return;
+
+            const bounds = points.reduce(
+              (acc, [lng, lat]) => acc.extend([lng, lat] as [number, number]),
+              new maplibregl.LngLatBounds(
+                [points[0][0], points[0][1]],
+                [points[0][0], points[0][1]],
+              ),
+            );
+
+            // Several listings in one building share a coordinate exactly, and fitting a
+            // box of zero size would slam the map to its maximum zoom over a rooftop.
+            // A cluster that cannot be spread out is stepped into instead.
+            const spread = Math.max(
+              bounds.getEast() - bounds.getWest(),
+              bounds.getNorth() - bounds.getSouth(),
+            );
+
+            if (spread < 1e-5) {
+              instance.easeTo({ center: centre, zoom: Math.min(instance.getZoom() + 2, 17) });
+              return;
+            }
+
+            instance.fitBounds(bounds, { padding: 60, maxZoom: 16, duration: 500 });
+          })
+          .catch(() => {
+            // Whatever went wrong, a click should still move the map rather than do
+            // nothing visible.
+            instance.easeTo({ center: centre, zoom: Math.min(instance.getZoom() + 2, 17) });
           });
-        });
       });
 
       for (const layer of ['points', 'clusters']) {
