@@ -35,7 +35,7 @@ export function TeamStrip({ team, agencyName }: { team: TeamMember[]; agencyName
             <div className="text-xs text-slate-500">מס׳ רישיון {member.licenseNumber}</div>
             <div className="text-sm text-slate-700 underline">{member.activeAssetsCount ?? 0} נכסים פעילים</div>
             {member.specialization && (
-              <div className="mt-1 text-xs font-medium text-orange-600">{member.specialization}</div>
+              <div className="mt-1 text-xs font-medium text-blue-600">{member.specialization}</div>
             )}
           </li>
         ))}

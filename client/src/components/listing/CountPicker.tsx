@@ -43,7 +43,7 @@ export function CountPicker({
               onClick={() => onChange(on ? undefined : step)}
               className={`h-9 w-9 shrink-0 rounded-full text-sm transition ${
                 on
-                  ? 'border border-orange-500 bg-orange-50 font-semibold text-orange-600'
+                  ? 'border border-blue-500 bg-blue-50 font-semibold text-blue-600'
                   : 'border border-slate-300 text-slate-700 hover:border-slate-400'
               }`}
             >

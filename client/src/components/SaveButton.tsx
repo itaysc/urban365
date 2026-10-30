@@ -76,7 +76,7 @@ export function SaveButton({ listingId, saved, size = 'md' }: Props) {
         className={`${box} flex items-center justify-center rounded-full bg-white/90 shadow-sm transition hover:bg-white`}
       >
         <Heart
-          className={`${icon} ${saved ? 'fill-orange-600 text-orange-600' : 'text-slate-500'}`}
+          className={`${icon} ${saved ? 'fill-blue-600 text-blue-600' : 'text-slate-500'}`}
         />
       </button>
 

@@ -329,7 +329,7 @@ export function PlaceSearchBox({ filters, update }: Props) {
               locateMe();
             }}
             disabled={locating || remaining <= 0}
-            className="flex w-full items-center gap-2 border-b border-slate-100 px-4 py-3 text-start text-sm font-semibold text-orange-600 transition hover:bg-orange-50 disabled:opacity-50"
+            className="flex w-full items-center gap-2 border-b border-slate-100 px-4 py-3 text-start text-sm font-semibold text-blue-600 transition hover:bg-blue-50 disabled:opacity-50"
           >
             <Navigation className="h-4 w-4" aria-hidden />
             {locating ? 'מאתר…' : 'קרוב למיקום שלי'}
@@ -433,7 +433,7 @@ export function PlaceSearchBox({ filters, update }: Props) {
                 e.preventDefault();
                 setOpen(false);
               }}
-              className="text-sm font-semibold text-orange-600 hover:text-orange-700"
+              className="text-sm font-semibold text-blue-600 hover:text-blue-700"
             >
               אישור
             </button>

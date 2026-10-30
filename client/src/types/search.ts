@@ -63,7 +63,10 @@ export interface SearchListing {
   /** How many people have saved it. */
   savedCount: number;
   brokerName: string | null;
-  agency: { id: string; name: string };
+  /** Null for a listing published by a private seller, who has no agency at all. */
+  agency: { id: string; name: string } | null;
+  /** The same fact from the other side, for the places that say so in words. */
+  isPrivateSeller?: boolean;
   updatedAt: string | null;
   delistedAt: string | null;
 }

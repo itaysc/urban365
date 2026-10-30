@@ -141,7 +141,7 @@ export function SiteHeader({ leading, subtitle, fullWidth = false }: Props) {
                 <span
                   dir="ltr"
                   aria-hidden
-                  className="absolute -right-2 -top-2 flex min-w-[1.1rem] items-center justify-center rounded-full bg-orange-600 px-1 text-[0.65rem] font-bold leading-[1.1rem] text-white ring-2 ring-white"
+                  className="absolute -right-2 -top-2 flex min-w-[1.1rem] items-center justify-center rounded-full bg-blue-600 px-1 text-[0.65rem] font-bold leading-[1.1rem] text-white ring-2 ring-white"
                 >
                   {savedCount! > 99 ? '99+' : savedCount}
                 </span>

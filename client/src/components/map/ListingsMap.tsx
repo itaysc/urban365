@@ -109,14 +109,14 @@ export function ListingsMap({ points, offices = [], boundary, onSelect, onViewpo
         id: 'area-fill',
         type: 'fill',
         source: BOUNDARY_SOURCE,
-        paint: { 'fill-color': '#ea580c', 'fill-opacity': 0.1 },
+        paint: { 'fill-color': '#2563eb', 'fill-opacity': 0.1 },
       });
 
       instance.addLayer({
         id: 'area-line',
         type: 'line',
         source: BOUNDARY_SOURCE,
-        paint: { 'line-color': '#ea580c', 'line-width': 2, 'line-opacity': 0.85 },
+        paint: { 'line-color': '#2563eb', 'line-width': 2, 'line-opacity': 0.85 },
       });
 
       instance.addLayer({
@@ -152,7 +152,7 @@ export function ListingsMap({ points, offices = [], boundary, onSelect, onViewpo
         source: SOURCE,
         filter: ['!', ['has', 'point_count']],
         paint: {
-          'circle-color': '#ea580c',
+          'circle-color': '#2563eb',
           'circle-radius': 7,
           'circle-stroke-color': '#ffffff',
           'circle-stroke-width': 2,

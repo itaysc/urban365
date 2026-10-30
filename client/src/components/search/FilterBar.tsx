@@ -236,7 +236,7 @@ export function FilterBar({ filters, facets, activeCount, onUpdate, onReset }: P
               onClick={() => patch({ isNew: option.value })}
               className={`rounded-lg px-3 py-1.5 text-sm transition ${
                 Boolean(draft.isNew) === Boolean(option.value)
-                  ? 'bg-orange-50 font-semibold text-orange-700 ring-1 ring-orange-200'
+                  ? 'bg-blue-50 font-semibold text-blue-700 ring-1 ring-blue-200'
                   : 'text-slate-600 hover:bg-slate-50'
               }`}
             >
@@ -323,7 +323,7 @@ export function FilterBar({ filters, facets, activeCount, onUpdate, onReset }: P
         type="submit"
         className={`flex items-center gap-1.5 self-stretch rounded-xl px-5 text-sm font-semibold transition ${
           dirty
-            ? 'bg-orange-600 text-white hover:bg-orange-700'
+            ? 'bg-blue-600 text-white hover:bg-blue-700'
             : 'bg-slate-900 text-white hover:bg-slate-800'
         }`}
       >

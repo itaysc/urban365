@@ -134,7 +134,9 @@ export function ListingCard({
         )}
 
         <div className="flex items-center justify-between text-xs text-slate-400">
-          <span className="truncate">{listing.agency.name}</span>
+          {/* A private seller has no agency. Saying who is selling matters to a buyer,
+              so the absence is filled rather than left blank. */}
+          <span className="truncate">{listing.agency?.name ?? 'מוכר פרטי'}</span>
           {listing.pricePerSquareMeter && <span>{listing.pricePerSquareMeter.toLocaleString('he-IL')} ₪/מ״ר</span>}
         </div>
       </div>

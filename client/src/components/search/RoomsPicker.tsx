@@ -59,7 +59,7 @@ export function RoomsPicker({ min, max, onChange, single = false, legend = 'חד
       }
       className={`h-9 w-9 shrink-0 rounded-full text-sm transition ${
         inBand
-          ? 'font-semibold text-orange-600'
+          ? 'font-semibold text-blue-600'
           : 'border border-slate-300 text-slate-700 hover:border-slate-400'
       }`}
     >
@@ -79,7 +79,7 @@ export function RoomsPicker({ min, max, onChange, single = false, legend = 'חד
         {below.map((value) => step(value, false))}
 
         {selected.length > 0 && (
-          <div className="flex items-center gap-1.5 rounded-full border border-orange-500 bg-orange-50 px-1">
+          <div className="flex items-center gap-1.5 rounded-full border border-blue-500 bg-blue-50 px-1">
             {selected.map((value) => step(value, true))}
           </div>
         )}
