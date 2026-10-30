@@ -1,4 +1,5 @@
 import { EXCLUSIVE_LABEL, isExclusiveListing } from '@/lib/exclusivity';
+import { SaveButton } from '@/components/SaveButton';
 import { formatAddress, formatPrice } from '@/lib/format';
 import type { SearchListing } from '@/types/search';
 
@@ -10,7 +11,16 @@ const Spec = ({ label, value }: { label: string; value: string | number | null }
     </div>
   );
 
-export function ListingCard({ listing, onOpen }: { listing: SearchListing; onOpen: (l: SearchListing) => void }) {
+export function ListingCard({
+  listing,
+  onOpen,
+  saved = false,
+}: {
+  listing: SearchListing;
+  onOpen: (l: SearchListing) => void;
+  /** Resolved once for the whole page rather than per card — see `SearchPage`. */
+  saved?: boolean;
+}) {
   const floor =
     listing.floor === null
       ? null
@@ -34,6 +44,20 @@ export function ListingCard({ listing, onOpen }: { listing: SearchListing; onOpe
         ) : (
           <div className="flex h-full items-center justify-center text-sm text-slate-400">ללא תמונה</div>
         )}
+
+        {/*
+          Top-left, opposite the badges. It is the one control on the card that does
+          something other than open the listing, so it stands apart from the labels
+          that only describe it.
+        */}
+        <div className="absolute top-2 left-2 z-10">
+          <SaveButton
+            listingId={listing.id}
+            saved={saved}
+            count={listing.savedCount}
+            size="sm"
+          />
+        </div>
 
         {/*
           Stacked rather than placed in separate corners: a listing can be both, and two

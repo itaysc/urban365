@@ -14,6 +14,7 @@ import { useListingSearch } from '@/hooks/useListingSearch';
 import { useSearchFilters } from '@/hooks/useSearchFilters';
 import { fetchListing, fetchMapPoints, type MapBounds } from '@/services/search';
 import { qk } from '@/queries/keys';
+import { fetchSavedAmong } from '@/services/saved';
 import { searchTitle } from '@/lib/searchTitle';
 import { SORT_LABELS, SORTS, type SearchListing } from '@/types/search';
 import type { Asset } from '@/types/yad2';
@@ -90,6 +91,14 @@ export function SearchPage() {
   }, [filters.page]);
 
   const items = data?.items ?? [];
+
+  // One request for the page rather than one per card. Works signed out: the server
+  // answers from the visitor cookie when there is no account behind the request.
+  const { data: saved } = useQuery({
+    queryKey: qk.saved.among(items.map((i) => i.id)),
+    queryFn: () => fetchSavedAmong(items.map((i) => i.id)),
+    enabled: items.length > 0,
+  });
 
   return (
     // On a wide screen the page itself does not scroll: the header and the filters stay
@@ -216,7 +225,12 @@ export function SearchPage() {
               }`}
             >
               {items.map((listing) => (
-                <ListingCard key={listing.id} listing={listing} onOpen={open} />
+                <ListingCard
+                  key={listing.id}
+                  listing={listing}
+                  onOpen={open}
+                  saved={saved?.has(listing.id) ?? false}
+                />
               ))}
             </div>
 

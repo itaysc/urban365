@@ -58,6 +58,7 @@ export interface MapPoint {
   street: string | null;
   coverImageUrl: string | null;
   isExclusive: boolean;
+  savedCount: number;
   agencyName: string | null;
 }
 

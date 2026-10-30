@@ -60,6 +60,8 @@ export interface SearchListing {
   coverImageUrl: string | null;
   imagesCount: number;
   isNewFromDeveloper: boolean;
+  /** How many people have saved it. */
+  savedCount: number;
   brokerName: string | null;
   agency: { id: string; name: string };
   updatedAt: string | null;

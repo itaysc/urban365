@@ -8,13 +8,14 @@ import { GoogleService } from './google.service.js';
 import { PasswordService } from './password.service.js';
 import { SessionService } from './session.service.js';
 import { TokenService } from './token.service.js';
+import { SavesModule } from '../saves/saves.module.js';
 
 /**
  * Deliberately uses the privileged PrismaService: login looks a user up by email before
  * any agency context exists, so these queries cannot be tenant-scoped.
  */
 @Module({
-  imports: [JwtModule.register({})],
+  imports: [JwtModule.register({}), SavesModule],
   controllers: [AuthController],
   providers: [AuthService, GoogleService, PasswordService, TokenService, SessionService, AuthTokenService, CaptchaService],
   // PasswordService is exported for the invite flow, which hashes a password for a

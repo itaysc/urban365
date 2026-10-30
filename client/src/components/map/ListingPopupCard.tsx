@@ -1,10 +1,8 @@
-import { Link } from 'react-router-dom';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Heart } from 'lucide-react';
-import { useAuth } from '@/auth/AuthProvider';
+import { useQuery } from '@tanstack/react-query';
 import { formatPrice } from '@/lib/format';
 import { qk } from '@/queries/keys';
-import { fetchSavedAmong, saveListing, unsaveListing } from '@/services/saved';
+import { fetchSavedAmong } from '@/services/saved';
+import { SaveButton } from '@/components/SaveButton';
 import type { MapPoint } from '@/services/search';
 
 interface Props {
@@ -30,24 +28,16 @@ function placeLine(point: MapPoint): string {
 }
 
 export function ListingPopupCard({ point, onOpen }: Props) {
-  const { user } = useAuth();
-  const queryClient = useQueryClient();
   const ids = [point.id];
 
+  // No longer gated on being signed in: saving works for a signed-out browser too, and
+  // the server answers this from the visitor cookie when there is no account.
   const { data: saved } = useQuery({
     queryKey: qk.saved.among(ids),
     queryFn: () => fetchSavedAmong(ids),
-    // Only a signed-in person has anything saved, and asking while logged out is a
-    // guaranteed 401.
-    enabled: Boolean(user),
   });
 
   const isSaved = saved?.has(point.id) ?? false;
-
-  const toggle = useMutation({
-    mutationFn: () => (isSaved ? unsaveListing(point.id) : saveListing(point.id)),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: qk.saved.all }),
-  });
 
   return (
     <div // max-w-full so the wrapper, which knows the map width, can cap it.
@@ -104,28 +94,7 @@ export function ListingPopupCard({ point, onOpen }: Props) {
         </button>
 
         <div className="flex items-start p-2">
-          {user ? (
-            <button
-              type="button"
-              onClick={() => toggle.mutate()}
-              disabled={toggle.isPending}
-              aria-pressed={isSaved}
-              aria-label={isSaved ? 'הסרה מהשמורים' : 'שמירת הנכס'}
-              className="rounded-full p-1.5 transition hover:bg-slate-100 disabled:opacity-50"
-            >
-              <Heart
-                className={`h-5 w-5 ${isSaved ? 'fill-orange-600 text-orange-600' : 'text-slate-400'}`}
-              />
-            </button>
-          ) : (
-            <Link
-              to="/login"
-              aria-label="התחברות כדי לשמור נכסים"
-              className="rounded-full p-1.5 transition hover:bg-slate-100"
-            >
-              <Heart className="h-5 w-5 text-slate-400" />
-            </Link>
-          )}
+          <SaveButton listingId={point.id} saved={isSaved} count={point.savedCount} />
         </div>
       </div>
     </div>

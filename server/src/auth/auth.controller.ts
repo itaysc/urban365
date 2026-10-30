@@ -20,6 +20,7 @@ import { REFRESH_COOKIE } from './auth.constants.js';
 import { clearAuthCookies, setAuthCookies } from './cookies.js';
 import { CurrentUser } from './decorators/current-user.decorator.js';
 import { Public } from './decorators/public.decorator.js';
+import { SavesService, VISITOR_COOKIE } from '../saves/saves.service.js';
 import { CaptchaService } from './captcha.service.js';
 import { LoginDto } from './dto/login.dto.js';
 import { ForgotPasswordDto, ResetPasswordDto, VerifyEmailDto } from './dto/password.dto.js';
@@ -44,6 +45,7 @@ export class AuthController {
     private readonly captcha: CaptchaService,
     private readonly google: GoogleService,
     config: ConfigService,
+      private readonly saves: SavesService,
   ) {
     this.appUrl = (config.get<string>('mail.appUrl') ?? '').replace(/\/$/, '');
     this.cookieOpts = {
@@ -57,9 +59,41 @@ export class AuthController {
   }
 
   /** Tokens are never in the body — only in httpOnly cookies. */
-  private send(res: Response, result: Awaited<ReturnType<AuthService['login']>>) {
+  /**
+   * Every successful sign-in and signup passes through here, which is why the saves a
+   * browser made before it had an account are collected here too.
+   *
+   * Somebody who saved four flats and then made an account expects to find four flats.
+   * Doing it anywhere else means finding every door into a session and remembering to
+   * do it at each one.
+   */
+  private async send(
+    req: Request,
+    res: Response,
+    result: Awaited<ReturnType<AuthService['login']>>,
+  ) {
     setAuthCookies(res, result, this.cookieOpts);
+    await this.adoptAnonymousSaves(req, res, result.user.id);
     return { user: result.user };
+  }
+
+  private async adoptAnonymousSaves(req: Request, res: Response, userId: string) {
+    const visitorId = (req.cookies as Record<string, string> | undefined)?.[VISITOR_COOKIE];
+    if (!visitorId) return;
+
+    // Checked before a profile is created: an agency signing in from a browser that
+    // never saved anything should not acquire a buyer profile as a side effect.
+    const visitor = await this.saves.existingVisitor(visitorId);
+    if (visitor) {
+      const profile = await this.saves.profileFor(userId);
+      if (profile.kind === 'profile') {
+        await this.saves.mergeVisitorInto(visitor.visitorId, profile.profileId);
+      }
+    }
+
+    // Spent either way — merged, or belonging to somebody else's session. Keeping it
+    // would let the next sign-in try to adopt the same rows again.
+    res.clearCookie(VISITOR_COOKIE, { path: '/' });
   }
 
   @Public()
@@ -69,7 +103,7 @@ export class AuthController {
     if (!(await this.captcha.verify(dto.captchaToken, req.ip))) {
       throw new BadRequestException('אימות אנושיות נכשל. נסו שוב.');
     }
-    return this.send(res, await this.auth.signup(dto, this.meta(req)));
+    return this.send(req, res, await this.auth.signup(dto, this.meta(req)));
   }
 
   /**
@@ -88,7 +122,7 @@ export class AuthController {
     if (!(await this.captcha.verify(dto.captchaToken, req.ip))) {
       throw new BadRequestException('אימות אנושיות נכשל. נסו שוב.');
     }
-    return this.send(res, await this.auth.signupBuyer(dto, this.meta(req)));
+    return this.send(req, res, await this.auth.signupBuyer(dto, this.meta(req)));
   }
 
   @Public()
@@ -96,7 +130,7 @@ export class AuthController {
   @HttpCode(200)
   @Post('login')
   async login(@Body() dto: LoginDto, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
-    return this.send(res, await this.auth.login(dto.email, dto.password, this.meta(req)));
+    return this.send(req, res, await this.auth.login(dto.email, dto.password, this.meta(req)));
   }
 
   /** The refresh cookie is path-scoped to exactly this route. */
@@ -112,7 +146,7 @@ export class AuthController {
     }
 
     try {
-      return this.send(res, await this.auth.refresh(presented, this.meta(req)));
+      return this.send(req, res, await this.auth.refresh(presented, this.meta(req)));
     } catch (e) {
       clearAuthCookies(res, this.cookieOpts);
       throw e;
@@ -246,6 +280,9 @@ export class AuthController {
       const { identity, returnTo } = await this.google.exchange(code, state);
       const result = await this.auth.loginWithGoogle(identity, this.meta(req));
       setAuthCookies(res, result, this.cookieOpts);
+      // This path does not go through `send` — it redirects rather than replying — so
+      // the saves a browser made before signing in with Google are collected here too.
+      await this.adoptAnonymousSaves(req, res, result.user.id);
       return res.redirect(`${appUrl}${safeReturnTo(returnTo)}`);
     } catch (e) {
       const message = e instanceof HttpException ? e.message : 'ההתחברות עם Google נכשלה.';

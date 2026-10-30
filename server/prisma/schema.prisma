@@ -229,6 +229,12 @@ model Listing {
   /// Whether the detail page was read, or only the agency-feed card.
   hasFullDetails Boolean @default(false)
 
+  /// How many people have saved this listing — accounts and signed-out browsers alike.
+  ///
+  /// Denormalised because it is read for every card in every result page and written
+  /// only when somebody clicks a heart.
+  savedCount Int @default(0)
+
   /// The agency holds this property exclusively. yad2 ships the same fact as a flag on
   /// the raw payload, so this column is kept in step with the בלעדיות label in
   /// `amenities` — one column to query, one label the search and the cards already read.
@@ -397,17 +403,48 @@ model BuyerProfile {
 /// A listing a buyer kept. The join carries its own note, which is the point — "nice
 /// kitchen, bad street" is what makes a shortlist useful.
 model SavedListing {
-  id        String       @id @default(cuid())
-  profile   BuyerProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
-  profileId String
-  listing   Listing      @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  id String @id @default(cuid())
+
+  /// Exactly one of these is set, enforced by a check constraint rather than by hope:
+  /// a save belongs to an account, or to a browser that has not made one yet.
+  profile   BuyerProfile? @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  profileId String?
+  visitor   Visitor?      @relation(fields: [visitorId], references: [id], onDelete: Cascade)
+  visitorId String?
+
+  listing   Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
   listingId String
 
   note      String?
   createdAt DateTime @default(now())
 
-  @@unique([profileId, listingId])
+  // Uniqueness is two partial indexes in the migration, not `@@unique` here: with a
+  // nullable column Postgres counts NULLs as distinct, so a single compound unique
+  // would let one visitor save the same listing any number of times.
   @@index([profileId, createdAt])
+  @@index([visitorId, createdAt])
+  @@index([listingId])
+}
+
+/// A browser that has saved something without signing up.
+///
+/// The id is random and opaque and means nothing on its own — it identifies a browser,
+/// not a person, and carries no name, address or device characteristics. It exists so
+/// that saving a listing works before anyone has decided to make an account, and it is
+/// folded into that account the moment they do.
+model Visitor {
+  id String @id @default(cuid())
+
+  createdAt  DateTime @default(now())
+  lastSeenAt DateTime @default(now())
+
+  /// Set when the browser's saves were merged into an account. The row is kept rather
+  /// than deleted so the same cookie does not quietly start a second collection.
+  mergedIntoProfileId String?
+
+  savedListings SavedListing[]
+
+  @@index([lastSeenAt])
 }
 
 /// A user's place in an agency. A join model rather than fields on User, because a

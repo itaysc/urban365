@@ -42,6 +42,8 @@ export interface SearchListing {
    * so the column is the only place it exists.
    */
   isNewFromDeveloper: boolean;
+  /** How many people have saved it. Denormalised — see the column. */
+  savedCount: number;
   agency: { id: string; name: string };
   updatedAt: string | null;
   delistedAt: string | null;
@@ -468,6 +470,7 @@ export class ListingsService {
       imagesCount: row.imagesCount,
       brokerName: row.brokerName,
       isNewFromDeveloper: row.isNewFromDeveloper,
+      savedCount: row.savedCount,
       agency: { id: row.agency.id, name: row.agency.name },
       updatedAt: row.updatedAtSource?.toISOString() ?? null,
       delistedAt: row.delistedAt?.toISOString() ?? null,
@@ -554,6 +557,7 @@ export class ListingsService {
         coverImageUrl: true,
         isExclusive: true,
         isNewFromDeveloper: true,
+        savedCount: true,
         agency: { select: { name: true } },
       },
     });
@@ -579,6 +583,7 @@ export class ListingsService {
         coverImageUrl: r.coverImageUrl,
         isExclusive: r.isExclusive,
         isNewFromDeveloper: r.isNewFromDeveloper,
+        savedCount: r.savedCount,
         agencyName: r.agency?.name ?? null,
       })),
       // Tells the client the view is incomplete, so it can say so rather than

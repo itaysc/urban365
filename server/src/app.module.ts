@@ -15,6 +15,7 @@ import { RolesGuard } from './auth/guards/roles.guard.js';
 import configuration from './config/configuration.js';
 import { HealthModule } from './health/health.module.js';
 import { ListingsModule } from './listings/listings.module.js';
+import { SavesModule } from './saves/saves.module.js';
 import { MailModule } from './mail/mail.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 import { TenancyModule } from './tenancy/tenancy.module.js';
@@ -40,6 +41,7 @@ import { Yad2Module } from './yad2/yad2.module.js';
     HealthModule,
     Yad2Module,
     ListingsModule,
+    SavesModule,
     AgencyModule,
     AdminModule,
   ],

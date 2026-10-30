@@ -1,6 +1,7 @@
 import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { SavesService } from '../saves/saves.service.js';
 import { RequestContextService } from '../tenancy/request-context.service.js';
 import { TenantPrismaService } from '../tenancy/tenant-prisma.service.js';
 import type { SaveListingDto, UpdateBuyerProfileDto } from './dto/buyer.dto.js';
@@ -36,6 +37,7 @@ export class BuyerService {
     /** Creating the profile row happens before any buyer context exists to scope it. */
     private readonly owner: PrismaService,
     private readonly context: RequestContextService,
+    private readonly saves: SavesService,
   ) {}
 
   private requireUserId(): string {
@@ -107,17 +109,26 @@ export class BuyerService {
     });
     if (!listing) throw new NotFoundException('הנכס לא נמצא.');
 
-    // `upsert`, not create-and-catch. Every authenticated request runs inside the one
-    // transaction the tenant interceptor opened, so a unique violation aborts it —
-    // Postgres then refuses every later statement with 25P02, including the recovery
-    // read. One statement that cannot fail is the only shape that works here.
+    // Delegated rather than duplicated: `SavesService` is where a save is created now,
+    // because it is the one place that also keeps `Listing.savedCount` in step and that
+    // knows a save may belong to a browser rather than to an account.
     //
+    // It runs on the owner client, which also sidesteps the hazard this used to work
+    // around — an authenticated request is inside the tenant interceptor's transaction,
+    // where a unique violation aborts everything after it with 25P02.
+    await this.saves.save({ kind: 'profile', profileId: profile.id }, listing.id);
+
     // Saving an already-saved listing updates the note when one is given and otherwise
     // leaves it alone, which is what "save again" should do.
-    return this.prisma.client.savedListing.upsert({
-      where: { profileId_listingId: { profileId: profile.id, listingId: listing.id } },
-      create: { profileId: profile.id, listingId: listing.id, note: dto.note?.trim() || null },
-      update: dto.note === undefined ? {} : { note: dto.note.trim() || null },
+    if (dto.note !== undefined) {
+      await this.prisma.client.savedListing.updateMany({
+        where: { profileId: profile.id, listingId: listing.id },
+        data: { note: dto.note.trim() || null },
+      });
+    }
+
+    return this.prisma.client.savedListing.findFirst({
+      where: { profileId: profile.id, listingId: listing.id },
       select: SAVED_SELECT,
     });
   }
@@ -125,11 +136,9 @@ export class BuyerService {
   async unsave(listingId: string) {
     const profile = await this.profile();
 
-    const { count } = await this.prisma.client.savedListing.deleteMany({
-      where: { profileId: profile.id, listingId },
-    });
-
-    if (count === 0) throw new NotFoundException('הנכס אינו ברשימה שלך.');
+    // Also through `SavesService`, so the listing's count comes down with the row.
+    const { saved } = await this.saves.unsave({ kind: 'profile', profileId: profile.id }, listingId);
+    if (saved) throw new NotFoundException('הנכס אינו ברשימה שלך.');
     return { removed: true };
   }
 
