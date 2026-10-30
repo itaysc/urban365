@@ -180,8 +180,26 @@ model Listing {
   createdByUserId String?
   publishedAt     DateTime?
 
-  agency   Agency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
-  agencyId String
+  /// Null for a listing published by a private seller, who has no agency at all.
+  /// Exactly one of `agencyId` and `ownerUserId` is set, enforced by a check constraint.
+  agency   Agency? @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  agencyId String?
+
+  /// A person selling their own property, rather than an agency selling it for them.
+  ///
+  /// Deliberately not a one-person agency: a private seller has no team, no licence and
+  /// no leads pipeline — and every tenant policy compares `agencyId`, which NULL fails,
+  /// so a private listing is invisible to every agency by construction rather than by a
+  /// filter somebody has to remember to write.
+  owner       User?   @relation("ListingOwner", fields: [ownerUserId], references: [id], onDelete: Cascade)
+  ownerUserId String?
+
+  /// How many different people opened it, and how many asked for the number.
+  ///
+  /// Counts of people rather than of page loads — a reload is not interest. Maintained
+  /// from `ListingEngagement`, which is what makes "different people" true.
+  viewCount        Int @default(0)
+  phoneRevealCount Int @default(0)
 
   adNumber   BigInt?
   listingUrl String?
@@ -259,11 +277,13 @@ model Listing {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  images ListingImage[]
+  images      ListingImage[]
+  engagements ListingEngagement[]
   leads  Lead[]
   deals  Deal[]
   saves  SavedListing[]
 
+  @@index([ownerUserId])
   @@index([agencyId, section])
   @@index([agencyId, status])
   @@index([city, price])
@@ -353,6 +373,8 @@ model User {
   authTokens       AuthToken[]
   claims           AgencyClaim[]
   createdListings  Listing[]          @relation("ListingCreator")
+  ownedListings    Listing[]          @relation("ListingOwner")
+  ownedLeads       Lead[]             @relation("LeadOwner")
   assignedLeads    Lead[]             @relation("LeadAssignee")
   ownedDeals       Deal[]             @relation("DealOwner")
   reviewedAgencies Agency[]           @relation("AgencyReviewer")
@@ -424,6 +446,33 @@ model SavedListing {
   @@index([profileId, createdAt])
   @@index([visitorId, createdAt])
   @@index([listingId])
+}
+
+/// One person's interaction with one listing, so that a count can mean people.
+///
+/// A row per person per listing per kind, not per click: the seller's question is how
+/// many people looked, and a page refreshed four times is one person.
+model ListingEngagement {
+  id        String  @id @default(cuid())
+  listing   Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  listingId String
+
+  kind EngagementKind
+
+  /// Whoever we can name: the account when there is one, otherwise the browser.
+  userId    String?
+  visitorId String?
+
+  createdAt DateTime @default(now())
+
+  @@index([listingId, kind])
+}
+
+enum EngagementKind {
+  /// The listing was opened.
+  view
+  /// The contact number was asked for.
+  phone
 }
 
 /// A browser that has saved something without signing up.
@@ -586,8 +635,16 @@ model ListingImage {
 
 model Lead {
   id        String   @id @default(cuid())
-  agency    Agency   @relation(fields: [agencyId], references: [id], onDelete: Cascade)
-  agencyId  String
+  /// Null when the enquiry is about a private seller's listing, which has no agency.
+  /// Exactly one of `agencyId` and `ownerUserId` is set.
+  agency    Agency?  @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  agencyId  String?
+
+  /// The private seller the enquiry is for. An enquiry nobody receives is worse than
+  /// no enquiry form, so this exists for the same reason `Listing.ownerUserId` does.
+  owner       User?   @relation("LeadOwner", fields: [ownerUserId], references: [id], onDelete: Cascade)
+  ownerUserId String?
+
   /// The listing the enquiry came in on, when there was one.
   listing   Listing? @relation(fields: [listingId], references: [id], onDelete: SetNull)
   listingId String?

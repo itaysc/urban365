@@ -16,6 +16,7 @@ import configuration from './config/configuration.js';
 import { HealthModule } from './health/health.module.js';
 import { ListingsModule } from './listings/listings.module.js';
 import { SavesModule } from './saves/saves.module.js';
+import { SellerModule } from './seller/seller.module.js';
 import { MailModule } from './mail/mail.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 import { TenancyModule } from './tenancy/tenancy.module.js';
@@ -42,6 +43,7 @@ import { Yad2Module } from './yad2/yad2.module.js';
     Yad2Module,
     ListingsModule,
     SavesModule,
+    SellerModule,
     AgencyModule,
     AdminModule,
   ],

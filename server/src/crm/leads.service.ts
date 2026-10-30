@@ -162,14 +162,17 @@ export class LeadsService {
   async createFromEnquiry(listingId: string, dto: { name: string; phone?: string; email?: string; message?: string }) {
     const listing = await this.owner.listing.findFirst({
       where: { id: listingId, status: 'published', delistedAt: null },
-      select: { id: true, agencyId: true },
+      select: { id: true, agencyId: true, ownerUserId: true },
     });
 
     if (!listing) throw new NotFoundException('הנכס לא נמצא.');
 
     await this.owner.lead.create({
       data: {
+        // Whichever of the two the listing has. The check constraint refuses both and
+        // refuses neither, so this cannot quietly file an enquiry to nobody.
         agencyId: listing.agencyId,
+        ownerUserId: listing.ownerUserId,
         listingId: listing.id,
         name: dto.name,
         phone: dto.phone,

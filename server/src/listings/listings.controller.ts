@@ -1,8 +1,13 @@
-import { BadRequestException, Controller, Get, NotFoundException, Param, Query } from '@nestjs/common';
+import { BadRequestException, Controller, Get, NotFoundException, Param, Query, Req } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
+import type { Request } from 'express';
 import { Public } from '../auth/decorators/public.decorator.js';
 import { SearchListingsDto } from './dto/search-listings.dto.js';
 import { ListingsService } from './listings.service.js';
+import { EngagementService } from '../seller/engagement.service.js';
+import { VISITOR_COOKIE } from '../saves/saves.service.js';
+import { CurrentUser } from '../auth/decorators/current-user.decorator.js';
+import type { Principal } from '../auth/types/principal.js';
 import { SECTIONS, type Section } from '../yad2/yad2.types.js';
 
 /** Narrow an untrusted query value, so an unknown section is ignored rather than thrown. */
@@ -13,7 +18,24 @@ const isSection = (value: unknown): value is Section =>
 @Public()
 @Controller('listings')
 export class ListingsController {
-  constructor(private readonly listings: ListingsService) {}
+  constructor(
+    private readonly listings: ListingsService,
+    private readonly engagement: EngagementService,
+  ) {}
+
+  /**
+   * Who is looking, as far as we can tell — for counting, never for identifying.
+   *
+   * No cookie is issued here. A visitor who has never saved anything has no id, and
+   * minting one so that a page view can be counted would be tracking somebody who
+   * asked for nothing. Those views simply go uncounted, which is the right trade.
+   */
+  private viewer(req: Request, principal: Principal | null) {
+    return {
+      userId: principal?.userId ?? null,
+      visitorId: (req.cookies as Record<string, string> | undefined)?.[VISITOR_COOKIE] ?? null,
+    };
+  }
 
   /** Faceted search across every agency we hold. */
   @Get('search')
@@ -82,17 +104,32 @@ export class ListingsController {
    */
   @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @Get(':id/phone')
-  async phone(@Param('id') id: string) {
+  async phone(
+    @Param('id') id: string,
+    @Req() req: Request,
+    @CurrentUser() principal: Principal | null,
+  ) {
     const result = await this.listings.phoneFor(id);
     if (!result) throw new NotFoundException('לא נמצא מספר טלפון לנכס הזה.');
+
+    // Counted after the number was actually found, so a miss does not register as
+    // interest in a listing that never answered.
+    await this.engagement.record(id, 'phone', this.viewer(req, principal));
     return result;
   }
 
   /** Accepts our listing id, and for one release yad2's token, so old links survive. */
   @Get(':id')
-  async byId(@Param('id') id: string) {
+  async byId(
+    @Param('id') id: string,
+    @Req() req: Request,
+    @CurrentUser() principal: Principal | null,
+  ) {
     const listing = await this.listings.findById(id);
     if (!listing) throw new NotFoundException(`No listing ${id}.`);
+
+    // This route is what opening a listing calls, so it is where a view happens.
+    await this.engagement.record(listing.id, 'view', this.viewer(req, principal));
     return listing;
   }
 }

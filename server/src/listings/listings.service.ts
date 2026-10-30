@@ -44,7 +44,14 @@ export interface SearchListing {
   isNewFromDeveloper: boolean;
   /** How many people have saved it. Denormalised — see the column. */
   savedCount: number;
-  agency: { id: string; name: string };
+  /** Null when a private seller published it. */
+  agency: { id: string; name: string } | null;
+  /**
+   * Whether a person is selling their own property. The card says so instead of naming
+   * them: who is selling is worth knowing, who they are is theirs to give out when
+   * somebody enquires.
+   */
+  isPrivateSeller: boolean;
   updatedAt: string | null;
   delistedAt: string | null;
 }
@@ -423,7 +430,9 @@ export class ListingsService {
     return {
       ...listingRowToAsset(located),
       section: row.section,
-      agency: {
+      // Null for a private seller. The client shows who is selling from `seller` below
+      // rather than inventing an agency that does not exist.
+      agency: row.agency && {
         id: row.agency.id,
         name: row.agency.name,
         licenseNumber: row.agency.licenseNumber,
@@ -466,7 +475,7 @@ export class ListingsService {
     return { ...row, latitude: at.latitude, longitude: at.longitude };
   }
 
-  private toSearchListing(row: Listing & { agency: { id: string; name: string } }): SearchListing {
+  private toSearchListing(row: Listing & { agency: { id: string; name: string } | null }): SearchListing {
     return {
       id: row.id,
       token: row.token,
@@ -493,7 +502,8 @@ export class ListingsService {
       brokerName: row.brokerName,
       isNewFromDeveloper: row.isNewFromDeveloper,
       savedCount: row.savedCount,
-      agency: { id: row.agency.id, name: row.agency.name },
+      agency: row.agency && { id: row.agency.id, name: row.agency.name },
+      isPrivateSeller: row.ownerUserId !== null,
       updatedAt: row.updatedAtSource?.toISOString() ?? null,
       delistedAt: row.delistedAt?.toISOString() ?? null,
     };
@@ -523,8 +533,10 @@ export class ListingsService {
       },
     });
 
-    // The agent handling the property before the agency switchboard.
-    return row?.createdBy?.phone ?? row?.agency.phone ?? null;
+    // The agent handling the property, then the agency switchboard. For a private
+    // listing there is no agency and `createdBy` is the seller, so the first branch is
+    // the only one that can answer — which is correct: it is their own number.
+    return row?.createdBy?.phone ?? row?.agency?.phone ?? null;
   }
 
   /**
@@ -639,7 +651,9 @@ export class ListingsService {
 
     const rows = await this.owner.agencyOffice.findMany({
       where: {
-        agencyId: { in: agencies.map((row) => row.agencyId) },
+        // Private listings have no agency, so they contribute no office — and a NULL
+        // in this list would match nothing anyway.
+        agencyId: { in: agencies.map((row) => row.agencyId).filter((id): id is string => id !== null) },
         latitude: { not: null },
         longitude: { not: null },
       },
