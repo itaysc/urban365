@@ -73,7 +73,7 @@ export function SaveButton({ listingId, saved, count, size = 'md' }: Props) {
   const icon = size === 'sm' ? 'h-4 w-4' : 'h-5 w-5';
 
   return (
-    <div className="flex items-center gap-1">
+    <div className="relative">
       <button
         type="button"
         onClick={(e) => {
@@ -92,10 +92,23 @@ export function SaveButton({ listingId, saved, count, size = 'md' }: Props) {
       </button>
 
       {shownCount > 0 && (
-        <span className="rounded-full bg-white/90 px-1.5 py-0.5 text-xs font-medium text-slate-700 shadow-sm">
-          {shownCount}
+        // A badge on the corner of the heart rather than a pill beside it, so the whole
+        // control stays one object. Physically top-right in both directions: it belongs
+        // to the heart's shape, not to the reading order.
+        //
+        // `min-w` with `px` rather than a fixed circle, so three digits widen it into a
+        // pill instead of spilling out of a round one.
+        <span
+          dir="ltr"
+          aria-hidden
+          className="pointer-events-none absolute -right-1 -top-1 flex min-w-[1.1rem] items-center justify-center rounded-full bg-orange-600 px-1 text-[0.65rem] font-bold leading-[1.1rem] text-white ring-2 ring-white"
+        >
+          {shownCount > 99 ? '99+' : shownCount}
         </span>
       )}
+
+      {/* The badge is decorative; the number still has to be said out loud somewhere. */}
+      {shownCount > 0 && <span className="sr-only">{shownCount} אנשים שמרו את הנכס</span>}
     </div>
   );
 }
