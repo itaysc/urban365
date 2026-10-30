@@ -1,3 +1,4 @@
+import { amenityIcon } from '@/components/listing/amenities';
 import { formatAddress, formatPrice } from '@/lib/format';
 import type { Asset } from '@/types/yad2';
 
@@ -65,11 +66,18 @@ export function AssetCard({ asset, onOpen }: { asset: Asset; onOpen: (asset: Ass
 
         {present.length > 0 && (
           <div className="flex flex-wrap gap-1">
-            {present.slice(0, 4).map((a) => (
-              <span key={a.key} className="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
-                {a.label}
-              </span>
-            ))}
+            {present.slice(0, 4).map((a) => {
+              const Icon = amenityIcon(a.label);
+              return (
+                <span
+                  key={a.key}
+                  className="flex items-center gap-1 rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-600"
+                >
+                  <Icon className="h-3 w-3 text-slate-400" aria-hidden />
+                  {a.label}
+                </span>
+              );
+            })}
           </div>
         )}
 

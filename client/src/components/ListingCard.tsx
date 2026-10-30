@@ -1,5 +1,6 @@
 import { EXCLUSIVE_LABEL, isExclusiveListing } from '@/lib/exclusivity';
 import { SaveButton } from '@/components/SaveButton';
+import { amenityIcon } from '@/components/listing/amenities';
 import { formatAddress, formatPrice } from '@/lib/format';
 import type { SearchListing } from '@/types/search';
 
@@ -117,11 +118,18 @@ export function ListingCard({
 
         {amenities.length > 0 && (
           <div className="flex flex-wrap gap-1">
-            {amenities.slice(0, 4).map((a) => (
-              <span key={a} className="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
-                {a}
-              </span>
-            ))}
+            {amenities.slice(0, 4).map((a) => {
+              const Icon = amenityIcon(a);
+              return (
+                <span
+                  key={a}
+                  className="flex items-center gap-1 rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-600"
+                >
+                  <Icon className="h-3 w-3 text-slate-400" aria-hidden />
+                  {a}
+                </span>
+              );
+            })}
           </div>
         )}
 

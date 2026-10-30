@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { ChevronDown, Search, SlidersHorizontal } from 'lucide-react';
 import { FacetList } from '@/components/FacetList';
+import { amenityIcon } from '@/components/listing/amenities';
 import { RangeInputs } from '@/components/RangeInputs';
 import { PlaceSearchBox } from '@/components/search/PlaceSearchBox';
 import { RoomsPicker } from '@/components/search/RoomsPicker';
@@ -306,6 +307,7 @@ export function FilterBar({ filters, facets, activeCount, onUpdate, onReset }: P
               selected={draft.amenities}
               onToggle={(v) => toggleDraft('amenities', v)}
               initiallyShown={8}
+              iconFor={amenityIcon}
             />
           </div>
         </FilterPopover>
