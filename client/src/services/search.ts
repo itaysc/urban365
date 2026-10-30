@@ -161,3 +161,16 @@ export async function fetchCityAt(lat: number, lng: number): Promise<string | nu
   const { data } = await api.get<{ city: string | null }>(`/listings/city-at?lat=${lat}&lng=${lng}`);
   return data.city;
 }
+
+/**
+ * The neighbourhoods we hold listings in, inside one city.
+ *
+ * For the publish form, where the city is already known. Whatever comes back is a
+ * suggestion, not a closed list — a new development has a name before it has listings.
+ */
+export async function fetchNeighborhoodsIn(city: string, q: string): Promise<string[]> {
+  const params = new URLSearchParams({ city });
+  if (q) params.set('q', q);
+  const { data } = await api.get<string[]>(`/listings/neighborhoods?${params}`);
+  return data;
+}

@@ -51,11 +51,14 @@ export class SellerListingsService {
         // number is the only one there is.
         createdByUserId: userId,
         source: 'manual',
-        // Published on creation rather than drafted. A draft's photos are not servable
-        // — the image policy only covers published listings — so a draft would show the
-        // seller an editor full of broken pictures.
-        status: 'published',
-        publishedAt: new Date(),
+        // A draft. The form uploads the photos next and publishes once they have
+        // landed, so a flat is never on the market for the minutes it takes to send ten
+        // pictures — which is the worst moment for it to be seen, since a listing with
+        // no photo is the one nobody opens.
+        //
+        // `listingimage_owner_read` is what makes this work: the seller can see their
+        // own photos while the listing is still a draft.
+        status: 'draft',
         hasFullDetails: true,
         ...(await this.locate(dto)),
         ...this.pricePerSquareMeter(dto),
@@ -92,21 +95,49 @@ export class SellerListingsService {
     return { archived: true };
   }
 
-  async republish(userId: string, id: string) {
-    await this.requireOwn(userId, id);
+  /**
+   * Put it on the market: the last step of publishing a new listing, and the way back
+   * for one that was taken down.
+   *
+   * `publishedAt` is only set the first time. It is when the flat first went on sale,
+   * which is what the age of a listing means to a buyer — relisting next month does not
+   * make it new.
+   */
+  async publish(userId: string, id: string) {
+    const listing = await this.requireOwn(userId, id);
+
     await this.prisma.listing.update({
       where: { id },
-      data: { status: 'published', delistedAt: null },
+      data: {
+        status: 'published',
+        delistedAt: null,
+        publishedAt: listing.publishedAt ?? new Date(),
+      },
     });
     return { archived: false };
   }
 
   // ── images ──────────────────────────────────────────────────────────────────
 
-  async addImage(userId: string, listingId: string, file: { buffer: Buffer }) {
+  /**
+   * `position` is the slot the uploader intends this photo to take.
+   *
+   * Sent by the form because a new listing's photos are uploaded together, and a
+   * position derived here from how many rows exist would be the same number for all of
+   * them — every one claiming to be first, and the cover decided by whichever insert
+   * happened to win. The seller chose an order; this is how it survives the journey.
+   */
+  async addImage(
+    userId: string,
+    listingId: string,
+    file: { buffer: Buffer },
+    position?: number,
+  ) {
     const listing = await this.requireOwn(userId, listingId);
 
-    if (listing.images.length >= MAX_IMAGES) {
+    const slot = Number.isInteger(position) && position! >= 0 ? position! : listing.images.length;
+
+    if (listing.images.length >= MAX_IMAGES || slot >= MAX_IMAGES) {
       throw new BadRequestException(`אפשר להעלות עד ${MAX_IMAGES} תמונות לנכס.`);
     }
 
@@ -123,7 +154,7 @@ export class SellerListingsService {
         listingId: listing.id,
         storageKey,
         url: listingImageUrl(''),
-        position: listing.images.length,
+        position: slot,
       },
     });
 

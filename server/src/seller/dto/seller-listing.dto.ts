@@ -43,7 +43,8 @@ export class SellerListingDto {
   @IsOptional() @IsArray() @ArrayMaxSize(20) @IsString({ each: true }) @MaxLength(40, { each: true })
   amenities?: string[];
 
-  @IsOptional() @IsString() @MaxLength(5000) description?: string;
+  /** The same 2,000 the form counts down from — roughly three hundred words. */
+  @IsOptional() @IsString() @MaxLength(2000) description?: string;
 
   /** Who to call. Defaults to the name on the account when it is left out. */
   @IsOptional() @IsString() @MaxLength(120) contactName?: string;

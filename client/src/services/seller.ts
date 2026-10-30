@@ -87,13 +87,27 @@ export async function archiveMyListing(id: string): Promise<void> {
   await api.delete(`/me/listings/${id}`);
 }
 
-export async function republishMyListing(id: string): Promise<void> {
-  await api.post(`/me/listings/${id}/republish`);
+/** On the market: the last step of publishing a new listing, and the way back for one taken down. */
+export async function publishMyListing(id: string): Promise<void> {
+  await api.post(`/me/listings/${id}/publish`);
 }
 
-export async function uploadMyListingImage(id: string, file: File): Promise<ListingImage> {
+/**
+ * `position` is the slot this photo should take.
+ *
+ * Sent because a new listing's photos go up together: without it the server would
+ * number each one by how many rows exist when it arrives, which under concurrent
+ * uploads is the same number for all of them — and the cover photo would be whichever
+ * insert happened to win rather than the one the seller put first.
+ */
+export async function uploadMyListingImage(
+  id: string,
+  file: File,
+  position?: number,
+): Promise<ListingImage> {
   const form = new FormData();
   form.append('file', file);
+  if (position !== undefined) form.append('position', String(position));
   const { data } = await api.post<ListingImage>(`/me/listings/${id}/images`, form);
   return data;
 }

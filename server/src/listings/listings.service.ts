@@ -314,6 +314,43 @@ export class ListingsService {
    * OpenStreetMap calls it: the filter compares `Listing.city` exactly, so suggesting
    * `תל־אביב–יפו` for rows that say `תל אביב יפו` would return an empty search.
    */
+  /**
+   * The neighbourhoods we hold listings in, inside one city.
+   *
+   * Separate from `suggest`, which searches the whole country and answers with cities,
+   * regions and neighbourhoods together. Here the city is already known — somebody is
+   * describing a flat, not looking for one — so the only question is which part of that
+   * city, and the answer has to be scoped to it or it is worse than no list at all.
+   *
+   * Published listings only, so the list is places that exist as far as the site is
+   * concerned. Whatever is typed is still accepted as free text by the caller: a new
+   * development has a name before it has any listings.
+   */
+  async neighborhoodsIn(city: string, term = '', limit = 8): Promise<string[]> {
+    const trimmed = city.trim();
+    if (!trimmed) return [];
+
+    const mode = Prisma.QueryMode.insensitive;
+    const q = term.trim();
+
+    const rows = await this.prisma.client.listing.groupBy({
+      by: ['neighborhood'],
+      where: {
+        status: 'published',
+        delistedAt: null,
+        city: { equals: trimmed, mode },
+        neighborhood: { not: null, ...(q ? { contains: q, mode } : {}) },
+      },
+      _count: { _all: true },
+      // Commonest first: with no term typed this is the list of places most of the
+      // city's listings are actually in.
+      orderBy: { _count: { neighborhood: 'desc' } },
+      take: limit,
+    });
+
+    return rows.map((row) => row.neighborhood as string).filter(Boolean);
+  }
+
   async suggest(term: string, section?: Section, limit = 6) {
     const q = term.trim();
     if (q.length < 2) return { cities: [], neighborhoods: [] };

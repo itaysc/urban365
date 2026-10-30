@@ -10,6 +10,16 @@ interface Props {
   min: number | undefined;
   max: number | undefined;
   onChange: (next: RoomsRange) => void;
+  /**
+   * One value instead of a span.
+   *
+   * A search asks for "3 to 4.5 rooms"; a flat has a number. Same steps, same drawing,
+   * so the control someone has already learnt on the search page behaves as they expect
+   * here — a second click just moves the selection rather than opening a range.
+   */
+  single?: boolean;
+  /** Overrides the heading, for a form where "חדרים" is one field among many. */
+  legend?: string;
 }
 
 /**
@@ -19,7 +29,7 @@ interface Props {
  * half steps, and typing `3` then `5.5` into two boxes is more work than two clicks —
  * and lets you ask for 7.3 rooms, which no listing has.
  */
-export function RoomsPicker({ min, max, onChange }: Props) {
+export function RoomsPicker({ min, max, onChange, single = false, legend = 'חדרים' }: Props) {
   const current: RoomsRange = { min, max };
 
   // Contiguous by construction, so the selection splits the row into three runs and the
@@ -36,7 +46,17 @@ export function RoomsPicker({ min, max, onChange }: Props) {
       key={value}
       type="button"
       aria-pressed={inBand}
-      onClick={() => onChange(toggleStep(current, value))}
+      onClick={() =>
+        onChange(
+          single
+            ? // Clicking the chosen one clears it, which is the only way back to
+              // "not stated" without a reset button.
+              value === min && value === max
+              ? {}
+              : { min: value, max: value }
+            : toggleStep(current, value),
+        )
+      }
       className={`h-9 w-9 shrink-0 rounded-full text-sm transition ${
         inBand
           ? 'font-semibold text-orange-600'
@@ -49,7 +69,7 @@ export function RoomsPicker({ min, max, onChange }: Props) {
 
   return (
     <fieldset>
-      <legend className="mb-2 text-sm font-semibold text-slate-900">חדרים</legend>
+      <legend className="mb-2 text-sm font-semibold text-slate-900">{legend}</legend>
 
       {/*
         Scrolls rather than wraps on a narrow screen: wrapping would break the band into
@@ -68,9 +88,11 @@ export function RoomsPicker({ min, max, onChange }: Props) {
       </div>
 
       <p className="mt-2 text-xs text-slate-400">
-        {selected.length === 0
-          ? 'בחרו מספר חדרים, ולחיצה נוספת תסמן טווח.'
-          : 'לחיצה על ערך נוסף תסמן טווח; לחיצה חוזרת תנקה.'}
+        {single
+          ? 'לחיצה חוזרת על הערך שנבחר תנקה אותו.'
+          : selected.length === 0
+            ? 'בחרו מספר חדרים, ולחיצה נוספת תסמן טווח.'
+            : 'לחיצה על ערך נוסף תסמן טווח; לחיצה חוזרת תנקה.'}
       </p>
     </fieldset>
   );

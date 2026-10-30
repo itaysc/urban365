@@ -132,6 +132,17 @@ export class ListingsController {
     return result;
   }
 
+  /**
+   * Neighbourhoods inside one city, for the box on the publish form.
+   *
+   * Declared before `:id` — Nest matches in declaration order.
+   */
+  @Get('neighborhoods')
+  neighborhoods(@Query('city') city: string | undefined, @Query('q') q: string | undefined) {
+    if (!city?.trim()) return [];
+    return this.listings.neighborhoodsIn(city, q ?? '');
+  }
+
   /** Accepts our listing id, and for one release yad2's token, so old links survive. */
   @Get(':id')
   async byId(

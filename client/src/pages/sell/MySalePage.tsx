@@ -9,7 +9,7 @@ import {
   archiveMyListing,
   fetchMyListings,
   fetchMyStats,
-  republishMyListing,
+  publishMyListing,
   type ListingStats,
   type SellerListing,
 } from '@/services/seller';
@@ -64,7 +64,7 @@ export function MySalePage() {
 
   const setPublished = useMutation({
     mutationFn: ({ id, publish }: { id: string; publish: boolean }) =>
-      publish ? republishMyListing(id) : archiveMyListing(id),
+      publish ? publishMyListing(id) : archiveMyListing(id),
     onSuccess: (_r, { publish }) => {
       void queryClient.invalidateQueries({ queryKey: qk.mySale.all });
       toast.success(publish ? 'הנכס חזר לפרסום.' : 'הנכס הוסר מהפרסום.');

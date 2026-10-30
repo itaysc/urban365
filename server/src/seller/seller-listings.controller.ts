@@ -57,9 +57,9 @@ export class SellerListingsController {
     return this.listings.archive(me.userId, id);
   }
 
-  @Post(':id/republish')
-  republish(@CurrentUser() me: Principal, @Param('id') id: string) {
-    return this.listings.republish(me.userId, id);
+  @Post(':id/publish')
+  publish(@CurrentUser() me: Principal, @Param('id') id: string) {
+    return this.listings.publish(me.userId, id);
   }
 
   @Post(':id/images')
@@ -70,8 +70,11 @@ export class SellerListingsController {
     @CurrentUser() me: Principal,
     @Param('id') id: string,
     @UploadedFile() file: { buffer: Buffer },
+    // A multipart text field, so it arrives as a string or not at all.
+    @Body('position') position?: string,
   ) {
-    return this.listings.addImage(me.userId, id, file);
+    const slot = position === undefined ? undefined : Number(position);
+    return this.listings.addImage(me.userId, id, file, slot);
   }
 
   @Delete(':id/images/:imageId')

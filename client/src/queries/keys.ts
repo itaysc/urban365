@@ -24,6 +24,8 @@ export const qk = {
     suggest: (term: string, section: string | undefined) =>
       ['listings', 'suggest', term, section ?? 'any'] as const,
     public: (id: string) => ['listings', 'public', id] as const,
+    neighborhoods: (city: string, term: string) =>
+      ['listings', 'neighborhoods', city, term] as const,
   },
 
   saved: {
