@@ -1,3 +1,4 @@
+import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/auth/auth-context';
 import { Button } from '@/components/ui/Button';
 
@@ -7,6 +8,12 @@ import { Button } from '@/components/ui/Button';
  */
 export function PendingPage() {
   const { user, recheck } = useAuth();
+
+  // No agency at all is not "waiting for approval", it is "never asked" — which is
+  // where a Google sign-in from the agency pages leaves someone, since no agency name
+  // survives the redirect. Telling them a request is being reviewed would be a lie they
+  // could wait on for a long time.
+  if (user && !user.agency) return <Navigate to="/agency/claim" replace />;
 
   return (
     <div className="mx-auto max-w-lg rounded-xl border border-slate-200 bg-white p-6 text-center">

@@ -24,6 +24,7 @@ import { shouldAdoptGooglePicture } from './google-avatar.js';
 import { sanitizeUser, type PublicUser } from './sanitize-user.js';
 import { TokenService } from './token.service.js';
 import type { SignupDto } from './dto/signup.dto.js';
+import type { AttachAgencyDto } from './dto/attach-agency.dto.js';
 import type { AccessTokenClaims } from './types/principal.js';
 
 type UserWithMembership = User & { memberships: (AgencyMembership & { agency: Agency })[] };
@@ -160,6 +161,81 @@ export class AuthService {
     await this.sendVerificationEmail(user.id, email, user.firstName);
     this.logger.log(`Signed up ${email}`);
     return this.issue(user, meta);
+  }
+
+  /**
+   * Turns an account that already exists into an agency one.
+   *
+   * The agency half of `signup`, without the identity half. Signing in with Google
+   * cannot carry an agency name, a licence or a phone number through the redirect, so
+   * the account arrives first and the agency is attached here — which also serves the
+   * private seller who decides they are a business after all.
+   *
+   * Nothing here is granted: the membership is `pending` and an admin still decides,
+   * exactly as on the signup form.
+   */
+  async attachAgency(userId: string, dto: AttachAgencyDto): Promise<PublicUser> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, include: this.include });
+    if (!user) throw new UnauthorizedException(INVALID_CREDENTIALS);
+
+    // Any membership at all, not only an active one: a second claim from an account
+    // that is already waiting on one is not a thing to queue up behind the first.
+    if (user.memberships.length > 0) {
+      throw new BadRequestException('החשבון כבר משויך לסוכנות.');
+    }
+
+    if (!dto.claimAgencyId && !dto.agencyName?.trim()) {
+      throw new BadRequestException('צריך לבחור סוכנות קיימת או להזין שם סוכנות חדשה.');
+    }
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      if (dto.claimAgencyId) {
+        const agency = await tx.agency.findUnique({ where: { id: dto.claimAgencyId } });
+        // `pending` is allowed as well as `unclaimed`, for the reason given in `signup`:
+        // the first person to ask may be a squatter, and competing claims are decided
+        // side by side.
+        if (!agency || (agency.status !== 'unclaimed' && agency.status !== 'pending')) {
+          throw new BadRequestException('הסוכנות הזו אינה זמינה לשיוך.');
+        }
+
+        await tx.agencyMembership.create({
+          data: { userId, agencyId: agency.id, role: 'owner', status: 'pending' },
+        });
+        await tx.agencyClaim.create({
+          data: {
+            agencyId: agency.id,
+            userId,
+            evidence: { signupPhone: dto.phone ?? user.phone ?? null },
+          },
+        });
+        if (agency.status === 'unclaimed') {
+          await tx.agency.update({ where: { id: agency.id }, data: { status: 'pending' } });
+        }
+      } else {
+        const agency = await tx.agency.create({
+          data: { name: dto.agencyName!.trim(), status: 'pending', contactEmail: user.email },
+        });
+        await tx.agencyMembership.create({
+          data: { userId, agencyId: agency.id, role: 'owner', status: 'pending' },
+        });
+      }
+
+      await tx.user.update({
+        where: { id: userId },
+        data: {
+          accountType: 'agency',
+          // Only filled in, never overwritten: the number on the account is theirs and
+          // this form is not where it gets replaced by a typo.
+          ...(dto.phone?.trim() && !user.phone ? { phone: dto.phone.trim() } : {}),
+          termsAcceptedAt: user.termsAcceptedAt ?? new Date(),
+        },
+      });
+
+      return tx.user.findUniqueOrThrow({ where: { id: userId }, include: this.include });
+    });
+
+    this.logger.log(`Attached agency to ${user.email}`);
+    return sanitizeUser(updated);
   }
 
   /**

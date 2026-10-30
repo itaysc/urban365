@@ -11,6 +11,7 @@ import { SignupPage } from '@/pages/auth/SignupPage';
 import { AcceptInvitePage } from '@/pages/auth/AcceptInvitePage';
 import { AccountLoginPage } from '@/pages/auth/AccountLoginPage';
 import { AccountSignupPage } from '@/pages/auth/AccountSignupPage';
+import { AgencyClaimPage } from '@/pages/auth/AgencyClaimPage';
 import { AppLayout } from '@/pages/app/AppLayout';
 import { DashboardPage } from '@/pages/app/DashboardPage';
 import { MyListingsPage } from '@/pages/app/MyListingsPage';
@@ -84,6 +85,14 @@ export const router = createBrowserRouter([
         ],
       },
     ],
+  },
+
+  // Signed in with no agency — where a Google agency signup lands, since no agency
+  // name survives a redirect through Google. Under the plain guard, not the agency one,
+  // which is the whole point: the agency is what is missing.
+  {
+    element: <RequireAuth />,
+    children: [{ path: '/agency/claim', element: <AgencyClaimPage /> }],
   },
 
   // ── private sellers ─────────────────────────────────────────────────────────

@@ -54,3 +54,22 @@ export async function lookupAgencies(q: string): Promise<AgencyLookupResult[]> {
   const { data } = await api.get<AgencyLookupResult[]>(`/agencies/lookup?q=${encodeURIComponent(q)}`);
   return data;
 }
+
+export interface AttachAgencyInput {
+  agencyName?: string;
+  claimAgencyId?: string;
+  phone?: string;
+  /** The server rejects anything but true — see the note on the DTO. */
+  acceptedTerms: boolean;
+}
+
+/**
+ * Become an agency on an account that already exists.
+ *
+ * The other half of an agency signup that started with Google: the account came back
+ * from the redirect, and this is everything Google could not carry with it.
+ */
+export async function attachAgency(input: AttachAgencyInput): Promise<AuthUser> {
+  const { data } = await api.post<{ user: AuthUser }>('/auth/agency', input);
+  return data.user;
+}

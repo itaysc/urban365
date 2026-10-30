@@ -1,37 +1,27 @@
 import { useFormik } from 'formik';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import * as Yup from 'yup';
 import { useAuth } from '@/auth/auth-context';
 import { Button } from '@/components/ui/Button';
 import { Field, inputClass } from '@/components/ui/Field';
 import { errorMessageOf } from '@/lib/apiError';
+import { AgencyPicker } from '@/components/auth/AgencyPicker';
+import { GoogleButton, useGoogleAvailable } from '@/components/auth/GoogleButton';
 import { TermsCheckbox } from '@/components/auth/TermsCheckbox';
 import { AuthLayout } from '@/pages/auth/AuthLayout';
-import { lookupAgencies, type AgencyLookupResult } from '@/services/auth';
+import type { AgencyLookupResult } from '@/services/auth';
 
 const PASSWORD_MIN = 10;
 
 export function SignupPage() {
   const { user, signup, loading } = useAuth();
+  const googleAvailable = useGoogleAvailable();
   const navigate = useNavigate();
   const [formError, setFormError] = useState<string | null>(null);
 
   // Claiming an agency we already scraped, rather than creating an empty one.
-  const [agencyQuery, setAgencyQuery] = useState('');
-  const [matches, setMatches] = useState<AgencyLookupResult[]>([]);
   const [claimed, setClaimed] = useState<AgencyLookupResult | null>(null);
-
-  useEffect(() => {
-    if (claimed || agencyQuery.trim().length < 2) {
-      setMatches([]);
-      return;
-    }
-    const timer = setTimeout(() => {
-      void lookupAgencies(agencyQuery).then(setMatches).catch(() => setMatches([]));
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [agencyQuery, claimed]);
 
   const formik = useFormik({
     initialValues: {
@@ -88,7 +78,38 @@ export function SignupPage() {
       subtitle="פתיחת חשבון לסוכנות נדל״ן"
       footer={<>כבר יש חשבון? <Link to="/agency/login" className="text-blue-700 hover:underline">התחברות</Link></>}
     >
-      <form onSubmit={formik.handleSubmit} className="flex flex-col gap-4">
+      {/*
+        Google first, because for most people it is one click against seven fields. It
+        cannot carry an agency name through the redirect, so it lands on /agency/claim,
+        where that is all that is asked.
+
+        Disabled until the terms are ticked, for the same reason the submit button is:
+        the agreement has to be given before the account exists, and after the redirect
+        it is too late to ask.
+      */}
+      <div className="flex flex-col gap-4">
+        <GoogleButton
+          returnTo="/agency/claim"
+          label="הרשמה עם Google"
+          disabled={!formik.values.acceptedTerms}
+        />
+
+        {googleAvailable && (
+          <div className="flex items-center gap-3">
+            <span className="h-px flex-1 bg-slate-200" />
+            <span className="text-xs text-slate-400">או</span>
+            <span className="h-px flex-1 bg-slate-200" />
+          </div>
+        )}
+      </div>
+
+      {!formik.values.acceptedTerms && googleAvailable && (
+        <p className="-mt-2 text-xs text-slate-400">
+          כדי להמשיך עם Google יש לאשר קודם את תנאי השימוש בתחתית הטופס.
+        </p>
+      )}
+
+      <form onSubmit={formik.handleSubmit} className="mt-4 flex flex-col gap-4">
         <div className="grid grid-cols-2 gap-3">
           <Field label="שם פרטי" htmlFor="firstName" required error={formik.touched.firstName && formik.errors.firstName}>
             <input id="firstName" className={inputClass} {...formik.getFieldProps('firstName')} />
@@ -110,55 +131,12 @@ export function SignupPage() {
           <input id="password" type="password" autoComplete="new-password" className={inputClass} {...formik.getFieldProps('password')} />
         </Field>
 
-        <fieldset className="rounded-lg border border-slate-200 p-3">
-          <legend className="px-1 text-sm font-medium text-slate-700">הסוכנות</legend>
-
-          {claimed ? (
-            <div className="flex items-center justify-between gap-2">
-              <div>
-                <div className="font-medium text-slate-900">{claimed.name}</div>
-                <div className="text-xs text-slate-500">
-                  {claimed.listingCount} נכסים{claimed.city ? ` · ${claimed.city}` : ''}
-                </div>
-              </div>
-              <Button type="button" variant="ghost" onClick={() => { setClaimed(null); setAgencyQuery(''); }}>
-                שינוי
-              </Button>
-            </div>
-          ) : (
-            <>
-              <input
-                placeholder="חיפוש סוכנות קיימת ביד2…"
-                className={`${inputClass} w-full`}
-                value={agencyQuery}
-                onChange={(e) => setAgencyQuery(e.target.value)}
-              />
-
-              {matches.length > 0 && (
-                <ul className="mt-2 max-h-44 overflow-y-auto rounded-lg border border-slate-200">
-                  {matches.map((m) => (
-                    <li key={m.id}>
-                      <button
-                        type="button"
-                        onClick={() => setClaimed(m)}
-                        className="flex w-full items-center justify-between px-3 py-2 text-right text-sm hover:bg-slate-50"
-                      >
-                        <span>{m.name}</span>
-                        <span className="text-xs text-slate-400">{m.listingCount} נכסים</span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-
-              <p className="my-2 text-center text-xs text-slate-400">או</p>
-
-              <Field label="שם סוכנות חדשה" htmlFor="agencyName">
-                <input id="agencyName" className={inputClass} {...formik.getFieldProps('agencyName')} />
-              </Field>
-            </>
-          )}
-        </fieldset>
+        <AgencyPicker
+          claimed={claimed}
+          onClaimedChange={setClaimed}
+          agencyName={formik.values.agencyName}
+          onAgencyNameChange={(name) => void formik.setFieldValue('agencyName', name)}
+        />
 
         <TermsCheckbox
           id="agency-terms"

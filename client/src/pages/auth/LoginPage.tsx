@@ -8,6 +8,7 @@ import { Field, inputClass } from '@/components/ui/Field';
 import { safeReturnTo } from '@/lib/returnTo';
 import { AuthLayout } from '@/pages/auth/AuthLayout';
 import { errorCodeOf, errorMessageOf } from '@/lib/apiError';
+import { GoogleButton, useGoogleAvailable } from '@/components/auth/GoogleButton';
 
 export function LoginPage() {
   const { user, login, loading } = useAuth();
@@ -15,8 +16,11 @@ export function LoginPage() {
   const location = useLocation();
   const [params] = useSearchParams();
   const [formError, setFormError] = useState<string | null>(null);
+  const googleAvailable = useGoogleAvailable();
 
   const verified = params.get('verified');
+  // Set by the OAuth callback when it bounced somebody back rather than signing them in.
+  const googleError = params.get('googleError');
 
   const formik = useFormik({
     initialValues: { email: '', password: '' },
@@ -59,6 +63,29 @@ export function LoginPage() {
           קישור האימות אינו תקף או שפג תוקפו.
         </p>
       )}
+
+      {googleError && (
+        <p className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">{googleError}</p>
+      )}
+
+      {/*
+        The same Google sign-in the buyer pages offer, against the same accounts: an
+        agent whose address is already registered is linked to that account rather than
+        given a second one. Returning to /app rather than / because that is what an
+        agent came here for; without an agency yet, the guard there sends them on to
+        the one page that can fix that.
+      */}
+      <div className="mb-4 flex flex-col gap-4">
+        <GoogleButton returnTo="/app" />
+
+        {googleAvailable && (
+          <div className="flex items-center gap-3">
+            <span className="h-px flex-1 bg-slate-200" />
+            <span className="text-xs text-slate-400">או</span>
+            <span className="h-px flex-1 bg-slate-200" />
+          </div>
+        )}
+      </div>
 
       <form onSubmit={formik.handleSubmit} className="flex flex-col gap-4">
         <Field label="אימייל" htmlFor="email" required error={formik.touched.email && formik.errors.email}>

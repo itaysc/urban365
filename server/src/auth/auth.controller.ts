@@ -26,6 +26,7 @@ import { CaptchaService } from './captcha.service.js';
 import { LoginDto } from './dto/login.dto.js';
 import { ForgotPasswordDto, ResetPasswordDto, VerifyEmailDto } from './dto/password.dto.js';
 import { SignupDto } from './dto/signup.dto.js';
+import { AttachAgencyDto } from './dto/attach-agency.dto.js';
 import type { Principal } from './types/principal.js';
 import { BuyerSignupDto } from '../buyer/dto/buyer.dto.js';
 import { GoogleService } from './google.service.js';
@@ -236,6 +237,22 @@ export class AuthController {
   @Get('me')
   async me(@CurrentUser() principal: Principal) {
     return { user: await this.auth.me(principal.userId) };
+  }
+
+  /**
+   * Become an agency on an account that already exists.
+   *
+   * Signed in, because that is the difference from `/signup`: the account is already
+   * there and only the agency is missing. Which is exactly the state someone is left in
+   * after signing in with Google from the agency pages, since no agency name survives a
+   * redirect through Google.
+   *
+   * The membership it creates is `pending`. Approval is still an admin's.
+   */
+  @Throttle(AUTH_THROTTLE)
+  @Post('agency')
+  async attachAgency(@Body() dto: AttachAgencyDto, @CurrentUser() principal: Principal) {
+    return { user: await this.auth.attachAgency(principal.userId, dto) };
   }
 
   // ── Google ────────────────────────────────────────────────────────────────
