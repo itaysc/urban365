@@ -280,6 +280,23 @@ arithmetic on an offset drifts by an hour for half the year.
 `User.dailyBriefing` is on by default with a checkbox on the agent's own profile. The
 email says where that checkbox is.
 
+## Demo data (development only)
+
+`DemoService` fills an agency with eight customers, eight listings, five leads and six
+meetings, chosen to exercise the product rather than to look full: one precise brief,
+one that names only a city, one customer with no brief at all, a listing with plenty of
+views and no enquiries, a viewing nobody has confirmed, and a past viewing nobody has
+written up. One seed makes all four radar rules fire.
+
+Every record is registered in `DemoRecord`, and the clear deletes exactly those ids —
+nothing is inferred from a name, a date or a flag, so an agency running this against
+its own data gets its own data back untouched. The clear runs in one transaction.
+
+Two ways in: a panel on the agency page, rendered only in a development build, and
+`npm run seed:demo` (`-- --clear` to empty, `-- --agency <id>` for a particular one).
+**The server refuses all three routes when `NODE_ENV=production`, and refuses anyone
+but an owner anywhere** — the client's hiding is a convenience, not the protection.
+
 ## Still open
 
 Things that are known to be missing or unfinished, so nobody rediscovers them in

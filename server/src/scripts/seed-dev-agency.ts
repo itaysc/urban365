@@ -40,7 +40,9 @@ async function main() {
   const logger = new Logger('SeedDevAgency');
   assertLocal(process.env.DATABASE_URL);
 
-  const app = await NestFactory.createApplicationContext(AppModule, { logger: ['warn', 'error'] });
+  const app = await NestFactory.createApplicationContext(AppModule, {
+    logger: ['log', 'warn', 'error'],
+  });
   const prisma = app.get(PrismaService);
   const passwords = app.get(PasswordService);
 

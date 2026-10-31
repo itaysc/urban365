@@ -148,6 +148,7 @@ model Agency {
   customers   Customer[]
   meetings    Meeting[]
   suggestions Suggestion[]
+  demoRecords DemoRecord[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1193,4 +1194,28 @@ enum SuggestionStatus {
   done
   /// Not interested, and not to be raised again.
   dismissed
+}
+
+/// One row this agency's demo data created, so clearing it can be exact.
+///
+/// The alternative — delete everything belonging to the agency, or everything whose
+/// name looks made up — is how somebody loses real work to a button marked "clear test
+/// data". Nothing is guessed: the seed writes a row here for every record it creates,
+/// and the clear deletes those ids and nothing else.
+model DemoRecord {
+  id       String @id @default(cuid())
+  agency   Agency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  agencyId String
+
+  /// The Prisma model name, e.g. `Customer`. A string rather than an enum: this table
+  /// exists to be read by one switch statement, and a migration every time the seed
+  /// learns to create another kind of thing would be friction for no safety.
+  model    String
+  recordId String
+
+  createdAt DateTime @default(now())
+
+  /// The clear reads "everything this agency seeded", which is the only query there is.
+  @@index([agencyId, model])
+  @@unique([model, recordId])
 }

@@ -17,6 +17,7 @@ import {
 } from '@/services/agency';
 import { OfficesPanel } from '@/components/agency/OfficesPanel';
 import { PhoneField } from '@/components/ui/PhoneField';
+import { DemoDataPanel } from '@/components/agency/DemoDataPanel';
 
 /** The agency's own public page: the banner and the description shown to visitors. */
 export function AgencyProfilePage() {
@@ -217,6 +218,9 @@ export function AgencyProfilePage() {
         of its own, and pressing "שמור" on the profile should not be what commits one.
       */}
       <OfficesPanel />
+
+      {/* Development only, and the server refuses the routes elsewhere regardless. */}
+      {import.meta.env.DEV && canManage && <DemoDataPanel />}
 
       <div className="flex items-center gap-2">
         {canManage ? (
