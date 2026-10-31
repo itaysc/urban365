@@ -160,17 +160,22 @@ something the app does on first upload: auto-creating inside a request means a t
 
 ## 7. Google sign-in
 
-Register the callback on the Google OAuth client, exactly:
+Register **both** callbacks on the Google OAuth client, exactly:
 
 ```
-<API_URL>/api/v1/auth/google/callback
+<API_URL>/api/v1/auth/google/callback          # signing in
+<API_URL>/api/v1/my/calendar/google/callback   # connecting a calendar
 ```
 
 It must match what the server sends, character for character, including the scheme. The
 server derives it from `API_URL`, so a trailing slash difference is enough to break it.
 
-Without `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` the button is hidden everywhere
-rather than shown and failing.
+The calendar connection also needs the `calendar.events` scope added to the OAuth
+consent screen. Until the app is verified by Google, only test users listed on that
+screen can connect one — everybody else is refused at Google's end, before reaching us.
+
+Without `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` both buttons are hidden rather
+than shown and failing.
 
 ---
 
