@@ -421,8 +421,16 @@ export class TeamService {
         // An empty string is how the client clears it; undefined means "not sent".
         ...(dto.phone !== undefined ? { phone: phone || null } : {}),
         ...(dto.bio !== undefined ? { bio: dto.bio.trim() || null } : {}),
+        ...(dto.dailyBriefing !== undefined ? { dailyBriefing: dto.dailyBriefing } : {}),
       },
-      select: { id: true, firstName: true, lastName: true, phone: true, bio: true },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        phone: true,
+        bio: true,
+        dailyBriefing: true,
+      },
     });
   }
 

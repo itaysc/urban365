@@ -264,6 +264,22 @@ customer's gender and guessing from a name is how an agent loses one.
 Nothing is sent. The draft goes back to the agent, who edits it, copies it or opens
 WhatsApp with it ready — and presses send there themselves.
 
+### The morning briefing
+
+`BriefingService` runs on the same hourly sweep and sends each agent one email a day,
+from 07:00 Israel time, listing what is on their radar. `lastBriefingAt` is both the
+record and the lock — claimed with a conditional update before the mail goes out, and
+released if the send fails, so a sweep that is late or doubled still sends exactly once
+and a failure retries within the hour.
+
+Two deliberate restraints. It is never sent empty: a daily message that sometimes says
+"nothing today" teaches people to stop opening it. And the hour is read from the
+calendar rather than a stored offset, because Israel keeps daylight saving and
+arithmetic on an offset drifts by an hour for half the year.
+
+`User.dailyBriefing` is on by default with a checkbox on the agent's own profile. The
+email says where that checkbox is.
+
 ## Still open
 
 Things that are known to be missing or unfinished, so nobody rediscovers them in

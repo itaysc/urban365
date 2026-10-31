@@ -1,5 +1,6 @@
 import { Injectable, Logger, type OnModuleDestroy, type OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { BriefingService } from './briefing.service.js';
 import { MatchingService } from './matching.service.js';
 
 /**
@@ -28,6 +29,7 @@ export class MatchScheduler implements OnModuleInit, OnModuleDestroy {
 
   constructor(
     private readonly matching: MatchingService,
+    private readonly briefings: BriefingService,
     private readonly config: ConfigService,
   ) {}
 
@@ -39,7 +41,9 @@ export class MatchScheduler implements OnModuleInit, OnModuleDestroy {
 
     this.timer = setInterval(() => void this.tick(), EVERY_MS);
     this.timer.unref();
-    this.logger.log(`Matching sweep every ${EVERY_MS / 60_000} minutes.`);
+    this.logger.log(
+      `Matching sweep every ${EVERY_MS / 60_000} minutes, with the morning briefing.`,
+    );
   }
 
   onModuleDestroy(): void {
@@ -48,11 +52,20 @@ export class MatchScheduler implements OnModuleInit, OnModuleDestroy {
   }
 
   private async tick(): Promise<void> {
+    // Matching first, so a briefing sent a moment later carries what this hour found.
     try {
       await this.matching.sweep();
     } catch (error) {
       // A sweep that throws must not take the timer with it.
       this.logger.error(`Matching sweep failed: ${(error as Error).message}`);
+    }
+
+    // Separately, so a failure in one still leaves the other to run. The briefing
+    // decides for itself whether it is morning and whether anybody is due one.
+    try {
+      await this.briefings.sendDue();
+    } catch (error) {
+      this.logger.error(`Briefing sweep failed: ${(error as Error).message}`);
     }
   }
 }

@@ -1,4 +1,12 @@
-import { IsEmail, IsIn, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import {
+  IsBoolean,
+  IsEmail,
+  IsIn,
+  IsOptional,
+  IsString,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
 
 /**
  * 600 characters: room for three or four sentences about the areas and property types
@@ -33,6 +41,9 @@ export class AcceptInviteDto {
   @IsOptional() @IsString() @MaxLength(40) phone?: string;
   /** An empty string clears it. */
   @IsOptional() @IsString() @MaxLength(BIO_MAX_LENGTH) bio?: string;
+
+  /** Whether they want the morning email of what is worth doing today. */
+  @IsOptional() @IsBoolean() dailyBriefing?: boolean;
 }
 
 /** What a member may change about themselves, whatever their role. */
@@ -46,4 +57,7 @@ export class UpdateMyProfileDto {
   @IsOptional() @IsString() @MaxLength(40) phone?: string;
   /** An empty string clears it. */
   @IsOptional() @IsString() @MaxLength(BIO_MAX_LENGTH) bio?: string;
+
+  /** Whether they want the morning email of what is worth doing today. */
+  @IsOptional() @IsBoolean() dailyBriefing?: boolean;
 }

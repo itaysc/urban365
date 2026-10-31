@@ -258,6 +258,7 @@ export const updateMyProfile = (input: {
   lastName?: string;
   phone?: string;
   bio?: string;
+  dailyBriefing?: boolean;
 }) =>
   api.patch<{ id: string; firstName: string; lastName: string; phone: string | null }>('/my/team/me', input);
 

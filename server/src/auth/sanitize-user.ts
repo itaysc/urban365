@@ -8,6 +8,8 @@ export interface PublicUser {
   phone: string | null;
   avatarUrl: string | null;
   bio: string | null;
+  /** Whether they want the morning email. Theirs to change on their own profile. */
+  dailyBriefing: boolean;
   emailVerified: boolean;
   accountType: string;
   platformRole: string | null;
@@ -33,6 +35,7 @@ export function sanitizeUser(user: WithMembership): PublicUser {
     phone: user.phone,
     avatarUrl: user.avatarUrl,
     bio: user.bio,
+    dailyBriefing: user.dailyBriefing,
     emailVerified: user.emailVerifiedAt !== null,
     accountType: user.accountType,
     platformRole: user.platformRole,

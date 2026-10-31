@@ -221,3 +221,57 @@ export const sellerResponseTemplate = (params: {
      ${button(`${params.appUrl}/app/calendar`, 'ליומן')}`,
   ),
 });
+
+/** One line of the morning email: what it is about, and why it is there. */
+export interface BriefingItem {
+  heading: string;
+  subject: string;
+  reason: string;
+}
+
+/**
+ * The morning email: what is worth doing today.
+ *
+ * Sent only when there is something in it. A daily message that sometimes says "nothing
+ * today" teaches people to stop opening it, and then the one that matters goes unread
+ * with the rest.
+ *
+ * The items are the same rows as the radar, in the same order and with the same
+ * reasons. The email is not a summary of the page — it is the page, far enough along
+ * that somebody can decide whether to open it.
+ */
+export const dailyBriefingTemplate = (params: {
+  firstName: string;
+  items: BriefingItem[];
+  /** How many did not fit, so the count is honest about what is on the page. */
+  more: number;
+  appUrl: string;
+}) => ({
+  subject:
+    params.items.length === 1
+      ? 'דבר אחד שווה לעשות היום'
+      : `${params.items.length + params.more} דברים ששווה לעשות היום`,
+  html: shell(
+    `בוקר טוב ${escape(params.firstName)},`,
+    `<p style="color:#334155;line-height:1.6">מה שעלה ביומן ובלקוחות שלך:</p>
+     ${params.items
+       .map(
+         (item) => `
+       <div style="border-right:3px solid #3b82f6;padding-right:12px;margin:16px 0">
+         <p style="margin:0;color:#64748b;font-size:12px">${escape(item.heading)}</p>
+         <p style="margin:2px 0 0;color:#0f172a;font-weight:600">${escape(item.subject)}</p>
+         <p style="margin:2px 0 0;color:#475569;font-size:14px">${escape(item.reason)}</p>
+       </div>`,
+       )
+       .join('')}
+     ${
+       params.more > 0
+         ? `<p style="color:#64748b;font-size:14px">ועוד ${params.more} בעמוד ההזדמנויות.</p>`
+         : ''
+     }
+     ${button(`${params.appUrl}/app/radar`, 'לעמוד ההזדמנויות')}
+     <p style="font-size:12px;color:#94a3b8">
+       אפשר לכבות את המייל היומי בעמוד הפרופיל.
+     </p>`,
+  ),
+});

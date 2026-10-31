@@ -365,6 +365,16 @@ model User {
   phone     String?
   /// Profile picture. `avatarUrl` is a path this API serves; the object lives in the
   /// private bucket under `avatarStorageKey`. Null means fall back to initials.
+  /// Whether they want the morning email of what is worth doing today.
+  ///
+  /// On by default, because a work tool that has to be switched on is a work tool
+  /// nobody switches on — and off is one checkbox away on their own profile.
+  dailyBriefing Boolean @default(true)
+
+  /// When the last one went out, which is also what stops a second one the same day.
+  /// Claimed before the mail is sent, so two instances cannot both send.
+  lastBriefingAt DateTime?
+
   avatarUrl        String?
   avatarStorageKey String?
   /// A short self-description shown beside this agent's listings. Capped in the DTO at

@@ -28,6 +28,8 @@ export function MyProfilePage() {
     phone: user?.phone ?? '',
     bio: user?.bio ?? '',
   });
+  /** Its own state, because the rest of the form is strings and this is a checkbox. */
+  const [dailyBriefing, setDailyBriefing] = useState(user?.dailyBriefing ?? true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -42,7 +44,7 @@ export function MyProfilePage() {
   const save = async () => {
     setSaving(true);
     try {
-      await updateMyProfile(form);
+      await updateMyProfile({ ...form, dailyBriefing });
       // The header shows the name and picture from the auth context, so it has to be
       // re-read or it keeps displaying what was there before.
       await refresh();
@@ -190,6 +192,25 @@ export function MyProfilePage() {
           >
             {form.bio.length}/{BIO_MAX_LENGTH}
           </p>
+        </div>
+
+        <div className="sm:col-span-2">
+          <label className="flex cursor-pointer items-start gap-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              checked={dailyBriefing}
+              onChange={(e) => setDailyBriefing(e.target.checked)}
+              className="mt-0.5 h-4 w-4 flex-none"
+            />
+            <span>
+              מייל יומי עם ההזדמנויות שלי
+              {/* What it actually does, so switching it off is an informed choice and
+                  not a guess at what will stop arriving. */}
+              <span className="block text-xs text-slate-500">
+                נשלח בבוקר, ורק כשיש משהו לעשות.
+              </span>
+            </span>
+          </label>
         </div>
 
         <div className="sm:col-span-2">

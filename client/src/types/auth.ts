@@ -13,6 +13,8 @@ export interface AuthUser {
   phone: string | null;
   avatarUrl: string | null;
   bio: string | null;
+  /** Whether they want the morning email of what is worth doing today. */
+  dailyBriefing: boolean;
   emailVerified: boolean;
   accountType: AccountType;
   platformRole: PlatformRole | null;
