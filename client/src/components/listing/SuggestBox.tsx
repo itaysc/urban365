@@ -82,6 +82,25 @@ export function SuggestBox({
   };
 
   const onKeyDown = (e: React.KeyboardEvent) => {
+    /**
+     * Enter, in a field that collects several values.
+     *
+     * Checked before anything else, because the two cases that most need it are the
+     * two the guard below throws away: no list showing, and a typed name that matches
+     * the list exactly so there is nothing left to suggest. In both, Enter reached the
+     * form instead and submitted it — which from the other side of the screen looks
+     * exactly like a field that will not take what you typed.
+     *
+     * What it takes is the option they moved to, or else their own words. Only where
+     * `onPick` says the field collects values; a single-value box leaves Enter alone,
+     * so a listing form still submits on Enter the way every other form does.
+     */
+    if (e.key === 'Enter' && onPick && value.trim() !== '') {
+      e.preventDefault();
+      choose(reached && options.length > 0 ? options[highlighted] : value.trim());
+      return;
+    }
+
     if (!open || options.length === 0) return;
 
     if (e.key === 'ArrowDown') {
