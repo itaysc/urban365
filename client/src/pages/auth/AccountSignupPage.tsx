@@ -8,6 +8,7 @@ import { errorMessageOf } from '@/lib/apiError';
 import { signupBuyer } from '@/services/auth';
 import { TermsCheckbox } from '@/components/auth/TermsCheckbox';
 import { AuthLayout } from '@/pages/auth/AuthLayout';
+import { PhoneField } from '@/components/ui/PhoneField';
 
 const PASSWORD_MIN = 10;
 
@@ -97,8 +98,8 @@ export function AccountSignupPage() {
           </Field>
 
           <Field label="טלפון" htmlFor="su-phone">
-            <input id="su-phone" type="tel" dir="ltr" className={inputClass} value={form.phone}
-                   onChange={(e) => set('phone', e.target.value)} placeholder="050-0000000" />
+            <PhoneField id="su-phone" value={form.phone} onChange={(v) => set('phone', v)}
+                        placeholder="050-0000000" />
           </Field>
 
           <Field label="סיסמה" htmlFor="su-password" required>

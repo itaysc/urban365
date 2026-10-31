@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button';
 import { Field, inputClass, selectClass } from '@/components/ui/Field';
 import { PROPERTY_TYPES } from '@/lib/propertyTypes';
 import type { Customer, CustomerInput, CustomerKind } from '@/services/crm';
+import { PhoneField } from '@/components/ui/PhoneField';
 
 const KINDS: { value: CustomerKind; label: string }[] = [
   { value: 'buyer', label: 'קונה' },
@@ -129,13 +130,7 @@ export function CustomerForm({ customer, onSubmit, onCancel, busy = false }: Pro
         </Field>
 
         <Field label="טלפון" htmlFor="customer-phone">
-          <input
-            id="customer-phone"
-            dir="ltr"
-            className={inputClass}
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-          />
+          <PhoneField id="customer-phone" value={phone} onChange={setPhone} />
         </Field>
 
         <Field label="אימייל" htmlFor="customer-email">

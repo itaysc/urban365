@@ -17,6 +17,7 @@ import {
   type AgencyOffice,
   type OfficeInput,
 } from '@/services/agency';
+import { PhoneField } from '@/components/ui/PhoneField';
 
 const EMPTY: OfficeInput = { label: '', city: '', street: '', phone: '' };
 
@@ -208,8 +209,7 @@ export function OfficesPanel() {
           </Field>
 
           <Field label="טלפון" htmlFor="office-phone">
-            <input id="office-phone" type="tel" dir="ltr" className={inputClass}
-                   value={form.phone ?? ''} onChange={(e) => set('phone', e.target.value)} />
+            <PhoneField id="office-phone" value={form.phone ?? ''} onChange={(v) => set('phone', v)} />
           </Field>
         </div>
 

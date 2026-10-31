@@ -16,6 +16,7 @@ import {
   type AgencyProfile,
 } from '@/services/agency';
 import { OfficesPanel } from '@/components/agency/OfficesPanel';
+import { PhoneField } from '@/components/ui/PhoneField';
 
 /** The agency's own public page: the banner and the description shown to visitors. */
 export function AgencyProfilePage() {
@@ -187,8 +188,8 @@ export function AgencyProfilePage() {
         </Field>
 
         <Field label="טלפון" htmlFor="agency-phone">
-          <input id="agency-phone" disabled={!canManage} className={inputClass} value={form.phone}
-                 onChange={(e) => set('phone', e.target.value)} />
+          <PhoneField id="agency-phone" disabled={!canManage} value={form.phone}
+                      onChange={(v) => set('phone', v)} />
         </Field>
 
         <Field label="אימייל ליצירת קשר" htmlFor="agency-email">

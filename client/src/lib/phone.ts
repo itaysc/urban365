@@ -1,4 +1,24 @@
 /**
+ * What a phone field will accept as it is typed.
+ *
+ * Digits and the handful of characters people genuinely write phone numbers with — a
+ * leading plus, dashes, spaces, brackets. Not "digits only": every number in this
+ * product is written `052-1234567`, and a field that silently eats the dash reads as
+ * broken to the person typing it, who then wonders what else it ate.
+ *
+ * Letters are what this is for. `inputMode="tel"` asks a phone for the number pad and a
+ * desktop ignores it, so on a laptop nothing stops somebody typing a name in the phone
+ * box — and nothing downstream, from `wa.me` links to an agent squinting at a list,
+ * copes with that.
+ */
+export function sanitisePhone(value: string): string {
+  return value.replace(/[^\d+\-() ]/gu, '').slice(0, MAX_PHONE_LENGTH);
+}
+
+/** Long enough for `+972 (0)52-123-4567`, short enough to catch a paste of nonsense. */
+const MAX_PHONE_LENGTH = 24;
+
+/**
  * An Israeli phone number as WhatsApp wants it: digits, country code, no plus.
  *
  * `052-333-4444` and `+972 52 333 4444` and `972523334444` are one number written three

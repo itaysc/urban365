@@ -8,6 +8,7 @@ import { Field, inputClass } from '@/components/ui/Field';
 import { AuthLayout } from '@/pages/auth/AuthLayout';
 import { errorCodeOf, errorMessageOf } from '@/lib/apiError';
 import { acceptInvite, fetchInvite } from '@/services/agency';
+import { PhoneField } from '@/components/ui/PhoneField';
 
 const ROLE_LABEL: Record<string, string> = { owner: 'בעלים', agent: 'סוכן' };
 
@@ -131,8 +132,7 @@ export function AcceptInvitePage() {
               </Field>
 
               <Field label="טלפון" htmlFor="invite-phone">
-                <input id="invite-phone" className={inputClass} value={form.phone}
-                       onChange={(e) => set('phone', e.target.value)} />
+                <PhoneField id="invite-phone" value={form.phone} onChange={(v) => set('phone', v)} />
               </Field>
 
               <Field label="סיסמה" htmlFor="invite-password" required>

@@ -11,6 +11,7 @@ import { Camera } from 'lucide-react';
 const BIO_MAX_LENGTH = 600;
 import { errorMessageOf } from '@/lib/apiError';
 import { removeMyAvatar, updateMyProfile, uploadMyAvatar } from '@/services/agency';
+import { PhoneField } from '@/components/ui/PhoneField';
 
 /**
  * The member's own details — open to every role, unlike the team page, because this is
@@ -158,9 +159,8 @@ export function MyProfilePage() {
 
         <div>
           <Field label="טלפון" htmlFor="me-phone">
-            <input id="me-phone" type="tel" dir="ltr" className={inputClass} value={form.phone}
-                   onChange={(e) => set('phone', e.target.value)} placeholder="050-0000000"
-                   aria-describedby="me-phone-hint" />
+            <PhoneField id="me-phone" value={form.phone} onChange={(v) => set('phone', v)}
+                        placeholder="050-0000000" />
           </Field>
           {/* Describes the phone field, so it sits under it — and `aria-describedby`
               ties the two together for anyone not reading by position. */}

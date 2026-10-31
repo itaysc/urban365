@@ -11,6 +11,7 @@ import { GoogleButton, useGoogleAvailable } from '@/components/auth/GoogleButton
 import { TermsCheckbox } from '@/components/auth/TermsCheckbox';
 import { AuthLayout } from '@/pages/auth/AuthLayout';
 import type { AgencyLookupResult } from '@/services/auth';
+import { PhoneField } from '@/components/ui/PhoneField';
 
 const PASSWORD_MIN = 10;
 
@@ -124,7 +125,12 @@ export function SignupPage() {
         </Field>
 
         <Field label="טלפון" htmlFor="phone">
-          <input id="phone" dir="ltr" className={inputClass} {...formik.getFieldProps('phone')} />
+          <PhoneField
+            id="phone"
+            value={formik.values.phone}
+            onChange={(v) => void formik.setFieldValue('phone', v)}
+            onBlur={formik.handleBlur}
+          />
         </Field>
 
         <Field label="סיסמה" htmlFor="password" required error={formik.touched.password && formik.errors.password}>

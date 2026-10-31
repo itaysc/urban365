@@ -18,6 +18,7 @@ import {
   type Lead,
   type LeadStatus,
 } from '@/services/crm';
+import { PhoneField } from '@/components/ui/PhoneField';
 
 const STATUSES: { value: LeadStatus; label: string }[] = [
   { value: 'new', label: 'חדשות' },
@@ -321,8 +322,7 @@ function NewLeadForm({
                onChange={(e) => set('name', e.target.value)} />
       </Field>
       <Field label="טלפון" htmlFor="lead-phone">
-        <input id="lead-phone" className={inputClass} value={form.phone}
-               onChange={(e) => set('phone', e.target.value)} />
+        <PhoneField id="lead-phone" value={form.phone} onChange={(v) => set('phone', v)} />
       </Field>
       <Field label="אימייל" htmlFor="lead-email">
         <input id="lead-email" type="email" className={inputClass} value={form.email}

@@ -4,10 +4,11 @@ import { useAuth } from '@/auth/auth-context';
 import { AgencyPicker } from '@/components/auth/AgencyPicker';
 import { TermsCheckbox } from '@/components/auth/TermsCheckbox';
 import { Button } from '@/components/ui/Button';
-import { Field, inputClass } from '@/components/ui/Field';
+import { Field } from '@/components/ui/Field';
 import { errorMessageOf } from '@/lib/apiError';
 import { AuthLayout } from '@/pages/auth/AuthLayout';
 import { attachAgency, type AgencyLookupResult } from '@/services/auth';
+import { PhoneField } from '@/components/ui/PhoneField';
 
 /**
  * The second half of an agency signup that began with Google.
@@ -73,12 +74,10 @@ export function AgencyClaimPage() {
         />
 
         <Field label="טלפון" htmlFor="phone">
-          <input
+          <PhoneField
             id="phone"
-            dir="ltr"
-            className={inputClass}
             value={phone}
-            onChange={(e) => setPhone(e.target.value)}
+            onChange={setPhone}
             placeholder={user?.phone ?? '050-0000000'}
           />
         </Field>

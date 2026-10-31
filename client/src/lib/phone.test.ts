@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { waLink, waNumber } from './phone';
+import { sanitisePhone, waLink, waNumber } from './phone';
 
 describe('waNumber', () => {
   it('turns a local mobile into an international one', () => {
@@ -41,5 +41,27 @@ describe('waLink', () => {
 
   it('is null when there is no number to open a chat with', () => {
     expect(waLink(null, 'שלום')).toBeNull();
+  });
+});
+
+describe('sanitisePhone', () => {
+  it('keeps the way people actually write a number', () => {
+    expect(sanitisePhone('+972 (0)52-123-4567')).toBe('+972 (0)52-123-4567');
+  });
+
+  it('drops letters, which is the whole point', () => {
+    expect(sanitisePhone('052abc1234567')).toBe('0521234567');
+  });
+
+  it('drops Hebrew too, not just the Latin alphabet', () => {
+    expect(sanitisePhone('דני 052-1234567')).toBe(' 052-1234567');
+  });
+
+  it('cuts a paste of nonsense down to something a field can hold', () => {
+    expect(sanitisePhone('1'.repeat(80))).toHaveLength(24);
+  });
+
+  it('leaves an empty field empty rather than inventing a prefix', () => {
+    expect(sanitisePhone('')).toBe('');
   });
 });

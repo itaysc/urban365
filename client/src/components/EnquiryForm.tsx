@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/Button';
 import { Field, inputClass } from '@/components/ui/Field';
 import { errorMessageOf } from '@/lib/apiError';
 import { submitEnquiry } from '@/services/crm';
+import { PhoneField } from '@/components/ui/PhoneField';
 
 /**
  * The visitor-facing enquiry form. It lands in the owning agency's inbox — the agency is
@@ -63,8 +64,7 @@ export function EnquiryForm({ listingId }: { listingId: string }) {
         </Field>
 
         <Field label="טלפון" htmlFor="enquiry-phone">
-          <input id="enquiry-phone" type="tel" className={inputClass} value={form.phone}
-                 onChange={(e) => set('phone', e.target.value)} />
+          <PhoneField id="enquiry-phone" value={form.phone} onChange={(v) => set('phone', v)} />
         </Field>
       </div>
 
