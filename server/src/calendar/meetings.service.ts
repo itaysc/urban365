@@ -4,7 +4,12 @@ import { RequestContextService } from '../tenancy/request-context.service.js';
 import { TenantPrismaService } from '../tenancy/tenant-prisma.service.js';
 import { can } from '../auth/permissions.js';
 import { GoogleCalendarService } from './google-calendar.service.js';
-import type { CreateMeetingDto, ListMeetingsQuery, UpdateMeetingDto } from './dto/meeting.dto.js';
+import type {
+  CreateMeetingDto,
+  ListMeetingsQuery,
+  UpdateMeetingDto,
+  ViewingFeedbackDto,
+} from './dto/meeting.dto.js';
 
 const SELECT = {
   id: true,
@@ -14,6 +19,9 @@ const SELECT = {
   location: true,
   notes: true,
   status: true,
+  outcome: true,
+  feedbackNotes: true,
+  feedbackAt: true,
   attendeeResponse: true,
   attendeeRespondedAt: true,
   confirmationSentAt: true,
@@ -104,6 +112,56 @@ export class MeetingsService {
     }
 
     return ownerId === 'all' ? {} : { ownerId };
+  }
+
+  /**
+   * Past viewings nobody has written up yet.
+   *
+   * Its own call rather than a flag on the month: what an agent needs chasing about is
+   * last week's viewing, which is not on screen when they are looking at next month.
+   * Capped and oldest first — the one that has been waiting longest is the one most
+   * likely to be forgotten.
+   */
+  async awaitingFeedback() {
+    const agencyId = this.context.requireAgencyId();
+
+    return this.prisma.client.meeting.findMany({
+      where: {
+        agencyId,
+        status: 'scheduled',
+        outcome: null,
+        endsAt: { lt: new Date() },
+        ...this.whoseDiary(undefined),
+      },
+      orderBy: [{ startsAt: 'asc' }, { id: 'asc' }],
+      take: 20,
+      select: SELECT,
+    });
+  }
+
+  /**
+   * Writing up a viewing, which also closes it: an agent who has said how it went has
+   * said that it happened, and asking them to mark it done as well is a second click
+   * for something already known.
+   *
+   * A no-show is `done` too. The meeting is over either way — leaving it `scheduled`
+   * would keep it on the chase list for ever.
+   */
+  async recordFeedback(id: string, dto: ViewingFeedbackDto) {
+    this.assertCanWrite();
+    await this.require(id);
+
+    return this.prisma.client.meeting.update({
+      where: { id },
+      data: {
+        outcome: dto.outcome,
+        feedbackNotes: dto.notes?.trim() || null,
+        feedbackAt: new Date(),
+        feedbackById: this.userId(),
+        status: 'done',
+      },
+      select: SELECT,
+    });
   }
 
   async create(dto: CreateMeetingDto) {

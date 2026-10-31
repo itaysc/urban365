@@ -402,6 +402,7 @@ model User {
   assignedLeads    Lead[]             @relation("LeadAssignee")
   assignedCustomers Customer[]        @relation("CustomerAssignee")
   meetings          Meeting[]          @relation("MeetingOwner")
+  meetingFeedback   Meeting[]          @relation("MeetingFeedbackAuthor")
   googleCalendar    GoogleCalendarAccount?
   ownedDeals       Deal[]             @relation("DealOwner")
   reviewedAgencies Agency[]           @relation("AgencyReviewer")
@@ -793,6 +794,23 @@ enum MeetingStatus {
   cancelled
 }
 
+/// How a viewing went, in the words an agent would use about it afterwards.
+///
+/// One field rather than an attendance flag plus an interest score: "did not turn up"
+/// and "came and hated it" are different outcomes, not the same outcome with a missing
+/// rating, and asking an agent two questions where one will do is how summaries stop
+/// being written.
+enum ViewingOutcome {
+  /// Wants to go further — a second viewing, an offer, the paperwork.
+  interested
+  /// Came, has not decided.
+  thinking
+  /// Came, not for them.
+  not_interested
+  /// Did not turn up.
+  no_show
+}
+
 /// What the person on the other side said about it.
 enum AttendeeResponse {
   /// Nothing sent, or sent and not answered.
@@ -843,6 +861,19 @@ model Meeting {
   /// When the reminder went out, which is also what stops it going out twice. Null and
   /// in the past means due.
   reminderSentAt DateTime?
+
+  // ── after the viewing ───────────────────────────────────────────────────────
+
+  /// How it went. Null on a meeting that has not happened yet — and on one that has,
+  /// which is exactly what the calendar chases the agent about.
+  outcome       ViewingOutcome?
+  feedbackNotes String?
+  feedbackAt    DateTime?
+
+  /// Who wrote the summary, which is not always whose meeting it was: a colleague
+  /// covering a viewing is the one who knows how it went.
+  feedbackBy   User?   @relation("MeetingFeedbackAuthor", fields: [feedbackById], references: [id], onDelete: SetNull)
+  feedbackById String?
 
   /// Whose diary it is. Null means the agency's rather than one agent's.
   owner   User?   @relation("MeetingOwner", fields: [ownerId], references: [id], onDelete: SetNull)

@@ -4,6 +4,11 @@ export const MEETING_STATUSES = ['scheduled', 'done', 'cancelled'] as const;
 export type MeetingStatus = (typeof MEETING_STATUSES)[number];
 
 export interface Meeting {
+  /** How it went, once somebody has written it up. */
+  outcome: ViewingOutcome | null;
+  feedbackNotes: string | null;
+  feedbackAt: string | null;
+
   /** What the customer said, and whether they were asked at all. */
   attendeeResponse: AttendeeResponse;
   attendeeRespondedAt: string | null;
@@ -127,4 +132,22 @@ export async function fetchViewing(token: string): Promise<ViewingInvite> {
 
 export async function respondToViewing(token: string, confirmed: boolean): Promise<void> {
   await api.post(`/viewings/${token}/${confirmed ? 'confirm' : 'decline'}`);
+}
+
+// ── after the viewing ────────────────────────────────────────────────────────
+
+export const VIEWING_OUTCOMES = ['interested', 'thinking', 'not_interested', 'no_show'] as const;
+export type ViewingOutcome = (typeof VIEWING_OUTCOMES)[number];
+
+/**
+ * Writing up a viewing. Also what marks the meeting done — an agent who has said how
+ * it went has said that it happened.
+ */
+export const recordViewingFeedback = (id: string, outcome: ViewingOutcome, notes?: string) =>
+  api.post<Meeting>(`/my/meetings/${id}/feedback`, { outcome, notes });
+
+/** Past viewings nobody has written up yet. */
+export async function fetchAwaitingFeedback(): Promise<Meeting[]> {
+  const { data } = await api.get<Meeting[]>('/my/meetings/awaiting-feedback');
+  return data;
 }

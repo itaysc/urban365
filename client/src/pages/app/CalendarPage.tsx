@@ -12,13 +12,18 @@ import { qk } from '@/queries/keys';
 import { apiBaseUrl } from '@/services/api';
 import { fetchTeam } from '@/services/agency';
 import { MeetingForm } from '@/pages/app/MeetingForm';
+import { ViewingFeedbackForm } from '@/pages/app/ViewingFeedbackForm';
+import { OUTCOME_CLASS, OUTCOME_LABEL } from '@/lib/viewingOutcome';
 import {
   createMeeting,
   deleteMeeting,
   disconnectGoogleCalendar,
   fetchGoogleCalendarStatus,
+  fetchAwaitingFeedback,
   fetchMeetings,
+  recordViewingFeedback,
   sendMeetingConfirmation,
+  type ViewingOutcome,
   updateMeeting,
   type Meeting,
   type MeetingInput,
@@ -85,6 +90,8 @@ export function CalendarPage() {
   const selected = useMemo(() => (dayParam ? new Date(dayParam) : today), [dayParam, today]);
   const [month, setMonth] = useState(() => startOfMonth(dayParam ? new Date(dayParam) : today));
   const [deleting, setDeleting] = useState<Meeting | null>(null);
+  /** Which meeting is being written up, if any. */
+  const [summarising, setSummarising] = useState<string | null>(null);
 
   /** Replaces, rather than pushes, when only the day changes: browsing a month should
    *  not leave thirty entries in the history to walk back through. */
@@ -160,6 +167,22 @@ export function CalendarPage() {
       setDeleting(null);
     },
     onError: (e) => toast.error(errorMessageOf(e, 'לא הצלחנו לבטל את הפגישה.')),
+  });
+
+  const { data: awaiting } = useQuery({
+    queryKey: qk.meetings.awaitingFeedback,
+    queryFn: fetchAwaitingFeedback,
+  });
+
+  const feedback = useMutation({
+    mutationFn: ({ id, outcome, notes }: { id: string; outcome: ViewingOutcome; notes: string }) =>
+      recordViewingFeedback(id, outcome, notes),
+    onSuccess: () => {
+      void refresh();
+      toast.success('הסיכום נשמר.');
+      setSummarising(null);
+    },
+    onError: (e) => toast.error(errorMessageOf(e, 'לא הצלחנו לשמור את הסיכום.')),
   });
 
   const confirm = useMutation({
@@ -286,6 +309,54 @@ export function CalendarPage() {
               חיבור יומן Google
             </a>
           )}
+        </section>
+      )}
+
+      {/*
+        Last week's viewing is not on screen when somebody is looking at next month, so
+        the chase lives at the top of the page rather than in the grid. Oldest first:
+        the one that has been waiting longest is the one most likely to be forgotten.
+      */}
+      {(awaiting?.length ?? 0) > 0 && (
+        <section className="flex flex-col gap-3 rounded-xl border border-amber-200 bg-amber-50/60 p-4">
+          <h2 className="text-sm font-semibold text-amber-900">
+            ממתינות לסיכום ({awaiting!.length})
+          </h2>
+
+          {awaiting!.map((meeting) => (
+            <div key={meeting.id} className="rounded-lg bg-white p-3">
+              <p className="text-sm text-slate-800">
+                <span className="text-slate-500">
+                  {new Date(meeting.startsAt).toLocaleDateString('he-IL', {
+                    day: 'numeric',
+                    month: 'long',
+                  })}
+                </span>{' '}
+                {meeting.title}
+                {meeting.customer && <span className="text-slate-500"> · {meeting.customer.name}</span>}
+              </p>
+
+              {summarising === meeting.id ? (
+                <div className="mt-3">
+                  <ViewingFeedbackForm
+                    busy={feedback.isPending}
+                    onCancel={() => setSummarising(null)}
+                    onSubmit={(outcome, notes) =>
+                      feedback.mutate({ id: meeting.id, outcome, notes })
+                    }
+                  />
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setSummarising(meeting.id)}
+                  className="mt-1 text-sm text-blue-700 hover:underline"
+                >
+                  סיכום הביקור
+                </button>
+              )}
+            </div>
+          ))}
         </section>
       )}
 
@@ -480,9 +551,45 @@ export function CalendarPage() {
                 {meeting.notes && (
                   <p className="mt-2 whitespace-pre-line text-sm text-slate-500">{meeting.notes}</p>
                 )}
+
+                {meeting.outcome && (
+                  <p className="mt-2 flex flex-wrap items-center gap-2 text-sm">
+                    <span className={`rounded px-2 py-0.5 text-xs ${OUTCOME_CLASS[meeting.outcome]}`}>
+                      {OUTCOME_LABEL[meeting.outcome]}
+                    </span>
+                    {meeting.feedbackNotes && (
+                      <span className="text-slate-600">{meeting.feedbackNotes}</span>
+                    )}
+                  </p>
+                )}
+
+                {summarising === meeting.id && (
+                  <div className="mt-3 rounded-lg border border-slate-200 p-3">
+                    <ViewingFeedbackForm
+                      outcome={meeting.outcome}
+                      notes={meeting.feedbackNotes}
+                      busy={feedback.isPending}
+                      onCancel={() => setSummarising(null)}
+                      onSubmit={(outcome, notes) =>
+                        feedback.mutate({ id: meeting.id, outcome, notes })
+                      }
+                    />
+                  </div>
+                )}
               </div>
 
               <div className="flex shrink-0 items-center gap-3 text-sm">
+                {/* Only once it is over: asking how a viewing went before it has
+                    happened is a question with no answer. */}
+                {new Date(meeting.endsAt) < today && summarising !== meeting.id && (
+                  <button
+                    type="button"
+                    onClick={() => setSummarising(meeting.id)}
+                    className="text-blue-700 hover:underline"
+                  >
+                    {meeting.outcome ? 'עריכת הסיכום' : 'סיכום הביקור'}
+                  </button>
+                )}
                 {meeting.customerId && (
                   <button
                     type="button"

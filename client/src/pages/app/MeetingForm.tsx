@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { SuggestBox } from '@/components/listing/SuggestBox';
 import { Button } from '@/components/ui/Button';
 import { Field, inputClass, selectClass } from '@/components/ui/Field';
+import { MEETING_TITLES } from '@/lib/meetingTitles';
 import { qk } from '@/queries/keys';
 import { fetchCustomers } from '@/services/crm';
 import type { Meeting, MeetingInput } from '@/services/calendar';
@@ -100,13 +102,22 @@ export function MeetingForm({
 
   return (
     <form onSubmit={submit} className="flex flex-col gap-4">
+      {/*
+        The whole list on focus, before a letter is typed: a diary is nine kinds of
+        meeting repeated, so the common case should be one click rather than a sentence
+        typed on a phone. Anything else is still just typed — the suggestions narrow as
+        you go and never take what you wrote.
+      */}
       <Field label="נושא" htmlFor="meeting-title" required>
-        <input
+        <SuggestBox
           id="meeting-title"
           required
-          className={inputClass}
           value={title}
-          onChange={(e) => setTitle(e.target.value)}
+          onChange={setTitle}
+          term={title.trim()}
+          options={MEETING_TITLES.filter(
+            (option) => option !== title.trim() && option.includes(title.trim()),
+          )}
           placeholder="ביקור בנכס, פגישת הערכה, חתימה"
         />
       </Field>

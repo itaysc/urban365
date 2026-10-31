@@ -9,7 +9,12 @@ import { Throttle } from '@nestjs/throttler';
 import { ConfirmationsService } from './confirmations.service.js';
 import { GoogleCalendarService } from './google-calendar.service.js';
 import { MeetingsService } from './meetings.service.js';
-import { CreateMeetingDto, ListMeetingsQuery, UpdateMeetingDto } from './dto/meeting.dto.js';
+import {
+  CreateMeetingDto,
+  ListMeetingsQuery,
+  UpdateMeetingDto,
+  ViewingFeedbackDto,
+} from './dto/meeting.dto.js';
 
 /** The agency's diary. */
 @UseGuards(TenantGuard)
@@ -23,6 +28,13 @@ export class MeetingsController {
   @Get()
   list(@Query() query: ListMeetingsQuery) {
     return this.meetings.list(query);
+  }
+
+  /** Past viewings with no summary written. Declared before `:id` would matter if
+   *  there were one on this controller; kept above anyway so it reads in order. */
+  @Get('awaiting-feedback')
+  awaitingFeedback() {
+    return this.meetings.awaitingFeedback();
   }
 
   @Post()
@@ -47,6 +59,12 @@ export class MeetingsController {
    * not this agency's — before the confirmation service, which runs as the owner and
    * has no agency of its own to check against.
    */
+  /** How the viewing went. Writing it up is also what marks the meeting done. */
+  @Post(':id/feedback')
+  feedback(@Param('id') id: string, @Body() dto: ViewingFeedbackDto) {
+    return this.meetings.recordFeedback(id, dto);
+  }
+
   @Post(':id/confirmation')
   async sendConfirmation(@Param('id') id: string) {
     await this.meetings.assertOwn(id);
