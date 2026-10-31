@@ -22,6 +22,7 @@ import { TeamPage } from '@/pages/app/TeamPage';
 import { DealsPage } from '@/pages/app/DealsPage';
 import { LeadsPage } from '@/pages/app/LeadsPage';
 import { CustomersPage } from '@/pages/app/CustomersPage';
+import { CalendarPage } from '@/pages/app/CalendarPage';
 import { ListingEditorPage } from '@/pages/app/ListingEditorPage';
 import { ModerationPage } from '@/pages/admin/ModerationPage';
 import { MySalePage } from '@/pages/sell/MySalePage';
@@ -79,6 +80,7 @@ export const router = createBrowserRouter([
               { path: '/app/listings/:listingId', element: <ListingEditorPage /> },
               { path: '/app/leads', element: <LeadsPage /> },
               { path: '/app/customers', element: <CustomersPage /> },
+              { path: '/app/calendar', element: <CalendarPage /> },
               { path: '/app/deals', element: <DealsPage /> },
               { path: '/app/agency', element: <AgencyProfilePage /> },
               { path: '/app/team', element: <TeamPage /> },

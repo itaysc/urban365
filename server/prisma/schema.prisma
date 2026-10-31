@@ -146,6 +146,7 @@ model Agency {
   leads       Lead[]
   deals       Deal[]
   customers   Customer[]
+  meetings    Meeting[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -304,6 +305,7 @@ model Listing {
   leads  Lead[]
   deals  Deal[]
   saves  SavedListing[]
+  meetings Meeting[]
 
   @@index([ownerUserId])
   @@index([agencyId, section])
@@ -399,6 +401,8 @@ model User {
   ownedLeads       Lead[]             @relation("LeadOwner")
   assignedLeads    Lead[]             @relation("LeadAssignee")
   assignedCustomers Customer[]        @relation("CustomerAssignee")
+  meetings          Meeting[]          @relation("MeetingOwner")
+  googleCalendar    GoogleCalendarAccount?
   ownedDeals       Deal[]             @relation("DealOwner")
   reviewedAgencies Agency[]           @relation("AgencyReviewer")
   reviewedClaims   AgencyClaim[]      @relation("ClaimReviewer")
@@ -709,6 +713,8 @@ model Customer {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  meetings Meeting[]
+
   /// The list is "this agency's, newest first", which is the only query there is.
   @@index([agencyId, createdAt])
   @@index([assignedToId])
@@ -751,6 +757,84 @@ model Lead {
   @@index([agencyId, status, createdAt])
   @@index([listingId])
   @@index([assignedToId])
+}
+
+/// A user's connected Google Calendar.
+///
+/// Its own row rather than columns on `User`, so disconnecting is a delete — there is
+/// no half-connected state where a stale refresh token sits beside a null calendar id.
+///
+/// The refresh token is stored as given, because unlike every other token in this
+/// schema it has to be *used* rather than compared: hashing it would make it useless.
+/// It is a credential for somebody's calendar and should be treated as one.
+model GoogleCalendarAccount {
+  id     String @id @default(cuid())
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String @unique
+
+  /// The Google account that was connected, for showing which one it is.
+  googleEmail String
+
+  refreshToken String
+  /// Which calendar to write to. `primary` unless somebody picks another.
+  calendarId   String @default("primary")
+
+  /// When the last push or pull failed, and why — so a connection that has quietly
+  /// stopped working can say so instead of looking fine.
+  lastError   String?
+  lastSyncAt  DateTime?
+  connectedAt DateTime  @default(now())
+}
+
+/// A meeting is either still coming, or it happened, or it did not.
+enum MeetingStatus {
+  scheduled
+  done
+  cancelled
+}
+
+/// Something in an agent's diary: a viewing, a valuation, a signing.
+///
+/// Ours, not Google's. An agency that never connects a Google account still has a
+/// working calendar, and one that connects it gets its meetings pushed there — the
+/// relationship is "we own the record, Google is a copy", because the other way round
+/// means losing the diary when somebody revokes an OAuth grant.
+model Meeting {
+  id       String @id @default(cuid())
+  agency   Agency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  agencyId String
+
+  /// Who it is with. Optional: a team meeting is still a meeting.
+  customer   Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  customerId String?
+  /// The property it is about, for a viewing.
+  listing   Listing? @relation(fields: [listingId], references: [id], onDelete: SetNull)
+  listingId String?
+
+  title    String
+  startsAt DateTime
+  endsAt   DateTime
+  location String?
+  notes    String?
+
+  status MeetingStatus @default(scheduled)
+
+  /// Whose diary it is. Null means the agency's rather than one agent's.
+  owner   User?   @relation("MeetingOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  ownerId String?
+
+  /// The copy in Google, when the owner has connected an account. Null means it was
+  /// never pushed — because nobody is connected, or because the push failed, which is
+  /// not a reason to refuse the meeting.
+  googleEventId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  /// The calendar asks for one range at a time, which is the only query there is.
+  @@index([agencyId, startsAt])
+  @@index([customerId])
+  @@index([ownerId])
 }
 
 model Deal {

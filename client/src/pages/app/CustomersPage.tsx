@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Mail, Phone, Plus, Search } from 'lucide-react';
+import { CalendarPlus, Mail, Phone, Plus, Search } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { inputClass, selectClass } from '@/components/ui/Field';
@@ -9,6 +9,8 @@ import { errorMessageOf } from '@/lib/apiError';
 import { formatDate, formatPrice } from '@/lib/format';
 import { qk } from '@/queries/keys';
 import { CustomerForm } from '@/pages/app/CustomerForm';
+import { MeetingForm } from '@/pages/app/MeetingForm';
+import { createMeeting, fetchMeetings, type MeetingInput } from '@/services/calendar';
 import {
   createCustomer,
   deleteCustomer,
@@ -74,6 +76,8 @@ export function CustomersPage() {
   /** Null means closed; a customer means editing; `'new'` means adding. */
   const [editing, setEditing] = useState<Customer | 'new' | null>(null);
   const [deleting, setDeleting] = useState<Customer | null>(null);
+  /** The customer a meeting is being booked with, or null when nothing is open. */
+  const [booking, setBooking] = useState<Customer | null>(null);
 
   const { data, isPending } = useQuery({
     queryKey: qk.customers.list(q, kind, page),
@@ -103,7 +107,32 @@ export function CustomersPage() {
     onError: (e) => toast.error(errorMessageOf(e, 'לא הצלחנו למחוק את הלקוח.')),
   });
 
+  const book = useMutation({
+    mutationFn: (input: MeetingInput) => createMeeting(input),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: qk.meetings.all });
+      toast.success('הפגישה נקבעה ותופיע ביומן.');
+      setBooking(null);
+    },
+    onError: (e) => toast.error(errorMessageOf(e, 'לא הצלחנו לקבוע את הפגישה.')),
+  });
+
   const items = data?.items ?? [];
+
+  // Just the next one per customer, which is what a row has space for and what an agent
+  // actually wants to see: when am I seeing this person.
+  const { data: upcoming } = useQuery({
+    queryKey: qk.meetings.forCustomer('all-on-page'),
+    queryFn: () =>
+      fetchMeetings({
+        from: new Date().toISOString(),
+        // Far enough ahead to cover a diary, near enough to stay one small query.
+        to: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
+      }),
+  });
+
+  const nextWith = (customerId: string) =>
+    (upcoming?.items ?? []).find((m) => m.customerId === customerId);
 
   return (
     <div className="flex flex-col gap-6">
@@ -213,6 +242,18 @@ export function CustomersPage() {
                   <p className="mt-2 text-sm text-blue-800">{brief(customer)}</p>
                 )}
 
+                {nextWith(customer.id) && (
+                  <p className="mt-2 text-sm text-slate-600">
+                    הפגישה הבאה:{' '}
+                    {new Date(nextWith(customer.id)!.startsAt).toLocaleString('he-IL', {
+                      day: 'numeric',
+                      month: 'long',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </p>
+                )}
+
                 {customer.notes && (
                   <p className="mt-2 whitespace-pre-line text-sm text-slate-500">{customer.notes}</p>
                 )}
@@ -220,6 +261,14 @@ export function CustomersPage() {
 
               <div className="flex shrink-0 items-center gap-3 text-sm">
                 <span className="text-xs text-slate-400">{formatDate(customer.createdAt)}</span>
+                <button
+                  type="button"
+                  onClick={() => setBooking(customer)}
+                  className="flex items-center gap-1 text-blue-700 hover:underline"
+                >
+                  <CalendarPlus className="h-4 w-4" aria-hidden />
+                  קביעת פגישה
+                </button>
                 <button
                   type="button"
                   onClick={() => setEditing(customer)}
@@ -262,6 +311,20 @@ export function CustomersPage() {
             הבא
           </button>
         </div>
+      )}
+
+      {booking && (
+        <section className="rounded-xl border border-blue-200 bg-blue-50/40 p-4">
+          <h2 className="mb-4 font-semibold text-slate-900">פגישה עם {booking.name}</h2>
+          {/* The customer is fixed, so the form does not offer to choose one. */}
+          <MeetingForm
+            meeting={null}
+            customerId={booking.id}
+            busy={book.isPending}
+            onCancel={() => setBooking(null)}
+            onSubmit={(input) => book.mutate({ ...input, customerId: booking.id })}
+          />
+        </section>
       )}
 
       <ConfirmDialog

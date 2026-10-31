@@ -60,6 +60,14 @@ export const qk = {
       ['customers', 'list', q, kind ?? 'any', page] as const,
   },
 
+  meetings: {
+    all: ['meetings'] as const,
+    range: (from: string, to: string, google: boolean, ownerId: string) =>
+      ['meetings', 'range', from, to, google, ownerId] as const,
+    forCustomer: (customerId: string) => ['meetings', 'customer', customerId] as const,
+    google: ['meetings', 'google-status'] as const,
+  },
+
   deals: {
     all: ['deals'] as const,
     board: ['deals', 'board'] as const,
