@@ -136,6 +136,24 @@ export class MeetingsService {
   }
 
   /**
+   * Everywhere one customer has been taken.
+   *
+   * The mirror of `forListing`, and the agency's for the same reason: whoever picks up
+   * the phone to this person should be able to see what they have already been shown,
+   * rather than offering them the flat they turned down last week.
+   */
+  async forCustomer(customerId: string) {
+    const agencyId = this.context.requireAgencyId();
+
+    return this.prisma.client.meeting.findMany({
+      where: { agencyId, customerId },
+      orderBy: [{ startsAt: 'desc' }, { id: 'asc' }],
+      take: 100,
+      select: SELECT,
+    });
+  }
+
+  /**
    * Past viewings nobody has written up yet.
    *
    * Its own call rather than a flag on the month: what an agent needs chasing about is

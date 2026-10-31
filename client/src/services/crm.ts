@@ -166,6 +166,8 @@ export interface Customer extends CustomerBrief {
   assignedTo: { id: string; firstName: string; lastName: string } | null;
   createdAt: string;
   updatedAt: string;
+  /** How many meetings they have been part of, for the row to say so without asking. */
+  _count: { meetings: number };
 }
 
 export interface CustomerInput {

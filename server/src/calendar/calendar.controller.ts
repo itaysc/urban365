@@ -43,6 +43,12 @@ export class MeetingsController {
     return this.meetings.forListing(listingId);
   }
 
+  /** Everywhere one customer has been taken, newest first. */
+  @Get('for-customer/:customerId')
+  forCustomer(@Param('customerId') customerId: string) {
+    return this.meetings.forCustomer(customerId);
+  }
+
   @Post()
   create(@Body() dto: CreateMeetingDto) {
     return this.meetings.create(dto);

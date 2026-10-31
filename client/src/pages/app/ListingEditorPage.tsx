@@ -12,7 +12,7 @@ import { StreetBox } from '@/components/listing/StreetBox';
 import { Field, inputClass, selectClass } from '@/components/ui/Field';
 import { AmenityPicker } from '@/components/listing/AmenityPicker';
 import { useToast } from '@/components/ui/Toast';
-import { errorCodeOf, errorMessageOf } from '@/lib/apiError';
+import { errorCodeOf, errorMessageOf, statusOf } from '@/lib/apiError';
 import { EXCLUSIVE_LABEL } from '@/lib/exclusivity';
 import {
   archiveListing,
@@ -134,7 +134,7 @@ export function ListingEditorPage() {
   /** Held while the duplicate prompt is open, so "add anyway" can retry the same save. */
   const [duplicate, setDuplicate] = useState<{ message: string; status?: 'draft' | 'published' } | null>(null);
 
-  const { data: fetched, isPending, isError } = useQuery({
+  const { data: fetched, isPending, isError, error: fetchError } = useQuery({
     queryKey: qk.listings.detail(listingId ?? ''),
     queryFn: () => fetchListing(listingId!),
     enabled: !isNew,
@@ -160,8 +160,20 @@ export function ListingEditorPage() {
   const loading = !isNew && isPending;
 
   useEffect(() => {
-    if (isError) setError('הנכס לא נמצא.');
-  }, [isError]);
+    if (!isError) return;
+
+    // Only a 404 means the property is not there. Everything else said so too, which
+    // sent people looking for a listing that was fine while the real answer was that
+    // their session had expired or the server was not answering.
+    const status = statusOf(fetchError);
+    setError(
+      status === 404
+        ? 'הנכס לא נמצא.'
+        : status === 401 || status === 403
+          ? 'אין גישה לנכס הזה. ייתכן שההתחברות פגה — נסו להתחבר שוב.'
+          : errorMessageOf(fetchError, 'לא הצלחנו לטעון את הנכס. בדקו את החיבור ונסו שוב.'),
+    );
+  }, [isError, fetchError]);
 
   const set = (key: string, value: string) => {
     setForm((f) => ({ ...f, [key]: value }));

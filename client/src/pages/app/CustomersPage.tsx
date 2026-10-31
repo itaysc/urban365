@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { CalendarPlus, Mail, Phone, Plus, Search } from 'lucide-react';
+import { CalendarPlus, ChevronDown, ChevronUp, Mail, Phone, Plus, Search } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { inputClass, selectClass } from '@/components/ui/Field';
@@ -9,6 +9,7 @@ import { errorMessageOf } from '@/lib/apiError';
 import { formatDate, formatPrice } from '@/lib/format';
 import { qk } from '@/queries/keys';
 import { CustomerForm } from '@/pages/app/CustomerForm';
+import { CustomerViewings } from '@/pages/app/CustomerViewings';
 import { MeetingForm } from '@/pages/app/MeetingForm';
 import { createMeeting, fetchMeetings, type MeetingInput } from '@/services/calendar';
 import {
@@ -78,6 +79,8 @@ export function CustomersPage() {
   const [deleting, setDeleting] = useState<Customer | null>(null);
   /** The customer a meeting is being booked with, or null when nothing is open. */
   const [booking, setBooking] = useState<Customer | null>(null);
+  /** Whose history is open. One at a time: this is a list, not a dashboard. */
+  const [showing, setShowing] = useState<string | null>(null);
 
   const { data, isPending } = useQuery({
     queryKey: qk.customers.list(q, kind, page),
@@ -261,6 +264,20 @@ export function CustomersPage() {
 
               <div className="flex shrink-0 items-center gap-3 text-sm">
                 <span className="text-xs text-slate-400">{formatDate(customer.createdAt)}</span>
+                {customer._count.meetings > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowing(showing === customer.id ? null : customer.id)}
+                    className="flex items-center gap-1 text-slate-600 hover:text-slate-900"
+                  >
+                    {showing === customer.id ? (
+                      <ChevronUp className="h-4 w-4" aria-hidden />
+                    ) : (
+                      <ChevronDown className="h-4 w-4" aria-hidden />
+                    )}
+                    {customer._count.meetings} ביקורים
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => setBooking(customer)}
@@ -285,6 +302,15 @@ export function CustomersPage() {
                 </button>
               </div>
             </div>
+
+            {/* Under the row rather than beside it: an address and a sentence of
+                feedback do not fit in a column, and this is what somebody opens the
+                row to read. */}
+            {showing === customer.id && (
+              <div className="mt-3 border-t border-slate-100 pt-3">
+                <CustomerViewings customerId={customer.id} />
+              </div>
+            )}
           </li>
         ))}
       </ul>

@@ -30,6 +30,9 @@ const LIST_SELECT = {
   createdAt: true,
   updatedAt: true,
   assignedTo: { select: { id: true, firstName: true, lastName: true } },
+  // How many times they have been taken somewhere. One number on a query that is
+  // already running, so the list can say "3 ביקורים" without a second request per row.
+  _count: { select: { meetings: true } },
 } satisfies Prisma.CustomerSelect;
 
 /**

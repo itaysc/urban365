@@ -152,6 +152,12 @@ export async function fetchListingViewings(listingId: string): Promise<Meeting[]
   return data;
 }
 
+/** Everywhere one customer has been taken, newest first. */
+export async function fetchCustomerViewings(customerId: string): Promise<Meeting[]> {
+  const { data } = await api.get<Meeting[]>(`/my/meetings/for-customer/${customerId}`);
+  return data;
+}
+
 /** Past viewings nobody has written up yet. */
 export async function fetchAwaitingFeedback(): Promise<Meeting[]> {
   const { data } = await api.get<Meeting[]>('/my/meetings/awaiting-feedback');

@@ -8,6 +8,7 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { selectClass } from '@/components/ui/Field';
 import { useToast } from '@/components/ui/Toast';
 import { errorMessageOf } from '@/lib/apiError';
+import { gridFor, isoDay, VIEW_LABEL, VIEWS, type View } from '@/lib/calendarSpan';
 import { qk } from '@/queries/keys';
 import { apiBaseUrl } from '@/services/api';
 import { fetchTeam } from '@/services/agency';
@@ -30,29 +31,6 @@ import {
 } from '@/services/calendar';
 
 const DAY_NAMES = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ש'];
-
-const startOfMonth = (at: Date) => new Date(at.getFullYear(), at.getMonth(), 1);
-
-/**
- * The grid always starts on a Sunday and runs whole weeks, so the month sits in a
- * rectangle rather than a ragged shape — and the days either side are shown greyed
- * rather than blank, because a viewing on the 1st is still next to one on the 31st.
- */
-function monthGrid(month: Date): Date[] {
-  const first = startOfMonth(month);
-  const start = new Date(first);
-  start.setDate(first.getDate() - first.getDay());
-
-  return Array.from({ length: 42 }, (_, i) => {
-    const day = new Date(start);
-    day.setDate(start.getDate() + i);
-    return day;
-  });
-}
-
-/** `YYYY-MM-DD` in local time, which is what a day in the url means. */
-const isoDay = (at: Date) =>
-  `${at.getFullYear()}-${String(at.getMonth() + 1).padStart(2, '0')}-${String(at.getDate()).padStart(2, '0')}`;
 
 /**
  * Nine in the morning on that day, as a `datetime-local` value.
@@ -88,7 +66,19 @@ export function CalendarPage() {
   // no `?day=` in the url still means "today" without calling a clock mid-render.
   const [today] = useState(() => new Date());
   const selected = useMemo(() => (dayParam ? new Date(dayParam) : today), [dayParam, today]);
-  const [month, setMonth] = useState(() => startOfMonth(dayParam ? new Date(dayParam) : today));
+
+  /** In the url like everything else, so a week someone is looking at can be linked. */
+  const viewParam = params.get('view');
+  const view: View = (VIEWS as readonly string[]).includes(viewParam ?? '')
+    ? (viewParam as View)
+    : 'month';
+
+  /**
+   * Where the grid sits. The selected day drives it: moving between views keeps you
+   * looking at the same day rather than jumping back to today, which is the whole
+   * reason somebody switches from a month to a week.
+   */
+  const anchor = selected;
   const [deleting, setDeleting] = useState<Meeting | null>(null);
   /** Which meeting is being written up, if any. */
   const [summarising, setSummarising] = useState<string | null>(null);
@@ -114,7 +104,33 @@ export function CalendarPage() {
   /** `''` is mine, `'all'` the team's, anything else one agent's. */
   const [whose, setWhose] = useState('');
 
-  const days = useMemo(() => monthGrid(month), [month]);
+  const days = useMemo(() => gridFor(view, anchor), [view, anchor]);
+
+  /**
+   * Back and forward move by whatever is on screen: a day, a week, a month. The
+   * selected day moves with it, so the grid and the list under it stay about the same
+   * stretch of time.
+   */
+  const step = (direction: 1 | -1) => {
+    const next = new Date(anchor);
+    if (view === 'day') next.setDate(next.getDate() + direction);
+    else if (view === 'week') next.setDate(next.getDate() + 7 * direction);
+    else next.setMonth(next.getMonth() + direction);
+    go({ day: isoDay(next) });
+  };
+
+  /** What the heading says: a date, a span of dates, or a month. */
+  const spanLabel = (() => {
+    if (view === 'day') {
+      return anchor.toLocaleDateString('he-IL', { weekday: 'long', day: 'numeric', month: 'long' });
+    }
+    if (view === 'week') {
+      const last = days[days.length - 1];
+      const short = (at: Date) => at.toLocaleDateString('he-IL', { day: 'numeric', month: 'short' });
+      return `${short(days[0])} – ${short(last)}`;
+    }
+    return anchor.toLocaleDateString('he-IL', { month: 'long', year: 'numeric' });
+  })();
   const from = days[0];
   const to = useMemo(() => {
     const end = new Date(days[days.length - 1]);
@@ -380,40 +396,69 @@ export function CalendarPage() {
           <div className="flex items-center gap-1">
             <button
               type="button"
-              aria-label="החודש הקודם"
-              onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))}
+              aria-label="אחורה"
+              onClick={() => step(-1)}
               className="rounded-lg p-1.5 text-slate-500 transition hover:bg-slate-100"
             >
               <ChevronRight className="h-5 w-5" aria-hidden />
             </button>
             <button
               type="button"
-              aria-label="החודש הבא"
-              onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))}
+              aria-label="קדימה"
+              onClick={() => step(1)}
               className="rounded-lg p-1.5 text-slate-500 transition hover:bg-slate-100"
             >
               <ChevronLeft className="h-5 w-5" aria-hidden />
             </button>
+            <button
+              type="button"
+              onClick={() => go({ day: isoDay(today) })}
+              className="rounded-lg px-2 py-1 text-xs text-slate-500 transition hover:bg-slate-100"
+            >
+              היום
+            </button>
           </div>
 
-          <h2 className="font-semibold text-slate-900">
-            {month.toLocaleDateString('he-IL', { month: 'long', year: 'numeric' })}
-          </h2>
-        </div>
+          <div className="flex items-center gap-3">
+            <h2 className="font-semibold text-slate-900">{spanLabel}</h2>
 
-        <div className="grid grid-cols-7 gap-1 text-center text-xs text-slate-400">
-          {DAY_NAMES.map((d) => (
-            <div key={d} className="py-1">
-              {d}
+            {/* Three spans of the same grid, so switching keeps the day you are on. */}
+            <div className="flex overflow-hidden rounded-lg border border-slate-300">
+              {VIEWS.map((option) => (
+                <button
+                  key={option}
+                  type="button"
+                  aria-pressed={view === option}
+                  onClick={() => go({ view: option })}
+                  className={`px-3 py-1 text-sm transition ${
+                    view === option
+                      ? 'bg-slate-900 text-white'
+                      : 'bg-white text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  {VIEW_LABEL[option]}
+                </button>
+              ))}
             </div>
-          ))}
+          </div>
         </div>
 
-        <div className="grid grid-cols-7 gap-1">
+        {view !== 'day' && (
+          <div className="grid grid-cols-7 gap-1 text-center text-xs text-slate-400">
+            {DAY_NAMES.map((d) => (
+              <div key={d} className="py-1">
+                {d}
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className={view === 'day' ? 'grid grid-cols-1' : 'grid grid-cols-7 gap-1'}>
           {days.map((day) => {
             const ours = onDay(day);
             const theirs = googleOnDay(day);
-            const outside = day.getMonth() !== month.getMonth();
+            // Only a month has days from outside it; a week is all its own.
+            const outside = view === 'month' && day.getMonth() !== anchor.getMonth();
             const isToday = sameDay(day, today);
 
             return (
@@ -426,7 +471,9 @@ export function CalendarPage() {
                 onClick={() =>
                   ours.length + theirs.length === 0 ? openNew(day) : go({ day: isoDay(day) })
                 }
-                className={`flex min-h-[4.5rem] flex-col items-stretch gap-1 rounded-lg border p-1.5 text-start transition ${
+                className={`flex flex-col items-stretch gap-1 rounded-lg border p-1.5 text-start transition ${
+                  view === 'month' ? 'min-h-[4.5rem]' : 'min-h-[9rem]'
+                } ${
                   sameDay(day, selected)
                     ? 'border-blue-500 bg-blue-50'
                     : 'border-slate-200 hover:border-slate-300'
@@ -438,7 +485,7 @@ export function CalendarPage() {
                   {day.getDate()}
                 </span>
 
-                {ours.slice(0, 2).map((m) => (
+                {ours.slice(0, view === 'month' ? 2 : 8).map((m) => (
                   <span
                     key={m.id}
                     className="truncate rounded bg-blue-600 px-1 py-0.5 text-[0.65rem] text-white"
@@ -449,7 +496,7 @@ export function CalendarPage() {
 
                 {/* Google's own events, drawn differently because they are not ours to
                     edit — a grey chip rather than a solid one. */}
-                {theirs.slice(0, 1).map((e) => (
+                {theirs.slice(0, view === 'month' ? 1 : 4).map((e) => (
                   <span
                     key={e.id}
                     className="truncate rounded bg-slate-200 px-1 py-0.5 text-[0.65rem] text-slate-700"
@@ -458,7 +505,7 @@ export function CalendarPage() {
                   </span>
                 ))}
 
-                {ours.length + theirs.length > 3 && (
+                {view === 'month' && ours.length + theirs.length > 3 && (
                   <span className="text-[0.65rem] text-slate-400">
                     ועוד {ours.length + theirs.length - 3}
                   </span>
