@@ -1,9 +1,14 @@
 /**
  * Fills an agency with something to look at, from the command line.
  *
- *   npm run seed:demo                      # the dev agency
+ *   npm run seed:demo                      # the dev agency — NOT your own
  *   npm run seed:demo -- --agency <id>     # a particular one
  *   npm run seed:demo -- --clear           # empty it again
+ *
+ * With no `--agency` it seeds the account `seed:dev-agency` creates, which is almost
+ * certainly not the one you are signed in as. It says which agency it used, because
+ * the alternative is somebody staring at an empty customer list wondering why.
+ * To fill the agency you are actually looking at, use the panel on its own page.
  *
  * The same service the dev-only button uses, so the two cannot drift. Refuses to run
  * against anything but a local database: inventing eight customers inside a real
@@ -61,8 +66,18 @@ async function main() {
 
   const owner = await prisma.agencyMembership.findFirst({
     where: { agencyId, role: 'owner' },
-    select: { userId: true },
+    select: { userId: true, user: { select: { email: true } } },
   });
+
+  const agency = await prisma.agency.findUnique({
+    where: { id: agencyId },
+    select: { name: true },
+  });
+
+  // Named before the work, not after: if this is the wrong agency, the useful moment
+  // to find out is now.
+  logger.log(`Agency: ${agency?.name ?? agencyId} (${agencyId})`);
+  logger.log(`Sign in as: ${owner?.user.email ?? 'unknown'}`);
 
   if (process.argv.includes('--clear')) {
     const cleared = await demo.clear(agencyId);
