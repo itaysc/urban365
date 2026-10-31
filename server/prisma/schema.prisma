@@ -767,7 +767,8 @@ model Lead {
   assignedTo   User?   @relation("LeadAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
   assignedToId String?
 
-  deals Deal[]
+  deals       Deal[]
+  suggestions Suggestion[]
 
   contactedAt DateTime?
   createdAt   DateTime  @default(now())
@@ -929,6 +930,8 @@ model Meeting {
   /// never pushed — because nobody is connected, or because the push failed, which is
   /// not a reason to refuse the meeting.
   googleEventId String?
+
+  suggestions Suggestion[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1119,6 +1122,10 @@ model Suggestion {
   customerId String?
   listing    Listing?  @relation(fields: [listingId], references: [id], onDelete: Cascade)
   listingId  String?
+  lead       Lead?     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  leadId     String?
+  meeting    Meeting?  @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  meetingId  String?
 
   /// 0–100: how strong the evidence is, not how urgent the task. A vague brief that
   /// matches is weaker evidence than a precise one, and the score says so.
@@ -1155,11 +1162,19 @@ model Suggestion {
   @@index([ownerId, status])
   @@index([customerId])
   @@index([listingId])
+  @@index([leadId])
+  @@index([meetingId])
 }
 
 enum SuggestionKind {
   /// A listing this agency holds matches what a customer said they want.
   new_match
+  /// A viewing is close and one of the two sides has not said yes.
+  viewing_unanswered
+  /// An enquiry came in and nothing has happened to it since.
+  stale_lead
+  /// A listing has been on the market a while and nobody has asked about it.
+  listing_no_interest
 }
 
 enum SuggestionStatus {

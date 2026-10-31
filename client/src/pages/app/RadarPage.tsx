@@ -9,6 +9,7 @@ import { selectClass } from '@/components/ui/Field';
 import { useToast } from '@/components/ui/Toast';
 import { errorMessageOf } from '@/lib/apiError';
 import { formatPrice } from '@/lib/format';
+import { KIND_HINT, KIND_LABEL, KIND_ORDER } from '@/lib/suggestionKind';
 import { qk } from '@/queries/keys';
 import {
   dismissSuggestion,
@@ -61,6 +62,19 @@ export function RadarPage() {
   });
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: qk.suggestions.all });
+
+  /**
+   * Grouped by kind, in `KIND_ORDER` rather than by score.
+   *
+   * A viewing tomorrow that nobody has confirmed outranks a very strong match, because
+   * one has a deadline this week and the other is still true on Friday. One list sorted
+   * by score alone mixes them and loses that. Within a section the server's order
+   * stands, which is strongest first.
+   */
+  const sections = KIND_ORDER.map((kind) => ({
+    kind,
+    rows: (suggestions ?? []).filter((s) => s.kind === kind),
+  })).filter((section) => section.rows.length > 0);
 
   const refresh = useMutation({
     mutationFn: refreshSuggestions,
@@ -140,15 +154,27 @@ export function RadarPage() {
         </div>
       )}
 
-      <ul className="flex flex-col gap-3">
-        {suggestions?.map((suggestion) => (
+      {sections.map((section) => (
+        <section key={section.kind} className="flex flex-col gap-3">
+          <div>
+            <h2 className="text-sm font-semibold text-slate-900">
+              {KIND_LABEL[section.kind]} ({section.rows.length})
+            </h2>
+            <p className="text-xs text-slate-500">{KIND_HINT[section.kind]}</p>
+          </div>
+
+          <ul className="flex flex-col gap-3">
+        {section.rows.map((suggestion) => (
           <li
             key={suggestion.id}
             className="flex flex-wrap items-start justify-between gap-4 rounded-xl border border-slate-200 bg-white p-4"
           >
             <div className="min-w-0 flex-1">
               <p className="flex flex-wrap items-center gap-2 font-semibold text-slate-900">
-                {suggestion.customer?.name ?? 'לקוח'}
+                {/* Who this is about. A match and a quiet enquiry are about a person; a
+                    listing nobody asks about is about the property, and its address is
+                    on the next line rather than repeated here. */}
+                {suggestion.customer?.name ?? suggestion.lead?.name ?? 'הנכס'}
                 <Strength score={suggestion.score} />
                 {/* Only on the team view: your own name on every row is noise. */}
                 {whose !== '' && suggestion.owner && (
@@ -175,23 +201,43 @@ export function RadarPage() {
               {/* The evidence, not a restatement of the headline. */}
               <p className="mt-1 text-sm text-slate-500">{suggestion.reason}</p>
 
-              {suggestion.customer?.phone && (
-                <a
-                  href={`tel:${suggestion.customer.phone}`}
-                  dir="ltr"
-                  className="mt-1 inline-block text-sm text-slate-500 hover:text-slate-900"
+              {/* Where to go to do something about it. One link per kind: a row that
+                  tells you about a problem and leaves you to find it is half a row. */}
+              {suggestion.meeting && (
+                <Link
+                  to={`/app/calendar?day=${suggestion.meeting.startsAt.slice(0, 10)}`}
+                  className="mt-1 inline-block text-sm text-blue-700 hover:underline"
                 >
-                  {suggestion.customer.phone}
+                  ליומן
+                </Link>
+              )}
+              {suggestion.lead && (
+                <Link to="/app/leads" className="mt-1 inline-block text-sm text-blue-700 hover:underline">
+                  לפניות
+                </Link>
+              )}
+
+              {(suggestion.customer?.phone || suggestion.lead?.phone) && (
+                <a
+                  href={`tel:${suggestion.customer?.phone ?? suggestion.lead?.phone}`}
+                  dir="ltr"
+                  className="mt-1 inline-block text-sm text-slate-500 hover:text-slate-900 ms-3"
+                >
+                  {suggestion.customer?.phone ?? suggestion.lead?.phone}
                 </a>
               )}
 
-              <MessageDraft
-                draft={suggestion.draft}
-                phone={suggestion.customer?.phone ?? null}
-                busy={write.isPending && write.variables === suggestion.id}
-                onWrite={() => write.mutate(suggestion.id)}
-                onSave={(draft) => keep.mutate({ id: suggestion.id, draft })}
-              />
+              {/* Only for a match. "Your listing is getting no enquiries" is a
+                  conversation with the seller, not a message we can write for you. */}
+              {suggestion.kind === 'new_match' && (
+                <MessageDraft
+                  draft={suggestion.draft}
+                  phone={suggestion.customer?.phone ?? null}
+                  busy={write.isPending && write.variables === suggestion.id}
+                  onWrite={() => write.mutate(suggestion.id)}
+                  onSave={(draft) => keep.mutate({ id: suggestion.id, draft })}
+                />
+              )}
             </div>
 
             <div className="flex shrink-0 items-center gap-3 text-sm">
@@ -216,7 +262,9 @@ export function RadarPage() {
             </div>
           </li>
         ))}
-      </ul>
+          </ul>
+        </section>
+      ))}
     </div>
   );
 }

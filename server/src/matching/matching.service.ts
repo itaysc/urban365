@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { matchBrief, shortlistMatches, type Brief, type Candidate } from './match.js';
+import { RulesService, type Raised } from './rules.service.js';
 
 /**
  * How many suggestions one sweep will raise for one agency.
@@ -70,7 +71,10 @@ interface FoundMatch {
 export class MatchingService {
   private readonly logger = new Logger(MatchingService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly rules: RulesService,
+  ) {}
 
   /** Every agency, one after another. Returns how many new suggestions were raised. */
   async sweep(): Promise<{ raised: number }> {
@@ -99,6 +103,37 @@ export class MatchingService {
    * somebody else, and this is not the place to settle it quietly.
    */
   async sweepAgency(agencyId: string): Promise<number> {
+    const [matches, others] = await Promise.all([
+      this.matchesFor(agencyId),
+      this.rules.all(agencyId),
+    ]);
+
+    return this.raise(agencyId, [...matches, ...others]);
+  }
+
+  /**
+   * Writes what the rules noticed, skipping whatever is already there.
+   *
+   * `createMany` with `skipDuplicates` rather than an upsert: an observation that
+   * already exists must be left exactly as it is, including a status somebody set. An
+   * upsert would quietly reopen what an agent dismissed last week.
+   */
+  private async raise(agencyId: string, raised: Raised[]): Promise<number> {
+    let count = 0;
+
+    for (const row of raised) {
+      const written = await this.prisma.suggestion.createMany({
+        data: [{ agencyId, ...row }],
+        skipDuplicates: true,
+      });
+      count += written.count;
+    }
+
+    return count;
+  }
+
+  /** Every customer's brief against every listing the agency holds. */
+  private async matchesFor(agencyId: string): Promise<Raised[]> {
     const [customers, listings] = await Promise.all([
       this.prisma.customer.findMany({
         // Sellers are not shown things to buy. `both` is, because they are also buying.
@@ -111,7 +146,7 @@ export class MatchingService {
       }),
     ]);
 
-    if (customers.length === 0 || listings.length === 0) return 0;
+    if (customers.length === 0 || listings.length === 0) return [];
 
     // Every pair, which is fine at the size an agency actually is: a hundred customers
     // against five hundred listings is fifty thousand comparisons of a few numbers,
@@ -147,28 +182,14 @@ export class MatchingService {
       ).map((row) => row.dedupeKey),
     );
 
-    const shortlist = shortlistMatches(
-      found,
-      (match) => seen.has(this.dedupeKey(agencyId, match)),
-      { perCustomer: PER_CUSTOMER_LIMIT, total: PER_AGENCY_LIMIT },
-    );
-
-    let raised = 0;
-    for (const match of shortlist) {
-      // `createMany` with `skipDuplicates` rather than an upsert: an observation that
-      // already exists must be left exactly as it is, including a status somebody set.
-      // An upsert would quietly reopen what an agent dismissed last week. `seen` above
-      // catches nearly all of them; this is what makes two sweeps at once safe.
-      const written = await this.prisma.suggestion.createMany({
-        data: [
-          { agencyId, kind: 'new_match', dedupeKey: this.dedupeKey(agencyId, match), ...match },
-        ],
-        skipDuplicates: true,
-      });
-      raised += written.count;
-    }
-
-    return raised;
+    return shortlistMatches(found, (match) => seen.has(this.dedupeKey(agencyId, match)), {
+      perCustomer: PER_CUSTOMER_LIMIT,
+      total: PER_AGENCY_LIMIT,
+    }).map((match) => ({
+      kind: 'new_match' as const,
+      dedupeKey: this.dedupeKey(agencyId, match),
+      ...match,
+    }));
   }
 
   /** The identity of the observation: this agency noticed this pair. */

@@ -30,6 +30,8 @@ const SELECT = {
     },
   },
   owner: { select: { id: true, firstName: true, lastName: true } },
+  lead: { select: { id: true, name: true, phone: true, status: true } },
+  meeting: { select: { id: true, title: true, startsAt: true } },
 } satisfies Prisma.SuggestionSelect;
 
 /**
@@ -52,7 +54,28 @@ export class SuggestionsService {
     const agencyId = this.context.requireAgencyId();
 
     return this.prisma.client.suggestion.findMany({
-      where: { agencyId, status: 'open', ...this.whose(ownerId) },
+      where: {
+        agencyId,
+        status: 'open',
+        /*
+         * Two conditions that each need an `OR`, so they go in an `AND` rather than
+         * side by side — one object cannot hold two `OR` keys, and the second would
+         * quietly replace the first.
+         */
+        AND: [
+          /*
+           * A suggestion about a property that has left the market is not a suggestion.
+           *
+           * Archiving a listing does not delete it, so nothing cascades and the row
+           * sits here pointing at something the agency has stopped selling. Filtered on
+           * the way out rather than closed by the sweep, because the listing can come
+           * back: republish it and the suggestion is live again, which is what somebody
+           * who unpublished a flat for a fortnight would expect.
+           */
+          { OR: [{ listingId: null }, { listing: { status: 'published', delistedAt: null } }] },
+          this.whose(ownerId),
+        ],
+      },
       // `id` last so two with the same score cannot swap places between requests.
       orderBy: [{ score: 'desc' }, { createdAt: 'desc' }, { id: 'asc' }],
       take: 50,

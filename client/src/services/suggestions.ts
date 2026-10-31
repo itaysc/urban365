@@ -1,6 +1,10 @@
 import { api } from '@/services/api';
 
-export type SuggestionKind = 'new_match';
+export type SuggestionKind =
+  | 'new_match'
+  | 'viewing_unanswered'
+  | 'stale_lead'
+  | 'listing_no_interest';
 export type SuggestionStatus = 'open' | 'done' | 'dismissed';
 
 export interface Suggestion {
@@ -28,6 +32,8 @@ export interface Suggestion {
     coverImageUrl: string | null;
   } | null;
   owner: { id: string; firstName: string; lastName: string } | null;
+  lead: { id: string; name: string; phone: string | null; status: string } | null;
+  meeting: { id: string; title: string; startsAt: string } | null;
 }
 
 export async function fetchSuggestions(ownerId?: string): Promise<Suggestion[]> {

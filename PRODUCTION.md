@@ -235,7 +235,18 @@ a dismissed suggestion is never raised again, and two instances sweeping at once
 safe. The matching is ordinary arithmetic — no model is involved, deliberately, because
 a suggestion an agent cannot trust is worse than none.
 
-Caps are `PER_CUSTOMER_LIMIT = 3` and `PER_AGENCY_LIMIT = 50` per sweep. Both are
+Three more rules run in the same sweep (`RulesService`): a viewing in the next 72 hours
+that a side who *was asked* has not confirmed, an enquiry at `new` or `contacted` with
+no activity for 3 days, and a listing up for 21+ days with 25+ views and not one
+enquiry. The first is keyed on the meeting alone — a viewing happens once — while the
+other two carry an ISO week and an ISO month in the key, so a recurring state can be
+raised again later without being raised every hour.
+
+The radar hides suggestions about a listing that is no longer published; archiving does
+not delete, so nothing cascades, and republishing brings the suggestion back.
+
+Caps are `PER_CUSTOMER_LIMIT = 3` and `PER_AGENCY_LIMIT = 50` per sweep, plus
+`PER_KIND_LIMIT = 10` for the other rules. Both are
 applied *after* removing what has already been raised, so the next sweep offers the
 next ones rather than re-offering the same three forever.
 
