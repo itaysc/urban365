@@ -62,6 +62,11 @@ export const qk = {
     picker: ['customers', 'picker'] as const,
   },
 
+  suggestions: {
+    all: ['suggestions'] as const,
+    list: (ownerId: string) => ['suggestions', 'list', ownerId] as const,
+  },
+
   meetings: {
     all: ['meetings'] as const,
     range: (from: string, to: string, google: boolean, ownerId: string) =>

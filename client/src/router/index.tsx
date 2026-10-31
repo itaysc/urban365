@@ -25,6 +25,7 @@ import { DealsPage } from '@/pages/app/DealsPage';
 import { LeadsPage } from '@/pages/app/LeadsPage';
 import { CustomersPage } from '@/pages/app/CustomersPage';
 import { CalendarPage } from '@/pages/app/CalendarPage';
+import { RadarPage } from '@/pages/app/RadarPage';
 import { ListingEditorPage } from '@/pages/app/ListingEditorPage';
 import { ModerationPage } from '@/pages/admin/ModerationPage';
 import { MySalePage } from '@/pages/sell/MySalePage';
@@ -82,6 +83,7 @@ export const router = createBrowserRouter([
             element: <RequireAuth requireAgency />,
             children: [
               { path: '/app', element: <DashboardPage /> },
+              { path: '/app/radar', element: <RadarPage /> },
               { path: '/app/listings', element: <MyListingsPage /> },
               // `new` before `:listingId` so the literal wins over the parameter.
               { path: '/app/listings/new', element: <ListingEditorPage /> },

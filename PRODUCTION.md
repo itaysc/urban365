@@ -226,6 +226,19 @@ every signup sits at `/app/pending` forever.
 
 ---
 
+## Matching and the radar
+
+An hourly sweep (`MatchScheduler`, 30 seconds after boot and then every hour) compares
+each agency's customer briefs against its own published listings and raises
+`Suggestion` rows. It is idempotent: `dedupeKey` is the identity of the observation, so
+a dismissed suggestion is never raised again, and two instances sweeping at once is
+safe. The matching is ordinary arithmetic — no model is involved, deliberately, because
+a suggestion an agent cannot trust is worse than none.
+
+Caps are `PER_CUSTOMER_LIMIT = 3` and `PER_AGENCY_LIMIT = 50` per sweep. Both are
+applied *after* removing what has already been raised, so the next sweep offers the
+next ones rather than re-offering the same three forever.
+
 ## Still open
 
 Things that are known to be missing or unfinished, so nobody rediscovers them in
@@ -255,4 +268,10 @@ production.
 * **A listing edited after it is published is not re-checked.** The check runs at publish.
 * **`isExclusive` is inferred** from the `בלעדיות` amenity label rather than read from its
   own column, inconsistent with `isNewFromDeveloper`.
+* **Matching only sees the agency's own inventory.** A customer who fits another
+  agency's listing is the co-brokerage case, and it is a product decision about what an
+  agency's customer list is worth to somebody else, not a line to change quietly.
+* **Nothing drafts the message yet.** The radar says who and why; writing to the
+  customer is still the agent's. That is where the model belongs — after a human has
+  agreed with the match, not before.
 * **No remote.** Everything is committed locally and has never been pushed.

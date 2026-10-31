@@ -6,6 +6,7 @@ import {
   Handshake,
   LayoutDashboard,
   ShieldCheck,
+  Sparkles,
   Store,
   Users,
 } from 'lucide-react';
@@ -17,6 +18,7 @@ import {
  */
 export const NAV_ITEMS = [
   { path: '/app', label: 'סקירה', icon: LayoutDashboard, group: 'work', end: true },
+  { path: '/app/radar', label: 'הזדמנויות', icon: Sparkles, group: 'work' },
   { path: '/app/listings', label: 'הנכסים שלי', icon: Building2, group: 'work' },
   { path: '/app/leads', label: 'פניות', icon: Contact, group: 'work' },
   { path: '/app/customers', label: 'לקוחות', icon: ContactRound, group: 'work' },

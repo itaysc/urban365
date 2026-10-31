@@ -147,6 +147,7 @@ model Agency {
   deals       Deal[]
   customers   Customer[]
   meetings    Meeting[]
+  suggestions Suggestion[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -316,6 +317,7 @@ model Listing {
   deals  Deal[]
   saves  SavedListing[]
   meetings Meeting[]
+  suggestions Suggestion[]
 
   @@index([ownerUserId])
   @@index([sellerCustomerId])
@@ -413,6 +415,7 @@ model User {
   assignedLeads    Lead[]             @relation("LeadAssignee")
   assignedCustomers Customer[]        @relation("CustomerAssignee")
   meetings          Meeting[]          @relation("MeetingOwner")
+  suggestions       Suggestion[]       @relation("SuggestionOwner")
   meetingFeedback   Meeting[]          @relation("MeetingFeedbackAuthor")
   googleCalendar    GoogleCalendarAccount?
   ownedDeals       Deal[]             @relation("DealOwner")
@@ -729,6 +732,7 @@ model Customer {
   /// The properties this person is selling, for a customer on the other side of the
   /// deal. Empty for most of them: a buyer owns nothing the agency is handling.
   ownedListings Listing[] @relation("ListingSeller")
+  suggestions   Suggestion[]
 
   /// The list is "this agency's, newest first", which is the only query there is.
   @@index([agencyId, createdAt])
@@ -1088,4 +1092,71 @@ model CityBoundary {
 enum BoundaryKind {
   city
   district
+}
+
+/// What the system has decided is worth an agent's attention.
+///
+/// The thing that makes this a suggestion rather than a dashboard tile is the status:
+/// somebody can be done with one, or say no to it, and the nightly sweep has to respect
+/// that forever. `dedupeKey` is what makes that possible — it is the identity of the
+/// *observation*, not of the row, so a sweep that notices the same thing tomorrow finds
+/// the dismissed row and leaves it alone.
+model Suggestion {
+  id       String @id @default(cuid())
+  agency   Agency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  agencyId String
+
+  /// Whose to act on — the agent who looks after the customer. Null means the agency's,
+  /// which is what an unassigned customer produces.
+  owner   User?   @relation("SuggestionOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  ownerId String?
+
+  kind   SuggestionKind
+  status SuggestionStatus @default(open)
+
+  /// What it is about. Which of these are set depends on the kind.
+  customer   Customer? @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  customerId String?
+  listing    Listing?  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  listingId  String?
+
+  /// 0–100: how strong the evidence is, not how urgent the task. A vague brief that
+  /// matches is weaker evidence than a precise one, and the score says so.
+  score Int
+
+  /// Why this appeared, in the words an agent reads. Written by the rule that raised
+  /// it, from the facts it compared — never generated, so it cannot be wrong.
+  reason String
+
+  /// Until when somebody does not want to see it. Separate from `status` so "later"
+  /// does not need its own state machine.
+  snoozedUntil DateTime?
+  /// When somebody acted on it or waved it away.
+  actedAt      DateTime?
+
+  /// The identity of the observation: agency, kind and whatever it is about. Unique,
+  /// so the sweep is an upsert and running it twice in an hour changes nothing.
+  dedupeKey String @unique
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  /// The one query the radar makes: this agency's open ones, best first.
+  @@index([agencyId, status, score])
+  @@index([ownerId, status])
+  @@index([customerId])
+  @@index([listingId])
+}
+
+enum SuggestionKind {
+  /// A listing this agency holds matches what a customer said they want.
+  new_match
+}
+
+enum SuggestionStatus {
+  open
+  /// Acted on — the agent did the thing.
+  done
+  /// Not interested, and not to be raised again.
+  dismissed
 }
