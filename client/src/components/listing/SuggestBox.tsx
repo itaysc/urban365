@@ -6,7 +6,17 @@ import { highlight } from '@/lib/highlight';
 interface Props {
   id: string;
   value: string;
+  /** Typing. Fires per keystroke, and for a pick when there is no `onPick`. */
   onChange: (value: string) => void;
+  /**
+   * Choosing one of the suggestions, which is a different act from typing one.
+   *
+   * Without this, a field that reacts to a chosen value has to guess from `onChange`
+   * whether the text it just received was picked or typed — and every guess is wrong
+   * on the first keystroke, which looks exactly like a field that will not accept
+   * input. Given, it is the only thing a pick calls.
+   */
+  onPick?: (value: string) => void;
   /** Already filtered and ordered by whoever knows where they come from. */
   options: readonly string[];
   placeholder?: string;
@@ -30,6 +40,7 @@ export function SuggestBox({
   id,
   value,
   onChange,
+  onPick,
   options,
   placeholder,
   required = false,
@@ -58,6 +69,13 @@ export function SuggestBox({
   }, []);
 
   const choose = (option: string) => {
+    if (onPick) {
+      onPick(option);
+      setOpen(false);
+      setReached(false);
+      return;
+    }
+
     onChange(option);
     setOpen(false);
     setReached(false);

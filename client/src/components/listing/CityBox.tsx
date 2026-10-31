@@ -5,6 +5,8 @@ import { SuggestBox } from '@/components/listing/SuggestBox';
 interface Props {
   value: string;
   onChange: (value: string) => void;
+  /** Choosing a city from the list, when that is a different act from typing one. */
+  onPick?: (value: string) => void;
   id?: string;
   /** The agency editor saves half-filled drafts; the publish form does not. */
   required?: boolean;
@@ -24,7 +26,7 @@ const MAX_SUGGESTIONS = 8;
  * רמת גן before רמת ישי and both before אבן יהודה — the thing you are most likely to
  * have meant is the thing at the top.
  */
-export function CityBox({ value, onChange, id = 'city', required = false }: Props) {
+export function CityBox({ value, onChange, onPick, id = 'city', required = false }: Props) {
   const term = value.trim();
 
   const matches = useMemo(() => {
@@ -52,6 +54,7 @@ export function CityBox({ value, onChange, id = 'city', required = false }: Prop
       id={id}
       value={value}
       onChange={onChange}
+      onPick={onPick}
       options={matches}
       term={term}
       required={required}

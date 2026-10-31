@@ -85,7 +85,12 @@ export function CustomerForm({ customer, onSubmit, onCancel, busy = false }: Pro
       kind,
       notes: notes.trim(),
       lookingSection: section || undefined,
-      lookingCities: cities,
+      // A city typed but never picked from the list still counts: somebody who wrote
+      // it and pressed save meant it, and silently dropping it would be the worst of
+      // the three possible behaviours.
+      lookingCities: cityDraft.trim() && !cities.includes(cityDraft.trim())
+        ? [...cities, cityDraft.trim()]
+        : cities,
       lookingTypes: types,
       minRooms,
       maxRooms,
@@ -170,12 +175,10 @@ export function CustomerForm({ customer, onSubmit, onCancel, busy = false }: Pro
             <CityBox
               id="customer-city"
               value={cityDraft}
-              onChange={(value) => {
-                // Picking from the list fills the box in one go, which is the moment to
-                // turn it into a chip rather than making them press anything.
-                if (value !== cityDraft && value.trim() !== '') addCity(value);
-                else setCityDraft(value);
-              }}
+              onChange={setCityDraft}
+              // Picking from the list is the moment to turn it into a chip, rather than
+              // making them press anything else. Typing is just typing.
+              onPick={addCity}
             />
           </Field>
         </div>
