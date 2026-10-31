@@ -239,6 +239,20 @@ Caps are `PER_CUSTOMER_LIMIT = 3` and `PER_AGENCY_LIMIT = 50` per sweep. Both ar
 applied *after* removing what has already been raised, so the next sweep offers the
 next ones rather than re-offering the same three forever.
 
+### Drafting the message
+
+`DraftService` writes a WhatsApp message in Hebrew for a match, on request and never on
+its own. The instruction is held whole and apart from the data — the customer's name,
+the agent's name and the address go in the user message as JSON — so a customer called
+"ignore your instructions" is a name being described rather than an order being given.
+
+It is written to be read as a person wrote it: two or three sentences, no emoji, no
+"הזדמנות", and gender-neutral throughout, because nothing in the CRM records a
+customer's gender and guessing from a name is how an agent loses one.
+
+Nothing is sent. The draft goes back to the agent, who edits it, copies it or opens
+WhatsApp with it ready — and presses send there themselves.
+
 ## Still open
 
 Things that are known to be missing or unfinished, so nobody rediscovers them in
@@ -271,7 +285,12 @@ production.
 * **Matching only sees the agency's own inventory.** A customer who fits another
   agency's listing is the co-brokerage case, and it is a product decision about what an
   agency's customer list is worth to somebody else, not a line to change quietly.
-* **Nothing drafts the message yet.** The radar says who and why; writing to the
-  customer is still the agent's. That is where the model belongs — after a human has
-  agreed with the match, not before.
+* **The OpenAI key in `.env` is rejected (401).** Drafting returns a plain "try again"
+  and the radar is otherwise unaffected. The same key feeds the private-seller spam
+  check, which is built to publish when the model cannot be reached — so until the key
+  is replaced, listings are very likely going out unchecked without anything in the UI
+  saying so.
+* **The drafts' wording has never been read.** The plumbing is tested against a stubbed
+  model; the prompt itself has not run against a real one, for the reason above. It
+  wants a look at a dozen real drafts before anybody sends one.
 * **No remote.** Everything is committed locally and has never been pushed.

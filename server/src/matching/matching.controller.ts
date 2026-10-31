@@ -1,9 +1,14 @@
-import { Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
-import { IsOptional, IsString } from 'class-validator';
+import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
+import { IsOptional, IsString, MaxLength } from 'class-validator';
 import { TenantGuard } from '../tenancy/tenant.guard.js';
 import { MatchingService } from './matching.service.js';
 import { SuggestionsService } from './suggestions.service.js';
 import { RequestContextService } from '../tenancy/request-context.service.js';
+
+class SaveDraftDto {
+  /** `''` clears it, which is how an agent throws a draft away. */
+  @IsString() @MaxLength(2000) draft!: string;
+}
 
 class ListSuggestionsQuery {
   /** A user id, or `'all'` for the team. Absent means your own and the unclaimed. */
@@ -37,6 +42,18 @@ export class SuggestionsController {
   async refresh() {
     const raised = await this.matching.sweepAgency(this.context.requireAgencyId());
     return { raised };
+  }
+
+  /** Write the message. Nothing is sent — the draft comes back for a person to use. */
+  @Post(':id/draft')
+  draft(@Param('id') id: string) {
+    return this.suggestions.draft(id);
+  }
+
+  /** Keep what the agent made of it. */
+  @Post(':id/draft/save')
+  saveDraft(@Param('id') id: string, @Body() dto: SaveDraftDto) {
+    return this.suggestions.saveDraft(id, dto.draft);
   }
 
   @Post(':id/done')

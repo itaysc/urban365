@@ -13,6 +13,9 @@ export interface Suggestion {
   reason: string;
   createdAt: string;
   ownerId: string | null;
+  /** The message to this customer, once somebody has asked for one. */
+  draft: string | null;
+  draftAt: string | null;
   customer: { id: string; name: string; phone: string | null } | null;
   listing: {
     id: string;
@@ -38,6 +41,18 @@ export async function fetchSuggestions(ownerId?: string): Promise<Suggestion[]> 
 /** Runs the match now instead of waiting for the hourly sweep. */
 export async function refreshSuggestions(): Promise<{ raised: number }> {
   const { data } = await api.post<{ raised: number }>('/my/suggestions/refresh');
+  return data;
+}
+
+/** Writes the message. Sends nothing — the draft comes back for the agent to use. */
+export async function draftSuggestionMessage(id: string): Promise<Suggestion> {
+  const { data } = await api.post<Suggestion>(`/my/suggestions/${id}/draft`);
+  return data;
+}
+
+/** Keeps what the agent made of it. `''` throws it away. */
+export async function saveSuggestionDraft(id: string, draft: string): Promise<Suggestion> {
+  const { data } = await api.post<Suggestion>(`/my/suggestions/${id}/draft/save`, { draft });
   return data;
 }
 

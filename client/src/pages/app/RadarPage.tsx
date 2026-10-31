@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { Check, RefreshCw, Sparkles, X } from 'lucide-react';
 import { useAuth } from '@/auth/auth-context';
+import { MessageDraft } from '@/components/agency/MessageDraft';
 import { Button } from '@/components/ui/Button';
 import { selectClass } from '@/components/ui/Field';
 import { useToast } from '@/components/ui/Toast';
@@ -11,9 +12,11 @@ import { formatPrice } from '@/lib/format';
 import { qk } from '@/queries/keys';
 import {
   dismissSuggestion,
+  draftSuggestionMessage,
   fetchSuggestions,
   markSuggestionDone,
   refreshSuggestions,
+  saveSuggestionDraft,
   type Suggestion,
 } from '@/services/suggestions';
 
@@ -68,6 +71,18 @@ export function RadarPage() {
       toast.show(result.raised > 0 ? `נמצאו ${result.raised} התאמות חדשות.` : 'אין התאמות חדשות.');
     },
     onError: (e) => toast.error(errorMessageOf(e, 'לא הצלחנו לרענן.')),
+  });
+
+  const write = useMutation({
+    mutationFn: (id: string) => draftSuggestionMessage(id),
+    onSuccess: () => void invalidate(),
+    onError: (e) => toast.error(errorMessageOf(e, 'לא הצלחנו לכתוב טיוטה.')),
+  });
+
+  const keep = useMutation({
+    mutationFn: ({ id, draft }: { id: string; draft: string }) => saveSuggestionDraft(id, draft),
+    onSuccess: () => void invalidate(),
+    onError: (e) => toast.error(errorMessageOf(e, 'לא הצלחנו לשמור את ההודעה.')),
   });
 
   const answer = useMutation({
@@ -169,6 +184,14 @@ export function RadarPage() {
                   {suggestion.customer.phone}
                 </a>
               )}
+
+              <MessageDraft
+                draft={suggestion.draft}
+                phone={suggestion.customer?.phone ?? null}
+                busy={write.isPending && write.variables === suggestion.id}
+                onWrite={() => write.mutate(suggestion.id)}
+                onSave={(draft) => keep.mutate({ id: suggestion.id, draft })}
+              />
             </div>
 
             <div className="flex shrink-0 items-center gap-3 text-sm">

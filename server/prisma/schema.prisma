@@ -1138,6 +1138,15 @@ model Suggestion {
   /// so the sweep is an upsert and running it twice in an hour changes nothing.
   dedupeKey String @unique
 
+  /// A message to the customer, written by the model and not sent by it.
+  ///
+  /// Stored rather than generated on every view, for three reasons: it costs money, an
+  /// agent who liked the wording should find the same wording tomorrow, and a draft
+  /// they edited is theirs and must not be silently rewritten. Regenerating is a
+  /// button, which is the point — nothing here reaches a customer without a person.
+  draft   String?
+  draftAt DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

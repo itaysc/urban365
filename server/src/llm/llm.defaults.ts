@@ -29,3 +29,16 @@ export const LISTING_MODERATION_LLM = {
   temperature: 0,
   responseFormat: 'json',
 } satisfies LlmPreset;
+
+/**
+ * A WhatsApp message to a buyer about a property that fits their brief.
+ *
+ * Warmer than anything else here on purpose: at a low temperature every draft comes out
+ * the same, and an agent whose fifty messages open identically has sent a mailshot with
+ * extra steps. Short, because it is a text message.
+ */
+export const OUTREACH_DRAFT_LLM = {
+  ...GPT_4O_MINI,
+  maxTokens: 300,
+  temperature: 0.8,
+} satisfies LlmPreset;
