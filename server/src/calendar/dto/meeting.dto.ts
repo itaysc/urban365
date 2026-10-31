@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { IsDateString, IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsDateString, IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
 
 export const MEETING_STATUSES = ['scheduled', 'done', 'cancelled'] as const;
 export type MeetingStatusValue = (typeof MEETING_STATUSES)[number];
@@ -33,6 +33,12 @@ export type ViewingOutcomeValue = (typeof VIEWING_OUTCOMES)[number];
 export class ViewingFeedbackDto {
   @IsIn(VIEWING_OUTCOMES) outcome!: ViewingOutcomeValue;
   @IsOptional() @IsString() @MaxLength(4000) notes?: string;
+
+  /**
+   * How many days until somebody should go back to them. `0` or absent means no
+   * follow-up — a viewing that ended in a flat no does not need chasing.
+   */
+  @IsOptional() @Type(() => Number) @IsInt() @Min(0) @Max(365) followUpInDays?: number;
 }
 
 export class ListMeetingsQuery {

@@ -13,11 +13,34 @@ const ICONS: Record<ViewingOutcome, typeof ThumbsUp> = {
   no_show: UserX,
 };
 
+/**
+ * When to go back to somebody, by outcome.
+ *
+ * Suggested, not imposed — and the suggestion is the point: an agent who has just
+ * written "interested" should not also have to decide, every time, that interested
+ * means ring them in two days. A flat no suggests nothing, because chasing somebody
+ * who said no is how an agency becomes a nuisance.
+ */
+const SUGGESTED_DAYS: Record<ViewingOutcome, number> = {
+  interested: 2,
+  thinking: 7,
+  not_interested: 0,
+  no_show: 1,
+};
+
+const DAY_CHOICES = [
+  { days: 0, label: 'לא צריך' },
+  { days: 1, label: 'מחר' },
+  { days: 2, label: 'בעוד יומיים' },
+  { days: 7, label: 'בעוד שבוע' },
+  { days: 30, label: 'בעוד חודש' },
+];
+
 interface Props {
   /** Shown when a summary already exists, so it can be corrected rather than retyped. */
   outcome?: ViewingOutcome | null;
   notes?: string | null;
-  onSubmit: (outcome: ViewingOutcome, notes: string) => void;
+  onSubmit: (outcome: ViewingOutcome, notes: string, followUpInDays: number) => void;
   onCancel?: () => void;
   busy?: boolean;
 }
@@ -37,12 +60,16 @@ interface Props {
 export function ViewingFeedbackForm({ outcome, notes, onSubmit, onCancel, busy = false }: Props) {
   const [chosen, setChosen] = useState<ViewingOutcome | null>(outcome ?? null);
   const [text, setText] = useState(notes ?? '');
+  /** Null until the outcome is picked, then whatever that outcome suggests. */
+  const [followUp, setFollowUp] = useState<number | null>(null);
+
+  const days = followUp ?? (chosen ? SUGGESTED_DAYS[chosen] : 0);
 
   return (
     <form
       onSubmit={(e) => {
         e.preventDefault();
-        if (chosen) onSubmit(chosen, text.trim());
+        if (chosen) onSubmit(chosen, text.trim(), days);
       }}
       className="flex flex-col gap-3"
     >
@@ -57,7 +84,12 @@ export function ViewingFeedbackForm({ outcome, notes, onSubmit, onCancel, busy =
                 key={value}
                 type="button"
                 aria-pressed={selected}
-                onClick={() => setChosen(value)}
+                onClick={() => {
+                  setChosen(value);
+                  // Back to this outcome's suggestion, rather than keeping a choice
+                  // made for a different answer.
+                  setFollowUp(null);
+                }}
                 className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm transition ${
                   selected
                     ? OUTCOME_SELECTED[value]
@@ -79,6 +111,30 @@ export function ViewingFeedbackForm({ outcome, notes, onSubmit, onCancel, busy =
         onChange={(e) => setText(e.target.value)}
         placeholder="מה אמרו, מה הפריע, מה הצעד הבא"
       />
+
+      {/* Only once there is something to follow up on. */}
+      {chosen && (
+        <fieldset>
+          <legend className="mb-2 text-sm font-semibold text-slate-900">לחזור אליהם</legend>
+          <div className="flex flex-wrap gap-2">
+            {DAY_CHOICES.map((choice) => (
+              <button
+                key={choice.days}
+                type="button"
+                aria-pressed={days === choice.days}
+                onClick={() => setFollowUp(choice.days)}
+                className={`rounded-lg border px-3 py-1.5 text-sm transition ${
+                  days === choice.days
+                    ? 'border-blue-500 bg-blue-50 text-blue-800'
+                    : 'border-slate-300 bg-white text-slate-700 hover:border-slate-400'
+                }`}
+              >
+                {choice.label}
+              </button>
+            ))}
+          </div>
+        </fieldset>
+      )}
 
       <div className="flex items-center gap-3">
         <Button type="submit" disabled={busy || chosen === null}>

@@ -21,6 +21,8 @@ const SELECT = {
   status: true,
   outcome: true,
   feedbackNotes: true,
+  followUpAt: true,
+  followUpDoneAt: true,
   feedbackAt: true,
   attendeeResponse: true,
   attendeeRespondedAt: true,
@@ -198,9 +200,56 @@ export class MeetingsService {
         feedbackAt: new Date(),
         feedbackById: this.userId(),
         status: 'done',
+        // Rewritten each time the summary is: changing the outcome from "thinking" to
+        // "not interested" should not leave a chase behind for somebody who said no.
+        followUpAt: dto.followUpInDays ? this.inDays(dto.followUpInDays) : null,
+        followUpDoneAt: null,
       },
       select: SELECT,
     });
+  }
+
+  /**
+   * Everything somebody is supposed to go back to, due now or overdue.
+   *
+   * The agent's own, like the calendar — a chase is a thing a person does, and a list
+   * of everybody's is a list nobody works. Oldest first: the one that has been waiting
+   * longest is the one going cold.
+   */
+  async followUps() {
+    const agencyId = this.context.requireAgencyId();
+
+    return this.prisma.client.meeting.findMany({
+      where: {
+        agencyId,
+        followUpAt: { not: null, lte: new Date() },
+        followUpDoneAt: null,
+        ...this.whoseDiary(undefined),
+      },
+      orderBy: [{ followUpAt: 'asc' }, { id: 'asc' }],
+      take: 20,
+      select: SELECT,
+    });
+  }
+
+  /** Marking a chase done. Not deleting it: what happened is part of the history. */
+  async completeFollowUp(id: string) {
+    this.assertCanWrite();
+    await this.require(id);
+
+    return this.prisma.client.meeting.update({
+      where: { id },
+      data: { followUpDoneAt: new Date() },
+      select: SELECT,
+    });
+  }
+
+  /** Midday, so a follow-up never lands at whatever minute the summary was written. */
+  private inDays(days: number): Date {
+    const at = new Date();
+    at.setDate(at.getDate() + days);
+    at.setHours(12, 0, 0, 0);
+    return at;
   }
 
   async create(dto: CreateMeetingDto) {

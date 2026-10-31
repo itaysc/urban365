@@ -37,6 +37,12 @@ export class MeetingsController {
     return this.meetings.awaitingFeedback();
   }
 
+  /** Everything due a call back, oldest first. */
+  @Get('follow-ups')
+  followUps() {
+    return this.meetings.followUps();
+  }
+
   /** Who has been to see one property, newest first. */
   @Get('for-listing/:listingId')
   forListing(@Param('listingId') listingId: string) {
@@ -75,6 +81,12 @@ export class MeetingsController {
   @Post(':id/feedback')
   feedback(@Param('id') id: string, @Body() dto: ViewingFeedbackDto) {
     return this.meetings.recordFeedback(id, dto);
+  }
+
+  /** Somebody has gone back to them. */
+  @Post(':id/follow-up/done')
+  completeFollowUp(@Param('id') id: string) {
+    return this.meetings.completeFollowUp(id);
   }
 
   @Post(':id/confirmation')

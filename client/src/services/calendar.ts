@@ -9,6 +9,10 @@ export interface Meeting {
   feedbackNotes: string | null;
   feedbackAt: string | null;
 
+  /** When to go back to them, and whether anybody has. */
+  followUpAt: string | null;
+  followUpDoneAt: string | null;
+
   /** What the customer said, and whether they were asked at all. */
   attendeeResponse: AttendeeResponse;
   attendeeRespondedAt: string | null;
@@ -143,8 +147,22 @@ export type ViewingOutcome = (typeof VIEWING_OUTCOMES)[number];
  * Writing up a viewing. Also what marks the meeting done — an agent who has said how
  * it went has said that it happened.
  */
-export const recordViewingFeedback = (id: string, outcome: ViewingOutcome, notes?: string) =>
-  api.post<Meeting>(`/my/meetings/${id}/feedback`, { outcome, notes });
+export const recordViewingFeedback = (
+  id: string,
+  outcome: ViewingOutcome,
+  notes?: string,
+  /** Days until somebody should ring them. 0 or absent means no chase. */
+  followUpInDays?: number,
+) => api.post<Meeting>(`/my/meetings/${id}/feedback`, { outcome, notes, followUpInDays });
+
+/** Everything due a call back, oldest first. */
+export async function fetchFollowUps(): Promise<Meeting[]> {
+  const { data } = await api.get<Meeting[]>('/my/meetings/follow-ups');
+  return data;
+}
+
+export const completeFollowUp = (id: string) =>
+  api.post<Meeting>(`/my/meetings/${id}/follow-up/done`);
 
 /** Everybody who has been to see one property, newest first. */
 export async function fetchListingViewings(listingId: string): Promise<Meeting[]> {

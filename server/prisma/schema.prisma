@@ -875,6 +875,14 @@ model Meeting {
   feedbackBy   User?   @relation("MeetingFeedbackAuthor", fields: [feedbackById], references: [id], onDelete: SetNull)
   feedbackById String?
 
+  /// When to go back to this person.
+  ///
+  /// A date rather than another meeting: "ring them on Thursday" is not an appointment
+  /// and putting it in the diary as one makes a calendar nobody trusts. Set when the
+  /// viewing is written up, cleared when somebody says they have done it.
+  followUpAt     DateTime?
+  followUpDoneAt DateTime?
+
   /// Whose diary it is. Null means the agency's rather than one agent's.
   owner   User?   @relation("MeetingOwner", fields: [ownerId], references: [id], onDelete: SetNull)
   ownerId String?

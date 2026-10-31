@@ -20,7 +20,9 @@ import {
   deleteMeeting,
   disconnectGoogleCalendar,
   fetchGoogleCalendarStatus,
+  completeFollowUp,
   fetchAwaitingFeedback,
+  fetchFollowUps,
   fetchMeetings,
   recordViewingFeedback,
   sendMeetingConfirmation,
@@ -190,9 +192,32 @@ export function CalendarPage() {
     queryFn: fetchAwaitingFeedback,
   });
 
+  const { data: followUps } = useQuery({
+    queryKey: qk.meetings.followUps,
+    queryFn: fetchFollowUps,
+  });
+
+  const chased = useMutation({
+    mutationFn: (id: string) => completeFollowUp(id),
+    onSuccess: () => {
+      void refresh();
+      toast.success('סומן כטופל.');
+    },
+    onError: (e) => toast.error(errorMessageOf(e, 'לא הצלחנו לעדכן.')),
+  });
+
   const feedback = useMutation({
-    mutationFn: ({ id, outcome, notes }: { id: string; outcome: ViewingOutcome; notes: string }) =>
-      recordViewingFeedback(id, outcome, notes),
+    mutationFn: ({
+      id,
+      outcome,
+      notes,
+      followUpInDays,
+    }: {
+      id: string;
+      outcome: ViewingOutcome;
+      notes: string;
+      followUpInDays: number;
+    }) => recordViewingFeedback(id, outcome, notes, followUpInDays),
     onSuccess: () => {
       void refresh();
       toast.success('הסיכום נשמר.');
@@ -329,6 +354,62 @@ export function CalendarPage() {
       )}
 
       {/*
+        People to ring back, before anything else on the page: a viewing that went well
+        and was never followed up is the most expensive thing on this screen.
+      */}
+      {(followUps?.length ?? 0) > 0 && (
+        <section className="flex flex-col gap-3 rounded-xl border border-blue-200 bg-blue-50/60 p-4">
+          <h2 className="text-sm font-semibold text-blue-900">
+            לחזור אליהם ({followUps!.length})
+          </h2>
+
+          {followUps!.map((meeting) => (
+            <div
+              key={meeting.id}
+              className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-white p-3"
+            >
+              <div className="min-w-0">
+                <p className="text-sm text-slate-800">
+                  {meeting.customer?.name ?? meeting.title}
+                  {meeting.customer?.phone && (
+                    <a
+                      href={`tel:${meeting.customer.phone}`}
+                      dir="ltr"
+                      className="ms-2 text-slate-500 hover:text-slate-900"
+                    >
+                      {meeting.customer.phone}
+                    </a>
+                  )}
+                  {meeting.outcome && (
+                    <span
+                      className={`ms-2 rounded px-2 py-0.5 text-xs ${OUTCOME_CLASS[meeting.outcome]}`}
+                    >
+                      {OUTCOME_LABEL[meeting.outcome]}
+                    </span>
+                  )}
+                </p>
+
+                {/* What they said last time, which is the whole reason this call is
+                    worth making rather than a cold one. */}
+                {meeting.feedbackNotes && (
+                  <p className="mt-1 text-sm text-slate-500">{meeting.feedbackNotes}</p>
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => chased.mutate(meeting.id)}
+                disabled={chased.isPending}
+                className="shrink-0 text-sm text-blue-700 hover:underline disabled:opacity-50"
+              >
+                טופל
+              </button>
+            </div>
+          ))}
+        </section>
+      )}
+
+      {/*
         Last week's viewing is not on screen when somebody is looking at next month, so
         the chase lives at the top of the page rather than in the grid. Oldest first:
         the one that has been waiting longest is the one most likely to be forgotten.
@@ -357,8 +438,8 @@ export function CalendarPage() {
                   <ViewingFeedbackForm
                     busy={feedback.isPending}
                     onCancel={() => setSummarising(null)}
-                    onSubmit={(outcome, notes) =>
-                      feedback.mutate({ id: meeting.id, outcome, notes })
+                    onSubmit={(outcome, notes, followUpInDays) =>
+                      feedback.mutate({ id: meeting.id, outcome, notes, followUpInDays })
                     }
                   />
                 </div>
@@ -617,8 +698,8 @@ export function CalendarPage() {
                       notes={meeting.feedbackNotes}
                       busy={feedback.isPending}
                       onCancel={() => setSummarising(null)}
-                      onSubmit={(outcome, notes) =>
-                        feedback.mutate({ id: meeting.id, outcome, notes })
+                      onSubmit={(outcome, notes, followUpInDays) =>
+                        feedback.mutate({ id: meeting.id, outcome, notes, followUpInDays })
                       }
                     />
                   </div>
