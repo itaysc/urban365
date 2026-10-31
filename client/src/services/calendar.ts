@@ -146,6 +146,12 @@ export type ViewingOutcome = (typeof VIEWING_OUTCOMES)[number];
 export const recordViewingFeedback = (id: string, outcome: ViewingOutcome, notes?: string) =>
   api.post<Meeting>(`/my/meetings/${id}/feedback`, { outcome, notes });
 
+/** Everybody who has been to see one property, newest first. */
+export async function fetchListingViewings(listingId: string): Promise<Meeting[]> {
+  const { data } = await api.get<Meeting[]>(`/my/meetings/for-listing/${listingId}`);
+  return data;
+}
+
 /** Past viewings nobody has written up yet. */
 export async function fetchAwaitingFeedback(): Promise<Meeting[]> {
   const { data } = await api.get<Meeting[]>('/my/meetings/awaiting-feedback');

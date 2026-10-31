@@ -37,6 +37,12 @@ export class MeetingsController {
     return this.meetings.awaitingFeedback();
   }
 
+  /** Who has been to see one property, newest first. */
+  @Get('for-listing/:listingId')
+  forListing(@Param('listingId') listingId: string) {
+    return this.meetings.forListing(listingId);
+  }
+
   @Post()
   create(@Body() dto: CreateMeetingDto) {
     return this.meetings.create(dto);

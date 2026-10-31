@@ -115,6 +115,27 @@ export class MeetingsService {
   }
 
   /**
+   * Everybody who has been to see one property.
+   *
+   * Not windowed, unlike the calendar: the question is "who has seen this flat", and
+   * the answer is the whole history of it. Newest first, because the last viewing is
+   * what an owner asking "any interest?" wants to hear about.
+   */
+  async forListing(listingId: string) {
+    const agencyId = this.context.requireAgencyId();
+
+    return this.prisma.client.meeting.findMany({
+      // No `whoseDiary` here: a property's history belongs to the agency, not to
+      // whichever agent happened to hold the keys that day. An owner ringing to ask
+      // how the viewings went should get an answer from anybody who picks up.
+      where: { agencyId, listingId },
+      orderBy: [{ startsAt: 'desc' }, { id: 'asc' }],
+      take: 100,
+      select: SELECT,
+    });
+  }
+
+  /**
    * Past viewings nobody has written up yet.
    *
    * Its own call rather than a flag on the month: what an agent needs chasing about is

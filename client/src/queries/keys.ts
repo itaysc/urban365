@@ -67,6 +67,7 @@ export const qk = {
     forCustomer: (customerId: string) => ['meetings', 'customer', customerId] as const,
     google: ['meetings', 'google-status'] as const,
     awaitingFeedback: ['meetings', 'awaiting-feedback'] as const,
+    forListing: (listingId: string) => ['meetings', 'listing', listingId] as const,
   },
 
   deals: {

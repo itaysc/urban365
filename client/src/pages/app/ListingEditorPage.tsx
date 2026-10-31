@@ -4,6 +4,7 @@ import { qk } from '@/queries/keys';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ImageManager } from '@/components/listing/ImageManager';
 import { Button } from '@/components/ui/Button';
+import { ViewingHistory } from '@/components/agency/ViewingHistory';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { CityBox } from '@/components/listing/CityBox';
 import { NeighborhoodBox } from '@/components/listing/NeighborhoodBox';
@@ -427,6 +428,9 @@ export function ListingEditorPage() {
           <ImageManager listing={listing} onChange={setListing} />
         </section>
       )}
+
+      {/* Same reason: a property nobody has saved yet has nobody who has seen it. */}
+      {listing && <ViewingHistory listingId={listing.id} />}
 
       <div className="flex flex-wrap items-center gap-2">
         <Button disabled={saving} onClick={() => void save()}>

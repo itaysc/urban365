@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/Button';
 import { Field, inputClass, selectClass } from '@/components/ui/Field';
 import { MEETING_TITLES } from '@/lib/meetingTitles';
 import { qk } from '@/queries/keys';
+import { fetchMyListings } from '@/services/agency';
 import { fetchCustomers } from '@/services/crm';
 import type { Meeting, MeetingInput } from '@/services/calendar';
 
@@ -71,6 +72,7 @@ export function MeetingForm({
   const [location, setLocation] = useState(meeting?.location ?? '');
   const [notes, setNotes] = useState(meeting?.notes ?? '');
   const [customer, setCustomer] = useState(meeting?.customerId ?? customerId ?? '');
+  const [listing, setListing] = useState(meeting?.listingId ?? '');
   const [error, setError] = useState<string | null>(null);
 
   // Only when the customer is the agent's to choose. On a customer's own page it is
@@ -79,6 +81,13 @@ export function MeetingForm({
     queryKey: qk.customers.list('', undefined, 1),
     queryFn: () => fetchCustomers({ page: 1 }),
     enabled: customerId === undefined,
+  });
+
+  // Naming the property is what turns a diary entry into a viewing: it is the only
+  // reason the listing can later say who came to see it.
+  const { data: listings } = useQuery({
+    queryKey: qk.listings.mine('published', 1),
+    queryFn: () => fetchMyListings({ status: 'published', page: 1 }),
   });
 
   const submit = (e: React.FormEvent) => {
@@ -97,6 +106,7 @@ export function MeetingForm({
       location: location.trim(),
       notes: notes.trim(),
       customerId: customer || undefined,
+      listingId: listing || undefined,
     });
   };
 
@@ -168,6 +178,30 @@ export function MeetingForm({
           </select>
         </Field>
       )}
+
+      <Field label="הנכס" htmlFor="meeting-listing">
+        <select
+          id="meeting-listing"
+          className={selectClass}
+          value={listing}
+          onChange={(e) => {
+            setListing(e.target.value);
+            // The address is the location, nine times out of ten. Filled only when the
+            // field is still empty, so a correction is never overwritten.
+            const chosen = (listings?.items ?? []).find((l) => l.id === e.target.value);
+            if (chosen && location.trim() === '') {
+              setLocation([chosen.street, chosen.city].filter(Boolean).join(', '));
+            }
+          }}
+        >
+          <option value="">ללא נכס</option>
+          {(listings?.items ?? []).map((l) => (
+            <option key={l.id} value={l.id}>
+              {[l.street, l.city].filter(Boolean).join(', ') || 'נכס ללא כתובת'}
+            </option>
+          ))}
+        </select>
+      </Field>
 
       <Field label="מיקום" htmlFor="meeting-location">
         <input
