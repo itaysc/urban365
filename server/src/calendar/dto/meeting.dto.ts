@@ -62,3 +62,13 @@ export class ListMeetingsQuery {
   /** `'1'` to merge in the caller's **own** Google events, read-only. */
   @IsOptional() @Type(() => String) @IsString() google?: string;
 }
+
+/** What a seller sends back from their link. The answer itself is the route. */
+export class SellerResponseDto {
+  /**
+   * Why, or when instead. Optional on a yes and on a no alike — most people press the
+   * button and nothing else, and a required box would turn a one-tap answer into a
+   * form.
+   */
+  @IsOptional() @IsString() @MaxLength(1000) note?: string;
+}

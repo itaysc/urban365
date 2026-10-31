@@ -12,6 +12,7 @@ import { MeetingsService } from './meetings.service.js';
 import {
   CreateMeetingDto,
   ListMeetingsQuery,
+  SellerResponseDto,
   UpdateMeetingDto,
   ViewingFeedbackDto,
 } from './dto/meeting.dto.js';
@@ -94,6 +95,13 @@ export class MeetingsController {
     await this.meetings.assertOwn(id);
     return this.confirmations.sendConfirmation(id);
   }
+
+  /** Ask whoever owns the property whether the time suits. Same scoping as above. */
+  @Post(':id/seller-confirmation')
+  async askSeller(@Param('id') id: string) {
+    await this.meetings.assertOwn(id);
+    return this.confirmations.askSeller(id);
+  }
 }
 
 /**
@@ -108,6 +116,25 @@ export class MeetingsController {
 @Controller('viewings')
 export class ViewingConfirmationController {
   constructor(private readonly confirmations: ConfirmationsService) {}
+
+  /**
+   * The seller's routes come first on purpose: `:token` below would otherwise match
+   * the literal "seller" and send a seller's link to the buyer's lookup.
+   */
+  @Get('seller/:token')
+  showSeller(@Param('token') token: string) {
+    return this.confirmations.sellerByToken(token);
+  }
+
+  @Post('seller/:token/confirm')
+  sellerConfirm(@Param('token') token: string, @Body() dto: SellerResponseDto) {
+    return this.confirmations.sellerRespond(token, true, dto.note);
+  }
+
+  @Post('seller/:token/decline')
+  sellerDecline(@Param('token') token: string, @Body() dto: SellerResponseDto) {
+    return this.confirmations.sellerRespond(token, false, dto.note);
+  }
 
   @Get(':token')
   show(@Param('token') token: string) {

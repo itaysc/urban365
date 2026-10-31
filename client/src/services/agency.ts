@@ -60,6 +60,8 @@ export interface ListingDetail extends MyListing {
   description: string | null;
   contactName: string | null;
   brokerName: string | null;
+  /** The CRM record for whoever owns the property, when somebody has said who. */
+  sellerCustomerId: string | null;
   publishedAt: string | null;
   images: ListingImage[];
 }
@@ -86,6 +88,8 @@ export interface ListingInput {
   description?: string;
   contactName?: string;
   brokerName?: string;
+  /** `''` unlinks, which is why the editor sends it even when it is empty. */
+  sellerCustomerId?: string;
 }
 
 export async function fetchListing(id: string): Promise<ListingDetail> {

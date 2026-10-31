@@ -28,12 +28,28 @@ const SELECT = {
   attendeeRespondedAt: true,
   confirmationSentAt: true,
   reminderSentAt: true,
+  sellerResponse: true,
+  sellerRespondedAt: true,
+  sellerNote: true,
+  sellerAskedAt: true,
   customerId: true,
   listingId: true,
   ownerId: true,
   googleEventId: true,
   customer: { select: { id: true, name: true, phone: true } },
-  listing: { select: { id: true, city: true, street: true, houseNumber: true } },
+  // `sellerCustomer` is here as a name, not as a contact: the calendar needs to say
+  // whether there is anybody to ask about this property, and who. The phone and the
+  // address live on the customer's own page.
+  listing: {
+    select: {
+      id: true,
+      city: true,
+      street: true,
+      houseNumber: true,
+      sellerCustomer: { select: { id: true, name: true, phone: true } },
+      ownerUserId: true,
+    },
+  },
   owner: { select: { id: true, firstName: true, lastName: true } },
 } satisfies Prisma.MeetingSelect;
 

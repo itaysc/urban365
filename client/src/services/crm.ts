@@ -199,11 +199,14 @@ export async function fetchCustomers(params: {
   q?: string;
   kind?: CustomerKind;
   page?: number;
+  /** The server caps this at 100. Only the pickers ask for more than a page. */
+  pageSize?: number;
 }): Promise<CustomerPage> {
   const search = new URLSearchParams();
   if (params.q) search.set('q', params.q);
   if (params.kind) search.set('kind', params.kind);
   if (params.page && params.page > 1) search.set('page', String(params.page));
+  if (params.pageSize) search.set('pageSize', String(params.pageSize));
 
   const { data } = await api.get<CustomerPage>(`/my/customers?${search}`);
   return data;

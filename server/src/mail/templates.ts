@@ -15,6 +15,19 @@ const shell = (title: string, body: string) => `<!doctype html>
   </div>
 </body></html>`;
 
+/**
+ * For the one kind of text in here that an outsider writes: what a seller types into
+ * the public coordination page. Everything else in these templates is written by the
+ * agency about its own people, but that note arrives from a stranger with a link, and
+ * it lands in an agent's mail client.
+ */
+const escape = (text: string) =>
+  text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+
 const button = (href: string, label: string) => `
   <p style="margin:24px 0">
     <a href="${href}" style="display:inline-block;background:#0f172a;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px">${label}</a>
@@ -151,6 +164,60 @@ export const viewingResponseTemplate = (params: {
     `<p style="color:#334155;line-height:1.6">
        ${params.customerName} ${params.confirmed ? 'אישר/ה' : 'ביטל/ה'} את הפגישה שנקבעה ל<strong>${params.when}</strong>.
      </p>
+     ${button(`${params.appUrl}/app/calendar`, 'ליומן')}`,
+  ),
+});
+
+/**
+ * To whoever owns the property, asking whether a time suits.
+ *
+ * Addressed as a request rather than a notice: the agent has proposed this time, not
+ * decided it, and an email that says "a viewing has been scheduled" to somebody who
+ * then has to be home is how an agency loses a seller. The buyer's name is not in it —
+ * the seller has no need of it, and until the viewing happens it is not theirs to know.
+ */
+export const sellerViewingRequestTemplate = (params: {
+  firstName: string;
+  agencyName: string;
+  when: string;
+  propertyLabel: string | null;
+  confirmUrl: string;
+}) => ({
+  subject: `בקשה לתיאום ביקור — ${params.when}`,
+  html: shell(
+    `שלום ${params.firstName},`,
+    `<p style="color:#334155;line-height:1.6">
+       ${params.agencyName} מבקשים להביא מתעניין לביקור${
+         params.propertyLabel ? ` ב${params.propertyLabel}` : ''
+       } ב<strong>${params.when}</strong>.
+     </p>
+     <p style="color:#334155;line-height:1.6">
+       הביקור ייקבע רק אחרי שתאשרו. אם המועד לא מתאים, אפשר לכתוב מתי כן.
+     </p>
+     ${button(params.confirmUrl, 'לאישור המועד')}`,
+  ),
+});
+
+/** To the agent, when the seller answers. Half the arrangement just moved. */
+export const sellerResponseTemplate = (params: {
+  sellerName: string;
+  confirmed: boolean;
+  when: string;
+  note: string | null;
+  appUrl: string;
+}) => ({
+  subject: `${params.sellerName} ${params.confirmed ? 'אישר/ה' : 'דחה/תה'} את הביקור ${params.when}`,
+  html: shell(
+    params.confirmed ? 'בעל הנכס אישר את המועד' : 'בעל הנכס לא אישר את המועד',
+    `<p style="color:#334155;line-height:1.6">
+       ${params.sellerName} ${params.confirmed ? 'אישר/ה' : 'לא אישר/ה'} את הביקור שהוצע ל<strong>${params.when}</strong>.
+     </p>
+     ${
+       // What they wrote is the reason to read this email at all when the answer is no.
+       params.note
+         ? `<p style="color:#334155;line-height:1.6;border-right:3px solid #cbd5e1;padding-right:12px">${escape(params.note)}</p>`
+         : ''
+     }
      ${button(`${params.appUrl}/app/calendar`, 'ליומן')}`,
   ),
 });

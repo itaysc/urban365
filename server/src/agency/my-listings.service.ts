@@ -65,6 +65,7 @@ export class MyListingsService {
   async create(dto: UpsertListingDto) {
     this.assertCanWrite();
     await this.assertNotDuplicate(dto);
+    await this.assertSellerIsOurs(dto.sellerCustomerId);
     const principal = this.context.getPrincipal();
 
     // The extension fills `agencyId` in anyway; it is stated here because Prisma's
@@ -94,6 +95,7 @@ export class MyListingsService {
     // Checked against the merged result, not the patch: moving one listing onto
     // another's address is the same collision as creating it there.
     await this.assertNotDuplicate({ ...existing, ...dto }, existing.id);
+    await this.assertSellerIsOurs(dto.sellerCustomerId);
 
     return this.prisma.client.listing.update({
       where: { id: existing.id },
@@ -266,6 +268,23 @@ export class MyListingsService {
   }
 
   /**
+   * A listing may only point at a customer of the agency that owns the listing.
+   *
+   * The tenant client is the check: another agency's customer simply is not there to
+   * be found, so this reads as "no such customer" rather than as "not yours", which is
+   * both true from where the caller is standing and the answer that gives nothing away.
+   */
+  private async assertSellerIsOurs(sellerCustomerId: string | undefined): Promise<void> {
+    if (!sellerCustomerId) return;
+
+    const customer = await this.prisma.client.customer.findUnique({
+      where: { id: sellerCustomerId },
+      select: { id: true },
+    });
+    if (!customer) throw new NotFoundException('הלקוח לא נמצא.');
+  }
+
+  /**
    * Shared field mapping. `section` and `status` are handled by the callers; `current`
    * is the stored row on a PATCH, which a create does not have.
    */
@@ -280,11 +299,15 @@ export class MyListingsService {
       isExclusive: _isExclusive,
       amenities,
       tags,
+      // `''` from a cleared select is "nobody owns this any more", which is a null
+      // column — spread as-is it would be an empty string failing the foreign key.
+      sellerCustomerId,
       ...rest
     } = dto;
 
     return {
       ...rest,
+      ...(sellerCustomerId === undefined ? {} : { sellerCustomerId: sellerCustomerId || null }),
       ...this.exclusivity(dto, amenities, current),
       ...(tags ? { tags } : {}),
       // Kept in step so the "price per m²" sort works for manual listings too.

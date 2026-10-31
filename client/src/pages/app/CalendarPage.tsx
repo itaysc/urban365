@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
-import { CalendarDays, Check, ChevronLeft, ChevronRight, MailCheck, MapPin, Plus, User, X } from 'lucide-react';
+import { CalendarDays, ChevronLeft, ChevronRight, MapPin, Plus, User } from 'lucide-react';
 import { useAuth } from '@/auth/auth-context';
 import { Button } from '@/components/ui/Button';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
@@ -13,6 +13,7 @@ import { qk } from '@/queries/keys';
 import { apiBaseUrl } from '@/services/api';
 import { fetchTeam } from '@/services/agency';
 import { MeetingForm } from '@/pages/app/MeetingForm';
+import { ViewingCoordination } from '@/components/agency/ViewingCoordination';
 import { ViewingFeedbackForm } from '@/pages/app/ViewingFeedbackForm';
 import { OUTCOME_CLASS, OUTCOME_LABEL } from '@/lib/viewingOutcome';
 import {
@@ -26,6 +27,7 @@ import {
   fetchMeetings,
   recordViewingFeedback,
   sendMeetingConfirmation,
+  sendSellerConfirmation,
   type ViewingOutcome,
   updateMeeting,
   type Meeting,
@@ -236,6 +238,18 @@ export function CalendarPage() {
       else toast.show(result.reason ?? 'אין למי לשלוח.');
     },
     onError: (e) => toast.error(errorMessageOf(e, 'לא הצלחנו לשלוח את בקשת האישור.')),
+  });
+
+  const askSeller = useMutation({
+    mutationFn: (id: string) => sendSellerConfirmation(id),
+    onSuccess: (result) => {
+      void refresh();
+      if (result.sent) toast.success('הבקשה נשלחה לבעל הנכס.');
+      // Same reasoning as the customer's: "no email address" and "nobody has said who
+      // owns this" are both things the agent has to act on, not failures to swallow.
+      else toast.show(result.reason ?? 'אין את מי לשאול.');
+    },
+    onError: (e) => toast.error(errorMessageOf(e, 'לא הצלחנו לשלוח את הבקשה.')),
   });
 
   const disconnect = useMutation({
@@ -654,27 +668,14 @@ export function CalendarPage() {
                       ביומן Google
                     </span>
                   )}
-
-                  {/* Three states worth telling apart: confirmed, declined, and asked
-                      but not answered — which is the one an agent should chase. */}
-                  {meeting.attendeeResponse === 'confirmed' && (
-                    <span className="flex items-center gap-1 rounded bg-green-50 px-2 py-0.5 text-xs text-green-800">
-                      <Check className="h-3.5 w-3.5" aria-hidden />
-                      הלקוח אישר
-                    </span>
-                  )}
-                  {meeting.attendeeResponse === 'declined' && (
-                    <span className="flex items-center gap-1 rounded bg-red-50 px-2 py-0.5 text-xs text-red-800">
-                      <X className="h-3.5 w-3.5" aria-hidden />
-                      הלקוח ביטל
-                    </span>
-                  )}
-                  {meeting.attendeeResponse === 'pending' && meeting.confirmationSentAt && (
-                    <span className="rounded bg-amber-50 px-2 py-0.5 text-xs text-amber-800">
-                      ממתין לתשובת הלקוח
-                    </span>
-                  )}
                 </div>
+
+                <ViewingCoordination
+                  meeting={meeting}
+                  onAskBuyer={() => confirm.mutate(meeting.id)}
+                  onAskSeller={() => askSeller.mutate(meeting.id)}
+                  busy={confirm.isPending || askSeller.isPending}
+                />
 
                 {meeting.notes && (
                   <p className="mt-2 whitespace-pre-line text-sm text-slate-500">{meeting.notes}</p>
@@ -716,17 +717,6 @@ export function CalendarPage() {
                     className="text-blue-700 hover:underline"
                   >
                     {meeting.outcome ? 'עריכת הסיכום' : 'סיכום הביקור'}
-                  </button>
-                )}
-                {meeting.customerId && (
-                  <button
-                    type="button"
-                    onClick={() => confirm.mutate(meeting.id)}
-                    disabled={confirm.isPending}
-                    className="flex items-center gap-1 text-blue-700 hover:underline disabled:opacity-50"
-                  >
-                    <MailCheck className="h-4 w-4" aria-hidden />
-                    {meeting.confirmationSentAt ? 'שליחה מחדש' : 'בקשת אישור'}
                   </button>
                 )}
                 <button

@@ -265,6 +265,16 @@ model Listing {
 
   contactName         String?
   brokerName          String?
+
+  /// Whose property it is, as a record in the agency's own CRM.
+  ///
+  /// `contactName` above is a name on a yad2 ad and nothing more — you cannot ring it,
+  /// and you certainly cannot ask it whether Tuesday at four suits. This is the person,
+  /// with a phone and an address, so a viewing can be put to them before it is promised
+  /// to a buyer. Null on a scraped listing and on one nobody has got round to filling
+  /// in, which is why every path that needs it says so rather than assuming.
+  sellerCustomer   Customer? @relation("ListingSeller", fields: [sellerCustomerId], references: [id], onDelete: SetNull)
+  sellerCustomerId String?
   brokerLicenseNumber String?
 
   /// Whether the detail page was read, or only the agency-feed card.
@@ -308,6 +318,7 @@ model Listing {
   meetings Meeting[]
 
   @@index([ownerUserId])
+  @@index([sellerCustomerId])
   @@index([agencyId, section])
   @@index([agencyId, status])
   @@index([city, price])
@@ -715,6 +726,9 @@ model Customer {
   updatedAt DateTime @updatedAt
 
   meetings Meeting[]
+  /// The properties this person is selling, for a customer on the other side of the
+  /// deal. Empty for most of them: a buyer owns nothing the agency is handling.
+  ownedListings Listing[] @relation("ListingSeller")
 
   /// The list is "this agency's, newest first", which is the only query there is.
   @@index([agencyId, createdAt])
@@ -861,6 +875,26 @@ model Meeting {
   /// When the reminder went out, which is also what stops it going out twice. Null and
   /// in the past means due.
   reminderSentAt DateTime?
+
+  // ── the other side of the viewing ───────────────────────────────────────────
+  // A viewing is an arrangement between three people, and the agent is only one of
+  // them. The buyer's half is above; this is the half belonging to whoever has to open
+  // the door. Kept apart from `attendeeResponse` rather than folded into one "confirmed"
+  // flag, because "the buyer is coming but the seller has not answered" is the state an
+  // agent most needs to see, and a single flag cannot say it.
+
+  /// What the property's owner said about this time.
+  sellerResponse      AttendeeResponse @default(pending)
+  sellerRespondedAt   DateTime?
+
+  /// What they said in their own words — nearly always when the answer is no, and
+  /// nearly always the useful part: "not before five" saves a round of telephone tag.
+  sellerNote          String?
+
+  /// Their own link, separate from the buyer's. One token for both would let either of
+  /// them answer as the other.
+  sellerToken         String?   @unique
+  sellerAskedAt       DateTime?
 
   // ── after the viewing ───────────────────────────────────────────────────────
 

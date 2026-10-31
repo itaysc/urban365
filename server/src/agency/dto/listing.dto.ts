@@ -66,6 +66,15 @@ export class UpsertListingDto {
 
   @IsOptional() @IsString() @MaxLength(5000) description?: string;
   @IsOptional() @IsString() @MaxLength(120) contactName?: string;
+
+  /**
+   * Whose property it is, as a customer in this agency's CRM. `''` unlinks.
+   *
+   * Checked against the agency before it is written — a raw id in a request body could
+   * otherwise point at another agency's customer, and the next viewing request would be
+   * emailed to a stranger.
+   */
+  @IsOptional() @IsString() @MaxLength(40) sellerCustomerId?: string;
   @IsOptional() @IsString() @MaxLength(120) brokerName?: string;
   @IsOptional() @IsString() @MaxLength(40) brokerLicenseNumber?: string;
 

@@ -239,7 +239,17 @@ production.
 * **No admin queue for flagged listings** (§5).
 * **Reminders are email only.** Most customers are a phone number, and there is no SMS
   or WhatsApp provider wired up — the calendar says so per meeting rather than failing
-  quietly, but those customers have to be rung.
+  quietly, but those customers have to be rung. The same is true of the request that
+  asks a property's owner to approve a viewing time.
+* **A viewing nobody has agreed to still stands.** The calendar shows the buyer's and
+  the owner's answers side by side, and an owner saying "not before five" is recorded
+  and shown — but nothing cancels or moves the meeting on its own, and no reminder
+  chases a side that has not answered. Moving it is the agent's to do.
+* **A property's owner is linked by hand.** It is a field on the listing, chosen from
+  the agency's customers, and empty on every scraped listing and on anything typed in
+  before this existed — so a viewing on one of those cannot be put to anybody until
+  somebody fills it in. The calendar says `לא רשום בעל נכס` rather than offering a
+  button that would do nothing.
 * **Agency listings are not spam-checked.** Only private sellers are, deliberately — an
   agency has a licence and an approved claim.
 * **A listing edited after it is published is not re-checked.** The check runs at publish.

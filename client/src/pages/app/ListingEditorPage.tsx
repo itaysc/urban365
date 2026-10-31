@@ -14,6 +14,7 @@ import { AmenityPicker } from '@/components/listing/AmenityPicker';
 import { useToast } from '@/components/ui/Toast';
 import { errorCodeOf, errorMessageOf, statusOf } from '@/lib/apiError';
 import { EXCLUSIVE_LABEL } from '@/lib/exclusivity';
+import { fetchCustomers } from '@/services/crm';
 import {
   archiveListing,
   createListing,
@@ -60,7 +61,17 @@ const EMPTY: Form = {
   description: '',
   contactName: '',
   brokerName: '',
+  sellerCustomerId: '',
 };
+
+/**
+ * Fields where an empty box is an answer rather than a blank.
+ *
+ * Everywhere else "" means "not stated" and is left out of the request, so a PATCH
+ * about the price does not wipe the description. Unlinking the owner of a property is
+ * a thing somebody means to do, and the only way to say it is to send the empty value.
+ */
+const ALWAYS_SENT = new Set(['sellerCustomerId']);
 
 const NUMERIC = new Set([
   'price',
@@ -108,7 +119,7 @@ function toInput(
     const value = raw.trim();
     // An empty box means "not stated", which is a null column — not a zero, and not a
     // NaN from Number('').
-    if (value === '') continue;
+    if (value === '' && !ALWAYS_SENT.has(key)) continue;
     input[key] = NUMERIC.has(key) ? Number(value) : value;
   }
 
@@ -138,6 +149,18 @@ export function ListingEditorPage() {
     queryKey: qk.listings.detail(listingId ?? ''),
     queryFn: () => fetchListing(listingId!),
     enabled: !isNew,
+  });
+
+  /**
+   * The agency's customers, for the "whose property is this" picker.
+   *
+   * One page of a hundred rather than a search box: an agency has tens of customers,
+   * not thousands, and the one case where that is not true says so under the field
+   * instead of quietly offering a truncated list as if it were all of them.
+   */
+  const { data: customers } = useQuery({
+    queryKey: qk.customers.picker,
+    queryFn: () => fetchCustomers({ pageSize: 100 }),
   });
 
   /**
@@ -432,6 +455,33 @@ export function ListingEditorPage() {
                    onChange={(e) => set('brokerName', e.target.value)} />
           </Field>
         </div>
+
+        {/*
+          Not the same thing as "איש קשר" above, which is a name on an ad. This is the
+          person the viewings have to be put to, and it is what makes coordinating one
+          possible at all.
+        */}
+        <Field label="בעל הנכס" htmlFor="sellerCustomerId">
+          <select
+            id="sellerCustomerId"
+            className={selectClass}
+            value={form.sellerCustomerId}
+            onChange={(e) => set('sellerCustomerId', e.target.value)}
+          >
+            <option value="">לא צוין</option>
+            {customers?.items.map((customer) => (
+              <option key={customer.id} value={customer.id}>
+                {customer.name}
+                {customer.phone ? ` · ${customer.phone}` : ''}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <p className="text-xs text-slate-500">
+          {customers && customers.total > customers.items.length
+            ? `מוצגים ${customers.items.length} הלקוחות האחרונים מתוך ${customers.total}.`
+            : 'מי שצריך לאשר ביקור בנכס. בוחרים מתוך הלקוחות של הסוכנות.'}
+        </p>
       </section>
 
       {/* Images need a listing id to hang off, so they appear once it has been saved. */}

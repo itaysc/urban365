@@ -1,4 +1,5 @@
 import { SavedPage } from '@/pages/SavedPage';
+import { SellerViewingPage } from '@/pages/SellerViewingPage';
 import { ViewingPage } from '@/pages/ViewingPage';
 import { PrivacyPage, TermsPage } from '@/pages/LegalPage';
 import { Navigate, createBrowserRouter } from 'react-router-dom';
@@ -47,6 +48,9 @@ export const router = createBrowserRouter([
   { path: '/saved', element: <SavedPage /> },
   // Where a viewing email lands. Public: the customer has never signed in, and the
   // token in the path is the whole of the authorisation.
+  // Two segments, so it cannot be mistaken for a buyer's token — and the two links are
+  // deliberately different, because the two people are answering different questions.
+  { path: '/viewing/seller/:token', element: <SellerViewingPage /> },
   { path: '/viewing/:token', element: <ViewingPage /> },
   { path: '/terms', element: <TermsPage /> },
   { path: '/policy', element: <PrivacyPage /> },

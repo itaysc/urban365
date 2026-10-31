@@ -18,6 +18,12 @@ export interface Meeting {
   attendeeRespondedAt: string | null;
   confirmationSentAt: string | null;
   reminderSentAt: string | null;
+
+  /** And what the property's owner said, which is the other half of a viewing. */
+  sellerResponse: AttendeeResponse;
+  sellerRespondedAt: string | null;
+  sellerNote: string | null;
+  sellerAskedAt: string | null;
   id: string;
   title: string;
   startsAt: string;
@@ -30,7 +36,16 @@ export interface Meeting {
   ownerId: string | null;
   googleEventId: string | null;
   customer: { id: string; name: string; phone: string | null } | null;
-  listing: { id: string; city: string | null; street: string | null; houseNumber: number | null } | null;
+  listing: {
+    id: string;
+    city: string | null;
+    street: string | null;
+    houseNumber: number | null;
+    /** Who to ask about this property, when anybody has said. */
+    sellerCustomer: { id: string; name: string; phone: string | null } | null;
+    /** Set when the property belongs to a private seller with an account here. */
+    ownerUserId: string | null;
+  } | null;
   owner: { id: string; firstName: string; lastName: string } | null;
 }
 
@@ -116,6 +131,16 @@ export async function sendMeetingConfirmation(
   return data;
 }
 
+/** Asks the property's owner whether the time suits. Same shape, different person. */
+export async function sendSellerConfirmation(
+  id: string,
+): Promise<{ sent: boolean; reason?: string }> {
+  const { data } = await api.post<{ sent: boolean; reason?: string }>(
+    `/my/meetings/${id}/seller-confirmation`,
+  );
+  return data;
+}
+
 /** What the customer sees behind the link in their email. */
 export interface ViewingInvite {
   title: string;
@@ -136,6 +161,37 @@ export async function fetchViewing(token: string): Promise<ViewingInvite> {
 
 export async function respondToViewing(token: string, confirmed: boolean): Promise<void> {
   await api.post(`/viewings/${token}/${confirmed ? 'confirm' : 'decline'}`);
+}
+
+/**
+ * What the property's owner sees behind their own link.
+ *
+ * Their address rather than a title, and no buyer: this page says when somebody would
+ * like to come round, and that is all it is entitled to say.
+ */
+export interface SellerViewingInvite {
+  startsAt: string;
+  endsAt: string;
+  cancelled: boolean;
+  response: AttendeeResponse;
+  note: string | null;
+  address: string | null;
+  agencyName: string;
+  agencyPhone: string | null;
+  firstName: string | null;
+}
+
+export async function fetchSellerViewing(token: string): Promise<SellerViewingInvite> {
+  const { data } = await api.get<SellerViewingInvite>(`/viewings/seller/${token}`);
+  return data;
+}
+
+export async function respondAsSeller(
+  token: string,
+  confirmed: boolean,
+  note?: string,
+): Promise<void> {
+  await api.post(`/viewings/seller/${token}/${confirmed ? 'confirm' : 'decline'}`, { note });
 }
 
 // ── after the viewing ────────────────────────────────────────────────────────

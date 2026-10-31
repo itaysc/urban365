@@ -4,11 +4,14 @@ import { ConfigService } from '@nestjs/config';
 import type { MailConfig } from '../config/configuration.js';
 import { MailService } from '../mail/mail.service.js';
 import {
+  sellerResponseTemplate,
+  sellerViewingRequestTemplate,
   viewingConfirmationTemplate,
   viewingReminderTemplate,
   viewingResponseTemplate,
 } from '../mail/templates.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { addressOf } from './address.js';
 
 /** How far ahead of a viewing the reminder goes out. */
 export const REMINDER_LEAD_MS = 24 * 60 * 60 * 1000;
@@ -30,6 +33,8 @@ const when = (at: Date) =>
     minute: '2-digit',
     timeZone: 'Asia/Jerusalem',
   });
+
+
 
 /**
  * Asking a customer to confirm a viewing, and reminding them the day before.
@@ -169,6 +174,182 @@ export class ConfirmationsService {
             customerName: meeting.customer?.name ?? 'הלקוח',
             confirmed,
             when: when(meeting.startsAt),
+            appUrl: this.appUrl,
+          }),
+        })
+        .catch((error: Error) => this.logger.warn(`Could not notify the agent: ${error.message}`));
+    }
+
+    return { response: confirmed ? 'confirmed' : 'declined' };
+  }
+
+
+  // ── the seller's side ───────────────────────────────────────────────────────
+
+  /**
+   * Asks whoever owns the property whether the proposed time suits.
+   *
+   * The recipient is found two ways, because a property reaches this platform two ways:
+   * an agency listing points at a record in the agency's own CRM, and a private
+   * seller's listing points at their account. Neither is guaranteed, and the reasons
+   * are told apart rather than collapsed into "could not send" — "nobody has said who
+   * owns this" and "they have no email address" call for different things from the
+   * agent.
+   */
+  async askSeller(meetingId: string): Promise<{ sent: boolean; reason?: string }> {
+    const meeting = await this.prisma.meeting.findUnique({
+      where: { id: meetingId },
+      include: {
+        agency: { select: { name: true } },
+        listing: {
+          select: {
+            street: true,
+            houseNumber: true,
+            city: true,
+            sellerCustomer: { select: { name: true, email: true } },
+            owner: { select: { firstName: true, email: true } },
+          },
+        },
+      },
+    });
+    if (!meeting) throw new NotFoundException('הפגישה לא נמצאה.');
+
+    if (!meeting.listing) {
+      throw new BadRequestException('אין נכס משויך לפגישה, אז אין את מי לשאול.');
+    }
+
+    const seller = meeting.listing.sellerCustomer
+      ? {
+          name: meeting.listing.sellerCustomer.name,
+          email: meeting.listing.sellerCustomer.email,
+        }
+      : meeting.listing.owner
+        ? { name: meeting.listing.owner.firstName, email: meeting.listing.owner.email }
+        : null;
+
+    if (!seller) {
+      return { sent: false, reason: 'לא רשום בעל נכס לנכס הזה. אפשר לקשר לקוח בעמוד הנכס.' };
+    }
+    if (!seller.email) {
+      return { sent: false, reason: 'לבעל הנכס אין כתובת אימייל — צריך לתאם בטלפון.' };
+    }
+
+    const token = meeting.sellerToken ?? randomBytes(24).toString('base64url');
+
+    const sent = await this.mail.send({
+      to: seller.email,
+      ...sellerViewingRequestTemplate({
+        firstName: seller.name.split(' ')[0],
+        agencyName: meeting.agency.name,
+        when: when(meeting.startsAt),
+        propertyLabel: addressOf(meeting.listing),
+        confirmUrl: `${this.appUrl}/viewing/seller/${token}`,
+      }),
+    });
+
+    // Kept whether or not the mail got through, for the same reason as the buyer's: an
+    // agent reading the link down the phone should find it works.
+    await this.prisma.meeting.update({
+      where: { id: meeting.id },
+      data: { sellerToken: token, ...(sent ? { sellerAskedAt: new Date() } : {}) },
+    });
+
+    if (!sent) return { sent: false, reason: 'שליחת האימייל נכשלה. כדאי לתאם בטלפון.' };
+    return { sent: true };
+  }
+
+  /**
+   * What the seller's page shows.
+   *
+   * Their own property's address, which they know, and the time. Not the buyer's name:
+   * the seller has no use for it before the viewing, and a link that leaks who is
+   * coming to see a flat is a link worth guessing at.
+   */
+  async sellerByToken(token: string) {
+    const meeting = await this.prisma.meeting.findUnique({
+      where: { sellerToken: token },
+      select: {
+        startsAt: true,
+        endsAt: true,
+        status: true,
+        sellerResponse: true,
+        sellerNote: true,
+        agency: { select: { name: true, phone: true } },
+        listing: {
+          select: {
+            street: true,
+            houseNumber: true,
+            city: true,
+            sellerCustomer: { select: { name: true } },
+            owner: { select: { firstName: true } },
+          },
+        },
+      },
+    });
+    if (!meeting) throw new NotFoundException('הקישור אינו תקף.');
+
+    const name =
+      meeting.listing?.sellerCustomer?.name ?? meeting.listing?.owner?.firstName ?? null;
+
+    return {
+      startsAt: meeting.startsAt,
+      endsAt: meeting.endsAt,
+      cancelled: meeting.status === 'cancelled',
+      response: meeting.sellerResponse,
+      note: meeting.sellerNote,
+      address: meeting.listing ? addressOf(meeting.listing) : null,
+      agencyName: meeting.agency.name,
+      agencyPhone: meeting.agency.phone,
+      firstName: name ? name.split(' ')[0] : null,
+    };
+  }
+
+  /**
+   * The seller's answer, and whatever they wrote with it.
+   *
+   * The note is kept on a yes as well as a no — "the gate code is 1234" is worth as
+   * much to the agent as "not before five".
+   */
+  async sellerRespond(token: string, confirmed: boolean, note?: string) {
+    const meeting = await this.prisma.meeting.findUnique({
+      where: { sellerToken: token },
+      include: {
+        owner: { select: { email: true } },
+        listing: {
+          select: {
+            sellerCustomer: { select: { name: true } },
+            owner: { select: { firstName: true } },
+          },
+        },
+      },
+    });
+    if (!meeting) throw new NotFoundException('הקישור אינו תקף.');
+
+    const trimmed = note?.trim() ?? '';
+
+    await this.prisma.meeting.update({
+      where: { id: meeting.id },
+      data: {
+        sellerResponse: confirmed ? 'confirmed' : 'declined',
+        sellerRespondedAt: new Date(),
+        // An empty box clears what was there: somebody correcting themselves should not
+        // leave the old reason standing next to the new answer.
+        sellerNote: trimmed === '' ? null : trimmed,
+      },
+    });
+
+    if (meeting.owner?.email) {
+      void this.mail
+        .send({
+          to: meeting.owner.email,
+          ...sellerResponseTemplate({
+            sellerName:
+              meeting.listing?.sellerCustomer?.name ??
+              meeting.listing?.owner?.firstName ??
+              'בעל הנכס',
+            confirmed,
+            when: when(meeting.startsAt),
+            note: trimmed === '' ? null : trimmed,
             appUrl: this.appUrl,
           }),
         })
