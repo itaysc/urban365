@@ -32,8 +32,12 @@ export class MailService {
   /**
    * Never throws. A failed verification email must not roll back a signup that already
    * succeeded; the user can ask for another one.
+   *
+   * Returns whether it went: most callers rightly ignore that, but one that tells a
+   * person "sent" needs to know the provider actually took it. The console transport
+   * counts as sent — the link is in the log, which is the point of it.
    */
-  async send(mail: Mail): Promise<void> {
+  async send(mail: Mail): Promise<boolean> {
     if (!this.resend) {
       const links = [...mail.html.matchAll(/href="([^"]+)"/g)].map((m) => m[1]);
       this.logger.log(
@@ -43,7 +47,7 @@ export class MailService {
           (links.length ? `link:    ${links[0]}\n` : '') +
           `─────────────────────────────────────────────`,
       );
-      return;
+      return true;
     }
 
     try {
@@ -53,9 +57,14 @@ export class MailService {
         subject: mail.subject,
         html: mail.html,
       });
-      if (error) this.logger.error(`Resend rejected mail to ${mail.to}: ${error.message}`);
+      if (error) {
+        this.logger.error(`Resend rejected mail to ${mail.to}: ${error.message}`);
+        return false;
+      }
+      return true;
     } catch (e) {
       this.logger.error(`Could not send mail to ${mail.to}: ${(e as Error).message}`);
+      return false;
     }
   }
 

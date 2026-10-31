@@ -793,6 +793,14 @@ enum MeetingStatus {
   cancelled
 }
 
+/// What the person on the other side said about it.
+enum AttendeeResponse {
+  /// Nothing sent, or sent and not answered.
+  pending
+  confirmed
+  declined
+}
+
 /// Something in an agent's diary: a viewing, a valuation, a signing.
 ///
 /// Ours, not Google's. An agency that never connects a Google account still has a
@@ -818,6 +826,23 @@ model Meeting {
   notes    String?
 
   status MeetingStatus @default(scheduled)
+
+  // ── confirmation and reminders ──────────────────────────────────────────────
+
+  /// What the customer said. `pending` covers both "not asked" and "asked, no answer":
+  /// `confirmationSentAt` is what tells those apart.
+  attendeeResponse AttendeeResponse @default(pending)
+  attendeeRespondedAt DateTime?
+
+  /// Unguessable, and the only thing standing between a stranger and somebody else's
+  /// appointment — so it is issued per meeting and only when a confirmation is sent.
+  /// The page behind it shows a time, a place and a first name, and nothing else.
+  confirmationToken String? @unique
+  confirmationSentAt DateTime?
+
+  /// When the reminder went out, which is also what stops it going out twice. Null and
+  /// in the past means due.
+  reminderSentAt DateTime?
 
   /// Whose diary it is. Null means the agency's rather than one agent's.
   owner   User?   @relation("MeetingOwner", fields: [ownerId], references: [id], onDelete: SetNull)

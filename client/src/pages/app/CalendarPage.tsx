@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
-import { CalendarDays, ChevronLeft, ChevronRight, MapPin, Plus, User } from 'lucide-react';
+import { CalendarDays, Check, ChevronLeft, ChevronRight, MailCheck, MapPin, Plus, User, X } from 'lucide-react';
 import { useAuth } from '@/auth/auth-context';
 import { Button } from '@/components/ui/Button';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
@@ -18,6 +18,7 @@ import {
   disconnectGoogleCalendar,
   fetchGoogleCalendarStatus,
   fetchMeetings,
+  sendMeetingConfirmation,
   updateMeeting,
   type Meeting,
   type MeetingInput,
@@ -44,6 +45,18 @@ function monthGrid(month: Date): Date[] {
   });
 }
 
+/** `YYYY-MM-DD` in local time, which is what a day in the url means. */
+const isoDay = (at: Date) =>
+  `${at.getFullYear()}-${String(at.getMonth() + 1).padStart(2, '0')}-${String(at.getDate()).padStart(2, '0')}`;
+
+/**
+ * Nine in the morning on that day, as a `datetime-local` value.
+ *
+ * A booking has to start somewhere, and the start of the working day is a better guess
+ * than the hour somebody happened to click at — they are picking a date, not a time.
+ */
+const localSlot = (at: Date) => `${isoDay(at)}T09:00`;
+
 const sameDay = (a: Date, b: Date) =>
   a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 
@@ -55,10 +68,37 @@ export function CalendarPage() {
   const queryClient = useQueryClient();
   const [params, setParams] = useSearchParams();
 
-  const [month, setMonth] = useState(() => startOfMonth(new Date()));
-  const [selected, setSelected] = useState<Date>(() => new Date());
-  const [editing, setEditing] = useState<Meeting | 'new' | null>(null);
+  /**
+   * Which day is selected, and whether a form is open, live in the url.
+   *
+   * So the browser's Back button closes the form and returns to the month somebody was
+   * looking at, which is what Back means to everybody — and so a half-filled booking
+   * survives a reload and can be linked to.
+   */
+  const dayParam = params.get('day');
+  const newAt = params.get('new');
+  const editingId = params.get('edit');
+
+  // The clock is read once on mount and then only ever through `today`, so a day with
+  // no `?day=` in the url still means "today" without calling a clock mid-render.
+  const [today] = useState(() => new Date());
+  const selected = useMemo(() => (dayParam ? new Date(dayParam) : today), [dayParam, today]);
+  const [month, setMonth] = useState(() => startOfMonth(dayParam ? new Date(dayParam) : today));
   const [deleting, setDeleting] = useState<Meeting | null>(null);
+
+  /** Replaces, rather than pushes, when only the day changes: browsing a month should
+   *  not leave thirty entries in the history to walk back through. */
+  const go = (patch: Record<string, string | null>, push = false) => {
+    const next = new URLSearchParams(params);
+    for (const [key, value] of Object.entries(patch)) {
+      if (value === null) next.delete(key);
+      else next.set(key, value);
+    }
+    setParams(next, { replace: !push });
+  };
+
+  const openNew = (at: Date) => go({ day: isoDay(at), new: localSlot(at) }, true);
+  const closeForm = () => go({ new: null, edit: null }, true);
 
   const { user } = useAuth();
   // An owner may look at the team's diaries; an agent only their own, which the server
@@ -68,11 +108,6 @@ export function CalendarPage() {
   const [whose, setWhose] = useState('');
 
   const days = useMemo(() => monthGrid(month), [month]);
-  // Read once, when the page opens, rather than 42 times while drawing one grid — a
-  // clock called in a loop can land on either side of midnight. It goes stale in a tab
-  // left open overnight, which is a better trade than the highlight moving under
-  // somebody mid-click.
-  const [today] = useState(() => new Date());
   const from = days[0];
   const to = useMemo(() => {
     const end = new Date(days[days.length - 1]);
@@ -112,7 +147,7 @@ export function CalendarPage() {
     onSuccess: () => {
       void refresh();
       toast.success(editing === 'new' ? 'הפגישה נקבעה.' : 'הפגישה עודכנה.');
-      setEditing(null);
+      closeForm();
     },
     onError: (e) => toast.error(errorMessageOf(e, 'לא הצלחנו לשמור את הפגישה.')),
   });
@@ -127,6 +162,18 @@ export function CalendarPage() {
     onError: (e) => toast.error(errorMessageOf(e, 'לא הצלחנו לבטל את הפגישה.')),
   });
 
+  const confirm = useMutation({
+    mutationFn: (id: string) => sendMeetingConfirmation(id),
+    onSuccess: (result) => {
+      void refresh();
+      if (result.sent) toast.success('בקשת האישור נשלחה ללקוח.');
+      // Not an error: most customers are a phone number, and the agent needs to know
+      // this one has to be rung instead of waiting for a reply that cannot come.
+      else toast.show(result.reason ?? 'אין למי לשלוח.');
+    },
+    onError: (e) => toast.error(errorMessageOf(e, 'לא הצלחנו לשלוח את בקשת האישור.')),
+  });
+
   const disconnect = useMutation({
     mutationFn: disconnectGoogleCalendar,
     onSuccess: () => {
@@ -137,6 +184,10 @@ export function CalendarPage() {
 
   const meetings = data?.items ?? [];
   const googleEvents = data?.googleEvents ?? [];
+
+  const editing: Meeting | 'new' | null = newAt
+    ? 'new'
+    : (meetings.find((m) => m.id === editingId) ?? null);
 
   const onDay = (day: Date) => meetings.filter((m) => sameDay(new Date(m.startsAt), day));
   const googleOnDay = (day: Date) => googleEvents.filter((e) => sameDay(new Date(e.startsAt), day));
@@ -175,7 +226,7 @@ export function CalendarPage() {
           )}
 
           {editing === null && (
-            <Button onClick={() => setEditing('new')}>
+            <Button onClick={() => openNew(selected)}>
               <Plus className="h-4 w-4" aria-hidden />
               פגישה חדשה
             </Button>
@@ -245,8 +296,9 @@ export function CalendarPage() {
           </h2>
           <MeetingForm
             meeting={editing === 'new' ? null : editing}
+            defaultStart={newAt ?? undefined}
             busy={save.isPending}
-            onCancel={() => setEditing(null)}
+            onCancel={closeForm}
             onSubmit={(input) => save.mutate(input)}
           />
         </section>
@@ -297,7 +349,12 @@ export function CalendarPage() {
               <button
                 key={day.toISOString()}
                 type="button"
-                onClick={() => setSelected(day)}
+                // A day with nothing in it is an invitation to book: there is nothing
+                // else clicking it could usefully mean. A day with meetings selects,
+                // so the list below can be read without a form opening over it.
+                onClick={() =>
+                  ours.length + theirs.length === 0 ? openNew(day) : go({ day: isoDay(day) })
+                }
                 className={`flex min-h-[4.5rem] flex-col items-stretch gap-1 rounded-lg border p-1.5 text-start transition ${
                   sameDay(day, selected)
                     ? 'border-blue-500 bg-blue-50'
@@ -347,9 +404,13 @@ export function CalendarPage() {
         </h2>
 
         {onDay(selected).length === 0 && googleOnDay(selected).length === 0 && (
-          <p className="rounded-xl border border-slate-200 bg-white p-6 text-center text-sm text-slate-500">
-            אין פגישות ביום הזה.
-          </p>
+          <div className="flex flex-col items-center gap-3 rounded-xl border border-slate-200 bg-white p-6 text-center">
+            <p className="text-sm text-slate-500">אין פגישות ביום הזה.</p>
+            <Button variant="secondary" onClick={() => openNew(selected)}>
+              <Plus className="h-4 w-4" aria-hidden />
+              קביעת פגישה ביום הזה
+            </Button>
+          </div>
         )}
 
         {onDay(selected).map((meeting) => (
@@ -394,6 +455,26 @@ export function CalendarPage() {
                       ביומן Google
                     </span>
                   )}
+
+                  {/* Three states worth telling apart: confirmed, declined, and asked
+                      but not answered — which is the one an agent should chase. */}
+                  {meeting.attendeeResponse === 'confirmed' && (
+                    <span className="flex items-center gap-1 rounded bg-green-50 px-2 py-0.5 text-xs text-green-800">
+                      <Check className="h-3.5 w-3.5" aria-hidden />
+                      הלקוח אישר
+                    </span>
+                  )}
+                  {meeting.attendeeResponse === 'declined' && (
+                    <span className="flex items-center gap-1 rounded bg-red-50 px-2 py-0.5 text-xs text-red-800">
+                      <X className="h-3.5 w-3.5" aria-hidden />
+                      הלקוח ביטל
+                    </span>
+                  )}
+                  {meeting.attendeeResponse === 'pending' && meeting.confirmationSentAt && (
+                    <span className="rounded bg-amber-50 px-2 py-0.5 text-xs text-amber-800">
+                      ממתין לתשובת הלקוח
+                    </span>
+                  )}
                 </div>
 
                 {meeting.notes && (
@@ -402,9 +483,20 @@ export function CalendarPage() {
               </div>
 
               <div className="flex shrink-0 items-center gap-3 text-sm">
+                {meeting.customerId && (
+                  <button
+                    type="button"
+                    onClick={() => confirm.mutate(meeting.id)}
+                    disabled={confirm.isPending}
+                    className="flex items-center gap-1 text-blue-700 hover:underline disabled:opacity-50"
+                  >
+                    <MailCheck className="h-4 w-4" aria-hidden />
+                    {meeting.confirmationSentAt ? 'שליחה מחדש' : 'בקשת אישור'}
+                  </button>
+                )}
                 <button
                   type="button"
-                  onClick={() => setEditing(meeting)}
+                  onClick={() => go({ edit: meeting.id }, true)}
                   className="text-blue-700 hover:underline"
                 >
                   עריכה

@@ -4,6 +4,11 @@ export const MEETING_STATUSES = ['scheduled', 'done', 'cancelled'] as const;
 export type MeetingStatus = (typeof MEETING_STATUSES)[number];
 
 export interface Meeting {
+  /** What the customer said, and whether they were asked at all. */
+  attendeeResponse: AttendeeResponse;
+  attendeeRespondedAt: string | null;
+  confirmationSentAt: string | null;
+  reminderSentAt: string | null;
   id: string;
   title: string;
   startsAt: string;
@@ -87,3 +92,39 @@ export async function fetchGoogleCalendarStatus(): Promise<GoogleCalendarStatus>
 }
 
 export const disconnectGoogleCalendar = () => api.delete('/my/calendar/google');
+
+// ── confirmations ────────────────────────────────────────────────────────────
+
+export type AttendeeResponse = 'pending' | 'confirmed' | 'declined';
+
+/** Asks the customer to confirm. `sent: false` means there was nobody to email. */
+export async function sendMeetingConfirmation(
+  id: string,
+): Promise<{ sent: boolean; reason?: string }> {
+  const { data } = await api.post<{ sent: boolean; reason?: string }>(
+    `/my/meetings/${id}/confirmation`,
+  );
+  return data;
+}
+
+/** What the customer sees behind the link in their email. */
+export interface ViewingInvite {
+  title: string;
+  startsAt: string;
+  endsAt: string;
+  location: string | null;
+  cancelled: boolean;
+  response: AttendeeResponse;
+  agencyName: string;
+  agencyPhone: string | null;
+  firstName: string | null;
+}
+
+export async function fetchViewing(token: string): Promise<ViewingInvite> {
+  const { data } = await api.get<ViewingInvite>(`/viewings/${token}`);
+  return data;
+}
+
+export async function respondToViewing(token: string, confirmed: boolean): Promise<void> {
+  await api.post(`/viewings/${token}/${confirmed ? 'confirm' : 'decline'}`);
+}

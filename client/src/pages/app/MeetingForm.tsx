@@ -20,8 +20,8 @@ function toLocalInput(iso: string): string {
 
 const toIso = (local: string): string => new Date(local).toISOString();
 
-/** An hour from the top of the next one, which is what most bookings are. */
-function defaultStart(): string {
+/** The top of the next hour — the fallback when no day was chosen. */
+function nextHour(): string {
   const at = new Date();
   at.setMinutes(0, 0, 0);
   at.setHours(at.getHours() + 1);
@@ -38,18 +38,33 @@ interface Props {
   meeting: Meeting | null;
   /** Fixed when the form is opened from a customer's own page. */
   customerId?: string;
+  /**
+   * Where to start a new booking, as a `datetime-local` value.
+   *
+   * The calendar passes the day that was clicked: somebody who picked the 12th means
+   * the 12th, and being handed "an hour from now" instead is the form second-guessing
+   * a choice they have already made.
+   */
+  defaultStart?: string;
   onSubmit: (input: MeetingInput) => void;
   onCancel: () => void;
   busy?: boolean;
 }
 
-export function MeetingForm({ meeting, customerId, onSubmit, onCancel, busy = false }: Props) {
+export function MeetingForm({
+  meeting,
+  customerId,
+  defaultStart,
+  onSubmit,
+  onCancel,
+  busy = false,
+}: Props) {
+  const opensAt = defaultStart ?? nextHour();
+
   const [title, setTitle] = useState(meeting?.title ?? '');
-  const [startsAt, setStartsAt] = useState(
-    meeting ? toLocalInput(meeting.startsAt) : defaultStart(),
-  );
+  const [startsAt, setStartsAt] = useState(meeting ? toLocalInput(meeting.startsAt) : opensAt);
   const [endsAt, setEndsAt] = useState(
-    meeting ? toLocalInput(meeting.endsAt) : plusHour(defaultStart()),
+    meeting ? toLocalInput(meeting.endsAt) : plusHour(opensAt),
   );
   const [location, setLocation] = useState(meeting?.location ?? '');
   const [notes, setNotes] = useState(meeting?.notes ?? '');

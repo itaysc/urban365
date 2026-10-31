@@ -4,6 +4,9 @@ import { ConfigService } from '@nestjs/config';
 import { CurrentUser } from '../auth/decorators/current-user.decorator.js';
 import type { Principal } from '../auth/types/principal.js';
 import { TenantGuard } from '../tenancy/tenant.guard.js';
+import { Public } from '../auth/decorators/public.decorator.js';
+import { Throttle } from '@nestjs/throttler';
+import { ConfirmationsService } from './confirmations.service.js';
 import { GoogleCalendarService } from './google-calendar.service.js';
 import { MeetingsService } from './meetings.service.js';
 import { CreateMeetingDto, ListMeetingsQuery, UpdateMeetingDto } from './dto/meeting.dto.js';
@@ -12,7 +15,10 @@ import { CreateMeetingDto, ListMeetingsQuery, UpdateMeetingDto } from './dto/mee
 @UseGuards(TenantGuard)
 @Controller('my/meetings')
 export class MeetingsController {
-  constructor(private readonly meetings: MeetingsService) {}
+  constructor(
+    private readonly meetings: MeetingsService,
+    private readonly confirmations: ConfirmationsService,
+  ) {}
 
   @Get()
   list(@Query() query: ListMeetingsQuery) {
@@ -32,6 +38,48 @@ export class MeetingsController {
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.meetings.remove(id);
+  }
+
+  /**
+   * Ask the customer to confirm.
+   *
+   * Scoped by the tenant client first — `meetings.require` refuses a meeting that is
+   * not this agency's — before the confirmation service, which runs as the owner and
+   * has no agency of its own to check against.
+   */
+  @Post(':id/confirmation')
+  async sendConfirmation(@Param('id') id: string) {
+    await this.meetings.assertOwn(id);
+    return this.confirmations.sendConfirmation(id);
+  }
+}
+
+/**
+ * The page a customer lands on from the email.
+ *
+ * Public and unauthenticated: they have never signed in and never will. The token in
+ * the path is the whole of the authorisation, which is why it is 24 random bytes and
+ * why the page behind it shows a time, a place and a first name and nothing else.
+ */
+@Public()
+@Throttle({ default: { limit: 20, ttl: 60_000 } })
+@Controller('viewings')
+export class ViewingConfirmationController {
+  constructor(private readonly confirmations: ConfirmationsService) {}
+
+  @Get(':token')
+  show(@Param('token') token: string) {
+    return this.confirmations.byToken(token);
+  }
+
+  @Post(':token/confirm')
+  confirm(@Param('token') token: string) {
+    return this.confirmations.respond(token, true);
+  }
+
+  @Post(':token/decline')
+  decline(@Param('token') token: string) {
+    return this.confirmations.respond(token, false);
   }
 }
 

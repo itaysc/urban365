@@ -14,6 +14,10 @@ const SELECT = {
   location: true,
   notes: true,
   status: true,
+  attendeeResponse: true,
+  attendeeRespondedAt: true,
+  confirmationSentAt: true,
+  reminderSentAt: true,
   customerId: true,
   listingId: true,
   ownerId: true,
@@ -207,6 +211,11 @@ export class MeetingsService {
     }
 
     return { startsAt, endsAt };
+  }
+
+  /** For routes that hand a meeting to a service with no tenant context of its own. */
+  async assertOwn(id: string): Promise<void> {
+    await this.require(id);
   }
 
   private async require(id: string) {

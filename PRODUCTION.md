@@ -145,7 +145,30 @@ To release one: `UPDATE "Listing" SET status = 'published', "publishedAt" = now(
 
 ---
 
-## 6. Storage
+## 6. Viewing reminders
+
+Nothing to set up — the server sweeps for due reminders every five minutes on its own
+timer, and says so at boot:
+
+```
+[ReminderScheduler] Viewing reminders sweep every 5 minutes.
+```
+
+It is safe on more than one instance: a reminder is claimed with a conditional update
+before the mail goes out, so exactly one instance sends it and a failure releases the
+claim for the next sweep.
+
+Two things it depends on:
+
+* **`RESEND_API_KEY`**, or no reminder reaches anybody. Without it the mail is logged
+  instead, which is right in development and silent failure in production.
+* **A verified sending domain at Resend.** Until one exists, Resend only accepts mail to
+  the account's own address and refuses everything else — which the agent is now told
+  about, but which means no customer is ever reminded.
+
+Confirmations are sent by hand from the calendar and need the same two things.
+
+## 7. Storage
 
 ```bash
 npm run storage:init --prefix server
@@ -158,7 +181,7 @@ something the app does on first upload: auto-creating inside a request means a t
 
 ---
 
-## 7. Google sign-in
+## 8. Google sign-in
 
 Register **both** callbacks on the Google OAuth client, exactly:
 
@@ -179,7 +202,7 @@ than shown and failing.
 
 ---
 
-## 8. The first admin
+## 9. The first admin
 
 `platformRole` is not writable through any API. Out of band, after the account exists:
 
@@ -194,7 +217,7 @@ every signup sits at `/app/pending` forever.
 
 ---
 
-## 9. Do not run in production
+## 10. Do not run in production
 
 * `npm run seed:dev-agency` — creates an account with a **known password** in the source.
   The script refuses to run against anything but localhost, but the rule is worth stating.
@@ -214,6 +237,9 @@ production.
   them while any remain, and both documents need a lawyer's pass before launch — which
   the banner also says.
 * **No admin queue for flagged listings** (§5).
+* **Reminders are email only.** Most customers are a phone number, and there is no SMS
+  or WhatsApp provider wired up — the calendar says so per meeting rather than failing
+  quietly, but those customers have to be rung.
 * **Agency listings are not spam-checked.** Only private sellers are, deliberately — an
   agency has a licence and an approved claim.
 * **A listing edited after it is published is not re-checked.** The check runs at publish.

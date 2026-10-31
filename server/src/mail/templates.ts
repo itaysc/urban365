@@ -91,3 +91,66 @@ export const removedFromAgencyTemplate = (agencyName: string) => ({
      </p>`,
   ),
 });
+
+/**
+ * A viewing, sent to the customer so they can say whether they are coming.
+ *
+ * Two buttons rather than one: "confirm" alone makes silence ambiguous, and an agent
+ * standing outside an empty flat would rather have been told no.
+ */
+export const viewingConfirmationTemplate = (params: {
+  firstName: string;
+  agencyName: string;
+  when: string;
+  location: string | null;
+  confirmUrl: string;
+}) => ({
+  subject: `אישור פגישה — ${params.when}`,
+  html: shell(
+    `שלום ${params.firstName},`,
+    `<p style="color:#334155;line-height:1.6">
+       ${params.agencyName} קבעו איתך פגישה ל<strong>${params.when}</strong>${
+         params.location ? `, ב${params.location}` : ''
+       }.
+     </p>
+     <p style="color:#334155;line-height:1.6">אפשר לאשר או לבטל בלחיצה:</p>
+     ${button(params.confirmUrl, 'לאישור או ביטול')}`,
+  ),
+});
+
+/** The same meeting, the day before. Shorter, because by now they know what it is. */
+export const viewingReminderTemplate = (params: {
+  firstName: string;
+  agencyName: string;
+  when: string;
+  location: string | null;
+  confirmUrl: string;
+}) => ({
+  subject: `תזכורת — פגישה ${params.when}`,
+  html: shell(
+    `שלום ${params.firstName},`,
+    `<p style="color:#334155;line-height:1.6">
+       תזכורת לפגישה עם ${params.agencyName} ב<strong>${params.when}</strong>${
+         params.location ? `, ב${params.location}` : ''
+       }.
+     </p>
+     ${button(params.confirmUrl, 'אישור או ביטול')}`,
+  ),
+});
+
+/** To the agent, when the customer answers. Their diary just changed. */
+export const viewingResponseTemplate = (params: {
+  customerName: string;
+  confirmed: boolean;
+  when: string;
+  appUrl: string;
+}) => ({
+  subject: `${params.customerName} ${params.confirmed ? 'אישר/ה' : 'ביטל/ה'} את הפגישה ${params.when}`,
+  html: shell(
+    params.confirmed ? 'הפגישה אושרה' : 'הפגישה בוטלה',
+    `<p style="color:#334155;line-height:1.6">
+       ${params.customerName} ${params.confirmed ? 'אישר/ה' : 'ביטל/ה'} את הפגישה שנקבעה ל<strong>${params.when}</strong>.
+     </p>
+     ${button(`${params.appUrl}/app/calendar`, 'ליומן')}`,
+  ),
+});

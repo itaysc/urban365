@@ -1,0 +1,12 @@
+-- Drops the policy the previous migration added.
+--
+-- It read "any meeting that has a confirmation token is selectable", which is not the
+-- rule anybody wanted: the token is the secret, and a policy cannot see which token the
+-- caller presented. What it actually bought was that every tokened meeting in the
+-- database became readable by the tenant role — across agencies — if any query ever
+-- forgot its own filter. That is wider than the thing it was meant to narrow.
+--
+-- The public confirmation page reads through the OWNER client instead, filtered by the
+-- token, the same way the listing phone lookup does. One row, found by a secret, with
+-- no policy to get wrong.
+DROP POLICY IF EXISTS meeting_public_by_token ON "Meeting";
