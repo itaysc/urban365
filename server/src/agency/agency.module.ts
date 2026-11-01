@@ -8,6 +8,8 @@ import { ImagesController } from './images.controller.js';
 import { OfficesController } from './offices.controller.js';
 import { OfficesService } from './offices.service.js';
 import { AgencyService } from './agency.service.js';
+import { OverviewController } from './overview.controller.js';
+import { OverviewService } from './overview.service.js';
 import { MyListingsController } from './my-listings.controller.js';
 import { MyListingsService } from './my-listings.service.js';
 import { InviteController, MyProfileController, TeamController } from './team.controller.js';
@@ -16,6 +18,7 @@ import { TeamService } from './team.service.js';
 @Module({
   imports: [AuthModule, Yad2Module, GeocodeModule],
   controllers: [
+    OverviewController,
     AgencyController,
     AgencyProfileController,
     ImagesController,
@@ -25,6 +28,12 @@ import { TeamService } from './team.service.js';
     MyProfileController,
     InviteController,
   ],
-  providers: [AgencyService, MyListingsService, TeamService, OfficesService],
+  providers: [
+    OverviewService,
+    AgencyService,
+    MyListingsService,
+    TeamService,
+    OfficesService,
+  ],
 })
 export class AgencyModule {}

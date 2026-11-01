@@ -58,6 +58,11 @@ export interface DemoLead {
   status: 'new' | 'contacted' | 'viewing' | 'offer' | 'won' | 'lost';
   /** Days since anybody touched it, which is what the stale-lead rule reads. */
   quietDays: number;
+  /**
+   * Days ago it arrived. Spread out on purpose: every lead created today draws a
+   * chart with one bar, which demonstrates nothing about a chart of twelve weeks.
+   */
+  agedDays?: number;
   /** Index into `LISTINGS`, when the enquiry came in on one. */
   listingIndex?: number;
 }
@@ -295,6 +300,7 @@ export const LEADS: DemoLead[] = [
     message: 'ראיתי את הדירה בסוקולוב, אפשר לתאם ביקור?',
     status: 'new',
     quietDays: 6,
+    agedDays: 6,
     listingIndex: 0,
   },
   {
@@ -303,6 +309,7 @@ export const LEADS: DemoLead[] = [
     message: 'מה הארנונה בבניין?',
     status: 'contacted',
     quietDays: 9,
+    agedDays: 16,
     // Not listing 2: that one is the "plenty of views and not one enquiry" case, and a
     // lead attached to it makes the rule it exists to demonstrate never fire.
     listingIndex: 1,
@@ -314,6 +321,7 @@ export const LEADS: DemoLead[] = [
     message: 'מעוניינת בפרטים על הפנטהאוז.',
     status: 'new',
     quietDays: 0,
+    agedDays: 1,
     listingIndex: 5,
   },
   {
@@ -322,6 +330,7 @@ export const LEADS: DemoLead[] = [
     message: 'האם המחיר גמיש?',
     status: 'viewing',
     quietDays: 2,
+    agedDays: 30,
     listingIndex: 4,
   },
   {
@@ -330,6 +339,7 @@ export const LEADS: DemoLead[] = [
     message: 'חיפשתי משהו להשקעה באזור.',
     status: 'lost',
     quietDays: 21,
+    agedDays: 54,
   },
 ];
 
@@ -484,5 +494,90 @@ export const CO_BROKERAGE: DemoCoBrokerage[] = [
     message: 'הקונה שלי אוהב את הקומה הגבוהה. נשמח לשתף פעולה.',
     commissionSplit: 40,
     status: 'pending',
+  },
+];
+
+/** A deal on the board, and where it is. */
+export interface DemoDeal {
+  title: string;
+  stage: 'qualified' | 'negotiation' | 'under_contract' | 'closed_won' | 'closed_lost';
+  price: number;
+  commission: number;
+  customerIndex: number;
+  listingIndex?: number;
+  /** For a closed one: how many months ago, so the chart has a shape. */
+  closedMonthsAgo?: number;
+  notes?: string;
+}
+
+/**
+ * A board with something on it at every stage, and a history behind it.
+ *
+ * The closed ones are spread over the last few months on purpose: a pipeline chart
+ * drawn from deals that all closed this week is a single bar, and tells nobody whether
+ * the agency is doing better or worse than it was.
+ */
+export const DEALS: DemoDeal[] = [
+  {
+    title: 'אבי כהן — סוקולוב 15',
+    stage: 'under_contract',
+    price: 2_150_000,
+    commission: 43_000,
+    customerIndex: 0,
+    listingIndex: 0,
+    notes: 'חתימה מתוכננת לסוף החודש, עורך הדין בודק את הטאבו.',
+  },
+  {
+    title: 'שירה אדרי — רוטשילד 40',
+    stage: 'negotiation',
+    price: 3_050_000,
+    commission: 61_000,
+    customerIndex: 6,
+    listingIndex: 4,
+    notes: 'פער של 50 אלף. המוכר מוכן לרדת אם הכניסה תידחה לאפריל.',
+  },
+  {
+    title: 'דנה שפירא — בלפור 7',
+    stage: 'qualified',
+    price: 1_750_000,
+    commission: 35_000,
+    customerIndex: 4,
+    listingIndex: 2,
+  },
+  {
+    title: 'יוסי מזרחי — יוספטל 22',
+    stage: 'closed_won',
+    price: 2_050_000,
+    commission: 41_000,
+    customerIndex: 3,
+    listingIndex: 3,
+    closedMonthsAgo: 1,
+  },
+  {
+    title: 'אלון גרינברג — הרצל 88',
+    stage: 'closed_won',
+    price: 1_680_000,
+    commission: 33_600,
+    customerIndex: 5,
+    listingIndex: 1,
+    closedMonthsAgo: 2,
+  },
+  {
+    title: 'מירב לוי — ויצמן 3',
+    stage: 'closed_lost',
+    price: 1_900_000,
+    commission: 0,
+    customerIndex: 1,
+    closedMonthsAgo: 2,
+    notes: 'קנתה דרך סוכנות אחרת.',
+  },
+  {
+    title: 'עומר פרץ — חיפוש פתוח',
+    stage: 'closed_lost',
+    price: 0,
+    commission: 0,
+    customerIndex: 7,
+    closedMonthsAgo: 4,
+    notes: 'הפסיק לחפש.',
   },
 ];

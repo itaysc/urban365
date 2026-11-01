@@ -325,6 +325,20 @@ and the demo seed then creates four requests in both directions — two sent and
 received, one of them already accepted — because the two sides look nothing alike and
 an agency that only ever sees one has seen half the feature.
 
+## The overview page
+
+`GET /my/overview` answers the first screen of the day in one request: what is waiting
+(open suggestions, unanswered leads, viewings with no summary, viewings this week,
+co-brokerage requests), the pipeline's open count, value and expected commission, and
+two series — leads by week over twelve weeks and deals closed by month over six.
+
+The series are bucketed in JavaScript from the rows rather than grouped in SQL. An
+agency's leads and deals are hundreds, and the alternative is raw SQL that has to be
+trusted to carry the tenant context. Empty buckets are filled in deliberately: a chart
+drawn only from the weeks that had leads hides the dry month somebody opened it to see.
+
+The charts are divs, not a library — a dozen bars with no axes, no zoom and no legend.
+
 ## Demo data (development only)
 
 `DemoService` fills an agency with eight customers, eight listings, five leads and six

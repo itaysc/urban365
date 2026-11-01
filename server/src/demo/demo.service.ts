@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { briefSummary } from '../cobrokerage/brief-summary.js';
-import { CO_BROKERAGE, CUSTOMERS, LEADS, LISTINGS, MEETINGS } from './demo-data.js';
+import { CO_BROKERAGE, CUSTOMERS, DEALS, LEADS, LISTINGS, MEETINGS } from './demo-data.js';
 
 /** Counts, so the caller can say what happened rather than "done". */
 export interface DemoSummary {
@@ -11,6 +11,7 @@ export interface DemoSummary {
   meetings: number;
   suggestions?: number;
   coBrokerage?: number;
+  deals?: number;
 }
 
 /**
@@ -24,6 +25,7 @@ export interface DemoSummary {
 const DELETE_ORDER = [
   'Suggestion',
   'CoBrokerageRequest',
+  'Deal',
   'Meeting',
   'Lead',
   'Listing',
@@ -151,9 +153,11 @@ export class DemoService {
       // `updatedAt` is Prisma's to set on write, so a lead that has been quiet for a
       // week has to be aged afterwards — and raw SQL, because the client would stamp
       // it again on any ordinary update.
-      if (lead.quietDays > 0) {
+      if (lead.quietDays > 0 || lead.agedDays) {
         const quietSince = new Date(now - lead.quietDays * DAY);
-        await this.prisma.$executeRaw`UPDATE "Lead" SET "updatedAt" = ${quietSince} WHERE id = ${row.id}`;
+        const arrived = new Date(now - (lead.agedDays ?? lead.quietDays) * DAY);
+        await this.prisma
+          .$executeRaw`UPDATE "Lead" SET "updatedAt" = ${quietSince}, "createdAt" = ${arrived} WHERE id = ${row.id}`;
       }
     }
 
@@ -190,6 +194,35 @@ export class DemoService {
       remember('Meeting', row.id);
     }
 
+    // ── deals ────────────────────────────────────────────────────────────────
+    for (const deal of DEALS) {
+      const closed = deal.closedMonthsAgo !== undefined;
+      const closedAt = closed
+        ? new Date(new Date(now).setMonth(new Date(now).getMonth() - deal.closedMonthsAgo!))
+        : null;
+
+      const row = await this.prisma.deal.create({
+        data: {
+          agencyId,
+          title: deal.title,
+          stage: deal.stage,
+          price: deal.price || null,
+          commission: deal.commission || null,
+          customerId: customerIds[deal.customerIndex] ?? null,
+          listingId:
+            deal.listingIndex !== undefined ? (listingIds[deal.listingIndex] ?? null) : null,
+          ownerId: createdByUserId,
+          notes: deal.notes ?? null,
+          closedAt,
+          // So a deal that closed in August is not also the most recently touched one
+          // on the board, which is the order the pipeline is read in.
+          ...(closedAt ? { createdAt: closedAt, updatedAt: closedAt } : {}),
+        },
+        select: { id: true },
+      });
+      remember('Deal', row.id);
+    }
+
     const coBrokerage = await this.seedCoBrokerage(
       agencyId,
       customerIds,
@@ -210,6 +243,7 @@ export class DemoService {
       listings: LISTINGS.length,
       leads: LEADS.length,
       meetings: MEETINGS.length,
+      deals: DEALS.length,
       coBrokerage,
     };
   }
@@ -364,6 +398,7 @@ export class DemoService {
       meetings: 0,
       suggestions: 0,
       coBrokerage: 0,
+      deals: 0,
     };
 
     await this.prisma.$transaction(async (tx) => {
@@ -377,6 +412,10 @@ export class DemoService {
         },
       });
       counted.suggestions = suggestions.count;
+
+      counted.deals = (
+        await tx.deal.deleteMany({ where: { agencyId, id: { in: idsOf('Deal') } } })
+      ).count;
 
       counted.coBrokerage = (
         await tx.coBrokerageRequest.deleteMany({
@@ -419,6 +458,8 @@ export class DemoService {
         return counted.suggestions ?? 0;
       case 'CoBrokerageRequest':
         return counted.coBrokerage ?? 0;
+      case 'Deal':
+        return counted.deals ?? 0;
       case 'Meeting':
         return counted.meetings;
       case 'Lead':
