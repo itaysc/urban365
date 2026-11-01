@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Heart } from 'lucide-react';
 import { AssetModal } from '@/components/AssetModal';
 import { ListingCard } from '@/components/ListingCard';
+import { SavedTabs } from '@/components/SavedTabs';
 import { SiteHeader } from '@/components/SiteHeader';
 import { qk } from '@/queries/keys';
 import { fetchSavedAmong, fetchSavedListings } from '@/services/saved';
@@ -48,6 +49,8 @@ export function SavedPage() {
       <SiteHeader />
 
       <div className="mx-auto flex max-w-5xl flex-col gap-6 p-4 sm:p-8">
+        <SavedTabs />
+
         <header className="flex flex-wrap items-baseline justify-between gap-3">
           <div>
             <h1 className="text-2xl font-bold text-slate-900">הנכסים ששמרתי</h1>

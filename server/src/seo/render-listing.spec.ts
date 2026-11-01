@@ -205,10 +205,13 @@ describe('renderListingPage', () => {
     expect(html).not.toContain('מי מוכר');
   });
 
-  it('runs no JavaScript of its own', () => {
+  it('loads no script of its own beyond the session check', () => {
     const html = renderListingPage(listing(), similar, APP);
+    const scripts = [...html.matchAll(/<script([^>]*)>/gu)].map((m) => m[1]);
 
-    expect(html).not.toMatch(/<script(?![^>]*type="application\/ld\+json")/u);
+    expect(scripts.filter((a) => a.includes('ld+json'))).toHaveLength(2);
+    expect(scripts.filter((a) => a.trim() === '')).toHaveLength(1);
+    expect(html).not.toMatch(/<script[^>]*src=/u);
   });
 
   it('keeps the snippet short enough to be shown whole', () => {

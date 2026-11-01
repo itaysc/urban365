@@ -178,7 +178,7 @@ async function collectSitemapPaths() {
 const PHONE = /(?:\+?972|0)[\s-]?\d{1,2}[\s-]?\d{3}[\s-]?\d{4}/;
 
 async function checkPage(path, { indexable }) {
-  const { status, type, body } = await get(path);
+  const { status, type, body, headers } = await get(path);
 
   if (status !== 200) {
     error(`${path} answered ${status}`);
@@ -262,8 +262,30 @@ async function checkPage(path, { indexable }) {
   if (/<a[^>]+href="(tel:|https:\/\/wa\.me)/.test(body)) {
     error(`${path} links straight to a phone number`);
   }
-  if (/<script(?![^>]*type="application\/ld\+json")/.test(body)) {
-    error(`${path} loads JavaScript — these pages must mean something without it`);
+  /*
+   * One inline script is allowed: the session check that personalises the bar. Every
+   * word a crawler reads is still in the HTML — what the script does is swap a sign-in
+   * link for an account link, which no crawler has. Anything else, and especially an
+   * external script, would mean the page had started depending on JavaScript to say
+   * what it is.
+   */
+  const scripts = [...body.matchAll(/<script([^>]*)>/g)].map((m) => m[1]);
+  const unexpected = scripts.filter(
+    (attrs) => !attrs.includes('application/ld+json') && attrs.trim() !== '',
+  );
+  if (unexpected.length > 0) {
+    error(`${path} loads a script with attributes: ${unexpected.join(', ')}`);
+  }
+  const inline = scripts.filter((attrs) => attrs.trim() === '').length;
+  if (inline > 1) error(`${path} has ${inline} inline scripts; only the session check is expected`);
+
+  // And the policy has to name it by hash rather than allowing inline script at large.
+  const csp = headers.get('content-security-policy') ?? '';
+  if (inline === 1 && !/script-src 'sha256-/.test(csp)) {
+    error(`${path} runs an inline script without naming its hash in the policy`);
+  }
+  if (/script-src[^;]*unsafe-inline/.test(csp)) {
+    error(`${path} allows any inline script`);
   }
 }
 

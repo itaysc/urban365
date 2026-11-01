@@ -7,7 +7,7 @@ import { Public } from '../auth/decorators/public.decorator.js';
 import { SECTIONS, type Section } from '../yad2/yad2.types.js';
 import { CityPageService } from './city-page.service.js';
 import { esc } from './html.js';
-import { page } from './layout.js';
+import { page, SESSION_SCRIPT_HASH } from './layout.js';
 import { ListingPageService } from './listing-page.service.js';
 import { idFromSlug, listingPath } from './listing-slug.js';
 import { renderCityPage } from './render-city.js';
@@ -43,9 +43,22 @@ const CACHE = 'public, max-age=300, stale-while-revalidate=3600';
  */
 const CSP = [
   "default-src 'none'",
-  'img-src https: data:',
+  /*
+   * `'self'` as well as https: the favicon is served from this origin, and without it
+   * the policy blocked the site's own icon on every one of these pages — invisibly,
+   * since a missing favicon looks like a browser being slow.
+   */
+  "img-src 'self' https: data:",
   // The stylesheet is inline, which is the whole reason the page arrives in one request.
   "style-src 'unsafe-inline'",
+  /*
+   * One script, named by its hash — the session check in `layout.ts`. Not
+   * `unsafe-inline`: the page is assembled from a scraped feed, and a policy that
+   * allowed any inline script would be trusting every street name in the country.
+   */
+  `script-src '${SESSION_SCRIPT_HASH}'`,
+  // Which is what that script talks to, and the only thing this page talks to at all.
+  "connect-src 'self'",
   "base-uri 'none'",
   "form-action 'none'",
   "frame-ancestors 'none'",

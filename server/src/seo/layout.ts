@@ -1,11 +1,48 @@
+import { createHash } from 'node:crypto';
 import { esc, jsonLd } from './html.js';
 
 /** The two lucide marks the bar uses, as the app draws them. */
 const ICON = {
   plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg>',
+  bell: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg>',
   heart:
     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>',
 };
+
+/**
+ * The one piece of JavaScript on these pages: who is signed in.
+ *
+ * It cannot be done on the server. These pages are cached and served to every visitor
+ * at once — a name rendered into the HTML would be one person's name shown to the
+ * next — so the document stays identical for everybody and the browser personalises
+ * three elements of the bar after it loads.
+ *
+ * Everything that matters for a crawler is already in the HTML; this only swaps a
+ * sign-in link for an account link. It fails silently and leaves the signed-out bar,
+ * which is the correct answer for a visitor who is in fact signed out and for one
+ * whose network ate the request.
+ */
+const SESSION_SCRIPT = `fetch("/api/v1/auth/me",{credentials:"same-origin"})
+.then(function(r){return r.ok?r.json():null})
+.then(function(d){
+var u=d&&d.user;if(!u)return;
+var a=document.getElementById("u365-account");
+var i=document.getElementById("u365-signin");
+var s=document.getElementById("u365-searches");
+if(a){a.textContent=u.firstName||"החשבון שלי";a.hidden=false;}
+if(s){s.hidden=false;}
+if(i){i.hidden=true;}
+}).catch(function(){});`;
+
+/**
+ * The policy allows exactly this script and nothing else.
+ *
+ * A hash rather than `unsafe-inline`: the page carries one script whose text is known
+ * at build time, so the browser can be told precisely which one to run. Anything
+ * injected into this page — through a city name, a street, a seller's description —
+ * still cannot execute.
+ */
+export const SESSION_SCRIPT_HASH = `sha256-${createHash('sha256').update(SESSION_SCRIPT).digest('base64')}`;
 
 export interface PageOptions {
   title: string;
@@ -64,6 +101,10 @@ header.site .wrap{display:flex;align-items:center;justify-content:space-between;
 .navl .here[aria-current]{color:#0f172a;font-weight:600}
 .navr a{display:flex;align-items:center;gap:.375rem;font-size:.875rem;color:#475569;
   text-decoration:none}
+/* display:flex above beats the browser's own rule for [hidden], so the sign-in link
+   and the account link were both on screen at once, and the account link was there
+   before anyone had signed in. */
+.navr a[hidden]{display:none}
 .navr a:hover{color:#0f172a}
 .navr a.publish{border:1px solid #cbd5e1;border-radius:.5rem;padding:.375rem .75rem;
   font-weight:500;color:#334155}
@@ -211,10 +252,17 @@ ${blocks}
   A link rather than the app's dialog: there is no JavaScript on this page to open one,
   and /login is where that dialog would have sent them anyway.
 -->
-<a class="signin" href="${esc(options.appUrl)}/login">התחברות</a>
+<a class="signin" id="u365-signin" href="${esc(options.appUrl)}/login">התחברות</a>
+<!--
+  Hidden until the script below finds a session. Rendered into the document rather
+  than created in JavaScript so the bar does not jump as it appears.
+-->
+<a id="u365-searches" hidden href="${esc(options.appUrl)}/alerts">${ICON.bell}<span class="word">חיפושים</span></a>
+<a class="signin" id="u365-account" hidden href="${esc(options.appUrl)}/app/profile"></a>
 </div>
 </div></header>
 <main class="wrap">${options.body}</main>
+<script>${SESSION_SCRIPT}</script>
 <footer class="site"><div class="wrap">
 <a href="/nadlan">כל הערים</a> ·
 <a href="${esc(options.appUrl)}/terms">תנאי שימוש</a> ·

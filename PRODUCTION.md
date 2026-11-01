@@ -530,29 +530,49 @@ the arrangement production will have.
 * The page says in words that these are asking prices on live ads, not closed deals.
 * **Rent says `לחודש`** on every figure it prints.
 
+### Saved properties and saved searches
+
+Two pages, `/saved` and `/alerts`, with a tab strip on each (`SavedTabs`). They used to
+be reachable only from two unrelated items in the header — a heart marked שמורים and a
+bell marked **התראות** — so somebody who had saved a search went looking under "saved",
+found only properties, and concluded the searches had not been kept. The bell now says
+**חיפושים**, which is what is behind it.
+
 ### The pictures on the city index
 
-Each city's card carries a photograph of a property in that city, **not a photograph of
-the city**. That is a constraint rather than a preference: stock libraries have Tel Aviv
-and Jerusalem and nothing whatever of Dimona, Beit She'an or Harish — searching those
-names on Unsplash and Pexels returns pictures that merely match the word, including
-portraits of strangers. A stock-backed grid would be five skylines and twenty-eight
-grey boxes.
+Each city's card carries a photograph **of that city** — a view over the town, its
+park, its old quarter — from Hebrew Wikipedia. Stock libraries were the obvious source
+and are useless here: Unsplash and Pexels have Tel Aviv and Jerusalem and nothing
+whatever of Dimona, Beit She'an or Harish, and searching those names returns pictures
+that merely match the word, including studio portraits of strangers.
 
-The cover is taken from the city's **best-photographed** listing, needing at least
-`PHOTOS_FOR_A_COVER` (5) images. Taking the most recent one instead put an estate
-agent's advertising banner on רמת גן and a floor plan on רמת השרון: a scraped feed
-carries both, and nothing in the URL tells them from a photograph. What does tell them
-apart is that they arrive alone — somebody selling a flat photographs it from several
-angles. Today that gives 26 cities of 33 a photograph.
+```bash
+node scripts/fetch-city-photos.mjs cities.txt    # one city per line
+```
 
-The other seven get a coloured tile, its colour derived from the city's name so it is
-the same on every build (`seo/tile.ts`). A run of identical grey boxes reads as
-something broken; a run of different colours reads as a design.
+writes `src/seo/city-photos.ts`. Today 32 of 33 cities have one; חריש, built in the
+last decade, has no photograph in its article and gets a tile instead
+(`seo/tile.ts`, a colour derived from the name so it is the same on every build).
 
-If you ever want real city photographs, the realistic route is commissioning or buying
-roughly thirty of them rather than hoping a free library has them. Dropping them in is
-a column on `CityBoundary` and one branch in `render-index.ts`.
+Four things the script has to get right, each of which it got wrong first:
+
+* **The lead image is the coat of arms**, for almost every Israeli city. The
+  photographs are further down the article, via `prop=images`.
+* **The file namespace is localised** — `קובץ:`, not `File:`. Stripping the English
+  prefix left every name unusable and every city blank, from code that looked right
+  and an API that answered 200.
+* **`prop=images` returns template images too**, so a panorama of the Tel Aviv
+  promenade won on both Ashdod and Ashkelon. A photograph counts as the city's only if
+  the city's name is in its own name or in one of its Commons categories.
+* **Redirects are not followed unless asked.** `תל אביב יפו` redirects to
+  `תל אביב-יפו`, and without `redirects=1` the country's largest city came back bare.
+
+**Attribution is a licence condition, not a courtesy.** Every photograph is Creative
+Commons or public domain; GFDL files are skipped because that licence wants its full
+text reproduced, which a card cannot do. The photographers are named in one list under
+the grid — the licences ask for credit reasonable to the medium, and thirty names over
+thirty pictures would bury the page. The URLs point at Wikimedia's own thumbnails; if
+the traffic ever justifies it, copy them into the bucket instead.
 
 ### The bar across the top
 
@@ -560,10 +580,17 @@ The same one the app has — height, border, sticky blur, wordmark, the three li
 rebuilt in CSS in `seo/layout.ts`, so somebody arriving from a search engine cannot
 tell that this page was rendered by something else.
 
-What it cannot have is the half that needs a session. These pages are cached and served
-to every visitor at once, so a saved count or somebody's name would be one visitor's
-data shown to the next. It is the signed-out bar, always. `התחברות` is a link to
-`/login` rather than the app's dialog, because there is no JavaScript here to open one.
+It cannot be rendered signed-in, because these pages are cached and served to every
+visitor at once — a name in the HTML would be one person's name shown to the next. So
+the document is always the signed-out bar and **the browser personalises three elements
+of it after loading**: one inline script asks `/api/v1/auth/me` and, if there is a
+session, swaps the sign-in link for the person's name and reveals the searches link.
+
+That is the only JavaScript on these pages, and the policy names it by its SHA-256
+rather than allowing inline script at large — the page is assembled from a scraped
+feed, and `unsafe-inline` would be trusting every street name in the country.
+`npm run check:seo` fails if a second script appears, if one gains a `src`, or if the
+policy ever loosens to `unsafe-inline`.
 
 ### What it costs
 

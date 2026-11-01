@@ -2,7 +2,9 @@ import type { Section } from '../yad2/yad2.types.js';
 import type { CityEntry } from './city-page.service.js';
 import { toSlug } from './city-slug.js';
 import { esc, number, properties } from './html.js';
+import { CITY_PHOTOS } from './city-photos.js';
 import { tileGradient } from './tile.js';
+import { cityKey } from '../listings/city-name.js';
 import { breadcrumbs, page } from './layout.js';
 
 /** Which page a city's name should lead to: wherever it has the most to show. */
@@ -17,6 +19,26 @@ const href = (section: Section, city: string) =>
 
 const totalIn = (entry: CityEntry) =>
   entry.counts.forsale + entry.counts.rent + entry.counts.commercial;
+
+/**
+ * The picture on a city's card.
+ *
+ * A photograph of the city itself where Wikipedia has one — a view over the town, its
+ * park, its old quarter — and a tinted tile where it does not. The first attempt used
+ * a photograph from a listing in that city instead, which put somebody's kitchen under
+ * the name of a town and, twice, an estate agent's advertising banner.
+ */
+function photo(entry: CityEntry): string {
+  const picture = CITY_PHOTOS[cityKey(entry.city)];
+
+  if (!picture) {
+    return `<span class="blank" aria-hidden="true" style="background:${esc(tileGradient(entry.city))}"></span>`;
+  }
+
+  // `alt` is empty on purpose: the card's own text names the city, and a screen reader
+  // reading the photograph's caption as well would say it twice.
+  return `<img src="${esc(picture.url)}" alt="" loading="lazy" width="320" height="200">`;
+}
 
 /** What a card says under the city's name: how much of what is on offer there. */
 function offered(entry: CityEntry): string {
@@ -45,11 +67,7 @@ function grid(cities: CityEntry[]): string {
     .map(
       (entry) => `<li>
 <a href="${esc(href(mainSection(entry), entry.city))}">
-${
-  entry.coverImageUrl
-    ? `<img src="${esc(entry.coverImageUrl)}" alt="" loading="lazy" width="320" height="200">`
-    : `<span class="blank" aria-hidden="true" style="background:${esc(tileGradient(entry.city))}"></span>`
-}
+${photo(entry)}
 <span class="shade" aria-hidden="true"></span>
 <span class="label">
 <span class="city">${esc(entry.city)}</span>
@@ -86,12 +104,27 @@ export function renderIndexPage(
     .map((group) => `<h2>${esc(group.name ?? 'ערים נוספות')}</h2>${grid(group.cities)}`)
     .join('');
 
+  const credits = [...new Set(Object.values(CITY_PHOTOS).map((p) => p.credit))].sort();
+
   const body = `${trail.html}
 <h1>נדל״ן בישראל לפי עיר</h1>
 <p class="lede">${esc(
     `${properties(listings)} ב-${number(cities)} ערים. לכל עיר דף עם מחיר חציוני, מחיר למ״ר, ופילוח לפי מספר חדרים, שכונה וסוג נכס — מחושב מהמודעות המתפרסמות כרגע.`,
   )}</p>
-${sections}`;
+${sections}
+
+<!--
+  Required, not courtesy: every photograph above is Creative Commons or public domain,
+  and the Creative Commons ones are licensed on the condition that their photographer
+  is named. One list under the grid rather than a line on each card — the licences ask
+  for the credit to be reasonable to the medium, and thirty names over thirty pictures
+  would bury the page.
+-->
+<h2>התמונות</h2>
+<p class="note">${esc(
+    'צילומי הערים מוויקיפדיה ומוויקישיתוף, ברישיונות Creative Commons או כנחלת הכלל. תודה לצלמים:',
+  )}</p>
+<p class="note">${credits.map((c) => esc(c)).join(' · ')}</p>`;
 
   return page({
     title: 'נדל״ן בישראל לפי עיר — מחירים ונכסים | Urban365',

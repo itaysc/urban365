@@ -205,16 +205,23 @@ export function SiteHeader({ leading, subtitle, fullWidth = false }: Props) {
             <span className="hidden sm:inline">שמורים</span>
           </Link>
 
-          {/* Only signed in: a saved search belongs to an account, unlike a saved
-              listing, which a signed-out browser keeps on its own. Offering it to
-              everybody would be offering a page that can only say "sign in first". */}
+          {/*
+            Only signed in: a saved search belongs to an account, unlike a saved
+            listing, which a signed-out browser keeps on its own. Offering it to
+            everybody would be offering a page that can only say "sign in first".
+
+            Marked "חיפושים" and not "התראות". The page behind it is called חיפושים
+            שמורים and is where a saved search lives; a bell marked "notifications"
+            is where nobody looks for one, which is why somebody who had saved three
+            of them could not find any.
+          */}
           {user && (
             <Link
               to="/alerts"
               className="flex items-center gap-1.5 text-sm text-slate-600 hover:text-slate-900"
             >
               <Bell className="h-5 w-5" aria-hidden />
-              <span className="hidden sm:inline">התראות</span>
+              <span className="hidden sm:inline">חיפושים</span>
             </Link>
           )}
 

@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { Bell, BellOff, Trash2 } from 'lucide-react';
+import { SavedTabs } from '@/components/SavedTabs';
 import { SiteHeader } from '@/components/SiteHeader';
 import { useToast } from '@/components/ui/Toast';
 import { errorMessageOf } from '@/lib/apiError';
@@ -113,6 +114,8 @@ export function AlertsPage() {
       <SiteHeader />
 
       <main className="mx-auto flex w-full max-w-3xl flex-col gap-5 p-4 sm:p-6">
+        <SavedTabs />
+
         <header>
           <h1 className="text-xl font-bold text-slate-900">חיפושים שמורים</h1>
           <p className="text-sm text-slate-500">

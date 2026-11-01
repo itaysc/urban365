@@ -174,10 +174,15 @@ describe('renderCityPage', () => {
     expect(data.itemListElement.map((i) => i.name)).toEqual(['ערים', 'חולון']);
   });
 
-  it('runs no JavaScript of its own, which is the point of rendering it here', () => {
+  it('carries nothing but the session check and its structured data', () => {
+    // Every word a reader or a crawler needs is in the HTML. The one script swaps a
+    // sign-in link for an account link, which is the half no cached page can render.
     const html = renderCityPage(build(healthy()), APP);
+    const scripts = [...html.matchAll(/<script([^>]*)>/gu)].map((m) => m[1]);
 
-    expect(html).not.toMatch(/<script(?![^>]*type="application\/ld\+json")/u);
+    expect(scripts.filter((a) => a.includes('ld+json'))).toHaveLength(1);
+    expect(scripts.filter((a) => a.trim() === '')).toHaveLength(1);
+    expect(html).not.toMatch(/<script[^>]*src=/u);
   });
 
   it('states that the prices are asking prices', () => {
