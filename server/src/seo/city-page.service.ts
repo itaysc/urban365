@@ -19,6 +19,18 @@ const PUBLIC: Prisma.ListingWhereInput = { status: 'published', delistedAt: null
  */
 const DIRECTORY_TTL_MS = 10 * 60 * 1000;
 
+/**
+ * How many photographs a listing needs before its cover may represent a city.
+ *
+ * Taking the most recent cover put an estate agent's advertising banner on רמת גן and
+ * a floor plan on רמת השרון: a scraped feed carries both, and they are indistinguishable
+ * from a photograph by their URL. What separates them is that they arrive alone —
+ * somebody actually selling a flat photographs it from several angles, while a banner
+ * and a plan are a single image. So the city's card comes from the listing with the
+ * fullest gallery, and a city with no such listing gets a tile instead of a guess.
+ */
+const PHOTOS_FOR_A_COVER = 5;
+
 /** The most listings one page shows before sending the reader into the app for the rest. */
 export const LISTINGS_SHOWN = 36;
 
@@ -35,6 +47,20 @@ export interface CityEntry {
    * file.
    */
   updatedAt: Date;
+  /**
+   * A photograph for the city's card: the cover of its most recent listing.
+   *
+   * Not a stock photograph of the place. Stock libraries have Tel Aviv and Jerusalem
+   * and nothing whatever of Dimona or Beit She'an — searching for those returns
+   * portraits of strangers that merely match the word — so a stock-backed grid would
+   * be a handful of skylines and two hundred grey boxes. A property in the city is a
+   * real picture of the thing the page is about and raises no question about where it
+   * came from that the listing cards below do not already.
+   *
+   * Null where no listing is photographed well enough to speak for the city; the card
+   * draws a tile instead. See `PHOTOS_FOR_A_COVER`.
+   */
+  coverImageUrl: string | null;
 }
 
 export interface CityListing {
@@ -230,13 +256,40 @@ export class CityPageService {
     return cities.length > 0 ? { name: district.name, cities } : null;
   }
 
-  private async loadDirectory(): Promise<Map<string, CityEntry>> {
-    const groups = await this.prisma.listing.groupBy({
-      by: ['city', 'section'],
-      where: { ...PUBLIC, city: { not: null } },
-      _count: { _all: true },
-      _max: { lastSeenAt: true },
+
+  /**
+   * One photograph per city, from its best-photographed property.
+   *
+   * `distinct` after `orderBy` keeps the first row per city, so this is one query
+   * rather than one per city — and ordering by the gallery size makes the choice both
+   * stable between page loads and the best available.
+   */
+  private async loadCovers(): Promise<Map<string, string>> {
+    const rows = await this.prisma.listing.findMany({
+      where: {
+        ...PUBLIC,
+        city: { not: null },
+        coverImageUrl: { not: null },
+        imagesCount: { gte: PHOTOS_FOR_A_COVER },
+      },
+      orderBy: [{ imagesCount: 'desc' }, { listedAt: { sort: 'desc', nulls: 'last' } }],
+      distinct: ['city'],
+      select: { city: true, coverImageUrl: true },
     });
+
+    return new Map(rows.map((row) => [cityKey(row.city as string), row.coverImageUrl as string]));
+  }
+
+  private async loadDirectory(): Promise<Map<string, CityEntry>> {
+    const [groups, covers] = await Promise.all([
+      this.prisma.listing.groupBy({
+        by: ['city', 'section'],
+        where: { ...PUBLIC, city: { not: null } },
+        _count: { _all: true },
+        _max: { lastSeenAt: true },
+      }),
+      this.loadCovers(),
+    ]);
 
     /*
      * Two spellings of one city collapse onto one entry, and the one carried by more
@@ -258,6 +311,7 @@ export class CityPageService {
         city,
         counts: { forsale: 0, rent: 0, commercial: 0 },
         updatedAt: new Date(0),
+        coverImageUrl: covers.get(key) ?? null,
       };
       entry.counts[group.section] += count;
 

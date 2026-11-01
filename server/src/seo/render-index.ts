@@ -2,6 +2,7 @@ import type { Section } from '../yad2/yad2.types.js';
 import type { CityEntry } from './city-page.service.js';
 import { toSlug } from './city-slug.js';
 import { esc, number, properties } from './html.js';
+import { tileGradient } from './tile.js';
 import { breadcrumbs, page } from './layout.js';
 
 /** Which page a city's name should lead to: wherever it has the most to show. */
@@ -16,6 +17,49 @@ const href = (section: Section, city: string) =>
 
 const totalIn = (entry: CityEntry) =>
   entry.counts.forsale + entry.counts.rent + entry.counts.commercial;
+
+/** What a card says under the city's name: how much of what is on offer there. */
+function offered(entry: CityEntry): string {
+  const parts = [
+    entry.counts.forsale > 0 ? `${number(entry.counts.forsale)} למכירה` : null,
+    entry.counts.rent > 0 ? `${number(entry.counts.rent)} להשכרה` : null,
+    entry.counts.commercial > 0 ? `${number(entry.counts.commercial)} מסחרי` : null,
+  ].filter(Boolean);
+
+  return parts.join(' · ');
+}
+
+/**
+ * One district's cities, as cards.
+ *
+ * The photograph is the cover of a property in that city rather than a picture of the
+ * city itself — see the note on `CityEntry.coverImageUrl`. It is decoration, so its
+ * `alt` is empty and the link's own text carries the meaning; a screen reader hears
+ * the city and what is on offer, which is the whole card.
+ *
+ * A city with no photograph gets a tinted tile rather than a grey hole, so a grid with
+ * one of them in it still reads as a grid.
+ */
+function grid(cities: CityEntry[]): string {
+  return `<ul class="cities">${cities
+    .map(
+      (entry) => `<li>
+<a href="${esc(href(mainSection(entry), entry.city))}">
+${
+  entry.coverImageUrl
+    ? `<img src="${esc(entry.coverImageUrl)}" alt="" loading="lazy" width="320" height="200">`
+    : `<span class="blank" aria-hidden="true" style="background:${esc(tileGradient(entry.city))}"></span>`
+}
+<span class="shade" aria-hidden="true"></span>
+<span class="label">
+<span class="city">${esc(entry.city)}</span>
+<span class="offered">${esc(offered(entry))}</span>
+</span>
+</a>
+</li>`,
+    )
+    .join('')}</ul>`;
+}
 
 /**
  * The index of every city with listings, grouped by district.
@@ -39,17 +83,7 @@ export function renderIndexPage(
   const trail = breadcrumbs([{ name: 'ערים', href: '/nadlan' }], canonical);
 
   const sections = groups
-    .map(
-      (group) => `<h2>${esc(group.name ?? 'ערים נוספות')}</h2>
-<ul class="chips">${group.cities
-        .map(
-          (entry) =>
-            `<li><a href="${esc(href(mainSection(entry), entry.city))}">${esc(entry.city)} <span class="note">(${esc(
-              number(totalIn(entry)),
-            )})</span></a></li>`,
-        )
-        .join('')}</ul>`,
-    )
+    .map((group) => `<h2>${esc(group.name ?? 'ערים נוספות')}</h2>${grid(group.cities)}`)
     .join('');
 
   const body = `${trail.html}

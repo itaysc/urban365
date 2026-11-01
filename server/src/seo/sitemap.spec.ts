@@ -16,6 +16,7 @@ const entry = (city: string, counts: Partial<CityEntry['counts']> = {}): CityEnt
   city,
   counts: { forsale: 0, rent: 0, commercial: 0, ...counts },
   updatedAt: new Date('2026-10-29T11:00:00Z'),
+  coverImageUrl: null,
 });
 
 describe('robotsTxt', () => {

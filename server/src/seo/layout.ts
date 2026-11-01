@@ -119,6 +119,37 @@ td.num,th.num{font-variant-numeric:tabular-nums;white-space:nowrap}
 /* The first photograph is the one somebody looks at, so it gets the room. */
 .gallery li:first-child{grid-column:1/-1}
 .gallery li:first-child img{height:20rem}
+/* The city grid: a photograph, a wash of dark over its foot, and the name on top. */
+/* Two across on a phone. One column of thirty-three cards is seven thousand pixels of
+   scrolling, and at this size half a card is still a legible photograph. */
+.cities{list-style:none;padding:0;margin:.75rem 0 0;display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));gap:.625rem}
+@media (min-width:40rem){
+  .cities{grid-template-columns:repeat(auto-fill,minmax(13rem,1fr));gap:.875rem}
+}
+.cities a{position:relative;display:block;aspect-ratio:8/5;border-radius:.875rem;
+  overflow:hidden;background:#e2e8f0;text-decoration:none;
+  box-shadow:0 1px 2px rgb(15 23 42 / .06)}
+.cities img{width:100%;height:100%;object-fit:cover;display:block;
+  transition:transform .35s ease}
+.cities a:hover img{transform:scale(1.04)}
+.cities .blank{position:absolute;inset:0}
+/* Dark enough at the foot for white text, clear at the top so the photo still shows. */
+.cities .shade{position:absolute;inset:0;
+  background:linear-gradient(to top,rgb(15 23 42 / .82) 0%,rgb(15 23 42 / .35) 42%,rgb(15 23 42 / 0) 72%)}
+.cities .label{position:absolute;inset-inline:0;bottom:0;padding:.75rem .875rem;
+  display:flex;flex-direction:column;gap:.125rem}
+.cities .label{padding:.625rem .75rem}
+.cities .city{color:#fff;font-weight:700;font-size:.9375rem;line-height:1.2;
+  text-shadow:0 1px 3px rgb(15 23 42 / .5)}
+.cities .offered{color:rgb(255 255 255 / .85);font-size:.75rem}
+@media (min-width:40rem){
+  .cities .label{padding:.75rem .875rem}
+  .cities .city{font-size:1.0625rem}
+  .cities .offered{font-size:.8125rem}
+}
+.cities a:focus-visible{outline:3px solid #1d4ed8;outline-offset:2px}
+@media (prefers-reduced-motion:reduce){.cities a:hover img{transform:none}}
 .chips{list-style:none;padding:0;margin:.5rem 0 0;display:flex;flex-wrap:wrap;gap:.5rem}
 /* The same shape as the link chips, for facts that are not links anywhere. */
 .chips.plain span{display:inline-block;background:#fff;border:1px solid #e2e8f0;

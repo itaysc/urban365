@@ -530,6 +530,30 @@ the arrangement production will have.
 * The page says in words that these are asking prices on live ads, not closed deals.
 * **Rent says `לחודש`** on every figure it prints.
 
+### The pictures on the city index
+
+Each city's card carries a photograph of a property in that city, **not a photograph of
+the city**. That is a constraint rather than a preference: stock libraries have Tel Aviv
+and Jerusalem and nothing whatever of Dimona, Beit She'an or Harish — searching those
+names on Unsplash and Pexels returns pictures that merely match the word, including
+portraits of strangers. A stock-backed grid would be five skylines and twenty-eight
+grey boxes.
+
+The cover is taken from the city's **best-photographed** listing, needing at least
+`PHOTOS_FOR_A_COVER` (5) images. Taking the most recent one instead put an estate
+agent's advertising banner on רמת גן and a floor plan on רמת השרון: a scraped feed
+carries both, and nothing in the URL tells them from a photograph. What does tell them
+apart is that they arrive alone — somebody selling a flat photographs it from several
+angles. Today that gives 26 cities of 33 a photograph.
+
+The other seven get a coloured tile, its colour derived from the city's name so it is
+the same on every build (`seo/tile.ts`). A run of identical grey boxes reads as
+something broken; a run of different colours reads as a design.
+
+If you ever want real city photographs, the realistic route is commissioning or buying
+roughly thirty of them rather than hoping a free library has them. Dropping them in is
+a column on `CityBoundary` and one branch in `render-index.ts`.
+
 ### The bar across the top
 
 The same one the app has — height, border, sticky blur, wordmark, the three links —
