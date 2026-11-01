@@ -401,6 +401,28 @@ Two ways in: a panel on the agency page, rendered only in a development build, a
 **The server refuses all three routes when `NODE_ENV=production`, and refuses anyone
 but an owner anywhere** — the client's hiding is a convenience, not the protection.
 
+## The tab icon
+
+`client/public/favicon.svg` is the source: a blue tile with `U365` in white, drawn as
+SVG so it is sharp at whatever size a browser asks for and there is one file to change
+rather than a set of sizes to regenerate. `textLength` is set explicitly, because an
+SVG favicon renders with system fonts and without it the width differs between a Mac,
+a PC and a phone — on one of them the last character leaves the tile.
+
+`apple-touch-icon.png` exists because Safari ignores an SVG icon when somebody adds the
+site to their home screen. It is the same artwork with square corners, since iOS rounds
+the icon itself and paints anything transparent black. To regenerate it after changing
+the SVG:
+
+```
+sed 's/ rx="14"//' client/public/favicon.svg > /tmp/touch.svg
+qlmanage -t -s 180 -o /tmp /tmp/touch.svg
+cp /tmp/touch.svg.png client/public/apple-touch-icon.png
+```
+
+The tab still reads `נדל״ן` while the mark says `U365` and the header says `Urban365`.
+Three names for one product, and the title is the one nobody has chosen yet.
+
 ## Still open
 
 Things that are known to be missing or unfinished, so nobody rediscovers them in

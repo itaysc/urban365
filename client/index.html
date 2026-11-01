@@ -2,7 +2,15 @@
 <html lang="he" dir="rtl">
   <head>
     <meta charset="UTF-8" />
+    <!--
+      An SVG icon, so the tab mark is sharp at whatever size the browser asks for and
+      there is one file to change rather than a set of sizes to regenerate.
+
+      The PNG beside it is for iOS: Safari ignores an SVG icon when somebody adds the
+      site to their home screen, and without this it uses a screenshot of the page.
+    -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>נדל״ן</title>
   </head>
