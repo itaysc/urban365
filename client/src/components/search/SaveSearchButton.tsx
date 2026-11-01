@@ -1,13 +1,13 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { BellPlus, BellRing, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/auth/auth-context';
 import { LoginDialog } from '@/components/auth/LoginDialog';
-import { Button } from '@/components/ui/Button';
-import { inputClass } from '@/components/ui/Field';
+import { SaveSearchForm } from '@/components/search/SaveSearchForm';
 import { useToast } from '@/components/ui/Toast';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { errorMessageOf } from '@/lib/apiError';
 import { alreadySaved } from '@/lib/savedSearch';
 import { qk } from '@/queries/keys';
@@ -47,9 +47,11 @@ function suggestName(filters: SearchFilters): string {
  * compare, so they are dropped — and naming them is the difference between a limitation
  * and a bug.
  *
- * The form is a dialog rather than a panel under the button. It used to open inline,
- * which pushed the sort control about on a wide screen and left no room at all on a
- * phone, where the header is already two rows deep.
+ * Where the form appears depends on the room there is for it. On a wide screen it is
+ * anchored under the button, so the results it is about stay visible — the question
+ * being answered is "do I want emails about this", and covering the page to ask it is
+ * heavier than the question. On a phone there is nowhere to anchor anything, so it is
+ * a dialog. The form itself is one component either way.
  */
 export function SaveSearchButton({ filters }: { filters: SearchFilters }) {
   const { user } = useAuth();
@@ -60,6 +62,32 @@ export function SaveSearchButton({ filters }: { filters: SearchFilters }) {
   const [signIn, setSignIn] = useState(false);
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
+
+  // `sm`, the same breakpoint the rest of the page folds at.
+  const wide = useMediaQuery('(min-width: 640px)');
+  const popover = useRef<HTMLDivElement>(null);
+
+  // Anchored, so it closes the way an anchored thing should: click away, or Escape.
+  // The dialog gets this from Radix and needs none of it.
+  useEffect(() => {
+    if (!open || !wide) return;
+
+    const onDown = (e: PointerEvent) => {
+      const target = e.target as Node;
+      if (popover.current?.contains(target) || trigger.current?.contains(target)) return;
+      setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+
+    document.addEventListener('pointerdown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('pointerdown', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open, wide]);
 
   // Only once there is somebody to have saved anything.
   const { data: searches } = useQuery({
@@ -112,7 +140,7 @@ export function SaveSearchButton({ filters }: { filters: SearchFilters }) {
   }
 
   return (
-    <>
+    <div className="relative">
       <button
         ref={trigger}
         type="button"
@@ -123,64 +151,70 @@ export function SaveSearchButton({ filters }: { filters: SearchFilters }) {
         שמירת החיפוש
       </button>
 
-      <Dialog.Root open={open} onOpenChange={setOpen}>
-        <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm" />
-
-          <Dialog.Content
-            onCloseAutoFocus={(e) => {
-              if (!trigger.current) return;
-              e.preventDefault();
-              trigger.current.focus();
-            }}
-            className="fixed start-1/2 top-1/2 z-50 max-h-[90vh] w-[min(28rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl bg-white p-6 shadow-xl rtl:translate-x-1/2"
+      {wide ? (
+        open && (
+          <div
+            ref={popover}
+            role="dialog"
+            aria-label="שמירת החיפוש"
+            className="absolute z-40 mt-2 w-80 rounded-xl border border-slate-200 bg-white p-4 shadow-lg"
           >
-            <div className="mb-4 flex items-start justify-between gap-4">
-              <div>
-                <Dialog.Title className="text-lg font-bold text-slate-900">
-                  שמירת החיפוש
-                </Dialog.Title>
-                <Dialog.Description className="mt-1 text-sm text-slate-500">
-                  נשלח לכם מייל כשייכנס נכס חדש שמתאים — לכל היותר פעם ביום.
-                </Dialog.Description>
+            <SaveSearchForm
+              showHeading
+              name={name}
+              onNameChange={setName}
+              suggestion={suggestName(filters)}
+              dropped={dropped}
+              busy={save.isPending}
+              onSave={() => save.mutate()}
+              onCancel={() => setOpen(false)}
+            />
+          </div>
+        )
+      ) : (
+        <Dialog.Root open={open} onOpenChange={setOpen}>
+          <Dialog.Portal>
+            <Dialog.Overlay className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm" />
+
+            <Dialog.Content
+              onCloseAutoFocus={(e) => {
+                if (!trigger.current) return;
+                e.preventDefault();
+                trigger.current.focus();
+              }}
+              className="fixed start-1/2 top-1/2 z-50 max-h-[90vh] w-[min(28rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl bg-white p-6 shadow-xl rtl:translate-x-1/2"
+            >
+              <div className="mb-4 flex items-start justify-between gap-4">
+                <div>
+                  <Dialog.Title className="text-lg font-bold text-slate-900">
+                    שמירת החיפוש
+                  </Dialog.Title>
+                  <Dialog.Description className="mt-1 text-sm text-slate-500">
+                    נשלח לכם מייל כשייכנס נכס חדש שמתאים — לכל היותר פעם ביום.
+                  </Dialog.Description>
+                </div>
+
+                <Dialog.Close
+                  aria-label="סגירה"
+                  className="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+                >
+                  <X className="h-5 w-5" />
+                </Dialog.Close>
               </div>
 
-              <Dialog.Close
-                aria-label="סגירה"
-                className="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
-              >
-                <X className="h-5 w-5" />
-              </Dialog.Close>
-            </div>
-
-            <label className="text-sm text-slate-700" htmlFor="save-search-name">
-              שם לחיפוש
-            </label>
-            <input
-              id="save-search-name"
-              className={`${inputClass} mt-1 w-full`}
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder={suggestName(filters)}
-            />
-
-            {dropped.length > 0 && (
-              <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                בהתראה לא ייכללו: {dropped.join(', ')}. החיפוש באתר עצמו לא משתנה.
-              </p>
-            )}
-
-            <div className="mt-4 flex items-center gap-3">
-              <Button disabled={save.isPending} onClick={() => save.mutate()}>
-                {save.isPending ? 'שומר…' : 'שמירה'}
-              </Button>
-              <Dialog.Close className="text-sm text-slate-500 transition hover:text-slate-900">
-                ביטול
-              </Dialog.Close>
-            </div>
-          </Dialog.Content>
-        </Dialog.Portal>
-      </Dialog.Root>
+              <SaveSearchForm
+                name={name}
+                onNameChange={setName}
+                suggestion={suggestName(filters)}
+                dropped={dropped}
+                busy={save.isPending}
+                onSave={() => save.mutate()}
+                onCancel={() => setOpen(false)}
+              />
+            </Dialog.Content>
+          </Dialog.Portal>
+        </Dialog.Root>
+      )}
 
       <LoginDialog
         open={signIn}
@@ -192,6 +226,6 @@ export function SaveSearchButton({ filters }: { filters: SearchFilters }) {
           setOpen(true);
         }}
       />
-    </>
+    </div>
   );
 }

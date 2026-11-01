@@ -368,6 +368,11 @@ listing *scanned*, not the newest that matched, so the window stays bounded and 
 is skipped. It starts at the moment the search is saved, so a new alert does not open
 with the back catalogue. A failed send puts all of it back.
 
+The form is anchored under the button on a wide screen, where the results it is about
+stay visible, and a dialog below `sm`, where there is nowhere to anchor it. One
+`SaveSearchForm` either way — two copies of four fields is how one of them ends up
+with a fix the other never gets.
+
 The button says so when the search on screen is already saved, and links to the alert
 instead of offering to make a second copy of it — two identical searches mean one
 listing produces two emails. The comparison is canonical on both sides: the filter bar
