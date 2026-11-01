@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Eye, Heart, MessageSquare, Phone, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatPrice } from '@/lib/format';
+import { SiteFooter } from '@/components/SiteFooter';
 import { SiteHeader } from '@/components/SiteHeader';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { errorMessageOf } from '@/lib/apiError';
@@ -243,6 +244,8 @@ export function MySalePage() {
         the part they would be upset to lose — so both are named, including the one
         that survives.
       */}
+      <SiteFooter />
+
       <ConfirmDialog
         open={deleting !== null}
         onOpenChange={(open) => !open && setDeleting(null)}

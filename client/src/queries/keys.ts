@@ -95,6 +95,9 @@ export const qk = {
     forCustomer: (customerId: string) => ['deals', 'customer', customerId] as const,
   },
 
+  /** The site's cities, for the footer on every public page. */
+  cities: ['cities'] as const,
+
   team: {
     all: ['team'] as const,
     list: ['team', 'list'] as const,

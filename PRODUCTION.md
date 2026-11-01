@@ -597,6 +597,17 @@ arrangement every property portal in the country uses and for the same reason.
 A section with fewer than three cities is left out rather than shown as a stub, and
 the list is built from the cached directory, so it costs no query per page.
 
+**The React app carries the same footer** (`components/SiteFooter.tsx`) on the search
+page, saved, alerts, the legal pages and a seller's own listings — fed by
+`GET /api/v1/cities`, which serves that same directory. One source, so the two footers
+cannot drift apart. It is not on `/app/*`: a CRM is a tool, and a map of the storefront
+in it is noise.
+
+The search page keeps its full-height desktop layout — `lg:h-screen` moved off the page
+onto the section inside it, so the search still fills the window and its results column
+still scrolls internally, while the page itself can scroll far enough to reach the
+footer.
+
 ### The bar across the top
 
 The same one the app has — height, border, sticky blur, wordmark, the three links —

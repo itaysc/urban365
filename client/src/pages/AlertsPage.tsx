@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { Bell, BellOff, Trash2 } from 'lucide-react';
 import { SavedTabs } from '@/components/SavedTabs';
+import { SiteFooter } from '@/components/SiteFooter';
 import { SiteHeader } from '@/components/SiteHeader';
 import { useToast } from '@/components/ui/Toast';
 import { errorMessageOf } from '@/lib/apiError';
@@ -197,6 +198,8 @@ export function AlertsPage() {
           ))}
         </ul>
       </main>
+
+      <SiteFooter />
     </div>
   );
 }

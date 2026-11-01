@@ -187,3 +187,23 @@ export async function fetchStreetsIn(city: string, q: string): Promise<string[]>
   const { data } = await api.get<string[]>(`/listings/streets?${params}`);
   return data;
 }
+
+// ── the site's cities, for the footer ────────────────────────────────────────
+
+export interface CityLink {
+  city: string;
+  /** The city's name as it appears in a landing-page URL. */
+  slug: string;
+  counts: { forsale: number; rent: number; commercial: number };
+}
+
+/**
+ * Every city we hold listings in, biggest first.
+ *
+ * The same directory the server-rendered landing pages are built from, so the footer
+ * here and the footer there cannot drift apart.
+ */
+export async function fetchCityLinks(): Promise<CityLink[]> {
+  const { data } = await api.get<CityLink[]>('/cities');
+  return data;
+}

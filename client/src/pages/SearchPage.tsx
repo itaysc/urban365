@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { selectClass } from '@/components/ui/Field';
 import { AssetModal } from '@/components/AssetModal';
+import { SiteFooter } from '@/components/SiteFooter';
 import { SiteHeader } from '@/components/SiteHeader';
 import { ListingsMap } from '@/components/map/ListingsMap';
 import { FilterBar } from '@/components/search/FilterBar';
@@ -173,8 +174,15 @@ export function SearchPage() {
     // Scrolling the whole page first pushed both the filters and the map off the top
     // before a single new card appeared. On a phone this is an ordinary page again —
     // one column, nothing to keep beside anything.
-    <div className="bg-slate-50 lg:flex lg:h-screen lg:flex-col lg:overflow-hidden">
-      <SiteHeader />
+    /*
+      The search itself still fills the window on a wide screen and still scrolls its
+      results column inside itself — that is `lg:h-screen` on the section below, not on
+      the page. The page scrolls, so there is somewhere for the footer to be: scrolling
+      past the search reveals it, the way a full-height hero works anywhere else.
+    */
+    <div className="bg-slate-50">
+      <div className="lg:flex lg:h-screen lg:flex-col lg:overflow-hidden">
+        <SiteHeader />
 
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 sm:p-8 lg:min-h-0 lg:flex-1">
         <header className="flex flex-wrap items-baseline justify-between gap-3">
@@ -309,8 +317,10 @@ export function SearchPage() {
         </div>
       </div>
 
-      {shown && <AssetModal asset={shown} onClose={() => showListing(null)} />}
+        {shown && <AssetModal asset={shown} onClose={() => showListing(null)} />}
+      </div>
 
+      <SiteFooter />
     </div>
   );
 }

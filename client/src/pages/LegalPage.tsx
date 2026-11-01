@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { PRIVACY, TERMS, type LegalDocument } from '@/content/legal';
+import { SiteFooter } from '@/components/SiteFooter';
 import { SiteHeader } from '@/components/SiteHeader';
 
 /** Anything still in `[[…]]` is a blank the business has to fill before this goes live. */
@@ -76,6 +77,8 @@ function Document({ doc }: { doc: LegalDocument }) {
           </Link>
         </footer>
       </div>
+
+      <SiteFooter />
     </div>
   );
 }

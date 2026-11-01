@@ -5,6 +5,7 @@ import { Heart } from 'lucide-react';
 import { AssetModal } from '@/components/AssetModal';
 import { ListingCard } from '@/components/ListingCard';
 import { SavedTabs } from '@/components/SavedTabs';
+import { SiteFooter } from '@/components/SiteFooter';
 import { SiteHeader } from '@/components/SiteHeader';
 import { qk } from '@/queries/keys';
 import { fetchSavedAmong, fetchSavedListings } from '@/services/saved';
@@ -96,6 +97,8 @@ export function SavedPage() {
       </div>
 
       {selected && <AssetModal asset={selected} onClose={() => setSelected(null)} />}
+
+      <SiteFooter />
     </div>
   );
 }
