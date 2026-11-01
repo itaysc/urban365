@@ -304,7 +304,10 @@ from leaking.
 Accepting is the start of the work, not the end of it. An accepted request carries a
 `stage` — agreed → viewing → negotiating → signed → completed, or fell through — that
 **either side may move**, because it is the deal's stage and not one agency's view of
-it. Both sides also share a message thread kept beside the deal, so "what did we agree
+it. Both sides also share a message thread, opened in a dialog of its own rather than
+inside the request card — a card is sized for a summary, and a conversation squeezed
+into one is a column of clipped lines with nowhere to type. The thread is kept beside
+the deal, so "what did we agree
 about the commission" has an answer six weeks later that neither agency can edit:
 messages have no update or delete policy at all. Read marks are per side (`seekerReadAt`
 / `holderReadAt`), which is all an unread badge needs. The other agency is emailed on an

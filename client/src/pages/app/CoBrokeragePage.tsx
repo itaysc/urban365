@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Check, ChevronDown, Handshake, MessageCircle, X } from 'lucide-react';
 import { useAuth } from '@/auth/auth-context';
 import { useToast } from '@/components/ui/Toast';
-import { CoBrokerageThread } from '@/components/agency/CoBrokerageThread';
+import { CoBrokerageThreadDialog } from '@/components/agency/CoBrokerageThreadDialog';
 import { errorMessageOf } from '@/lib/apiError';
 import { isSettled, STAGE_CLASS, STAGE_LABEL, STATUS_CLASS, STATUS_LABEL } from '@/lib/cobrokerage';
 import { formatPrice } from '@/lib/format';
@@ -193,32 +193,30 @@ export function CoBrokeragePage() {
             )}
 
             {/* The thread exists from the moment the request does, so a question can be
-                asked before anybody commits to anything. */}
+                asked before anybody commits to anything. It opens in a window of its
+                own: a conversation squeezed into a summary card is a column of clipped
+                lines with nowhere to type. */}
             <button
               type="button"
               onClick={() => toggle(request.id, unread)}
               className="mt-2 flex items-center gap-1 text-sm text-blue-700 hover:underline"
             >
-              <ChevronDown
-                className={`h-4 w-4 transition ${expanded ? 'rotate-180' : ''}`}
-                aria-hidden
-              />
-              {expanded
-                ? 'סגירה'
-                : request.messages.length > 0
-                  ? `שיחה (${request.messages.length})`
-                  : 'שיחה'}
+              <MessageCircle className="h-4 w-4" aria-hidden />
+              {request.messages.length > 0 ? `שיחה (${request.messages.length})` : 'פתיחת שיחה'}
             </button>
 
-            {expanded && (
-              <CoBrokerageThread
-                requestId={request.id}
-                messages={request.messages}
-                stage={request.stage}
-                myAgencyId={myAgencyId}
-                settled={settled}
-              />
-            )}
+            <CoBrokerageThreadDialog
+              open={expanded}
+              onOpenChange={(next) => setOpen(next ? request.id : null)}
+              requestId={request.id}
+              otherAgency={other.name}
+              property={addressOf(request.listing)}
+              price={request.listing.price}
+              messages={request.messages}
+              stage={request.stage}
+              myAgencyId={myAgencyId}
+              settled={settled}
+            />
           </div>
 
           {request.status === 'pending' && (
