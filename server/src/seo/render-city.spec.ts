@@ -84,6 +84,37 @@ describe('renderCityPage', () => {
     expect(html).toContain('1,600,000 ₪');
   });
 
+  it('shows the mean beside the median, not instead of it', () => {
+    // A city where one property is worth four of the others: the two figures disagree,
+    // and the disagreement is the thing worth reading.
+    const rows = [...Array.from({ length: 5 }, () => stat({ price: 2_000_000 })), stat({ price: 20_000_000 })];
+    const html = renderCityPage(build(rows), APP);
+
+    expect(html).toContain('מחיר חציוני');
+    expect(html).toContain('מחיר ממוצע');
+    expect(html).toContain('2,000,000 ₪');
+    expect(html).toContain('5,000,000 ₪');
+  });
+
+  it('explains which is which, since the two are routinely taken for each other', () => {
+    const html = renderCityPage(build(healthy()), APP);
+
+    expect(html).toContain('החציון הוא המחיר האמצעי');
+  });
+
+  it('says nothing about the two figures where there are no prices to compare', () => {
+    const rows = Array.from({ length: 6 }, () => stat({ price: null }));
+
+    expect(renderCityPage(build(rows), APP)).not.toContain('החציון הוא המחיר האמצעי');
+  });
+
+  it('gives every breakdown row both figures', () => {
+    const html = renderCityPage(build(healthy()), APP);
+
+    expect(html).toContain('<th scope="col" class="num">חציוני</th>');
+    expect(html).toContain('<th scope="col" class="num">ממוצע</th>');
+  });
+
   it('leaves out a breakdown that only repeats the headline', () => {
     // Every listing is a דירה, so a "by property type" table is the same median twice.
     const html = renderCityPage(build(healthy()), APP);

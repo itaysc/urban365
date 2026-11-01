@@ -3,6 +3,7 @@ import {
   byNeighborhood,
   byPropertyType,
   byRooms,
+  mean,
   median,
   quantile,
   summarise,
@@ -37,6 +38,23 @@ describe('median', () => {
   });
 });
 
+describe('mean', () => {
+  it('averages and rounds to whole shekels', () => {
+    expect(mean([1, 2, 2])).toBe(2);
+  });
+
+  it('is null for nothing, like the median', () => {
+    expect(mean([])).toBeNull();
+  });
+
+  it('is dragged by one outlier, which is the whole reason it is shown beside a median', () => {
+    const prices = [2_000_000, 2_000_000, 2_000_000, 2_000_000, 20_000_000];
+
+    expect(median(prices)).toBe(2_000_000);
+    expect(mean(prices)).toBe(5_600_000);
+  });
+});
+
 describe('quantile', () => {
   it('finds the lower quarter', () => {
     expect(quantile([1, 2, 3, 4, 5], 0.25)).toBe(2);
@@ -66,6 +84,24 @@ describe('summarise', () => {
 
   it('divides when the source stated no rate', () => {
     expect(summarise([row({ price: 2_000_000, squareMeter: 80 })]).medianPricePerSqm).toBe(25_000);
+  });
+
+  it('reports the mean beside the median', () => {
+    const summary = summarise([1, 2, 9].map((m) => row({ price: m * 1_000_000 })));
+
+    expect(summary.medianPrice).toBe(2_000_000);
+    expect(summary.meanPrice).toBe(4_000_000);
+  });
+
+  it('averages only the listings that carried a price', () => {
+    // An unpriced listing is not a listing worth nothing; it must not drag the mean.
+    const summary = summarise([row({ price: 2_000_000 }), row({ price: null })]);
+
+    expect(summary.meanPrice).toBe(2_000_000);
+  });
+
+  it('has no mean where nothing is priced', () => {
+    expect(summarise([row({ price: null })]).meanPrice).toBeNull();
   });
 
   it('describes the middle half of the market', () => {
@@ -106,6 +142,17 @@ describe('byRooms', () => {
     const rows = [...times(4, { rooms: 4 }), ...times(2, { rooms: 2 })];
 
     expect(byRooms(rows).map((b) => b.label)).toEqual(['4']);
+  });
+
+  it('gives each band its own mean as well as its median', () => {
+    const rows = [
+      ...times(2, { rooms: 4, price: 2_000_000 }),
+      ...times(1, { rooms: 4, price: 8_000_000 }),
+    ];
+    const [band] = byRooms(rows);
+
+    expect(band.medianPrice).toBe(2_000_000);
+    expect(band.meanPrice).toBe(4_000_000);
   });
 
   it('prices each band from its own listings', () => {

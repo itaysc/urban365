@@ -522,9 +522,24 @@ the arrangement production will have.
   covering less than most of the city — otherwise "by property type" is the headline
   median printed twice. The meta description is built from the tables that survived, so
   the snippet never promises a section the page does not have.
-* **Every figure is a median**, never a mean, and the page says in words that these are
-  asking prices on live ads rather than closed deals.
+* **Median and mean, side by side.** Either alone misleads: in הרצליה the median asking
+  price is ₪5,995,000 and the mean ₪5,135,000, and in תל אביב the mean runs ₪740,000
+  *above* the median because one flat in nine is worth four of the others. Shown
+  together the gap is itself the fact. A line under the figures says which is which,
+  because the two are routinely taken for each other.
+* The page says in words that these are asking prices on live ads, not closed deals.
 * **Rent says `לחודש`** on every figure it prints.
+
+### The bar across the top
+
+The same one the app has — height, border, sticky blur, wordmark, the three links —
+rebuilt in CSS in `seo/layout.ts`, so somebody arriving from a search engine cannot
+tell that this page was rendered by something else.
+
+What it cannot have is the half that needs a session. These pages are cached and served
+to every visitor at once, so a saved count or somebody's name would be one visitor's
+data shown to the next. It is the signed-out bar, always. `התחברות` is a link to
+`/login` rather than the app's dialog, because there is no JavaScript here to open one.
 
 ### What it costs
 

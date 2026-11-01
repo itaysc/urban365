@@ -1,5 +1,5 @@
 import type { Section } from '../yad2/yad2.types.js';
-import type { Band } from './stats.js';
+import type { Band, Summary } from './stats.js';
 import type { CityListing, CityPage } from './city-page.service.js';
 import { toSlug } from './city-slug.js';
 import { listingPath } from './listing-slug.js';
@@ -101,8 +101,11 @@ function lede(data: CityPage): string {
   if (summary.medianPrice !== null) {
     parts.push(
       `המחיר החציוני עומד על ${money(summary.medianPrice, voice.perMonth)}` +
+        (summary.meanPrice !== null
+          ? `, והממוצע על ${money(summary.meanPrice, voice.perMonth)}`
+          : '') +
         (summary.medianPricePerSqm !== null
-          ? `, ${money(summary.medianPricePerSqm, voice.perMonth)} למ״ר.`
+          ? `. מחיר חציוני למ״ר: ${money(summary.medianPricePerSqm, voice.perMonth)}.`
           : '.'),
     );
   }
@@ -140,6 +143,11 @@ function figures(data: CityPage): string {
   if (summary.medianPrice !== null) {
     items.push(['מחיר חציוני', money(summary.medianPrice, voice.perMonth)]);
   }
+  // Beside the median, never instead of it, and never alone: the gap between the two
+  // is the most informative thing on the page and only exists if both are shown.
+  if (summary.meanPrice !== null) {
+    items.push(['מחיר ממוצע', money(summary.meanPrice, voice.perMonth)]);
+  }
   if (summary.medianPricePerSqm !== null) {
     items.push([voice.sqmLabel, money(summary.medianPricePerSqm, voice.perMonth)]);
   }
@@ -168,6 +176,20 @@ function worthShowing(bands: Band[], total: number): boolean {
   return bands[0].count < total * 0.8;
 }
 
+/**
+ * What the two figures are, for the reader who has not met the distinction.
+ *
+ * Worth a line of the page. "Median" and "mean" are not common knowledge, the two are
+ * routinely taken for each other, and the difference between them is exactly what
+ * somebody deciding whether a city is within reach would be misled by. Only shown
+ * where both figures are, since otherwise it explains something that is not there.
+ */
+function whatTheFiguresMean(summary: Summary): string {
+  if (summary.medianPrice === null || summary.meanPrice === null) return '';
+
+  return `<p class="note">החציון הוא המחיר האמצעי: מחצית מהנכסים יקרים ממנו ומחצית זולים ממנו. הממוצע מושפע מנכסים חריגים, ולכן פער גדול בין השניים מעיד שיש כאן מעט נכסים יקרים — או זולים — במיוחד.</p>`;
+}
+
 /** One breakdown as a table, each row a link into the search it describes. */
 function bandTable(
   bands: Band[],
@@ -192,22 +214,26 @@ function bandTable(
       )}</a></th>
 <td class="num">${esc(number(band.count))}</td>
 <td class="num">${esc(money(band.medianPrice, options.perMonth))}</td>
+<td class="num muted">${esc(money(band.meanPrice, options.perMonth))}</td>
 <td class="num">${esc(money(band.medianPricePerSqm, options.perMonth))}</td>
 </tr>`,
     )
     .join('');
 
   return `<h2>${esc(options.heading)}</h2>
+<div class="scroller">
 <table>
 <caption>${esc(options.caption)}</caption>
 <thead><tr>
 <th scope="col">${esc(options.column)}</th>
 <th scope="col" class="num">נכסים</th>
-<th scope="col" class="num">מחיר חציוני</th>
+<th scope="col" class="num">חציוני</th>
+<th scope="col" class="num">ממוצע</th>
 <th scope="col" class="num">${esc(options.sqmLabel)}</th>
 </tr></thead>
 <tbody>${rows}</tbody>
-</table>`;
+</table>
+</div>`;
 }
 
 function card(listing: CityListing, perMonth: boolean): string {
@@ -328,6 +354,7 @@ export function renderCityPage(data: CityPage, appUrl: string): string {
 <h1>${esc(heading)}</h1>
 <p class="lede">${esc(lede(data))}</p>
 ${figures(data)}
+${whatTheFiguresMean(summary)}
 <a class="cta" href="${esc(searchUrl(appUrl, data.section, data.city))}">${esc(
     `לחיפוש ${voice.noun} ב${data.city}`,
   )}</a>
@@ -370,6 +397,7 @@ ${nearby}
     description: described,
     canonical,
     indexable: summary.count >= MIN_INDEXABLE,
+    onCityPages: true,
     structuredData: [trail.data],
     appUrl,
     body,

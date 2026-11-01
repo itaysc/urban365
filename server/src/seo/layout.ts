@@ -1,5 +1,12 @@
 import { esc, jsonLd } from './html.js';
 
+/** The two lucide marks the bar uses, as the app draws them. */
+const ICON = {
+  plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg>',
+  heart:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>',
+};
+
 export interface PageOptions {
   title: string;
   description: string;
@@ -11,6 +18,8 @@ export interface PageOptions {
   structuredData?: unknown[];
   /** Where the site proper lives, for the links that leave these pages. */
   appUrl: string;
+  /** Marks "מחירים לפי עיר" as the section being read. */
+  onCityPages?: boolean;
   body: string;
 }
 
@@ -31,10 +40,40 @@ body{margin:0;background:#f8fafc;color:#0f172a;
   font-size:16px;line-height:1.6}
 a{color:#1d4ed8}
 .wrap{max-width:60rem;margin:0 auto;padding:0 1rem}
-header.site{background:#fff;border-bottom:1px solid #e2e8f0}
-header.site .wrap{display:flex;align-items:center;justify-content:space-between;gap:1rem;
-  min-height:3.5rem;flex-wrap:wrap}
-.brand{font-weight:700;font-size:1.125rem;color:#1d4ed8;text-decoration:none}
+/*
+ * The app's own bar, rebuilt in CSS.
+ *
+ * Same height, same border, same sticky blur, same wordmark — because a visitor
+ * arriving from a search engine is on the same site and should not be able to tell
+ * that this page was rendered by something else. What it cannot have is the half that
+ * needs a session: these pages are cached and served to everybody at once, so a saved
+ * count or somebody's name would be one visitor's data shown to the next. It is the
+ * signed-out bar, always, which is also what most of these visitors are.
+ */
+header.site{position:sticky;top:0;z-index:30;background:rgb(255 255 255 / .95);
+  backdrop-filter:blur(8px);border-bottom:1px solid #e2e8f0}
+header.site .wrap{display:flex;align-items:center;justify-content:space-between;gap:.75rem;
+  height:3.5rem}
+.navl,.navr{display:flex;align-items:center;gap:.75rem;min-width:0}
+.brand{font-size:1.25rem;font-weight:800;letter-spacing:-.025em;color:#1d4ed8;
+  text-decoration:none}
+.brand span{color:#3b82f6}
+/* The divider and the link beside the wordmark, as the app has them. */
+.navl .here{border-inline-start:1px solid #e2e8f0;padding-inline-start:.75rem;
+  font-size:.875rem;color:#475569;text-decoration:none}
+.navl .here[aria-current]{color:#0f172a;font-weight:600}
+.navr a{display:flex;align-items:center;gap:.375rem;font-size:.875rem;color:#475569;
+  text-decoration:none}
+.navr a:hover{color:#0f172a}
+.navr a.publish{border:1px solid #cbd5e1;border-radius:.5rem;padding:.375rem .75rem;
+  font-weight:500;color:#334155}
+.navr a.publish:hover{border-color:#94a3b8;color:#0f172a}
+.navr a.signin{color:#1d4ed8}
+.navr a.signin:hover{text-decoration:underline}
+.navr svg{width:1.25rem;height:1.25rem;flex:none}
+.navr a.publish svg{width:1rem;height:1rem}
+/* The words fold away on a phone and the icons stay, exactly as the app does it. */
+@media (max-width:40rem){.navl .here,.navr .word{display:none}}
 nav.crumbs{font-size:.8125rem;color:#64748b;padding:.75rem 0}
 nav.crumbs a{color:#64748b}
 nav.crumbs span{margin:0 .375rem;color:#cbd5e1}
@@ -46,8 +85,14 @@ h2{font-size:1.25rem;margin:2rem 0 .75rem}
 .figure{background:#fff;border:1px solid #e2e8f0;border-radius:.75rem;padding:.875rem 1rem}
 .figure dt{font-size:.8125rem;color:#64748b;margin:0}
 .figure dd{margin:.25rem 0 0;font-size:1.25rem;font-weight:700}
+/* Five columns do not fit a phone, and a table that overflows the page is worse than
+   one that scrolls inside its own box. */
+.scroller{overflow-x:auto;border:1px solid #e2e8f0;border-radius:.75rem;background:#fff}
+.scroller table{border:0;border-radius:0;min-width:28rem}
 table{width:100%;border-collapse:collapse;background:#fff;border:1px solid #e2e8f0;
   border-radius:.75rem;overflow:hidden;font-size:.9375rem}
+/* The mean sits beside the median, and reads as the second of the two. */
+td.muted{color:#64748b}
 caption{text-align:start;color:#64748b;font-size:.8125rem;padding:0 0 .5rem}
 th,td{padding:.625rem .875rem;text-align:start;border-bottom:1px solid #f1f5f9}
 th{background:#f8fafc;font-size:.8125rem;color:#475569;font-weight:600}
@@ -124,8 +169,19 @@ ${blocks}
 </head>
 <body>
 <header class="site"><div class="wrap">
-<a class="brand" href="${esc(options.appUrl)}/">Urban365</a>
-<a href="${esc(options.appUrl)}/">חיפוש נכסים</a>
+<div class="navl">
+<a class="brand" href="${esc(options.appUrl)}/">Urban<span>365</span></a>
+<a class="here" href="/nadlan"${options.onCityPages ? ' aria-current="page"' : ''}>מחירים לפי עיר</a>
+</div>
+<div class="navr">
+<a class="publish" href="${esc(options.appUrl)}/sell/new">${ICON.plus}<span class="word">פרסום נכס</span></a>
+<a href="${esc(options.appUrl)}/saved">${ICON.heart}<span class="word">שמורים</span></a>
+<!--
+  A link rather than the app's dialog: there is no JavaScript on this page to open one,
+  and /login is where that dialog would have sent them anyway.
+-->
+<a class="signin" href="${esc(options.appUrl)}/login">התחברות</a>
+</div>
 </div></header>
 <main class="wrap">${options.body}</main>
 <footer class="site"><div class="wrap">

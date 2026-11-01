@@ -64,6 +64,7 @@ ${sections}`;
     description: `מחירי נדל״ן ב-${number(cities)} ערים בישראל: מחיר חציוני, מחיר למ״ר ופילוח לפי חדרים ושכונות, מתוך ${number(listings)} נכסים שמוצעים כרגע.`,
     canonical,
     indexable: true,
+    onCityPages: true,
     structuredData: [trail.data],
     appUrl,
     body,

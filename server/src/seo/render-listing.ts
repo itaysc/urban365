@@ -373,6 +373,7 @@ ${
     description: snippet(listing),
     canonical,
     indexable: true,
+    onCityPages: true,
     structuredData: [trail.data, listingJsonLd(listing, canonical, images)],
     appUrl,
     body,

@@ -23,9 +23,19 @@ export interface StatRow {
 export interface Summary {
   /** Every listing in the city, including the ones too incomplete to price. */
   count: number;
-  /** How many of them carried a price, which is what every median below rests on. */
+  /** How many of them carried a price, which is what every figure below rests on. */
   priced: number;
   medianPrice: number | null;
+  /**
+   * The arithmetic mean, shown beside the median rather than instead of it.
+   *
+   * On its own it is the wrong number — one penthouse among nine flats pulls it a
+   * quarter of a million above anything on the market. Beside the median it is the
+   * most useful thing on the page: where the two agree the market is even, and where
+   * they part company the gap is itself the fact, and it is the fact somebody
+   * comparing cities actually wants.
+   */
+  meanPrice: number | null;
   medianPricePerSqm: number | null;
   medianSquareMeter: number | null;
   /** The middle half of the market: a quarter of listings sit below, a quarter above. */
@@ -37,6 +47,7 @@ export interface Band {
   label: string;
   count: number;
   medianPrice: number | null;
+  meanPrice: number | null;
   medianPricePerSqm: number | null;
 }
 
@@ -60,6 +71,13 @@ export function median(values: number[]): number | null {
   return sorted.length % 2 === 0
     ? Math.round((sorted[middle - 1] + sorted[middle]) / 2)
     : sorted[middle];
+}
+
+/** The arithmetic mean, rounded — shekels are whole and nobody prices a flat to the agora. */
+export function mean(values: number[]): number | null {
+  if (values.length === 0) return null;
+
+  return Math.round(values.reduce((sum, value) => sum + value, 0) / values.length);
 }
 
 /** The value below which `fraction` of the list sits. Nearest-rank, so always a real one. */
@@ -100,6 +118,7 @@ export function summarise(rows: StatRow[]): Summary {
     count: rows.length,
     priced: priced.length,
     medianPrice: median(priced),
+    meanPrice: mean(priced),
     medianPricePerSqm: median(rates),
     medianSquareMeter: median(areas),
     // A range needs both ends and needs them to differ — "between ₪2.1m and ₪2.1m" is
@@ -127,6 +146,7 @@ function bands(rows: StatRow[], labelOf: (row: StatRow) => string | null): Band[
       label,
       count: group.length,
       medianPrice: median(prices(group)),
+      meanPrice: mean(prices(group)),
       medianPricePerSqm: median(group.map(pricePerSqm).filter((r): r is number => r !== null && r > 0)),
     }))
     .sort((a, b) => b.count - a.count);
