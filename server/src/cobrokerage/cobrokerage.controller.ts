@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
 import { TenantGuard } from '../tenancy/tenant.guard.js';
 import { CoBrokerageService } from './cobrokerage.service.js';
-import { RequestCoBrokerageDto } from './dto/cobrokerage.dto.js';
+import { PostMessageDto, RequestCoBrokerageDto, SetStageDto } from './dto/cobrokerage.dto.js';
 
 /** Two agencies working one deal: what we asked, what we were asked, and the answers. */
 @UseGuards(TenantGuard)
@@ -34,6 +34,24 @@ export class CoBrokerageController {
   @Post(':id/decline')
   decline(@Param('id') id: string) {
     return this.cobroke.respond(id, false);
+  }
+
+  /** How far the deal has got. Either side may move it — it is the deal's, not ours. */
+  @Post(':id/stage')
+  setStage(@Param('id') id: string, @Body() dto: SetStageDto) {
+    return this.cobroke.setStage(id, dto.stage);
+  }
+
+  /** Something to say to the other agency, kept beside the deal. */
+  @Post(':id/messages')
+  postMessage(@Param('id') id: string, @Body() dto: PostMessageDto) {
+    return this.cobroke.postMessage(id, dto.body);
+  }
+
+  /** Opening the thread, which is what clears the unread mark. */
+  @Post(':id/read')
+  markRead(@Param('id') id: string) {
+    return this.cobroke.markRead(id);
   }
 
   @Post(':id/withdraw')

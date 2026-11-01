@@ -418,6 +418,13 @@ export interface DemoCoBrokerage {
   message: string;
   commissionSplit: number;
   status: 'pending' | 'accepted' | 'declined';
+  /** Where an accepted deal has got to. Ignored unless the status is `accepted`. */
+  stage?: 'agreed' | 'viewing' | 'negotiating' | 'signed' | 'completed' | 'fell_through';
+  /**
+   * The conversation that followed. `mine` is the agency being seeded, whichever side
+   * of this request it is on — a thread with only one voice in it demonstrates nothing.
+   */
+  thread?: { from: 'mine' | 'theirs'; body: string }[];
 }
 
 export const CO_BROKERAGE: DemoCoBrokerage[] = [
@@ -434,6 +441,33 @@ export const CO_BROKERAGE: DemoCoBrokerage[] = [
     message: 'משפחה שמחפשת חמישה חדרים כבר חצי שנה. אם זה עדיין פנוי נשמח להביא אותם.',
     commissionSplit: 50,
     status: 'accepted',
+    stage: 'viewing',
+    thread: [
+      { from: 'theirs', body: 'בשמחה. הדירה פנויה, אפשר להביא אותם ביום רביעי אחרי 16:00.' },
+      { from: 'mine', body: 'מעולה. קבעתי איתם לרביעי ב-17:00, אני מגיע איתם.' },
+      { from: 'theirs', body: 'רשום. בעל הנכס יהיה שם, הקוד לשער 1234.' },
+    ],
+  },
+  {
+    // One that came to nothing, because the history is half the point of keeping these.
+    direction: 'out',
+    customerIndex: 4,
+    message: 'יש לי זוג צעיר שמחפש בדיוק באזור. אפשר להביא אותם?',
+    commissionSplit: 50,
+    status: 'accepted',
+    stage: 'fell_through',
+    thread: [
+      { from: 'theirs', body: 'כן, אבל יש כבר הצעה על השולחן. כדאי שתמהרו.' },
+      { from: 'mine', body: 'הם ראו ולא התלהבו מהקומה. ממשיכים לחפש, תודה על הזמינות.' },
+    ],
+  },
+  {
+    direction: 'in',
+    customerIndex: 0,
+    listingIndex: 4,
+    message: 'יש לי קונה שמחפש חמישה חדרים באזור כבר חודשיים.',
+    commissionSplit: 50,
+    status: 'declined',
   },
   {
     direction: 'in',

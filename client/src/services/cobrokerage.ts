@@ -2,6 +2,26 @@ import { api } from '@/services/api';
 
 export type CoBrokerageStatus = 'pending' | 'accepted' | 'declined' | 'withdrawn';
 
+export const CO_BROKERAGE_STAGES = [
+  'agreed',
+  'viewing',
+  'negotiating',
+  'signed',
+  'completed',
+  'fell_through',
+] as const;
+
+export type CoBrokerageStage = (typeof CO_BROKERAGE_STAGES)[number];
+
+export interface CoBrokerageMessage {
+  id: string;
+  body: string;
+  createdAt: string;
+  /** Which side wrote it — compared against our own agency id to tell us from them. */
+  agencyId: string;
+  author: { firstName: string; lastName: string } | null;
+}
+
 interface CoBrokeListing {
   id: string;
   city: string | null;
@@ -25,14 +45,18 @@ interface CoBrokeAgency {
 export interface SentRequest {
   id: string;
   status: CoBrokerageStatus;
+  stage: CoBrokerageStage | null;
   message: string | null;
   commissionSplit: number;
   briefSummary: string | null;
   createdAt: string;
   respondedAt: string | null;
+  messages: CoBrokerageMessage[];
   listing: CoBrokeListing;
   holdingAgency: CoBrokeAgency;
   customer: { id: string; name: string; phone: string | null } | null;
+  /** When we last read the thread. The other side's mark is not ours to see. */
+  seekerReadAt: string | null;
 }
 
 /**
@@ -44,13 +68,16 @@ export interface SentRequest {
 export interface ReceivedRequest {
   id: string;
   status: CoBrokerageStatus;
+  stage: CoBrokerageStage | null;
   message: string | null;
   commissionSplit: number;
   briefSummary: string | null;
   createdAt: string;
   respondedAt: string | null;
+  messages: CoBrokerageMessage[];
   listing: CoBrokeListing;
   seekingAgency: CoBrokeAgency;
+  holderReadAt: string | null;
 }
 
 export async function fetchSentRequests(): Promise<SentRequest[]> {
@@ -72,6 +99,14 @@ export async function requestCoBrokerage(input: {
   const { data } = await api.post<SentRequest>('/my/cobrokerage', input);
   return data;
 }
+
+export const setCoBrokerageStage = (id: string, stage: CoBrokerageStage) =>
+  api.post(`/my/cobrokerage/${id}/stage`, { stage });
+
+export const postCoBrokerageMessage = (id: string, body: string) =>
+  api.post(`/my/cobrokerage/${id}/messages`, { body });
+
+export const markCoBrokerageRead = (id: string) => api.post(`/my/cobrokerage/${id}/read`);
 
 export const acceptCoBrokerage = (id: string) => api.post(`/my/cobrokerage/${id}/accept`);
 export const declineCoBrokerage = (id: string) => api.post(`/my/cobrokerage/${id}/decline`);

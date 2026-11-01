@@ -301,6 +301,20 @@ from the holding side by two separate projections in `projections.ts` — and by
 that asserts the holding side's field list, because a projection is one careless edit
 from leaking.
 
+Accepting is the start of the work, not the end of it. An accepted request carries a
+`stage` — agreed → viewing → negotiating → signed → completed, or fell through — that
+**either side may move**, because it is the deal's stage and not one agency's view of
+it. Both sides also share a message thread kept beside the deal, so "what did we agree
+about the commission" has an answer six weeks later that neither agency can edit:
+messages have no update or delete policy at all. Read marks are per side (`seekerReadAt`
+/ `holderReadAt`), which is all an unread badge needs. The other agency is emailed on an
+accept, a decline and each message, and the email links back rather than quoting the
+thread — a reply by email lands where neither agency can find it.
+
+Nothing is deleted or hidden. Declined, withdrawn, completed and fallen-through requests
+move to a History section with their threads intact, because "what happened with that
+agency in March" is a question agents ask.
+
 `Agency.coBrokerage` is on by default (the inventory it exposes is already public) with
 a toggle on the agency page. Opting out removes an agency from the matching pool and
 refuses requests aimed at it. The commission split is recorded as what was said, not as

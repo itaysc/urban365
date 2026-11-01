@@ -157,8 +157,9 @@ model Agency {
   /// toggle on the agency page turns it off.
   coBrokerage Boolean @default(true)
 
-  coBrokeHolding CoBrokerageRequest[] @relation("CoBrokeHolding")
-  coBrokeSeeking CoBrokerageRequest[] @relation("CoBrokeSeeking")
+  coBrokeHolding  CoBrokerageRequest[] @relation("CoBrokeHolding")
+  coBrokeSeeking  CoBrokerageRequest[] @relation("CoBrokeSeeking")
+  coBrokeMessages CoBrokerageMessage[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -440,6 +441,7 @@ model User {
   suggestions       Suggestion[]       @relation("SuggestionOwner")
   coBrokeRequested  CoBrokerageRequest[] @relation("CoBrokeRequester")
   coBrokeResponded  CoBrokerageRequest[] @relation("CoBrokeResponder")
+  coBrokeMessages   CoBrokerageMessage[] @relation("CoBrokeMessageAuthor")
   meetingFeedback   Meeting[]          @relation("MeetingFeedbackAuthor")
   googleCalendar    GoogleCalendarAccount?
   ownedDeals       Deal[]             @relation("DealOwner")
@@ -1291,6 +1293,21 @@ model CoBrokerageRequest {
   /// week should not silently rewrite what somebody was asked.
   briefSummary String?
 
+  /// How far the deal has got, once there is a deal.
+  ///
+  /// A second axis from `status`, not a continuation of it: `status` is whether the two
+  /// agencies agreed to work together, and this is what has happened since. Null until
+  /// somebody accepts, because before that there is nothing to be at a stage of.
+  stage CoBrokerageStage?
+
+  /// When each side last looked at the conversation, which is all an unread badge needs.
+  /// Per side rather than per message: the question is "is there something new for me",
+  /// and a row per person per message would be a lot of bookkeeping for one dot.
+  seekerReadAt DateTime?
+  holderReadAt DateTime?
+
+  messages CoBrokerageMessage[]
+
   respondedAt DateTime?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
@@ -1299,6 +1316,48 @@ model CoBrokerageRequest {
   @@unique([listingId, seekingAgencyId, customerId])
   @@index([holdingAgencyId, status])
   @@index([seekingAgencyId, status])
+}
+
+/// What the two agencies say to each other once they are working together.
+///
+/// Deliberately not a chat: a handful of messages about one deal, kept beside the deal
+/// so that "what did we agree about the commission" has an answer six weeks later. The
+/// alternative is a WhatsApp thread neither agency can produce when it matters.
+model CoBrokerageMessage {
+  id        String             @id @default(cuid())
+  request   CoBrokerageRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  requestId String
+
+  /// Which side wrote it. Both agencies may read the thread, so this is what tells
+  /// "us" from "them" on screen.
+  agency   Agency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  agencyId String
+
+  author   User?   @relation("CoBrokeMessageAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+  authorId String?
+
+  body String
+
+  createdAt DateTime @default(now())
+
+  /// The thread, oldest first, which is the only query there is.
+  @@index([requestId, createdAt])
+}
+
+enum CoBrokerageStage {
+  /// Agreed to work together, nothing has happened yet.
+  agreed
+  /// A viewing is arranged or has happened.
+  viewing
+  /// An offer is on the table.
+  negotiating
+  /// Contracts signed.
+  signed
+  /// Done, and the commission settled.
+  completed
+  /// It came to nothing. Kept rather than deleted — a deal that fell through is a
+  /// thing that happened, and the two agencies may well try again.
+  fell_through
 }
 
 enum CoBrokerageStatus {

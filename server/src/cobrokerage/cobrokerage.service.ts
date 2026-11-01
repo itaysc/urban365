@@ -8,8 +8,13 @@ import {
 import { can } from '../auth/permissions.js';
 import { RequestContextService } from '../tenancy/request-context.service.js';
 import { TenantPrismaService } from '../tenancy/tenant-prisma.service.js';
+import { MailService } from '../mail/mail.service.js';
+import { ConfigService } from '@nestjs/config';
+import type { MailConfig } from '../config/configuration.js';
+import { coBrokerageUpdateTemplate } from '../mail/templates.js';
 import { briefSummary } from './brief-summary.js';
 import { HOLDER_SELECT, SEEKER_SELECT } from './projections.js';
+import type { CoBrokerageStageValue } from './dto/cobrokerage.dto.js';
 
 /** Anything outside this is somebody being creative with a number, not negotiating. */
 const MIN_SPLIT = 10;
@@ -26,10 +31,63 @@ const MAX_SPLIT = 90;
 export class CoBrokerageService {
   private readonly logger = new Logger(CoBrokerageService.name);
 
+  private readonly appUrl: string;
+
   constructor(
     private readonly prisma: TenantPrismaService,
     private readonly context: RequestContextService,
-  ) {}
+    private readonly mail: MailService,
+    config: ConfigService,
+  ) {
+    this.appUrl = config.getOrThrow<MailConfig>('mail').appUrl.replace(/\/$/, '');
+  }
+
+  /**
+   * Telling the other agency something happened.
+   *
+   * Never awaited into the response: the thing the caller asked for has already been
+   * recorded, and an agency whose contact address bounces must not see their own reply
+   * fail. Read through the tenant client, which admits this row to both parties.
+   */
+  private async notifyOther(
+    id: string,
+    actingAgencyId: string,
+    what: 'accepted' | 'declined' | 'message',
+  ): Promise<void> {
+    try {
+      const request = await this.prisma.client.coBrokerageRequest.findUnique({
+        where: { id },
+        select: {
+          seekingAgencyId: true,
+          listing: { select: { city: true, street: true, houseNumber: true } },
+          seekingAgency: { select: { name: true, contactEmail: true } },
+          holdingAgency: { select: { name: true, contactEmail: true } },
+        },
+      });
+      if (!request) return;
+
+      const weAreSeeker = request.seekingAgencyId === actingAgencyId;
+      const them = weAreSeeker ? request.holdingAgency : request.seekingAgency;
+      const us = weAreSeeker ? request.seekingAgency : request.holdingAgency;
+      if (!them.contactEmail) return;
+
+      const street = [request.listing.street, request.listing.houseNumber]
+        .filter(Boolean)
+        .join(' ');
+
+      await this.mail.send({
+        to: them.contactEmail,
+        ...coBrokerageUpdateTemplate({
+          fromAgency: us.name,
+          property: [street, request.listing.city].filter(Boolean).join(', ') || 'נכס',
+          what,
+          appUrl: this.appUrl,
+        }),
+      });
+    } catch (error) {
+      this.logger.warn(`Could not notify the other agency: ${(error as Error).message}`);
+    }
+  }
 
   /** What we have asked others for. */
   async sent() {
@@ -138,6 +196,119 @@ export class CoBrokerageService {
     }
   }
 
+  /**
+   * How far the deal has got.
+   *
+   * Either side may move it, because it is the deal's stage and not one agency's view
+   * of it — the agent who books the viewing is as likely to be either of them. Only
+   * once they have agreed: before that there is nothing to be at a stage of.
+   */
+  async setStage(id: string, stage: CoBrokerageStageValue) {
+    this.assertCanWrite();
+    const request = await this.party(id);
+
+    if (request.status !== 'accepted') {
+      throw new BadRequestException('אפשר לעדכן שלב רק אחרי שהבקשה אושרה.');
+    }
+
+    const select = request.seekingAgencyId === this.context.requireAgencyId()
+      ? SEEKER_SELECT
+      : HOLDER_SELECT;
+
+    return this.prisma.client.coBrokerageRequest.update({
+      where: { id },
+      data: { stage },
+      select,
+    });
+  }
+
+  /**
+   * Something one side wants to say to the other.
+   *
+   * Kept beside the deal rather than left to WhatsApp, so that "what did we agree about
+   * the commission" has an answer six weeks later that neither agency can edit.
+   */
+  async postMessage(id: string, body: string) {
+    this.assertCanWrite();
+    const agencyId = this.context.requireAgencyId();
+    const request = await this.party(id);
+
+    const text = body.trim();
+    if (text === '') throw new BadRequestException('אי אפשר לשלוח הודעה ריקה.');
+
+    if (request.status === 'declined' || request.status === 'withdrawn') {
+      // Not a thread to carry on: one side said no, and a message after that is a
+      // notification nobody asked for.
+      throw new BadRequestException('הבקשה נסגרה, אי אפשר להוסיף הודעות.');
+    }
+
+    await this.prisma.client.coBrokerageMessage.create({
+      data: {
+        requestId: id,
+        agencyId,
+        authorId: this.context.getPrincipal()?.userId ?? null,
+        body: text,
+      },
+      select: { id: true },
+    });
+
+    // Writing counts as reading: nobody comes back to a thread they just posted in and
+    // expects to be told there is something new.
+    const mine = request.seekingAgencyId === agencyId;
+    await this.prisma.client.coBrokerageRequest.update({
+      where: { id },
+      data: mine ? { seekerReadAt: new Date() } : { holderReadAt: new Date() },
+    });
+
+    void this.notifyOther(id, agencyId, 'message');
+
+    return this.oneFor(id, agencyId);
+  }
+
+  /** Opening the thread. */
+  async markRead(id: string) {
+    const agencyId = this.context.requireAgencyId();
+    const request = await this.party(id);
+
+    await this.prisma.client.coBrokerageRequest.update({
+      where: { id },
+      data:
+        request.seekingAgencyId === agencyId
+          ? { seekerReadAt: new Date() }
+          : { holderReadAt: new Date() },
+    });
+
+    return this.oneFor(id, agencyId);
+  }
+
+  /** One request, through whichever projection the caller is entitled to. */
+  private async oneFor(id: string, agencyId: string) {
+    const request = await this.prisma.client.coBrokerageRequest.findUnique({
+      where: { id },
+      select: { seekingAgencyId: true },
+    });
+
+    return this.prisma.client.coBrokerageRequest.findUniqueOrThrow({
+      where: { id },
+      select: request?.seekingAgencyId === agencyId ? SEEKER_SELECT : HOLDER_SELECT,
+    });
+  }
+
+  /**
+   * The row, and the caller's standing in it.
+   *
+   * The tenant policy already refuses a request neither of whose agencies is ours, so
+   * "not found" here means exactly that rather than hiding a permission error.
+   */
+  private async party(id: string) {
+    const request = await this.prisma.client.coBrokerageRequest.findUnique({
+      where: { id },
+      select: { id: true, status: true, seekingAgencyId: true, holdingAgencyId: true },
+    });
+    if (!request) throw new NotFoundException('הבקשה לא נמצאה.');
+    return request;
+  }
+
   /** The holding agency's answer. */
   async respond(id: string, accept: boolean) {
     this.assertCanWrite();
@@ -158,15 +329,21 @@ export class CoBrokerageService {
       throw new BadRequestException('כבר ניתנה תשובה לבקשה הזו.');
     }
 
-    return this.prisma.client.coBrokerageRequest.update({
+    const updated = await this.prisma.client.coBrokerageRequest.update({
       where: { id },
       data: {
         status: accept ? 'accepted' : 'declined',
+        // A deal starts where it starts. Null on a refusal: there is no stage to be at.
+        stage: accept ? 'agreed' : null,
         respondedAt: new Date(),
         respondedById: this.context.getPrincipal()?.userId ?? null,
       },
       select: HOLDER_SELECT,
     });
+
+    void this.notifyOther(id, agencyId, accept ? 'accepted' : 'declined');
+
+    return updated;
   }
 
   /** The asking agency changing its mind, which it may do until it is answered. */

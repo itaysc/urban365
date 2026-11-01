@@ -275,3 +275,35 @@ export const dailyBriefingTemplate = (params: {
      </p>`,
   ),
 });
+
+/**
+ * To the other agency, when something moves on a shared deal.
+ *
+ * Says what happened and sends them to the page, rather than repeating the message
+ * itself: the thread lives in the product on purpose, and an email that quotes it
+ * invites a reply by email, where neither agency can find it six weeks later.
+ */
+export const coBrokerageUpdateTemplate = (params: {
+  fromAgency: string;
+  property: string;
+  what: 'accepted' | 'declined' | 'message';
+  appUrl: string;
+}) => {
+  const headline =
+    params.what === 'accepted'
+      ? 'אישרו את שיתוף הפעולה'
+      : params.what === 'declined'
+        ? 'לא אישרו את שיתוף הפעולה'
+        : 'הגיבו לכם';
+
+  return {
+    subject: `${escape(params.fromAgency)} ${headline} — ${escape(params.property)}`,
+    html: shell(
+      `${escape(params.fromAgency)} ${headline}`,
+      `<p style="color:#334155;line-height:1.6">
+         בנוגע לנכס ב<strong>${escape(params.property)}</strong>.
+       </p>
+       ${button(`${params.appUrl}/app/cobrokerage`, 'לעמוד שיתופי הפעולה')}`,
+    ),
+  };
+};

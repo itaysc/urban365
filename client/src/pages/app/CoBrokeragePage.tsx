@@ -1,7 +1,11 @@
+import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Check, Handshake, X } from 'lucide-react';
+import { Check, ChevronDown, Handshake, MessageCircle, X } from 'lucide-react';
+import { useAuth } from '@/auth/auth-context';
 import { useToast } from '@/components/ui/Toast';
+import { CoBrokerageThread } from '@/components/agency/CoBrokerageThread';
 import { errorMessageOf } from '@/lib/apiError';
+import { isSettled, STAGE_CLASS, STAGE_LABEL, STATUS_CLASS, STATUS_LABEL } from '@/lib/cobrokerage';
 import { formatPrice } from '@/lib/format';
 import { qk } from '@/queries/keys';
 import {
@@ -9,23 +13,13 @@ import {
   declineCoBrokerage,
   fetchReceivedRequests,
   fetchSentRequests,
+  markCoBrokerageRead,
   withdrawCoBrokerage,
+  type CoBrokerageStage,
   type CoBrokerageStatus,
+  type ReceivedRequest,
+  type SentRequest,
 } from '@/services/cobrokerage';
-
-const STATUS_LABEL: Record<CoBrokerageStatus, string> = {
-  pending: 'ממתין לתשובה',
-  accepted: 'אושר',
-  declined: 'נדחה',
-  withdrawn: 'בוטל',
-};
-
-const STATUS_CLASS: Record<CoBrokerageStatus, string> = {
-  pending: 'bg-amber-50 text-amber-800',
-  accepted: 'bg-green-50 text-green-800',
-  declined: 'bg-slate-100 text-slate-600',
-  withdrawn: 'bg-slate-100 text-slate-500',
-};
 
 const addressOf = (listing: {
   street: string | null;
@@ -36,45 +30,83 @@ const addressOf = (listing: {
     .filter(Boolean)
     .join(', ') || 'נכס';
 
-function Status({ status }: { status: CoBrokerageStatus }) {
+/** Something in the thread we have not seen. `null` means we have never opened it. */
+const unreadCount = (
+  messages: { createdAt: string; agencyId: string }[],
+  readAt: string | null,
+  myAgencyId: string,
+) =>
+  messages.filter(
+    (m) => m.agencyId !== myAgencyId && (readAt === null || m.createdAt > readAt),
+  ).length;
+
+function Badges({
+  status,
+  stage,
+  unread,
+}: {
+  status: CoBrokerageStatus;
+  stage: CoBrokerageStage | null;
+  unread: number;
+}) {
   return (
-    <span className={`rounded px-2 py-0.5 text-xs ${STATUS_CLASS[status]}`}>
-      {STATUS_LABEL[status]}
-    </span>
+    <>
+      {/* Once there is a stage it is the more useful of the two, so the status gives
+          way to it rather than sitting beside it saying "אושר" forever. */}
+      {stage ? (
+        <span className={`rounded px-2 py-0.5 text-xs ${STAGE_CLASS[stage]}`}>
+          {STAGE_LABEL[stage]}
+        </span>
+      ) : (
+        <span className={`rounded px-2 py-0.5 text-xs ${STATUS_CLASS[status]}`}>
+          {STATUS_LABEL[status]}
+        </span>
+      )}
+
+      {unread > 0 && (
+        <span className="flex items-center gap-1 rounded bg-blue-600 px-2 py-0.5 text-xs text-white">
+          <MessageCircle className="h-3 w-3" aria-hidden />
+          {unread}
+        </span>
+      )}
+    </>
   );
 }
 
 /**
- * Two agencies working one deal.
+ * Two agencies working one deal: the asking, the answer, and everything after.
  *
- * Two lists that look alike and are not: what we asked for carries our own customer,
- * and what we were asked carries a brief and an agency and no person at all. The
- * difference is the product — an agency will not put its customer list near a network
- * that hands it to a competitor — so the inbox says plainly what it is not showing
- * rather than leaving an agent to wonder who they are being asked about.
+ * Three things this page is careful about. The two lists look alike and are not — what
+ * we sent carries our own customer and what we received never does. A request that is
+ * answered does not vanish: it moves to a list of its own, because "what happened with
+ * that agency in March" is a question agents ask and a product that cannot answer it
+ * has thrown away the only record either side has. And an accepted request is the
+ * beginning of the work rather than the end of it, so it carries a stage and a thread.
  */
 export function CoBrokeragePage() {
+  const { user } = useAuth();
   const toast = useToast();
   const queryClient = useQueryClient();
+  const myAgencyId = user?.agency?.id ?? '';
+  const [open, setOpen] = useState<string | null>(null);
+  const [showPast, setShowPast] = useState(false);
 
-  const { data: received } = useQuery({
+  const { data: received, isPending: loadingReceived } = useQuery({
     queryKey: qk.cobrokerage.received,
     queryFn: fetchReceivedRequests,
   });
-  const { data: sent } = useQuery({
+  const { data: sent, isPending: loadingSent } = useQuery({
     queryKey: qk.cobrokerage.sent,
     queryFn: fetchSentRequests,
   });
 
-  const after = () => {
-    void queryClient.invalidateQueries({ queryKey: qk.cobrokerage.all });
-  };
+  const refresh = () => queryClient.invalidateQueries({ queryKey: qk.cobrokerage.all });
 
   const answer = useMutation({
     mutationFn: ({ id, accept }: { id: string; accept: boolean }) =>
       accept ? acceptCoBrokerage(id) : declineCoBrokerage(id),
     onSuccess: (_r, vars) => {
-      after();
+      void refresh();
       toast.success(vars.accept ? 'אישרתם את שיתוף הפעולה.' : 'דחיתם את הבקשה.');
     },
     onError: (e) => toast.error(errorMessageOf(e, 'לא הצלחנו לעדכן.')),
@@ -83,85 +115,116 @@ export function CoBrokeragePage() {
   const withdraw = useMutation({
     mutationFn: (id: string) => withdrawCoBrokerage(id),
     onSuccess: () => {
-      after();
+      void refresh();
       toast.show('הבקשה בוטלה.');
     },
     onError: (e) => toast.error(errorMessageOf(e, 'לא הצלחנו לבטל.')),
   });
 
-  return (
-    <div className="flex flex-col gap-6">
-      <header>
-        <h1 className="flex items-center gap-2 text-xl font-bold text-slate-900">
-          <Handshake className="h-5 w-5 text-blue-600" aria-hidden />
-          שיתופי פעולה
-        </h1>
-        <p className="text-sm text-slate-500">
-          סוכנויות אחרות שיש להן קונה לנכס שלכם, ונכסים שלהן שמתאימים ללקוחות שלכם.
-        </p>
-      </header>
+  const read = useMutation({
+    mutationFn: (id: string) => markCoBrokerageRead(id),
+    onSuccess: () => void refresh(),
+  });
 
-      <section className="flex flex-col gap-3">
-        <div>
-          <h2 className="text-sm font-semibold text-slate-900">
-            בקשות שהתקבלו ({received?.length ?? 0})
-          </h2>
-          <p className="text-xs text-slate-500">
-            לסוכנות שפנתה יש קונה לנכס שלכם. פרטי הקונה נשארים אצלה עד שתאשרו.
-          </p>
-        </div>
+  /** Opening a card is what marks it read — there is no other moment that means it. */
+  const toggle = (id: string, unread: number) => {
+    const next = open === id ? null : id;
+    setOpen(next);
+    if (next && unread > 0) read.mutate(id);
+  };
 
-        {received?.length === 0 && (
-          <p className="rounded-xl border border-slate-200 bg-white p-6 text-center text-sm text-slate-500">
-            אין בקשות כרגע.
-          </p>
-        )}
+  const card = (request: SentRequest | ReceivedRequest, incoming: boolean) => {
+    const other = incoming
+      ? (request as ReceivedRequest).seekingAgency
+      : (request as SentRequest).holdingAgency;
+    const readAt = incoming
+      ? (request as ReceivedRequest).holderReadAt
+      : (request as SentRequest).seekerReadAt;
+    const unread = unreadCount(request.messages, readAt, myAgencyId);
+    const settled = isSettled(request.status, request.stage);
+    const expanded = open === request.id;
 
-        {received?.map((request) => (
-          <article key={request.id} className="rounded-xl border border-slate-200 bg-white p-4">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="flex flex-wrap items-center gap-2 font-semibold text-slate-900">
-                  {request.seekingAgency.name}
-                  <Status status={request.status} />
-                </p>
-                <p className="mt-1 text-sm text-slate-700">
-                  {addressOf(request.listing)}
-                  {request.listing.price !== null && (
-                    <span className="text-slate-500"> · {formatPrice(request.listing.price)}</span>
-                  )}
-                </p>
-                {request.briefSummary && (
+    return (
+      <article key={request.id} className="rounded-xl border border-slate-200 bg-white p-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="flex flex-wrap items-center gap-2 font-semibold text-slate-900">
+              {other.name}
+              <Badges status={request.status} stage={request.stage} unread={unread} />
+            </p>
+
+            <p className="mt-1 text-sm text-slate-700">
+              {addressOf(request.listing)}
+              {request.listing.price !== null && (
+                <span className="text-slate-500"> · {formatPrice(request.listing.price)}</span>
+              )}
+            </p>
+
+            {/* Theirs: what the buyer wants. Ours: who the buyer is. */}
+            {incoming
+              ? request.briefSummary && (
                   <p className="mt-1 text-sm text-slate-500">{request.briefSummary}</p>
-                )}
-                {request.message && (
-                  <p className="mt-2 border-s-2 border-slate-200 ps-3 text-sm text-slate-600">
-                    {request.message}
+                )
+              : (request as SentRequest).customer && (
+                  <p className="mt-1 text-sm text-slate-500">
+                    עבור {(request as SentRequest).customer!.name}
                   </p>
                 )}
-                <p className="mt-2 text-xs text-slate-500">
-                  מציעים חלוקת עמלה: {100 - request.commissionSplit}% לכם,{' '}
-                  {request.commissionSplit}% להם.
-                </p>
 
-                {/* Once it is agreed, the next step is a phone call — so the number is
-                    here rather than one page further on. */}
-                {request.status === 'accepted' && request.seekingAgency.phone && (
-                  <p className="mt-2 text-sm text-slate-700">
-                    ליצירת קשר:{' '}
-                    <a
-                      href={`tel:${request.seekingAgency.phone}`}
-                      dir="ltr"
-                      className="text-blue-700 hover:underline"
-                    >
-                      {request.seekingAgency.phone}
-                    </a>
-                  </p>
-                )}
-              </div>
+            {request.message && (
+              <p className="mt-2 border-s-2 border-slate-200 ps-3 text-sm text-slate-600">
+                {request.message}
+              </p>
+            )}
 
-              {request.status === 'pending' && (
-                <div className="flex shrink-0 items-center gap-3 text-sm">
+            <p className="mt-2 text-xs text-slate-500">
+              {incoming
+                ? `מציעים חלוקת עמלה: ${100 - request.commissionSplit}% לכם, ${request.commissionSplit}% להם.`
+                : `חלוקת עמלה שהוצעה: ${request.commissionSplit}% לנו.`}
+            </p>
+
+            {request.status === 'accepted' && other.phone && (
+              <p className="mt-2 text-sm text-slate-700">
+                ליצירת קשר:{' '}
+                <a href={`tel:${other.phone}`} dir="ltr" className="text-blue-700 hover:underline">
+                  {other.phone}
+                </a>
+              </p>
+            )}
+
+            {/* The thread exists from the moment the request does, so a question can be
+                asked before anybody commits to anything. */}
+            <button
+              type="button"
+              onClick={() => toggle(request.id, unread)}
+              className="mt-2 flex items-center gap-1 text-sm text-blue-700 hover:underline"
+            >
+              <ChevronDown
+                className={`h-4 w-4 transition ${expanded ? 'rotate-180' : ''}`}
+                aria-hidden
+              />
+              {expanded
+                ? 'סגירה'
+                : request.messages.length > 0
+                  ? `שיחה (${request.messages.length})`
+                  : 'שיחה'}
+            </button>
+
+            {expanded && (
+              <CoBrokerageThread
+                requestId={request.id}
+                messages={request.messages}
+                stage={request.stage}
+                myAgencyId={myAgencyId}
+                settled={settled}
+              />
+            )}
+          </div>
+
+          {request.status === 'pending' && (
+            <div className="flex shrink-0 items-center gap-3 text-sm">
+              {incoming ? (
+                <>
                   <button
                     type="button"
                     onClick={() => answer.mutate({ id: request.id, accept: true })}
@@ -180,78 +243,107 @@ export function CoBrokeragePage() {
                     <X className="h-4 w-4" aria-hidden />
                     דחייה
                   </button>
-                </div>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => withdraw.mutate(request.id)}
+                  disabled={withdraw.isPending}
+                  className="text-sm text-slate-400 hover:text-slate-700 disabled:opacity-50"
+                >
+                  ביטול הבקשה
+                </button>
               )}
             </div>
-          </article>
-        ))}
+          )}
+        </div>
+      </article>
+    );
+  };
+
+  const live = <T extends SentRequest | ReceivedRequest>(rows: T[] | undefined) =>
+    (rows ?? []).filter((r) => !isSettled(r.status, r.stage));
+  const past = <T extends SentRequest | ReceivedRequest>(rows: T[] | undefined) =>
+    (rows ?? []).filter((r) => isSettled(r.status, r.stage));
+
+  const settledCount = past(received).length + past(sent).length;
+
+  return (
+    <div className="flex flex-col gap-6">
+      <header>
+        <h1 className="flex items-center gap-2 text-xl font-bold text-slate-900">
+          <Handshake className="h-5 w-5 text-blue-600" aria-hidden />
+          שיתופי פעולה
+        </h1>
+        <p className="text-sm text-slate-500">
+          סוכנויות אחרות שיש להן קונה לנכס שלכם, ונכסים שלהן שמתאימים ללקוחות שלכם.
+        </p>
+      </header>
+
+      <section className="flex flex-col gap-3">
+        <div>
+          <h2 className="text-sm font-semibold text-slate-900">
+            בקשות שהתקבלו ({live(received).length})
+          </h2>
+          <p className="text-xs text-slate-500">
+            לסוכנות שפנתה יש קונה לנכס שלכם. פרטי הקונה נשארים אצלה עד שתאשרו.
+          </p>
+        </div>
+
+        {/* "Nothing here" and "not loaded yet" look identical and are not: an empty
+            page while the request is still in flight reads as a broken feature. */}
+        {live(received).length === 0 && (
+          <p className="rounded-xl border border-slate-200 bg-white p-6 text-center text-sm text-slate-500">
+            {loadingReceived ? 'טוען…' : 'אין בקשות פתוחות.'}
+          </p>
+        )}
+
+        {live(received).map((r) => card(r, true))}
       </section>
 
       <section className="flex flex-col gap-3">
         <div>
           <h2 className="text-sm font-semibold text-slate-900">
-            בקשות ששלחנו ({sent?.length ?? 0})
+            בקשות ששלחנו ({live(sent).length})
           </h2>
           <p className="text-xs text-slate-500">
             נשלחות מעמוד ההזדמנויות, כשנכס של סוכנות אחרת מתאים ללקוח שלכם.
           </p>
         </div>
 
-        {sent?.length === 0 && (
+        {live(sent).length === 0 && (
           <p className="rounded-xl border border-slate-200 bg-white p-6 text-center text-sm text-slate-500">
-            עוד לא שלחתם בקשות.
+            {loadingSent ? 'טוען…' : 'אין בקשות פתוחות.'}
           </p>
         )}
 
-        {sent?.map((request) => (
-          <article key={request.id} className="rounded-xl border border-slate-200 bg-white p-4">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="flex flex-wrap items-center gap-2 font-semibold text-slate-900">
-                  {request.holdingAgency.name}
-                  <Status status={request.status} />
-                </p>
-                <p className="mt-1 text-sm text-slate-700">
-                  {addressOf(request.listing)}
-                  {request.listing.price !== null && (
-                    <span className="text-slate-500"> · {formatPrice(request.listing.price)}</span>
-                  )}
-                </p>
-                {request.customer && (
-                  <p className="mt-1 text-sm text-slate-500">עבור {request.customer.name}</p>
-                )}
-                <p className="mt-2 text-xs text-slate-500">
-                  חלוקת עמלה שהוצעה: {request.commissionSplit}% לנו.
-                </p>
-
-                {request.status === 'accepted' && request.holdingAgency.phone && (
-                  <p className="mt-2 text-sm text-slate-700">
-                    ליצירת קשר:{' '}
-                    <a
-                      href={`tel:${request.holdingAgency.phone}`}
-                      dir="ltr"
-                      className="text-blue-700 hover:underline"
-                    >
-                      {request.holdingAgency.phone}
-                    </a>
-                  </p>
-                )}
-              </div>
-
-              {request.status === 'pending' && (
-                <button
-                  type="button"
-                  onClick={() => withdraw.mutate(request.id)}
-                  disabled={withdraw.isPending}
-                  className="shrink-0 text-sm text-slate-400 hover:text-slate-700 disabled:opacity-50"
-                >
-                  ביטול הבקשה
-                </button>
-              )}
-            </div>
-          </article>
-        ))}
+        {live(sent).map((r) => card(r, false))}
       </section>
+
+      {/* Nothing is deleted. A deal that fell through and a request somebody declined
+          are both part of the history with that agency, and the thread stays readable. */}
+      {settledCount > 0 && (
+        <section className="flex flex-col gap-3">
+          <button
+            type="button"
+            onClick={() => setShowPast(!showPast)}
+            className="flex items-center gap-1 self-start text-sm font-semibold text-slate-700 hover:text-slate-900"
+          >
+            <ChevronDown
+              className={`h-4 w-4 transition ${showPast ? 'rotate-180' : ''}`}
+              aria-hidden
+            />
+            היסטוריה ({settledCount})
+          </button>
+
+          {showPast && (
+            <>
+              {past(received).map((r) => card(r, true))}
+              {past(sent).map((r) => card(r, false))}
+            </>
+          )}
+        </section>
+      )}
     </div>
   );
 }

@@ -301,12 +301,30 @@ export class DemoService {
             commissionSplit: request.commissionSplit,
             briefSummary: briefSummary(customer),
             status: request.status,
+            // A stage only means something once there is a deal to be at a stage of.
+            stage: request.status === 'accepted' ? (request.stage ?? 'agreed') : null,
             respondedAt: answered ? new Date() : null,
           },
           select: { id: true },
         });
         remember('CoBrokerageRequest', row.id);
         made += 1;
+
+        // The conversation that followed, with both voices in it. Spaced a few minutes
+        // apart so the thread reads in the order it was written rather than all at once.
+        for (const [n, line] of (request.thread ?? []).entries()) {
+          const theirs = line.from === 'theirs';
+          await this.prisma.coBrokerageMessage.create({
+            data: {
+              requestId: row.id,
+              agencyId: theirs ? partner.id : agencyId,
+              authorId: theirs ? null : createdByUserId,
+              body: line.body,
+              createdAt: new Date(Date.now() - (request.thread!.length - n) * 20 * MINUTE),
+            },
+            select: { id: true },
+          });
+        }
       } catch {
         // The unique index on (listing, agency, customer). A second seed run into the
         // same pair is a duplicate, not a failure worth stopping the whole seed for.
