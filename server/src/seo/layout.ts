@@ -155,6 +155,18 @@ td.num,th.num{font-variant-numeric:tabular-nums;white-space:nowrap}
 .card img{object-fit:cover}
 .card .body{padding:.75rem .875rem;display:flex;flex-direction:column;gap:.25rem;flex:1}
 .card .price{font-weight:700}
+/* The badges sit over the photograph, stacked: a listing can wear both, and two
+   facing each other across a picture read as unrelated. */
+.badges{position:absolute;top:.5rem;inset-inline-start:.5rem;z-index:1;
+  display:flex;flex-direction:column;align-items:flex-start;gap:.25rem}
+.badges .drop{background:#047857;color:#fff;border-radius:.375rem;padding:.125rem .5rem;
+  font-size:.75rem;font-weight:600;box-shadow:0 1px 2px rgb(15 23 42 / .2)}
+.badges .fresh{background:#fde68a;color:#78350f;border-radius:.375rem;padding:.125rem .5rem;
+  font-size:.75rem;font-weight:700;box-shadow:0 1px 2px rgb(15 23 42 / .2)}
+.card{position:relative}
+/* On the listing page itself there is no photograph behind them, so they sit in the
+   flow under the price rather than over anything. */
+.headline-price + .badges{position:static;flex-direction:row;margin-top:.5rem}
 .card .where{font-size:.875rem;color:#334155}
 .card .facts{font-size:.8125rem;color:#64748b;margin-top:auto}
 .headline-price{font-size:1.5rem;font-weight:700;margin:.25rem 0 0}

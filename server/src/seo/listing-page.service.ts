@@ -23,6 +23,9 @@ const DETAIL = {
   section: true,
   price: true,
   priceBeforeDrop: true,
+  lastPriceDropAmount: true,
+  lastPriceDropAt: true,
+  publishedAt: true,
   pricePerSquareMeter: true,
   rooms: true,
   squareMeter: true,
@@ -64,6 +67,10 @@ export type ListingDetail = Prisma.ListingGetPayload<{ select: typeof DETAIL }>;
 export interface SimilarListing {
   id: string;
   price: number | null;
+  lastPriceDropAmount: number | null;
+  lastPriceDropAt: Date | null;
+  listedAt: Date | null;
+  publishedAt: Date | null;
   rooms: number | null;
   squareMeter: number | null;
   street: string | null;
@@ -156,6 +163,10 @@ export class ListingPageService {
       select: {
         id: true,
         price: true,
+        lastPriceDropAmount: true,
+        lastPriceDropAt: true,
+        listedAt: true,
+        publishedAt: true,
         rooms: true,
         squareMeter: true,
         street: true,

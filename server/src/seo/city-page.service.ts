@@ -41,6 +41,11 @@ export interface CityEntry {
 export interface CityListing {
   id: string;
   price: number | null;
+  /** For the badges; see `seo/badges.ts`. */
+  lastPriceDropAmount: number | null;
+  lastPriceDropAt: Date | null;
+  listedAt: Date | null;
+  publishedAt: Date | null;
   rooms: number | null;
   squareMeter: number | null;
   floor: number | null;
@@ -177,6 +182,10 @@ export class CityPageService {
         select: {
           id: true,
           price: true,
+          lastPriceDropAmount: true,
+          lastPriceDropAt: true,
+          listedAt: true,
+          publishedAt: true,
           rooms: true,
           squareMeter: true,
           floor: true,

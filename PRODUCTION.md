@@ -787,6 +787,12 @@ is simply not announced as new.
 The rules are in `client/src/lib/listingBadges.ts`, pure and tested, because "is this
 still news" is a judgement that should not be rewritten per card.
 
+**They exist twice.** `server/src/seo/badges.ts` carries the same two thresholds for
+the server-rendered city and listing pages, because the two halves of this repository
+share no package. If you change one, change the other: a buyer seeing `חדש` on a city
+page and not on the search for the same flat would be right to distrust both. Both
+files say so at the top, and both are tested.
+
 ## Still open
 
 Things that are known to be missing or unfinished, so nobody rediscovers them in

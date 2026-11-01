@@ -2,6 +2,7 @@ import type { Section } from '../yad2/yad2.types.js';
 import type { Band, Summary } from './stats.js';
 import type { CityListing, CityPage } from './city-page.service.js';
 import { toSlug } from './city-slug.js';
+import { badgesFor } from './badges.js';
 import { listingPath } from './listing-slug.js';
 import { addressLine, esc, hebrewDate, number, price, priceWords, properties } from './html.js';
 import { breadcrumbs, page } from './layout.js';
@@ -257,6 +258,7 @@ function card(listing: CityListing, perMonth: boolean): string {
   const label = where || listing.propertyType || 'נכס';
 
   return `<li class="card">
+${badgesFor(listing)}
 ${
   listing.coverImageUrl
     ? `<img src="${esc(listing.coverImageUrl)}" alt="${esc(label)}" loading="lazy" width="320" height="144">`

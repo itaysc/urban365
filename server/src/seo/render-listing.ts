@@ -1,6 +1,7 @@
 import type { Section } from '../yad2/yad2.types.js';
 import { toSlug } from './city-slug.js';
 import { addressLine, esc, hebrewDate, number, price as shekels } from './html.js';
+import { badgesFor } from './badges.js';
 import { breadcrumbs, page } from './layout.js';
 import { listingPath } from './listing-slug.js';
 import type { ListingDetail, SimilarListing } from './listing-page.service.js';
@@ -196,6 +197,7 @@ function similarTo(similar: SimilarListing[], section: Section, city: string | n
         .join(' · ');
 
       return `<li class="card">
+${badgesFor(other)}
 ${
   other.coverImageUrl
     ? `<img src="${esc(other.coverImageUrl)}" alt="${esc(where)}" loading="lazy" width="320" height="144">`
@@ -352,6 +354,7 @@ export function renderListingPage(
   const body = `${trail.html}
 <h1>${esc(title)}</h1>
 <p class="headline-price">${esc(money(listing.price, listing.section))}${drop}</p>
+${badgesFor(listing)}
 ${figures(listing)}
 <a class="cta" href="${esc(`${appUrl}/?listing=${encodeURIComponent(listing.id)}`)}">צפייה בנכס ויצירת קשר</a>
 ${gallery(images, title)}
