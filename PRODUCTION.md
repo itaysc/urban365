@@ -368,6 +368,12 @@ listing *scanned*, not the newest that matched, so the window stays bounded and 
 is skipped. It starts at the moment the search is saved, so a new alert does not open
 with the back catalogue. A failed send puts all of it back.
 
+The button says so when the search on screen is already saved, and links to the alert
+instead of offering to make a second copy of it — two identical searches mean one
+listing produces two emails. The comparison is canonical on both sides: the filter bar
+says `undefined` where the database says `null`, and city order is not part of a
+search.
+
 Alerts only go out between 08:00 and 21:00 Israel time. Not everything a filter bar
 offers survives into an alert — free text, neighbourhoods, amenities and districts have
 no column the matcher compares — and the save panel names what it is dropping rather

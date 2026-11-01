@@ -119,12 +119,10 @@ export function SearchPage() {
             <p className="text-sm text-slate-500">{resultCount(data?.total)}</p>
           </div>
 
-          <div className="flex flex-wrap items-start gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             {/* Beside the sort rather than in the filter bar: the alert is for the
                 search they ran, and the bar holds a draft they have not committed. */}
-            <div className="flex flex-col">
-              <SaveSearchButton filters={filters} />
-            </div>
+            <SaveSearchButton filters={filters} />
 
             <select
               value={filters.sort}
