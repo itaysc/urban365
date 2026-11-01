@@ -20,6 +20,9 @@ function readCollapsed(): boolean {
   }
 }
 
+/** Pages that are laid out across the window rather than read down a column. */
+const WIDE = new Set(['/app/deals']);
+
 export function AppLayout() {
   const { user } = useAuth();
   const location = useLocation();
@@ -108,8 +111,12 @@ export function AppLayout() {
           {/* The shell is full width so the sidebar sits against the window edge, but
               the content itself is capped — a form stretched across 1800px is unusable.
               The cap lives here rather than on the shell, which is what used to leave a
-              few hundred pixels of nothing beside the menu. */}
-          <div className="mx-auto w-full max-w-5xl">
+              few hundred pixels of nothing beside the menu.
+
+              The deals board is the exception: five columns side by side want every
+              pixel there is, and capped at 1024px each one is narrower than the card it
+              holds. */}
+          <div className={`mx-auto w-full ${WIDE.has(location.pathname) ? '' : 'max-w-5xl'}`}>
             <Outlet />
           </div>
         </main>

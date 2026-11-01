@@ -1,49 +1,77 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { qk } from '@/queries/keys';
+import { Plus } from 'lucide-react';
+import { DealCard } from '@/components/agency/DealCard';
+import { NewDealDialog } from '@/components/agency/NewDealDialog';
 import { Button } from '@/components/ui/Button';
-import { Field, inputClass, selectClass } from '@/components/ui/Field';
 import { useToast } from '@/components/ui/Toast';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { errorMessageOf } from '@/lib/apiError';
+import { moveDeal } from '@/lib/dealBoard';
 import { formatShekel } from '@/lib/format';
+import { qk } from '@/queries/keys';
 import {
-  createDeal,
   deleteDeal,
   fetchDealBoard,
   updateDeal,
   DEAL_STAGES,
   type Deal,
+  type DealBoard,
   type DealStage,
 } from '@/services/crm';
 
-const STAGE_TINT: Record<DealStage, string> = {
-  qualified: 'border-slate-200',
-  negotiation: 'border-blue-200',
-  under_contract: 'border-amber-200',
-  closed_won: 'border-green-300',
-  closed_lost: 'border-slate-200 opacity-70',
-};
+/**
+ * Below this the pipeline is a list rather than a board.
+ *
+ * Measured against the window, but what has to fit is the board: five columns want
+ * about a thousand pixels between them before a card becomes a column of single words,
+ * and the sidebar and the page padding take roughly three hundred before the board
+ * gets any. Hence 1280 and not 1024 — at 1024 the columns came out 140px wide, which
+ * is narrower than the dropdown inside them.
+ *
+ * Everything below that, a phone included, gets the same deals stacked by stage. That
+ * is not a lesser view: a board is a picture of exactly that, and the picture is the
+ * part that needs the room.
+ */
+const BOARD_FROM = '(min-width: 1280px)';
 
 export function DealsPage() {
   const toast = useToast();
-  const [error, setError] = useState<string | null>(null);
-  const [adding, setAdding] = useState(false);
   const queryClient = useQueryClient();
+  const board = useMediaQuery(BOARD_FROM);
 
-  const { data: board } = useQuery({ queryKey: qk.deals.board, queryFn: fetchDealBoard });
+  const [adding, setAdding] = useState(false);
+  const [addingTo, setAddingTo] = useState<DealStage | undefined>();
+  /** The card currently being carried, and the column under the cursor. */
+  const [lifted, setLifted] = useState<string | null>(null);
+  const [over, setOver] = useState<DealStage | null>(null);
+
+  const { data, isPending } = useQuery({ queryKey: qk.deals.board, queryFn: fetchDealBoard });
 
   const reload = () => queryClient.invalidateQueries({ queryKey: qk.deals.all });
 
-
+  /**
+   * Move a deal, on screen first and on the server after.
+   *
+   * The board is replaced locally before the request goes out, because a card that
+   * springs back to where it came from for half a second reads as the drop having
+   * missed — and the second attempt is what actually produces a double move. A failure
+   * puts the old board back and says so.
+   */
   const move = async (deal: Deal, stage: DealStage) => {
+    if (deal.stage === stage) return;
+
+    const previous = queryClient.getQueryData<DealBoard>(qk.deals.board);
+    if (previous) {
+      queryClient.setQueryData(qk.deals.board, moveDeal(previous, deal.id, stage));
+    }
+
     try {
       await updateDeal(deal.id, { stage });
-      toast.success('השלב עודכן.');
       await reload();
     } catch (e) {
-      const message = errorMessageOf(e, 'העדכון נכשל.');
-      setError(message);
-      toast.error(message);
+      if (previous) queryClient.setQueryData(qk.deals.board, previous);
+      toast.error(errorMessageOf(e, 'לא הצלחנו להעביר את העסקה.'));
     }
   };
 
@@ -53,92 +81,95 @@ export function DealsPage() {
       toast.success('העסקה נמחקה.');
       await reload();
     } catch (e) {
-      const message = errorMessageOf(e, 'המחיקה נכשלה.');
-      setError(message);
-      toast.error(message);
+      toast.error(errorMessageOf(e, 'המחיקה נכשלה.'));
     }
   };
 
+  const openDialog = (stage?: DealStage) => {
+    setAddingTo(stage);
+    setAdding(true);
+  };
+
+  const cardFor = (deal: Deal, draggable: boolean) => (
+    <DealCard
+      key={deal.id}
+      deal={deal}
+      draggable={draggable}
+      lifted={lifted === deal.id}
+      onDragStart={() => setLifted(deal.id)}
+      onDragEnd={() => {
+        setLifted(null);
+        setOver(null);
+      }}
+      onMove={(stage) => void move(deal, stage)}
+      onRemove={() => void remove(deal)}
+    />
+  );
+
   return (
-    <div className="flex flex-col gap-4">
+    // The board owns the height it is given so its columns can scroll inside it rather
+    // than the page scrolling past the headings; the list is an ordinary page.
+    <div className={`flex flex-col gap-4 ${board ? 'h-[calc(100vh-9rem)]' : ''}`}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-xl font-bold text-slate-900">עסקאות</h1>
-        <Button onClick={() => setAdding((a) => !a)}>{adding ? 'ביטול' : 'עסקה חדשה'}</Button>
+        <Button onClick={() => openDialog()}>
+          <Plus className="h-4 w-4" aria-hidden />
+          עסקה חדשה
+        </Button>
       </div>
 
-      {error && (
-        <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>
-      )}
+      {isPending && <p className="text-sm text-slate-500">טוען…</p>}
 
-      {adding && (
-        <NewDealForm
-          onCreated={() => {
-            setAdding(false);
-            toast.success('העסקה נוספה.');
-            void reload();
-          }}
-          onError={setError}
-        />
-      )}
-
-      {!board && <p className="text-sm text-slate-500">טוען…</p>}
-
-      {board && (
-        // Columns scroll horizontally rather than wrapping: a pipeline read as five
-        // columns stops being a pipeline the moment they stack.
-        <div className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-2 sm:mx-0 sm:px-0">
+      {data && board && (
+        <div className="grid min-h-0 flex-1 grid-cols-5 gap-3">
           {DEAL_STAGES.map((stage) => {
-            const deals = board.columns[stage.value] ?? [];
-            const totals = board.totals[stage.value];
+            const deals = data.columns[stage.value] ?? [];
+            const totals = data.totals[stage.value];
+            const target = over === stage.value && lifted !== null;
 
             return (
-              <section key={stage.value} className="flex w-64 shrink-0 flex-col gap-2">
-                <header className="flex items-baseline justify-between gap-2">
-                  <h2 className="text-sm font-semibold text-slate-900">{stage.label}</h2>
-                  <span className="text-xs text-slate-500">{totals?.count ?? 0}</span>
+              <section
+                key={stage.value}
+                // `preventDefault` on dragover is what marks a column as somewhere a
+                // card may be dropped; without it the browser refuses every drop.
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  e.dataTransfer.dropEffect = 'move';
+                  if (over !== stage.value) setOver(stage.value);
+                }}
+                onDragLeave={(e) => {
+                  // Only when the pointer has left the column itself. Moving between the
+                  // cards inside it fires dragleave too, and reacting to that makes the
+                  // highlight flicker all the way down the column.
+                  if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+                    setOver((current) => (current === stage.value ? null : current));
+                  }
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setOver(null);
+
+                  const id = e.dataTransfer.getData('text/plain') || lifted;
+                  const deal = id ? findDeal(data, id) : null;
+                  if (deal) void move(deal, stage.value);
+                }}
+                className={`flex min-h-0 min-w-0 flex-col rounded-xl border-2 border-dashed p-1 transition ${
+                  target ? 'border-blue-400 bg-blue-50/60' : 'border-transparent'
+                }`}
+              >
+                <header className="flex items-baseline justify-between gap-1 px-1">
+                  <h2 className="truncate text-sm font-semibold text-slate-900">{stage.label}</h2>
+                  <span className="shrink-0 text-xs text-slate-500">{totals?.count ?? 0}</span>
                 </header>
 
-                {totals && totals.value > 0 && (
-                  <p className="text-xs text-slate-500">{formatShekel(totals.value)}</p>
-                )}
+                <p className="h-4 px-1 text-xs text-slate-500">
+                  {totals && totals.value > 0 ? formatShekel(totals.value) : ''}
+                </p>
 
-                <ul className="flex flex-col gap-2">
-                  {deals.map((deal) => (
-                    <li
-                      key={deal.id}
-                      className={`rounded-xl border bg-white p-3 ${STAGE_TINT[deal.stage]}`}
-                    >
-                      <p className="text-sm font-medium text-slate-900">{deal.title}</p>
-
-                      {deal.price !== null && (
-                        <p className="mt-0.5 text-xs text-slate-600">{formatShekel(deal.price)}</p>
-                      )}
-                      {deal.commission !== null && (
-                        <p className="text-xs text-slate-500">עמלה {formatShekel(deal.commission)}</p>
-                      )}
-                      {deal.lead && <p className="mt-1 text-xs text-slate-500">{deal.lead.name}</p>}
-
-                      <select
-                        className={`${selectClass} mt-2 w-full py-1 text-xs`}
-                        value={deal.stage}
-                        onChange={(e) => void move(deal, e.target.value as DealStage)}
-                      >
-                        {DEAL_STAGES.map((s) => (
-                          <option key={s.value} value={s.value}>
-                            {s.label}
-                          </option>
-                        ))}
-                      </select>
-
-                      <button
-                        type="button"
-                        className="mt-1 text-xs text-red-700 hover:underline"
-                        onClick={() => void remove(deal)}
-                      >
-                        מחק
-                      </button>
-                    </li>
-                  ))}
+                {/* The one thing that scrolls: a long column moves inside itself and the
+                    other four stay where they are. */}
+                <ul className="mt-1 flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-1">
+                  {deals.map((deal) => cardFor(deal, true))}
 
                   {deals.length === 0 && (
                     <li className="rounded-xl border border-dashed border-slate-300 p-4 text-center text-xs text-slate-400">
@@ -146,74 +177,77 @@ export function DealsPage() {
                     </li>
                   )}
                 </ul>
+
+                <button
+                  type="button"
+                  onClick={() => openDialog(stage.value)}
+                  className="mt-1 flex items-center justify-center gap-1 rounded-lg px-2 py-1.5 text-xs text-slate-500 transition hover:bg-white hover:text-slate-900"
+                >
+                  <Plus className="h-3.5 w-3.5" aria-hidden />
+                  עסקה
+                </button>
               </section>
             );
           })}
         </div>
       )}
+
+      {data && !board && (
+        <div className="flex flex-col gap-5">
+          {DEAL_STAGES.map((stage) => {
+            const deals = data.columns[stage.value] ?? [];
+            const totals = data.totals[stage.value];
+
+            // An empty stage is a heading over nothing on a screen this narrow, where
+            // scrolling past five of them to reach the deals is the whole cost.
+            if (deals.length === 0) return null;
+
+            return (
+              <section key={stage.value} className="flex flex-col gap-2">
+                <header className="flex items-baseline justify-between gap-2 border-b border-slate-200 pb-1">
+                  <h2 className="text-sm font-semibold text-slate-900">
+                    {stage.label}
+                    <span className="ms-2 text-xs font-normal text-slate-500">{deals.length}</span>
+                  </h2>
+                  {totals && totals.value > 0 && (
+                    <span className="text-xs text-slate-500">{formatShekel(totals.value)}</span>
+                  )}
+                </header>
+
+                <ul className="flex flex-col gap-2">{deals.map((deal) => cardFor(deal, false))}</ul>
+              </section>
+            );
+          })}
+
+          {isEmpty(data) && (
+            <p className="rounded-xl border border-dashed border-slate-300 p-8 text-center text-sm text-slate-500">
+              אין עדיין עסקאות.
+            </p>
+          )}
+        </div>
+      )}
+
+      <NewDealDialog
+        open={adding}
+        onOpenChange={setAdding}
+        initialStage={addingTo}
+        onCreated={() => {
+          setAdding(false);
+          toast.success('העסקה נוספה.');
+          void reload();
+        }}
+      />
     </div>
   );
 }
 
-function NewDealForm({
-  onCreated,
-  onError,
-}: {
-  onCreated: () => void;
-  onError: (message: string) => void;
-}) {
-  const [form, setForm] = useState({ title: '', price: '', commission: '', expectedCloseAt: '' });
-  const [saving, setSaving] = useState(false);
+const findDeal = (board: DealBoard, id: string): Deal | null => {
+  for (const stage of DEAL_STAGES) {
+    const found = board.columns[stage.value]?.find((deal) => deal.id === id);
+    if (found) return found;
+  }
+  return null;
+};
 
-  const set = (key: keyof typeof form, value: string) => setForm((f) => ({ ...f, [key]: value }));
-
-  const submit = async () => {
-    setSaving(true);
-    try {
-      await createDeal({
-        title: form.title,
-        price: form.price ? Number(form.price) : undefined,
-        commission: form.commission ? Number(form.commission) : undefined,
-        expectedCloseAt: form.expectedCloseAt || undefined,
-      });
-      onCreated();
-    } catch (e) {
-      onError(errorMessageOf(e, 'לא הצלחנו ליצור את העסקה.'));
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <form
-      className="grid gap-3 rounded-xl border border-slate-200 bg-white p-4 sm:grid-cols-2"
-      onSubmit={(e) => {
-        e.preventDefault();
-        void submit();
-      }}
-    >
-      <Field label="כותרת" htmlFor="deal-title" required>
-        <input id="deal-title" required className={inputClass} value={form.title}
-               onChange={(e) => set('title', e.target.value)} placeholder="דיזנגוף 120 — משפחת כהן" />
-      </Field>
-      <Field label="מחיר (₪)" htmlFor="deal-price">
-        <input id="deal-price" type="number" inputMode="numeric" className={inputClass}
-               value={form.price} onChange={(e) => set('price', e.target.value)} />
-      </Field>
-      <Field label="עמלה (₪)" htmlFor="deal-commission">
-        <input id="deal-commission" type="number" inputMode="numeric" className={inputClass}
-               value={form.commission} onChange={(e) => set('commission', e.target.value)} />
-      </Field>
-      <Field label="צפי סגירה" htmlFor="deal-close">
-        <input id="deal-close" type="date" className={inputClass} value={form.expectedCloseAt}
-               onChange={(e) => set('expectedCloseAt', e.target.value)} />
-      </Field>
-
-      <div className="sm:col-span-2">
-        <Button type="submit" disabled={saving || !form.title.trim()}>
-          {saving ? 'שומר…' : 'הוסף'}
-        </Button>
-      </div>
-    </form>
-  );
-}
+const isEmpty = (board: DealBoard) =>
+  DEAL_STAGES.every((stage) => (board.columns[stage.value] ?? []).length === 0);
