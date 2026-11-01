@@ -1,13 +1,16 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Eye, Heart, MessageSquare, Phone, Plus } from 'lucide-react';
+import { Eye, Heart, MessageSquare, Phone, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatPrice } from '@/lib/format';
 import { SiteHeader } from '@/components/SiteHeader';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { errorMessageOf } from '@/lib/apiError';
 import { qk } from '@/queries/keys';
 import {
   archiveMyListing,
+  deleteMyListing,
   fetchMyListings,
   fetchMyStats,
   publishMyListing,
@@ -50,6 +53,8 @@ function Stat({
  */
 export function MySalePage() {
   const queryClient = useQueryClient();
+  /** The listing a seller has asked to delete, held until they confirm it. */
+  const [deleting, setDeleting] = useState<SellerListing | null>(null);
 
   const { data: listings, isPending } = useQuery({
     queryKey: qk.mySale.list,
@@ -80,6 +85,16 @@ export function MySalePage() {
       else toast('הנכס נשלח לבדיקה. נעדכן אתכם לאחר שתאושר.', { duration: 8000 });
     },
     onError: (e) => toast.error(errorMessageOf(e, 'הפעולה נכשלה.')),
+  });
+
+  const remove = useMutation({
+    mutationFn: (id: string) => deleteMyListing(id),
+    onSuccess: () => {
+      setDeleting(null);
+      void queryClient.invalidateQueries({ queryKey: qk.mySale.all });
+      toast.success('הנכס נמחק.');
+    },
+    onError: (e) => toast.error(errorMessageOf(e, 'המחיקה נכשלה.')),
   });
 
   const address = (listing: SellerListing) =>
@@ -172,7 +187,9 @@ export function MySalePage() {
                         .join(' · ')}
                     </p>
 
-                    <div className="mt-1 flex items-center gap-3 text-sm">
+                    {/* Wraps: three actions and a narrow card on a phone is how a row
+                        like this ends up with its last item off the edge. */}
+                    <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
                       <Link to={`/sell/${listing.id}`} className="text-blue-700 hover:underline">
                         עריכה
                       </Link>
@@ -183,6 +200,22 @@ export function MySalePage() {
                         className="text-slate-500 hover:text-slate-900 disabled:opacity-50"
                       >
                         {published ? 'הסרה מהפרסום' : 'פרסום מחדש'}
+                      </button>
+
+                      {/*
+                        Last, apart, and the only one that is not blue: taking a listing
+                        off the market and deleting it are one word apart in Hebrew and
+                        a world apart in effect, so they do not sit together looking
+                        alike.
+                      */}
+                      <button
+                        type="button"
+                        onClick={() => setDeleting(listing)}
+                        aria-label={`מחיקת ${address(listing) || 'הנכס'}`}
+                        className="ms-auto flex items-center gap-1 text-slate-400 transition hover:text-red-700"
+                      >
+                        <Trash2 className="h-4 w-4" aria-hidden />
+                        מחיקה
                       </button>
                     </div>
                   </div>
@@ -203,6 +236,26 @@ export function MySalePage() {
           })}
         </ul>
       </div>
+
+      {/*
+        Says what goes, rather than asking "are you sure?" about an unnamed thing. The
+        photographs are the part people do not expect to lose, and the enquiries are
+        the part they would be upset to lose — so both are named, including the one
+        that survives.
+      */}
+      <ConfirmDialog
+        open={deleting !== null}
+        onOpenChange={(open) => !open && setDeleting(null)}
+        title="למחוק את הנכס?"
+        description={
+          deleting
+            ? `${address(deleting) || 'הנכס'} יימחק לתמיד, יחד עם התמונות שהעליתם ועם מספר הצפיות והשמירות. פניות שכבר התקבלו יישמרו אצלכם, בלי הקישור לנכס. כדי להסתיר את הנכס מבלי למחוק אותו, השתמשו ב"הסרה מהפרסום".`
+            : undefined
+        }
+        confirmLabel="מחיקה לתמיד"
+        busy={remove.isPending}
+        onConfirm={() => deleting && remove.mutate(deleting.id)}
+      />
     </div>
   );
 }

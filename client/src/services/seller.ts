@@ -99,7 +99,19 @@ export async function updateMyListing(id: string, input: SellerListingInput): Pr
   return data;
 }
 
+/** Off the market, kept. The figures and the enquiries still mean something. */
 export async function archiveMyListing(id: string): Promise<void> {
+  await api.post(`/me/listings/${id}/archive`);
+}
+
+/**
+ * Gone for good, with its photographs.
+ *
+ * A separate call from `archiveMyListing` on purpose: one is reversible from the same
+ * screen and the other is not reversible at all, and an API where the difference is a
+ * verb on the same path is one where they eventually get confused.
+ */
+export async function deleteMyListing(id: string): Promise<void> {
   await api.delete(`/me/listings/${id}`);
 }
 

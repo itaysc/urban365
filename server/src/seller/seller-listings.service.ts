@@ -102,6 +102,9 @@ export class SellerListingsService {
    * Taken off the market rather than deleted: the engagement figures and any enquiries
    * it produced still refer to it, and a seller who relists next month should not have
    * started from nothing.
+   *
+   * This is what "הסרה מהפרסום" does, and it is the right default — but it is not
+   * removal, and for a while it was the only thing on offer. `remove` below is.
    */
   async archive(userId: string, id: string) {
     await this.requireOwn(userId, id);
@@ -110,6 +113,41 @@ export class SellerListingsService {
       data: { status: 'archived', delistedAt: new Date() },
     });
     return { archived: true };
+  }
+
+  /**
+   * Gone for good, at the seller's word.
+   *
+   * Archiving keeps a listing out of sight; this is for the person who wants their flat
+   * and their photographs off our machines, which is theirs to ask and not ours to
+   * talk them out of. Everything attached to the listing goes with it — images, the
+   * engagement counts, saves — by the cascades in the schema.
+   *
+   * What survives is the enquiries: a `Lead` belongs to the seller rather than to the
+   * listing, so it keeps the name and number of somebody who rang and simply stops
+   * saying which property it was about. Deleting a stranger's contact details because
+   * a flat was sold would be the wrong call to make on the seller's behalf.
+   *
+   * The row goes before the files, like `removeImage`: a stray object costs storage and
+   * a stray row shows a broken picture. The bucket deletions are best-effort for the
+   * same reason — a storage outage must not leave the seller unable to delete.
+   */
+  async remove(userId: string, id: string) {
+    await this.requireOwn(userId, id);
+
+    // Read while the rows still exist; the cascade takes them with the listing.
+    const images = await this.prisma.listingImage.findMany({
+      where: { listingId: id },
+      select: { storageKey: true },
+    });
+
+    await this.prisma.listing.delete({ where: { id } });
+
+    await Promise.all(
+      images.map((image) => this.storage.deleteObject(image.storageKey).catch(() => undefined)),
+    );
+
+    return { deleted: true };
   }
 
   /**

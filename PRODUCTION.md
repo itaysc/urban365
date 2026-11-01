@@ -599,6 +599,32 @@ The whole history now replays into an empty database and produces exactly what
 createdb nadlan_replay && DATABASE_URL=...nadlan_replay npm run db:deploy --prefix server
 ```
 
+## A private seller's own properties
+
+`/sell` is the page: what they published, how each one is doing, and what they can do
+about it. Three actions, and two of them are deliberately not alike.
+
+* **עריכה** opens the publish form again at `/sell/:id`.
+* **הסרה מהפרסום** archives — `POST /me/listings/:id/archive`. The listing keeps its
+  engagement figures and its enquiries still refer to it, and relisting is one press.
+* **מחיקה** deletes — `DELETE /me/listings/:id`. The row goes, and the cascades take the
+  images, the engagement counts and the saves with it; the photographs are then removed
+  from the bucket.
+
+The archive route was `DELETE :id` until there was a real delete to put there. They are
+a verb apart on the same path no longer, because one is reversible from the same screen
+and the other is not reversible at all.
+
+**Enquiries survive a deletion.** A `Lead` belongs to the seller rather than to the
+listing, so it keeps the name and number of somebody who rang and stops saying which
+property it was about. Deleting a stranger's contact details because a flat sold is not
+a call to make on the seller's behalf — and the confirmation says so, along with what
+does go.
+
+Bucket deletions are best-effort: a storage outage must not leave somebody unable to
+delete their own listing. A failed object is a stray file, which costs storage; a failed
+delete would be a person told no.
+
 ## Still open
 
 Things that are known to be missing or unfinished, so nobody rediscovers them in

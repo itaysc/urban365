@@ -52,9 +52,22 @@ export class SellerListingsController {
     return this.listings.update(me.userId, id, dto);
   }
 
-  @Delete(':id')
+  /**
+   * Taking it off the market, which is not deleting it — hence a POST.
+   *
+   * It answered `DELETE :id` until there was a real delete to put there, and the two
+   * are different enough that a caller should not be able to confuse them: one is
+   * reversible from the same screen, the other is not reversible at all.
+   */
+  @Post(':id/archive')
   archive(@CurrentUser() me: Principal, @Param('id') id: string) {
     return this.listings.archive(me.userId, id);
+  }
+
+  /** Gone for good, with its photographs. The seller's to ask for. */
+  @Delete(':id')
+  remove(@CurrentUser() me: Principal, @Param('id') id: string) {
+    return this.listings.remove(me.userId, id);
   }
 
   @Post(':id/publish')
