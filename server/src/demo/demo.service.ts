@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
-import { CUSTOMERS, LEADS, LISTINGS, MEETINGS } from './demo-data.js';
+import { briefSummary } from '../cobrokerage/brief-summary.js';
+import { CO_BROKERAGE, CUSTOMERS, LEADS, LISTINGS, MEETINGS } from './demo-data.js';
 
 /** Counts, so the caller can say what happened rather than "done". */
 export interface DemoSummary {
@@ -9,6 +10,7 @@ export interface DemoSummary {
   leads: number;
   meetings: number;
   suggestions?: number;
+  coBrokerage?: number;
 }
 
 /**
@@ -19,7 +21,14 @@ export interface DemoSummary {
  * refuses the delete and the whole clear rolls back. It is written down so it is
  * obvious rather than discovered.
  */
-const DELETE_ORDER = ['Suggestion', 'Meeting', 'Lead', 'Listing', 'Customer'] as const;
+const DELETE_ORDER = [
+  'Suggestion',
+  'CoBrokerageRequest',
+  'Meeting',
+  'Lead',
+  'Listing',
+  'Customer',
+] as const;
 
 const MINUTE = 60 * 1000;
 const DAY = 24 * 60 * MINUTE;
@@ -181,6 +190,14 @@ export class DemoService {
       remember('Meeting', row.id);
     }
 
+    const coBrokerage = await this.seedCoBrokerage(
+      agencyId,
+      customerIds,
+      listingIds,
+      createdByUserId,
+      remember,
+    );
+
     await this.prisma.demoRecord.createMany({
       data: registered.map((r) => ({ agencyId, ...r })),
       skipDuplicates: true,
@@ -193,7 +210,111 @@ export class DemoService {
       listings: LISTINGS.length,
       leads: LEADS.length,
       meetings: MEETINGS.length,
+      coBrokerage,
     };
+  }
+
+  /**
+   * Requests in both directions, with whichever other agency is actually there.
+   *
+   * Both directions, because the two sides look nothing alike — one carries our
+   * customer's name, the other carries a brief and a stranger — and an agency that only
+   * ever sees one of them has seen half the feature.
+   *
+   * Silently does nothing when there is no second agency to work with. That is the
+   * normal state of a fresh database, and it is not a failure: the rest of the demo
+   * data is still worth having, and `seed:dev-agency -- --slug two` is how you get the
+   * other one.
+   */
+  private async seedCoBrokerage(
+    agencyId: string,
+    customerIds: string[],
+    listingIds: string[],
+    createdByUserId: string | null,
+    remember: (model: string, recordId: string) => void,
+  ): Promise<number> {
+    const partner = await this.prisma.agency.findFirst({
+      where: {
+        id: { not: agencyId },
+        status: 'active',
+        coBrokerage: true,
+        listings: { some: { status: 'published', delistedAt: null, source: 'manual' } },
+      },
+      select: {
+        id: true,
+        listings: {
+          where: { status: 'published', delistedAt: null, source: 'manual' },
+          select: { id: true },
+          take: 10,
+        },
+        // For an incoming request, which belongs to them: a request with no buyer at
+        // all would look right from our side and wrong from theirs, and the demo is
+        // meant to be opened from both.
+        customers: { where: { kind: { in: ['buyer', 'both'] } }, select: { id: true }, take: 10 },
+      },
+    });
+    if (!partner) return 0;
+
+    let made = 0;
+
+    for (const [i, request] of CO_BROKERAGE.entries()) {
+      const customer = await this.prisma.customer.findUnique({
+        where: { id: customerIds[request.customerIndex] },
+        select: {
+          id: true,
+          lookingSection: true,
+          lookingCities: true,
+          lookingTypes: true,
+          minRooms: true,
+          maxRooms: true,
+          minSquareMeter: true,
+        },
+      });
+      if (!customer) continue;
+
+      // Outgoing: their property, our customer. Incoming: our property, and a buyer of
+      // theirs — a real one on their side, invisible on ours. The row always has a
+      // buyer; what changes is who can see them.
+      const outgoing = request.direction === 'out';
+      const listingId = outgoing
+        ? partner.listings[i % partner.listings.length]?.id
+        : listingIds[request.listingIndex ?? 0];
+      if (!listingId) continue;
+
+      const theirCustomerId = partner.customers[i % Math.max(1, partner.customers.length)]?.id;
+      if (!outgoing && !theirCustomerId) continue;
+
+      const answered = request.status !== 'pending';
+
+      try {
+        const row = await this.prisma.coBrokerageRequest.create({
+          data: {
+            listingId,
+            holdingAgencyId: outgoing ? partner.id : agencyId,
+            seekingAgencyId: outgoing ? agencyId : partner.id,
+            // Ours on the way out, theirs on the way in. Either way it is set — the
+            // projection is what decides who sees it, and a demo with a null here would
+            // be demonstrating a bug rather than the feature.
+            customerId: outgoing ? customer.id : theirCustomerId,
+            requestedById: outgoing ? createdByUserId : null,
+            message: request.message,
+            commissionSplit: request.commissionSplit,
+            briefSummary: briefSummary(customer),
+            status: request.status,
+            respondedAt: answered ? new Date() : null,
+          },
+          select: { id: true },
+        });
+        remember('CoBrokerageRequest', row.id);
+        made += 1;
+      } catch {
+        // The unique index on (listing, agency, customer). A second seed run into the
+        // same pair is a duplicate, not a failure worth stopping the whole seed for.
+        continue;
+      }
+    }
+
+    return made;
   }
 
   /**
@@ -218,7 +339,14 @@ export class DemoService {
     const idsOf = (model: string) =>
       records.filter((r) => r.model === model).map((r) => r.recordId);
 
-    const counted: DemoSummary = { customers: 0, listings: 0, leads: 0, meetings: 0, suggestions: 0 };
+    const counted: DemoSummary = {
+      customers: 0,
+      listings: 0,
+      leads: 0,
+      meetings: 0,
+      suggestions: 0,
+      coBrokerage: 0,
+    };
 
     await this.prisma.$transaction(async (tx) => {
       const customerIds = idsOf('Customer');
@@ -231,6 +359,16 @@ export class DemoService {
         },
       });
       counted.suggestions = suggestions.count;
+
+      counted.coBrokerage = (
+        await tx.coBrokerageRequest.deleteMany({
+          where: {
+            id: { in: idsOf('CoBrokerageRequest') },
+            // Either side, because the seed makes them in both directions.
+            OR: [{ seekingAgencyId: agencyId }, { holdingAgencyId: agencyId }],
+          },
+        })
+      ).count;
 
       counted.meetings = (
         await tx.meeting.deleteMany({ where: { agencyId, id: { in: idsOf('Meeting') } } })
@@ -261,6 +399,8 @@ export class DemoService {
     switch (model) {
       case 'Suggestion':
         return counted.suggestions ?? 0;
+      case 'CoBrokerageRequest':
+        return counted.coBrokerage ?? 0;
       case 'Meeting':
         return counted.meetings;
       case 'Lead':

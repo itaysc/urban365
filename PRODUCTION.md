@@ -306,7 +306,10 @@ a toggle on the agency page. Opting out removes an agency from the matching pool
 refuses requests aimed at it. The commission split is recorded as what was said, not as
 an agreement, and the UI says so.
 
-Testing it needs two agencies: `npm run seed:dev-agency -- --slug two` makes a second.
+Testing it needs two agencies: `npm run seed:dev-agency -- --slug two` makes a second,
+and the demo seed then creates four requests in both directions — two sent and two
+received, one of them already accepted — because the two sides look nothing alike and
+an agency that only ever sees one has seen half the feature.
 
 ## Demo data (development only)
 

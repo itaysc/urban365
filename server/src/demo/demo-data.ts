@@ -395,3 +395,60 @@ export const MEETINGS: DemoMeeting[] = [
     customerIndex: 3,
   },
 ];
+
+/**
+ * The co-brokerage requests the seed makes, in both directions.
+ *
+ * Both, because the two sides of this feature look nothing alike and an agency that
+ * only ever sees one of them has seen half the product. The one we send carries our
+ * customer's name; the one we receive carries a brief and a stranger's agency, and the
+ * difference on screen is the point.
+ *
+ * `customerIndex` is into `CUSTOMERS`, and the listing is chosen at seed time from
+ * whatever the other agency actually has — a fixture cannot know another agency's
+ * inventory, so it says what kind of thing to look for instead.
+ */
+export interface DemoCoBrokerage {
+  /** `out` is us asking them; `in` is them asking us. */
+  direction: 'out' | 'in';
+  /** Ours, for an outgoing request. Ignored for an incoming one. */
+  customerIndex: number;
+  /** Ours, for an incoming request — the property they want to bring a buyer to. */
+  listingIndex?: number;
+  message: string;
+  commissionSplit: number;
+  status: 'pending' | 'accepted' | 'declined';
+}
+
+export const CO_BROKERAGE: DemoCoBrokerage[] = [
+  {
+    direction: 'out',
+    customerIndex: 0,
+    message: 'הלקוח שלי ראה כבר שלושה נכסים באזור, רציני ומוכן לסגור החודש.',
+    commissionSplit: 50,
+    status: 'pending',
+  },
+  {
+    direction: 'out',
+    customerIndex: 6,
+    message: 'משפחה שמחפשת חמישה חדרים כבר חצי שנה. אם זה עדיין פנוי נשמח להביא אותם.',
+    commissionSplit: 50,
+    status: 'accepted',
+  },
+  {
+    direction: 'in',
+    customerIndex: 0,
+    listingIndex: 0,
+    message: 'יש לי זוג שמחפש בדיוק באזור הזה. אפשר לתאם ביקור השבוע?',
+    commissionSplit: 50,
+    status: 'pending',
+  },
+  {
+    direction: 'in',
+    customerIndex: 0,
+    listingIndex: 3,
+    message: 'הקונה שלי אוהב את הקומה הגבוהה. נשמח לשתף פעולה.',
+    commissionSplit: 40,
+    status: 'pending',
+  },
+];
