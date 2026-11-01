@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/Button';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { inputClass, selectClass } from '@/components/ui/Field';
 import { useToast } from '@/components/ui/Toast';
+import { agreementLabel, agreementTitle, isSigned } from '@/lib/agreement';
 import { errorMessageOf } from '@/lib/apiError';
 import { formatDate, formatPrice } from '@/lib/format';
 import { qk } from '@/queries/keys';
@@ -17,10 +18,12 @@ import {
   deleteCustomer,
   fetchCustomers,
   updateCustomer,
+  type AgreementFilter,
   type Customer,
   type CustomerInput,
   type CustomerKind,
 } from '@/services/crm';
+import { AgreementDialog } from '@/components/agency/AgreementDialog';
 import { CustomerDeals } from '@/components/agency/CustomerDeals';
 
 const KIND_LABEL: Record<CustomerKind, string> = {
@@ -73,6 +76,10 @@ export function CustomersPage() {
 
   const [q, setQ] = useState('');
   const [kind, setKind] = useState<CustomerKind | undefined>();
+  /** Narrow to who has signed a brokerage agreement, or to who has not. */
+  const [agreement, setAgreement] = useState<AgreementFilter | undefined>();
+  /** The customer whose agreement is open for editing. */
+  const [agreementFor, setAgreementFor] = useState<Customer | null>(null);
   const [page, setPage] = useState(1);
 
   /** Null means closed; a customer means editing; `'new'` means adding. */
@@ -84,8 +91,8 @@ export function CustomersPage() {
   const [showing, setShowing] = useState<string | null>(null);
 
   const { data, isPending } = useQuery({
-    queryKey: qk.customers.list(q, kind, page),
-    queryFn: () => fetchCustomers({ q: q || undefined, kind, page }),
+    queryKey: qk.customers.list(q, kind, agreement, page),
+    queryFn: () => fetchCustomers({ q: q || undefined, kind, agreement, page }),
   });
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: qk.customers.all });
@@ -200,12 +207,29 @@ export function CustomersPage() {
             </option>
           ))}
         </select>
+
+        {/* "Who are we working for with nothing in writing" is the question this page
+            could not answer before, and the only reason the filter is here. */}
+        <select
+          className={selectClass}
+          value={agreement ?? ''}
+          onChange={(e) => {
+            const value = e.target.value;
+            setAgreement(value === 'signed' || value === 'unsigned' ? value : undefined);
+            setPage(1);
+          }}
+          aria-label="הסכם תיווך"
+        >
+          <option value="">הסכם תיווך: הכול</option>
+          <option value="unsigned">ללא הסכם</option>
+          <option value="signed">עם הסכם</option>
+        </select>
       </div>
 
       {!isPending && items.length === 0 && (
         <div className="rounded-xl border border-slate-200 bg-white p-12 text-center">
           <p className="font-medium text-slate-800">
-            {q || kind ? 'אין לקוחות שמתאימים לחיפוש' : 'עדיין אין לקוחות'}
+            {q || kind || agreement ? 'אין לקוחות שמתאימים לחיפוש' : 'עדיין אין לקוחות'}
           </p>
           <p className="mx-auto mt-1 max-w-sm text-sm text-slate-500">
             כאן נשמרים האנשים שהסוכנות עובדת איתם — מה הם מחפשים, איך משיגים אותם ומה
@@ -224,6 +248,26 @@ export function CustomersPage() {
                   <span className="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
                     {KIND_LABEL[customer.kind]}
                   </span>
+
+                  {/*
+                    State and control in one, like the enquiry status: whether there is
+                    an agreement is the thing you scan a list for, and recording one is
+                    what you do about it. Amber rather than red for the unsigned —
+                    somebody the agency has not signed yet is ordinary, and a page of
+                    red would stop meaning anything by the third row.
+                  */}
+                  <button
+                    type="button"
+                    onClick={() => setAgreementFor(customer)}
+                    title={agreementTitle(customer)}
+                    className={`rounded border px-2 py-0.5 text-xs font-medium transition ${
+                      isSigned(customer)
+                        ? 'border-green-300 bg-green-50 text-green-900 hover:bg-green-100'
+                        : 'border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100'
+                    }`}
+                  >
+                    {agreementLabel(customer)}
+                  </button>
                 </div>
 
                 <div className="mt-1 flex flex-wrap items-center gap-3 text-sm text-slate-600">
@@ -361,6 +405,15 @@ export function CustomersPage() {
           />
         </section>
       )}
+
+      <AgreementDialog
+        customer={agreementFor}
+        onClose={() => setAgreementFor(null)}
+        onSaved={() => {
+          setAgreementFor(null);
+          void queryClient.invalidateQueries({ queryKey: qk.customers.all });
+        }}
+      />
 
       <ConfirmDialog
         open={deleting !== null}

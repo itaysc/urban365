@@ -3,6 +3,7 @@ import type { Prisma } from '@prisma/client';
 import { RequestContextService } from '../tenancy/request-context.service.js';
 import { TenantPrismaService } from '../tenancy/tenant-prisma.service.js';
 import { can } from '../auth/permissions.js';
+import { agreementFields } from './agreement-fields.js';
 import type {
   CreateCustomerDto,
   ListCustomersQuery,
@@ -27,6 +28,10 @@ const LIST_SELECT = {
   maxPrice: true,
   minSquareMeter: true,
   assignedToId: true,
+  agreementSignedAt: true,
+  agreementCommissionPercent: true,
+  agreementCommissionAmount: true,
+  agreementNote: true,
   createdAt: true,
   updatedAt: true,
   assignedTo: { select: { id: true, firstName: true, lastName: true } },
@@ -65,6 +70,10 @@ export class CustomersService {
 
     const where: Prisma.CustomerWhereInput = { agencyId };
     if (query.kind) where.kind = query.kind;
+    // Unsigned is the useful half of this filter and the reason it exists: the list of
+    // people the agency is working for without anything in writing.
+    if (query.agreement === 'signed') where.agreementSignedAt = { not: null };
+    if (query.agreement === 'unsigned') where.agreementSignedAt = null;
     if (query.q?.trim()) {
       const contains = query.q.trim();
       const mode = 'insensitive' as const;
@@ -157,6 +166,7 @@ export class CustomersService {
       minPrice: dto.minPrice,
       maxPrice: dto.maxPrice,
       minSquareMeter: dto.minSquareMeter,
+      ...agreementFields(dto),
     };
   }
 }

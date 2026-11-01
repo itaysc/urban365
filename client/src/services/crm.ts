@@ -172,7 +172,26 @@ export interface CustomerBrief {
   minSquareMeter: number | null;
 }
 
-export interface Customer extends CustomerBrief {
+/**
+ * What the brokerage agreement with this person says.
+ *
+ * Separate from the rest of a customer because it answers a different question: not
+ * who they are, but whether the agency can bill for working with them. Under the Real
+ * Estate Agents Law a fee can only be claimed where the client signed a written order.
+ */
+export interface CustomerAgreement {
+  /** ISO, or null — and null means unsigned, which is the state that matters. */
+  agreementSignedAt: string | null;
+  /** Per cent of the price, before VAT. */
+  agreementCommissionPercent: number | null;
+  /** Or a fixed fee in shekels, before VAT, for an agreement written that way. */
+  agreementCommissionAmount: number | null;
+  agreementNote: string | null;
+}
+
+export type AgreementFilter = 'signed' | 'unsigned';
+
+export interface Customer extends CustomerBrief, CustomerAgreement {
   id: string;
   name: string;
   phone: string | null;
@@ -202,6 +221,13 @@ export interface CustomerInput {
   minPrice?: number;
   maxPrice?: number;
   minSquareMeter?: number;
+
+  // `null` clears one of these and leaving it out keeps it, so the agreement dialog
+  // can save its four fields without restating the brief.
+  agreementSignedAt?: string | null;
+  agreementCommissionPercent?: number | null;
+  agreementCommissionAmount?: number | null;
+  agreementNote?: string;
 }
 
 export interface CustomerPage {
@@ -215,6 +241,8 @@ export interface CustomerPage {
 export async function fetchCustomers(params: {
   q?: string;
   kind?: CustomerKind;
+  /** Narrow to the people who have signed, or the ones who have not. */
+  agreement?: AgreementFilter;
   page?: number;
   /** The server caps this at 100. Only the pickers ask for more than a page. */
   pageSize?: number;
@@ -222,6 +250,7 @@ export async function fetchCustomers(params: {
   const search = new URLSearchParams();
   if (params.q) search.set('q', params.q);
   if (params.kind) search.set('kind', params.kind);
+  if (params.agreement) search.set('agreement', params.agreement);
   if (params.page && params.page > 1) search.set('page', String(params.page));
   if (params.pageSize) search.set('pageSize', String(params.pageSize));
 

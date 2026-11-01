@@ -56,8 +56,8 @@ export const qk = {
 
   customers: {
     all: ['customers'] as const,
-    list: (q: string, kind: string | undefined, page: number) =>
-      ['customers', 'list', q, kind ?? 'any', page] as const,
+    list: (q: string, kind: string | undefined, agreement: string | undefined, page: number) =>
+      ['customers', 'list', q, kind ?? 'any', agreement ?? 'any', page] as const,
     /** One page of everybody, for the pickers that need names rather than a search. */
     picker: ['customers', 'picker'] as const,
   },

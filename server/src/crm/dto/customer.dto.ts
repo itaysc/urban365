@@ -2,6 +2,7 @@ import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,
   IsArray,
+  IsDateString,
   IsIn,
   IsInt,
   IsNumber,
@@ -48,6 +49,30 @@ export class CreateCustomerDto {
   @IsOptional() @Type(() => Number) @IsInt() @Min(0) minPrice?: number;
   @IsOptional() @Type(() => Number) @IsInt() @Min(0) maxPrice?: number;
   @IsOptional() @Type(() => Number) @IsInt() @Min(0) minSquareMeter?: number;
+
+  // ── the brokerage agreement ─────────────────────────────────────────────────
+  // `null` clears a field and `undefined` — absent from the body — leaves it, which is
+  // how a form that edits one of these does not have to restate the other three.
+
+  /** When they signed. Null means they have not, which is the state that matters. */
+  @IsOptional() @ValidateIf((_, value) => value !== null) @IsDateString()
+  agreementSignedAt?: string | null;
+
+  /**
+   * Per cent of the price, before VAT. Capped at 100 because a fee cannot exceed the
+   * thing it is a fee on, and at two decimals because 1.5% and 1.75% are real and
+   * 1.7532% is a typo.
+   */
+  @IsOptional() @ValidateIf((_, value) => value !== null)
+  @Type(() => Number) @IsNumber({ maxDecimalPlaces: 2 }) @Min(0) @Max(100)
+  agreementCommissionPercent?: number | null;
+
+  /** Or a fixed fee in shekels, before VAT, for an agreement written that way. */
+  @IsOptional() @ValidateIf((_, value) => value !== null)
+  @Type(() => Number) @IsInt() @Min(0)
+  agreementCommissionAmount?: number | null;
+
+  @IsOptional() @IsString() @MaxLength(500) agreementNote?: string;
 }
 
 /** Every field optional: a correction to one of them should not restate the rest. */
@@ -57,8 +82,13 @@ export class UpdateCustomerDto extends CreateCustomerDto {
   @IsOptional() @IsString() @MaxLength(200) declare email?: string;
 }
 
+/** "Who still has not signed" is the question this page exists to answer quickly. */
+export const AGREEMENT_FILTERS = ['signed', 'unsigned'] as const;
+export type AgreementFilter = (typeof AGREEMENT_FILTERS)[number];
+
 export class ListCustomersQuery {
   @IsOptional() @IsIn(CUSTOMER_KINDS) kind?: CustomerKindValue;
+  @IsOptional() @IsIn(AGREEMENT_FILTERS) agreement?: AgreementFilter;
   @IsOptional() @IsString() @MaxLength(120) q?: string;
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) page?: number;
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(100) pageSize?: number;

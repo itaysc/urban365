@@ -747,6 +747,34 @@ model Customer {
   maxPrice Int?
   minSquareMeter Int?
 
+  // ── the commission agreement ────────────────────────────────────────────────
+  // הזמנת שירותי תיווך. Under the Real Estate Agents Law a broker can only claim a
+  // fee where the client signed a written order, so for an agency this is not an
+  // administrative detail: it is the difference between work that can be billed and
+  // work that cannot. The agency needs to know, per person, before it does the work.
+
+  /// When they signed. Null is the honest default — unknown and unsigned are the same
+  /// thing here, because an agency that cannot produce the paper cannot charge either.
+  agreementSignedAt DateTime?
+  // What the agreement says the fee is — a percentage, or a sum, never worked out from
+  // the other. Both are kept because agreements are written both ways and converting
+  // between them needs a price nobody has agreed yet: 2% of what, before there is an
+  // offer? Each is null until somebody fills it in, and null is not zero — zero is a
+  // favour somebody did on purpose.
+
+  /// Per cent of the price, before VAT, as every brokerage agreement states it.
+  ///
+  /// Per customer rather than one setting for the agency, because this is the figure
+  /// that gets negotiated: the office may quote 2% and sign 1.5% with somebody buying
+  /// their third flat.
+  agreementCommissionPercent Float?
+  /// A fixed fee in shekels, before VAT, for an agreement written that way instead.
+  agreementCommissionAmount  Int?
+  /// Where the signed copy is, its reference, which property it covers — whatever the
+  /// agency needs to find it again. Free text on purpose: every office files
+  /// differently and a structured field would be wrong for most of them.
+  agreementNote     String?
+
   /// The agent who looks after them. Optional: a walk-in belongs to the agency before
   /// anybody has picked them up.
   assignedTo   User?   @relation("CustomerAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)

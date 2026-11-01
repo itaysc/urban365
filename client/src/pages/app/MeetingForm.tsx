@@ -78,7 +78,7 @@ export function MeetingForm({
   // Only when the customer is the agent's to choose. On a customer's own page it is
   // already decided, and a list of everybody else would be noise.
   const { data: customers } = useQuery({
-    queryKey: qk.customers.list('', undefined, 1),
+    queryKey: qk.customers.list('', undefined, undefined, 1),
     queryFn: () => fetchCustomers({ page: 1 }),
     enabled: customerId === undefined,
   });

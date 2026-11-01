@@ -558,6 +558,47 @@ constants, a build script and a static sitemap in agreement. There is no second 
 the truth to check here — these pages are generated from the database — so this checks
 the output instead.
 
+## The brokerage agreement
+
+Under the Real Estate Agents Law a fee can only be claimed where the client signed a
+written order, so for an agency this is not an administrative detail — it is the line
+between billable work and unpaid work. Four nullable columns on `Customer`:
+
+| column | what it holds |
+| --- | --- |
+| `agreementSignedAt` | the day they signed. **Null means unsigned**, which is the state that matters |
+| `agreementCommissionPercent` | per cent of the price, before VAT |
+| `agreementCommissionAmount` | or a fixed fee in shekels, before VAT |
+| `agreementNote` | where the copy is filed, which property it covers, its validity |
+
+The two fee columns are never derived from each other: 2% of what, before there is an
+offer? The dialog writes one and clears the other, so they cannot disagree. Zero is a
+real value — a fee waived on purpose — and is never treated as absent.
+
+On the customers page the agreement is a chip beside the customer's name, green when
+signed and amber when not, and pressing it opens the dialog. The filter beside the
+search answers the question the page could not before: who is the agency working for
+with nothing in writing.
+
+Unticking "signed" clears the date but keeps the agreed fee — the signature is the
+legal fact, the fee is a term that was discussed either way.
+
+### A note on the migrations
+
+`20261101210000_align_history_with_schema` exists because several earlier migrations
+were hand-written and four schema changes never got one: two dropped indexes, the index
+on `Street(cityKey, name)`, and the array defaults a Prisma upgrade stopped emitting.
+The local database had them because it had been pushed to directly, so nothing showed
+until a new migration tried to sweep them up under its own name. A fresh deploy would
+have gone out without the `Street` index.
+
+The whole history now replays into an empty database and produces exactly what
+`schema.prisma` describes. Worth re-checking after any hand-written migration:
+
+```bash
+createdb nadlan_replay && DATABASE_URL=...nadlan_replay npm run db:deploy --prefix server
+```
+
 ## Still open
 
 Things that are known to be missing or unfinished, so nobody rediscovers them in
