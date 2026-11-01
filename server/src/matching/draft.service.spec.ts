@@ -117,6 +117,29 @@ describe('DraftService', () => {
     );
   });
 
+  it('throws away a draft that states a number it was not given', async () => {
+    // Two attempts, both inventing a floor, so nothing is shown. A plausible wrong
+    // figure in a message to somebody's client is worse than no draft.
+    const llm = fakeLlm('היי, דירה בקומה 7 בסוקולוב 15.');
+    await expect(new DraftService(llm.service).write(REQUEST)).rejects.toBeInstanceOf(
+      ServiceUnavailableException,
+    );
+    expect(llm.ask).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps a draft whose numbers all come from the record', async () => {
+    const llm = fakeLlm('היי, סוקולוב 15 — 4 חדרים, 96 מ״ר, 2,150,000 ₪. רוצה לראות?');
+    await expect(new DraftService(llm.service).write(REQUEST)).resolves.toContain('4 חדרים');
+    expect(llm.ask).toHaveBeenCalledTimes(1);
+  });
+
+  it('throws away a draft that altered the street name', async () => {
+    const llm = fakeLlm('היי, יש דירה בסוקלוב 15 שמתאימה לך.');
+    await expect(new DraftService(llm.service).write(REQUEST)).rejects.toBeInstanceOf(
+      ServiceUnavailableException,
+    );
+  });
+
   it('says so when the model answers with nothing', async () => {
     const llm = fakeLlm('   ');
 

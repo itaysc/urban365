@@ -261,6 +261,18 @@ It is written to be read as a person wrote it: two or three sentences, no emoji,
 "הזדמנות", and gender-neutral throughout, because nothing in the CRM records a
 customer's gender and guessing from a name is how an agent loses one.
 
+A draft is checked against the record before anybody sees it: every number in the text
+must be one the model was given, and a street name that is *nearly* right — `חת העם`
+for `אחד העם`, `סוקלוב` for `סוקולוב` — is caught by edit distance, because both read
+as fluent Hebrew and both send somebody to the wrong road. A draft that fails is thrown
+away and asked for again once; if the second also fails, nothing is shown. A plausible
+wrong price in a message to somebody's client is worse than no draft.
+
+The agent's name is never sent to the model and is appended from the record afterwards.
+Given it, the model signed with a different invented name every time — and that was
+masking a real bug, since the name was being read through the tenant client where
+`User` is invisible, so it was empty anyway.
+
 Nothing is sent. The draft goes back to the agent, who edits it, copies it or opens
 WhatsApp with it ready — and presses send there themselves.
 
@@ -410,9 +422,8 @@ production.
 * **Matching only sees the agency's own inventory.** A customer who fits another
   agency's listing is the co-brokerage case, and it is a product decision about what an
   agency's customer list is worth to somebody else, not a line to change quietly.
-* **A draft can still garble a Hebrew proper noun.** Reading real output caught the
-  model writing `חת העם` for `אחד העם`; the instruction now says to copy the address
-  character for character and it stopped, but nothing *enforces* it. The agent reads
-  the draft before sending, which is the backstop — and the reason nothing is sent
-  automatically.
+* **Drafts read alike.** Accurate and natural, but five in a row open and close the
+  same way. The lever is temperature, and raising it trades against the accuracy the
+  fact check exists to protect — so it is left where it is. Each recipient sees one
+  message, so this costs the agent's eye rather than the customer's.
 * **No remote.** Everything is committed locally and has never been pushed.
