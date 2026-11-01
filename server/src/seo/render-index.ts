@@ -105,8 +105,6 @@ export function renderIndexPage(
     .map((group) => `<h2>${esc(group.name ?? 'ערים נוספות')}</h2>${grid(group.cities)}`)
     .join('');
 
-  const credits = [...new Set(Object.values(CITY_PHOTOS).map((p) => p.credit))].sort();
-
   const body = `${trail.html}
 <h1>נדל״ן בישראל לפי עיר</h1>
 <p class="lede">${esc(
@@ -115,17 +113,13 @@ export function renderIndexPage(
 ${sections}
 
 <!--
-  Required, not courtesy: every photograph above is Creative Commons or public domain,
-  and the Creative Commons ones are licensed on the condition that their photographer
-  is named. One list under the grid rather than a line on each card — the licences ask
-  for the credit to be reasonable to the medium, and thirty names over thirty pictures
-  would bury the page.
+  A line and a link, rather than thirty names crushed under the grid.
+  Creative Commons asks for credit in a manner reasonable to the medium, and its own
+  guidance on attribution says to consider publishing a page of it — which is what
+  /nadlan/credits is. Leaving it out, or burying it in metadata, is the thing the
+  licence does not allow; moving it somewhere it can be read properly is encouraged.
 -->
-<h2>התמונות</h2>
-<p class="note">${esc(
-    'צילומי הערים מוויקיפדיה ומוויקישיתוף, ברישיונות Creative Commons או כנחלת הכלל. תודה לצלמים:',
-  )}</p>
-<p class="note">${credits.map((c) => esc(c)).join(' · ')}</p>`;
+<p class="note">${esc('צילומי הערים מוויקיפדיה ומוויקישיתוף, ברישיונות Creative Commons או כנחלת הכלל.')} <a href="/nadlan/credits">${esc('קרדיט מלא לצלמים')}</a></p>`;
 
   return page({
     title: 'נדל״ן בישראל לפי עיר — מחירים ונכסים | Urban365',

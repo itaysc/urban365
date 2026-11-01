@@ -577,10 +577,22 @@ the scoring too if it should not come back).
 
 **Attribution is a licence condition, not a courtesy.** Every photograph is Creative
 Commons or public domain; GFDL files are skipped because that licence wants its full
-text reproduced, which a card cannot do. The photographers are named in one list under
-the grid — the licences ask for credit reasonable to the medium, and thirty names over
-thirty pictures would bury the page. The URLs point at Wikimedia's own thumbnails; if
-the traffic ever justifies it, copy them into the bucket instead.
+text reproduced, which a card cannot do.
+
+The credits live at **`/nadlan/credits`** — one row per photograph, naming the city,
+the photographer, the licence and a link to the file on Commons — with a line and a
+link where the pictures are. That placement is not a loophole. Creative Commons asks
+for credit "in any reasonable manner based on the medium, means and context", and its
+own [best practices for attribution](https://wiki.creativecommons.org/wiki/Best_practices_for_attribution)
+says in as many words: *consider publishing a web page with attribution information*.
+It is also better attribution than the paragraph of thirty comma-separated names it
+replaced, where no reader could tell which name belonged to which picture.
+
+What the same guidance rules out is leaving it off, or putting it only in metadata.
+Do not be tempted.
+
+The URLs point at Wikimedia's own thumbnails; if the traffic ever justifies it, copy
+them into the bucket instead.
 
 ### The links across the bottom
 

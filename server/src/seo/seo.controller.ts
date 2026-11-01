@@ -11,6 +11,7 @@ import { page, SESSION_SCRIPT_HASH } from './layout.js';
 import { ListingPageService } from './listing-page.service.js';
 import { idFromSlug, listingPath } from './listing-slug.js';
 import { renderCityPage } from './render-city.js';
+import { renderCreditsPage } from './render-credits.js';
 import { renderFooterLinks } from './footer.js';
 import { renderIndexPage } from './render-index.js';
 import { renderGonePage, renderListingPage } from './render-listing.js';
@@ -189,6 +190,21 @@ export class SeoController {
    * the new one with a 301, which is how the address in a URL stays a convenience
    * rather than a thing that can rot.
    */
+  /**
+   * Who took the photographs.
+   *
+   * Its own page because Creative Commons asks for credit in a manner reasonable to
+   * the medium and its guidance names exactly this — a page of attribution — and
+   * because thirty names in a paragraph under a grid served nobody.
+   */
+  @Get('nadlan/credits')
+  @Header('Content-Type', 'text/html; charset=utf-8')
+  @Header('Cache-Control', CACHE)
+  @Header('Content-Security-Policy', CSP)
+  async credits(): Promise<string> {
+    return renderCreditsPage(this.appUrl, await this.footer());
+  }
+
   @Get('nadlan/property/:slug')
   async property(@Param('slug') slug: string, @Res() res: Response): Promise<void> {
     const result = await this.listings.page(idFromSlug(slug));

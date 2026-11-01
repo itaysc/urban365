@@ -10,15 +10,12 @@ import { fetchCityLinks, type CityLink } from '@/services/search';
 /**
  * The cover.
  *
- * From Wikimedia, like the city photographs — Creative Commons, credited at the foot
- * of the page as the licence requires. Hosted there rather than copied here for now;
- * if the traffic ever justifies it, it belongs in the bucket with everything else.
+ * From Wikimedia, like the city photographs. Only the URL is here, because this file
+ * renders the picture — its author and licence live with every other credit on
+ * `/nadlan/credits`, which is where the licence asks them to be published.
  */
-const COVER = {
-  url: 'https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e0/Tel_Aviv_Skyline_01.jpg/1920px-Tel_Aviv_Skyline_01.jpg',
-  credit: 'Ynhockey, CC BY-SA 4.0',
-  page: 'https://commons.wikimedia.org/wiki/File:Tel_Aviv_Skyline_01.jpg',
-};
+const COVER_URL =
+  'https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e0/Tel_Aviv_Skyline_01.jpg/1920px-Tel_Aviv_Skyline_01.jpg';
 
 /** Regions in the order somebody from the centre reads them. */
 const ORDER = [
@@ -96,7 +93,7 @@ export function LandingPage() {
 
       <section className="relative isolate overflow-hidden">
         <img
-          src={COVER.url}
+          src={COVER_URL}
           alt=""
           className="absolute inset-0 -z-10 h-full w-full object-cover"
           fetchPriority="high"
@@ -174,9 +171,9 @@ export function LandingPage() {
         </p>
 
         <p className="mt-6 text-xs text-slate-400">
-          תמונת השער:{' '}
-          <a className="hover:underline" href={COVER.page} rel="noopener noreferrer" target="_blank">
-            {COVER.credit}
+          תמונות הערים ותמונת השער מוויקיפדיה ומוויקישיתוף.{' '}
+          <a className="hover:underline" href="/nadlan/credits">
+            קרדיט לצלמים
           </a>
         </p>
       </div>
