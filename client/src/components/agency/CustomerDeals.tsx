@@ -6,8 +6,15 @@ import { formatPrice } from '@/lib/format';
 import { qk } from '@/queries/keys';
 import { createDeal, fetchCustomerDeals, type Customer, type DealStage } from '@/services/crm';
 
+/**
+ * One deal's state, which is not the same words as the board's column headings.
+ *
+ * This is a badge on a single deal, so it agrees with העסקה — `נסגרה`, not
+ * `נסגר בהצלחה`. Reaching for `DEAL_STAGES` here would be grammatical nonsense in two
+ * of the five.
+ */
 const STAGE_LABEL: Record<DealStage, string> = {
-  qualified: 'מתאים',
+  qualified: 'הזדמנות',
   negotiation: 'במשא ומתן',
   under_contract: 'בחוזה',
   closed_won: 'נסגרה',

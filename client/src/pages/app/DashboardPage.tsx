@@ -13,8 +13,14 @@ import { formatPrice } from '@/lib/format';
 import { qk } from '@/queries/keys';
 import { fetchOverview, type Overview } from '@/services/overview';
 
+/**
+ * The same stages in the plural, because these are counts: "הזדמנויות 4", "נסגרו 2".
+ *
+ * A third wording of one list, and the third on purpose — see the note on
+ * `DEAL_STAGES`, which names the stages themselves.
+ */
 const STAGE_LABEL: Record<string, string> = {
-  qualified: 'מתאים',
+  qualified: 'הזדמנויות',
   negotiation: 'במשא ומתן',
   under_contract: 'בחוזה',
   closed_won: 'נסגרו',

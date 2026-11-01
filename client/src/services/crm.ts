@@ -77,8 +77,16 @@ export const submitEnquiry = (
 
 export type DealStage = 'qualified' | 'negotiation' | 'under_contract' | 'closed_won' | 'closed_lost';
 
+/**
+ * The pipeline, in order, as the board's column headings name it.
+ *
+ * Two other places label the same stages differently and deliberately —
+ * `CustomerDeals` says what one deal *is* and the dashboard counts several — so these
+ * three are not a duplication to be merged. A stage is a place on a board; "נסגרה" is
+ * something that happened to a deal.
+ */
 export const DEAL_STAGES: { value: DealStage; label: string }[] = [
-  { value: 'qualified', label: 'מתאים' },
+  { value: 'qualified', label: 'הזדמנות' },
   { value: 'negotiation', label: 'משא ומתן' },
   { value: 'under_contract', label: 'בחוזה' },
   { value: 'closed_won', label: 'נסגר בהצלחה' },
