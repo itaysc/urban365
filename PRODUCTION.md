@@ -601,6 +601,28 @@ createdb nadlan_replay && DATABASE_URL=...nadlan_replay npm run db:deploy --pref
 
 ## A private seller's own properties
 
+### Getting there
+
+One entry, in the site header, and it follows what the person has:
+
+| who | label | goes to |
+| --- | --- | --- |
+| signed out | `פרסום נכס` | the sign-in dialog, then `/sell/new` |
+| signed in, nothing published | `פרסום נכס` | `/sell/new`, the form |
+| signed in, has published | `הנכסים שלי` | `/sell`, the list |
+| in an agency | — | nothing; agencies publish from their own dashboard |
+
+It said `פרסום נכס` and went to the list whichever way round, so a seller looking for
+their own flat had no reason to press it. Knowing which state somebody is in costs one
+request, cached for five minutes rather than the usual thirty seconds — the answer
+changes the day they publish their first property, and that happens once.
+
+Below 640px the whole thing used to be hidden, which left a private seller on a phone
+with **no way to reach their own listings at all**. Now the words fold away and the icon
+stays, like `שמורים` beside it.
+
+### The page
+
 `/sell` is the page: what they published, how each one is doing, and what they can do
 about it. Three actions, and two of them are deliberately not alike.
 

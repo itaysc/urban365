@@ -1,12 +1,13 @@
 import { useRef, useState, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Bell, Heart, Plus } from 'lucide-react';
+import { Bell, Building2, Heart, Plus } from 'lucide-react';
 import { useAuth } from '@/auth/auth-context';
 import { LoginDialog } from '@/components/auth/LoginDialog';
 import { Avatar } from '@/components/ui/Avatar';
 import { qk } from '@/queries/keys';
 import { fetchSavedCount } from '@/services/saved';
+import { fetchMyListings } from '@/services/seller';
 
 /** Shared by the link and the button, which are the same control in two states. */
 const publishClass =
@@ -49,6 +50,25 @@ export function SiteHeader({ leading, subtitle, fullWidth = false }: Props) {
     queryKey: qk.saved.count,
     queryFn: fetchSavedCount,
   });
+
+  /*
+   * Whether this person has anything of their own on the market, which decides what the
+   * button says and where it goes.
+   *
+   * Only asked for somebody who could have published — signed in, and not in an agency,
+   * since an agency publishes from its own dashboard. Five minutes stale rather than the
+   * usual thirty seconds: the answer changes when somebody publishes their first flat,
+   * and that is a thing they do once.
+   */
+  const couldSell = Boolean(user) && user?.agency?.membershipStatus !== 'active';
+  const { data: myListings } = useQuery({
+    queryKey: qk.mySale.list,
+    queryFn: fetchMyListings,
+    enabled: couldSell,
+    staleTime: 5 * 60_000,
+  });
+
+  const sells = (myListings?.length ?? 0) > 0;
 
   return (
     <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur">
@@ -102,11 +122,28 @@ export function SiteHeader({ leading, subtitle, fullWidth = false }: Props) {
             Shown signed out, where the guard on /sell asks for a sign-in and returns.
           */}
           {user?.agency?.membershipStatus !== 'active' && (
-            <div className="group relative hidden sm:block">
+            <div className="group relative">
               {user ? (
-                <Link to="/sell" className={publishClass}>
-                  <Plus className="h-4 w-4" aria-hidden />
-                  פרסום נכס
+                /*
+                  Two states, because one label cannot be honest about both. Somebody
+                  who has published a flat wants to see how it is doing, and a button
+                  marked "פרסום נכס" is not a reason to press anything — while a button
+                  marked "הנכסים שלי" means nothing to somebody who has none. So the
+                  label follows what they have, and the destination follows the label:
+                  the list for a seller, the form for everybody else.
+                */
+                <Link to={sells ? '/sell' : '/sell/new'} className={publishClass}>
+                  {sells ? (
+                    <Building2 className="h-4 w-4" aria-hidden />
+                  ) : (
+                    <Plus className="h-4 w-4" aria-hidden />
+                  )}
+                  {/* The words fold away on a phone, like שמורים beside it. This used
+                      to be hidden altogether below `sm`, which left a private seller
+                      with no way to reach their own listings from a phone at all. */}
+                  <span className="hidden sm:inline">
+                    {sells ? 'הנכסים שלי' : 'פרסום נכס'}
+                  </span>
                 </Link>
               ) : (
                 // A dialog rather than a link to /login: signing in is a detour, and
@@ -120,9 +157,10 @@ export function SiteHeader({ leading, subtitle, fullWidth = false }: Props) {
                     setLoginOpen(true);
                   }}
                   className={publishClass}
+                  aria-label="פרסום נכס"
                 >
                   <Plus className="h-4 w-4" aria-hidden />
-                  פרסום נכס
+                  <span className="hidden sm:inline">פרסום נכס</span>
                 </button>
               )}
 
@@ -134,7 +172,7 @@ export function SiteHeader({ leading, subtitle, fullWidth = false }: Props) {
               {!user && (
                 <span
                   role="tooltip"
-                  className="pointer-events-none absolute top-full right-0 z-20 mt-2 w-56 rounded-lg bg-slate-900 px-3 py-2 text-xs leading-snug text-white opacity-0 shadow-lg transition group-focus-within:opacity-100 group-hover:opacity-100"
+                  className="pointer-events-none absolute top-full right-0 z-20 mt-2 hidden w-56 rounded-lg bg-slate-900 px-3 py-2 text-xs leading-snug text-white opacity-0 shadow-lg transition group-focus-within:opacity-100 group-hover:opacity-100 sm:block"
                 >
                   פרסום נכס פתוח למשתמשים רשומים בלבד. נבקש כניסה קצרה ונחזיר אתכם לכאן.
                 </span>
