@@ -35,3 +35,24 @@
 [dir='ltr'] .select-chevron {
   background-position: right 0.65rem center;
 }
+
+/*
+ * A scrollable area with no scrollbar drawn.
+ *
+ * For the deals board, which scrolls as one surface: a gutter down its inline edge cuts
+ * across five columns and reads as a divider that belongs to the last of them. Hiding
+ * the bar is only cosmetic — the area still scrolls by wheel, trackpad, touch, keyboard
+ * and by dragging a card to its edge, and the element keeps its overflow semantics, so
+ * nothing here takes scrolling away from anyone.
+ *
+ * Three declarations because three engines spell it differently and none of them has
+ * ever agreed to a standard one.
+ */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}

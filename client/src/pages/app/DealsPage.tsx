@@ -121,74 +121,96 @@ export function DealsPage() {
       {isPending && <p className="text-sm text-slate-500">טוען…</p>}
 
       {data && board && (
-        <div className="grid min-h-0 flex-1 grid-cols-5 gap-3">
-          {DEAL_STAGES.map((stage) => {
-            const deals = data.columns[stage.value] ?? [];
-            const totals = data.totals[stage.value];
-            const target = over === stage.value && lifted !== null;
+        /*
+         * One scrolling surface for the whole board, not five.
+         *
+         * Each column used to scroll inside itself, which meant five scrollbars and
+         * five different ideas of where "down" was — reading the pipeline across meant
+         * putting every column back to the top by hand. This scrolls the board, the way
+         * a board does everywhere else, and the headings stay put so a card halfway
+         * down is still under a column you can name.
+         *
+         * `min-h-full` on the grid keeps the columns tall when there is little in them:
+         * grid rows stretch their items, so every column is as tall as the fullest one
+         * and never shorter than the window — which is what keeps an empty column a
+         * target you can drop onto rather than a strip under its own heading.
+         */
+        <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto">
+          <div className="grid min-h-full grid-cols-5 gap-3">
+            {DEAL_STAGES.map((stage) => {
+              const deals = data.columns[stage.value] ?? [];
+              const totals = data.totals[stage.value];
+              const target = over === stage.value && lifted !== null;
 
-            return (
-              <section
-                key={stage.value}
-                // `preventDefault` on dragover is what marks a column as somewhere a
-                // card may be dropped; without it the browser refuses every drop.
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  e.dataTransfer.dropEffect = 'move';
-                  if (over !== stage.value) setOver(stage.value);
-                }}
-                onDragLeave={(e) => {
-                  // Only when the pointer has left the column itself. Moving between the
-                  // cards inside it fires dragleave too, and reacting to that makes the
-                  // highlight flicker all the way down the column.
-                  if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
-                    setOver((current) => (current === stage.value ? null : current));
-                  }
-                }}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  setOver(null);
+              return (
+                <section
+                  key={stage.value}
+                  // `preventDefault` on dragover is what marks a column as somewhere a
+                  // card may be dropped; without it the browser refuses every drop.
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'move';
+                    if (over !== stage.value) setOver(stage.value);
+                  }}
+                  onDragLeave={(e) => {
+                    // Only when the pointer has left the column itself. Moving between the
+                    // cards inside it fires dragleave too, and reacting to that makes the
+                    // highlight flicker all the way down the column.
+                    if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+                      setOver((current) => (current === stage.value ? null : current));
+                    }
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setOver(null);
 
-                  const id = e.dataTransfer.getData('text/plain') || lifted;
-                  const deal = id ? findDeal(data, id) : null;
-                  if (deal) void move(deal, stage.value);
-                }}
-                className={`flex min-h-0 min-w-0 flex-col rounded-xl border-2 border-dashed p-1 transition ${
-                  target ? 'border-blue-400 bg-blue-50/60' : 'border-transparent'
-                }`}
-              >
-                <header className="flex items-baseline justify-between gap-1 px-1">
-                  <h2 className="truncate text-sm font-semibold text-slate-900">{stage.label}</h2>
-                  <span className="shrink-0 text-xs text-slate-500">{totals?.count ?? 0}</span>
-                </header>
-
-                <p className="h-4 px-1 text-xs text-slate-500">
-                  {totals && totals.value > 0 ? formatShekel(totals.value) : ''}
-                </p>
-
-                {/* The one thing that scrolls: a long column moves inside itself and the
-                    other four stay where they are. */}
-                <ul className="mt-1 flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-1">
-                  {deals.map((deal) => cardFor(deal, true))}
-
-                  {deals.length === 0 && (
-                    <li className="rounded-xl border border-dashed border-slate-300 p-4 text-center text-xs text-slate-400">
-                      ריק
-                    </li>
-                  )}
-                </ul>
-
-                <button
-                  type="button"
-                  onClick={() => openDialog(stage.value)}
-                  className="mt-1 flex items-center justify-center gap-1 rounded-lg px-2 py-1.5 text-xs text-slate-500 transition hover:bg-white hover:text-slate-900"
+                    const id = e.dataTransfer.getData('text/plain') || lifted;
+                    const deal = id ? findDeal(data, id) : null;
+                    if (deal) void move(deal, stage.value);
+                  }}
+                  className={`flex min-w-0 flex-col rounded-xl border-2 border-dashed p-1 transition ${
+                    target ? 'border-blue-400 bg-blue-50' : 'border-transparent'
+                  }`}
                 >
-                  <Plus className="h-3.5 w-3.5" aria-hidden />
-                  עסקה
-                </button>
-              </section>
-            );
-          })}
+                  {/* Opaque, because the cards pass behind it. The tint matches the
+                      column's own so a drop target stays one colour top to bottom. */}
+                  <div
+                    className={`sticky top-0 z-10 rounded-lg px-1 pb-1 pt-0.5 ${
+                      target ? 'bg-blue-50' : 'bg-slate-50'
+                    }`}
+                  >
+                    <header className="flex items-baseline justify-between gap-1">
+                      <h2 className="truncate text-sm font-semibold text-slate-900">{stage.label}</h2>
+                      <span className="shrink-0 text-xs text-slate-500">{totals?.count ?? 0}</span>
+                    </header>
+
+                    <p className="h-4 text-xs text-slate-500">
+                      {totals && totals.value > 0 ? formatShekel(totals.value) : ''}
+                    </p>
+                  </div>
+
+                  <ul className="mt-1 flex flex-1 flex-col gap-2 p-1">
+                    {deals.map((deal) => cardFor(deal, true))}
+
+                    {deals.length === 0 && (
+                      <li className="rounded-xl border border-dashed border-slate-300 p-4 text-center text-xs text-slate-400">
+                        ריק
+                      </li>
+                    )}
+                  </ul>
+
+                  <button
+                    type="button"
+                    onClick={() => openDialog(stage.value)}
+                    className="mt-1 flex items-center justify-center gap-1 rounded-lg px-2 py-1.5 text-xs text-slate-500 transition hover:bg-white hover:text-slate-900"
+                  >
+                    <Plus className="h-3.5 w-3.5" aria-hidden />
+                    עסקה
+                  </button>
+                </section>
+              );
+            })}
+          </div>
         </div>
       )}
 
