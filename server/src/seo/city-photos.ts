@@ -49,9 +49,9 @@ export const CITY_PHOTOS: Record<string, CityPhoto> = {
     "page": "https://commons.wikimedia.org/wiki/File:Kugel_Sokolov_Junction_Holon_Panorama.JPG"
   },
   "יבנאל": {
-    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/63/%D7%91%D7%99%D7%AA_%D7%A2%D7%9C%D7%9E%D7%99%D7%9F_%D7%99%D7%91%D7%A0%D7%90%D7%9C.jpg/960px-%D7%91%D7%99%D7%AA_%D7%A2%D7%9C%D7%9E%D7%99%D7%9F_%D7%99%D7%91%D7%A0%D7%90%D7%9C.jpg",
-    "credit": "Yeudameir, CC BY-SA 4.0",
-    "page": "https://commons.wikimedia.org/wiki/File:%D7%91%D7%99%D7%AA_%D7%A2%D7%9C%D7%9E%D7%99%D7%9F_%D7%99%D7%91%D7%A0%D7%90%D7%9C.jpg"
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e8/Yavneel.JPG/960px-Yavneel.JPG",
+    "credit": "Ben Herzberg, CC BY-SA 3.0",
+    "page": "https://commons.wikimedia.org/wiki/File:Yavneel.JPG"
   },
   "ירוחם": {
     "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/ef/MosheSaidiYeruham06.jpg/960px-MosheSaidiYeruham06.jpg",
@@ -119,9 +119,9 @@ export const CITY_PHOTOS: Record<string, CityPhoto> = {
     "page": "https://commons.wikimedia.org/wiki/File:Ramon_Park,_Giv%27at_Shmuel.jpg"
   },
   "יהוד מונוסון": {
-    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/bd/Oklahoma_garden_1.jpg/960px-Oklahoma_garden_1.jpg",
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/66/I_love_Yehud_Monoson.jpg/960px-I_love_Yehud_Monoson.jpg",
     "credit": "Avi1111 dr. avishai teicher, CC BY-SA 4.0",
-    "page": "https://commons.wikimedia.org/wiki/File:Oklahoma_garden_1.jpg"
+    "page": "https://commons.wikimedia.org/wiki/File:I_love_Yehud_Monoson.jpg"
   },
   "כפר סבא": {
     "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/94/Kfar_Saba_Park%2C_Israel.jpg/960px-Kfar_Saba_Park%2C_Israel.jpg",

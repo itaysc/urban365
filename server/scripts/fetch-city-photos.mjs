@@ -70,6 +70,13 @@ const WORTH_SHOWING = [
   [/(building|apartment|housing|בניין|שכונה|מגורים)/i, 1],
   // A photograph of people is a photograph of people, wherever it was taken.
   [/(people|portrait|festival|parade|protest|אנשים|מצעד|הפגנה)/i, -6],
+  /*
+   * And a memorial is not a view of a town. `Oklahoma garden 1.jpg` won יהוד מונוסון
+   * on the strength of the word "garden" and turned out to be a memorial stone — the
+   * name of a place of remembrance rarely says so, but the words below are the ones
+   * that do when it does, and they outweigh anything that could lift them.
+   */
+  [/(grave|tomb|cemetery|memorial|monument|holocaust|fallen|yad[_ ]|קבר|בית[_ ]עלמין|אנדרט|זיכרון|הנצחה|חללי|שואה)/i, -12],
 ];
 
 const score = (name) =>

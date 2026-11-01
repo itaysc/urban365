@@ -567,6 +567,14 @@ Four things the script has to get right, each of which it got wrong first:
 * **Redirects are not followed unless asked.** `תל אביב יפו` redirects to
   `תל אביב-יפו`, and without `redirects=1` the country's largest city came back bare.
 
+A fifth thing it gets wrong by nature: a file name rarely says that a place is a place
+of remembrance. `Oklahoma garden 1.jpg` won יהוד מונוסון on the word "garden" and is a
+memorial stone, and יבנאל's article offered its cemetery. Words like `memorial`,
+`קבר` and `עלמין` now outweigh anything that could lift them — but the check that
+matters is a person looking at the grid, and a photograph can be replaced by editing
+its entry in `city-photos.ts` (the next run of the script will overwrite it, so change
+the scoring too if it should not come back).
+
 **Attribution is a licence condition, not a courtesy.** Every photograph is Creative
 Commons or public domain; GFDL files are skipped because that licence wants its full
 text reproduced, which a card cannot do. The photographers are named in one list under
