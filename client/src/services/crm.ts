@@ -97,7 +97,9 @@ export interface Deal {
   notes: string | null;
   leadId: string | null;
   listingId: string | null;
+  customerId: string | null;
   lead: { id: string; name: string; phone: string | null; email: string | null } | null;
+  customer: { id: string; name: string; phone: string | null } | null;
   listing: { id: string; city: string | null; street: string | null } | null;
   owner: { id: string; firstName: string; lastName: string } | null;
 }
@@ -120,8 +122,15 @@ export interface DealInput {
   expectedCloseAt?: string;
   leadId?: string;
   listingId?: string;
+  customerId?: string;
   notes?: string;
   lostReason?: string;
+}
+
+/** Every deal with one person, for their own card. */
+export async function fetchCustomerDeals(customerId: string): Promise<Deal[]> {
+  const { data } = await api.get<Deal[]>(`/my/deals/for-customer/${customerId}`);
+  return data;
 }
 
 export const createDeal = (input: DealInput) => api.post<Deal>('/my/deals', input);

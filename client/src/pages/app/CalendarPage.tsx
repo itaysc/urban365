@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
-import { CalendarDays, ChevronLeft, ChevronRight, MapPin, Plus, User } from 'lucide-react';
+import { CalendarDays, ChevronLeft, ChevronRight, Handshake, MapPin, Plus, User } from 'lucide-react';
 import { useAuth } from '@/auth/auth-context';
 import { Button } from '@/components/ui/Button';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
@@ -33,6 +33,7 @@ import {
   type Meeting,
   type MeetingInput,
 } from '@/services/calendar';
+import { createDeal, type DealInput } from '@/services/crm';
 
 const DAY_NAMES = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ש'];
 
@@ -238,6 +239,15 @@ export function CalendarPage() {
       else toast.show(result.reason ?? 'אין למי לשלוח.');
     },
     onError: (e) => toast.error(errorMessageOf(e, 'לא הצלחנו לשלוח את בקשת האישור.')),
+  });
+
+  const openDeal = useMutation({
+    mutationFn: (input: DealInput) => createDeal(input),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: qk.deals.all });
+      toast.success('נפתחה עסקה. אפשר להשלים פרטים בעמוד העסקאות.');
+    },
+    onError: (e) => toast.error(errorMessageOf(e, 'לא הצלחנו לפתוח עסקה.')),
   });
 
   const askSeller = useMutation({
@@ -712,6 +722,35 @@ export function CalendarPage() {
                       <span className="text-slate-600">{meeting.feedbackNotes}</span>
                     )}
                   </p>
+                )}
+
+                {/*
+                  The moment of highest intent in the whole product: somebody has just
+                  written down that this buyer liked this flat. Asking them to go to
+                  another screen and retype both is how that moment is lost.
+                */}
+                {meeting.outcome === 'interested' && meeting.customer && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      openDeal.mutate({
+                        title: `${meeting.customer!.name} — ${
+                          meeting.listing
+                            ? [meeting.listing.street, meeting.listing.city]
+                                .filter(Boolean)
+                                .join(', ')
+                            : meeting.title
+                        }`,
+                        customerId: meeting.customer!.id,
+                        ...(meeting.listingId ? { listingId: meeting.listingId } : {}),
+                      })
+                    }
+                    disabled={openDeal.isPending}
+                    className="mt-2 flex items-center gap-1 text-sm text-blue-700 hover:underline disabled:opacity-50"
+                  >
+                    <Handshake className="h-4 w-4" aria-hidden />
+                    פתיחת עסקה
+                  </button>
                 )}
 
                 {summarising === meeting.id && (

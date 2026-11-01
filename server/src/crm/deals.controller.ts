@@ -14,6 +14,12 @@ export class DealsController {
     return this.deals.board();
   }
 
+  /** Every deal with one person. Declared before `:id` would matter; kept above anyway. */
+  @Get('for-customer/:customerId')
+  forCustomer(@Param('customerId') customerId: string) {
+    return this.deals.forCustomer(customerId);
+  }
+
   @Post()
   create(@Body() dto: CreateDealDto) {
     return this.deals.create(dto);

@@ -17,10 +17,12 @@ const SELECT = {
   notes: true,
   leadId: true,
   listingId: true,
+  customerId: true,
   ownerId: true,
   createdAt: true,
   updatedAt: true,
   lead: { select: { id: true, name: true, phone: true, email: true } },
+  customer: { select: { id: true, name: true, phone: true } },
   listing: { select: { id: true, city: true, street: true } },
   owner: { select: { id: true, firstName: true, lastName: true } },
 } satisfies Prisma.DealSelect;
@@ -46,6 +48,17 @@ export class DealsService {
    * agency's open deals are a small set — paging it would cost a round trip per column
    * and still not be what the screen wants.
    */
+  /** Every deal with one person, newest first. What their own page shows. */
+  async forCustomer(customerId: string) {
+    const agencyId = this.context.requireAgencyId();
+
+    return this.prisma.client.deal.findMany({
+      where: { agencyId, customerId },
+      orderBy: [{ updatedAt: 'desc' }, { id: 'asc' }],
+      select: SELECT,
+    });
+  }
+
   async board() {
     const agencyId = this.context.requireAgencyId();
     const deals = await this.prisma.client.deal.findMany({
@@ -89,6 +102,7 @@ export class DealsService {
         expectedCloseAt: dto.expectedCloseAt ? new Date(dto.expectedCloseAt) : null,
         leadId: dto.leadId,
         listingId: dto.listingId,
+        customerId: dto.customerId,
         ownerId: dto.ownerId,
         notes: dto.notes,
         closedAt: TERMINAL.includes(stage) ? new Date() : null,
@@ -147,6 +161,14 @@ export class DealsService {
         select: { id: true },
       });
       if (!lead) throw new NotFoundException('הפנייה לא נמצאה.');
+    }
+
+    if (dto.customerId) {
+      const customer = await this.prisma.client.customer.findFirst({
+        where: { id: dto.customerId, agencyId },
+        select: { id: true },
+      });
+      if (!customer) throw new NotFoundException('הלקוח לא נמצא.');
     }
 
     if (dto.listingId) {

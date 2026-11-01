@@ -760,6 +760,7 @@ model Customer {
   ownedListings Listing[] @relation("ListingSeller")
   suggestions   Suggestion[]
   coBrokerage   CoBrokerageRequest[]
+  deals         Deal[]
 
   /// The list is "this agency's, newest first", which is the only query there is.
   @@index([agencyId, createdAt])
@@ -979,6 +980,15 @@ model Deal {
   listing   Listing? @relation(fields: [listingId], references: [id], onDelete: SetNull)
   listingId String?
 
+  /// Who the deal is with.
+  ///
+  /// A lead is an event — somebody enquired once — and a customer is the relationship
+  /// that follows it. A deal belongs to the second: the person whose brief the agency
+  /// holds, whose viewings it booked and who it will ring when this one falls through.
+  /// Without this the pipeline and the CRM were two products sharing a database.
+  customer   Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  customerId String?
+
   stage DealStage @default(qualified)
   title String
 
@@ -999,6 +1009,8 @@ model Deal {
 
   @@index([agencyId, stage, createdAt])
   @@index([leadId])
+  /// "What is open for this person", which the customer's own page asks.
+  @@index([customerId])
 }
 
 /// A place an agency works out of, drawn on the public map under the agency's name.

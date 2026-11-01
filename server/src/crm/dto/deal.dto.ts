@@ -17,6 +17,8 @@ export class CreateDealDto {
   @IsOptional() @Type(() => Number) @IsInt() @Min(0) commission?: number;
   @IsOptional() @IsDateString() expectedCloseAt?: string;
   @IsOptional() @IsString() leadId?: string;
+  /** Who it is with. `''` unlinks, the way the other optional relations do. */
+  @IsOptional() @IsString() customerId?: string;
   @IsOptional() @IsString() listingId?: string;
   @IsOptional() @IsString() ownerId?: string;
   @IsOptional() @IsString() @MaxLength(2000) notes?: string;
@@ -29,4 +31,6 @@ export class UpdateDealDto extends CreateDealDto {
 
 export class ListDealsQuery {
   @IsOptional() @IsIn(DEAL_STAGES) stage?: DealStageValue;
+  /** Everything open for one person, which the customer's own page asks for. */
+  @IsOptional() @IsString() customerId?: string;
 }

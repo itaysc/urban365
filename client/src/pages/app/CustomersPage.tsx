@@ -21,6 +21,7 @@ import {
   type CustomerInput,
   type CustomerKind,
 } from '@/services/crm';
+import { CustomerDeals } from '@/components/agency/CustomerDeals';
 
 const KIND_LABEL: Record<CustomerKind, string> = {
   buyer: 'קונה',
@@ -264,20 +265,27 @@ export function CustomersPage() {
 
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm [&_a]:py-1.5 [&_button]:py-1.5">
                 <span className="text-xs text-slate-400">{formatDate(customer.createdAt)}</span>
-                {customer._count.meetings > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => setShowing(showing === customer.id ? null : customer.id)}
-                    className="flex items-center gap-1 text-slate-600 hover:text-slate-900"
-                  >
-                    {showing === customer.id ? (
-                      <ChevronUp className="h-4 w-4" aria-hidden />
-                    ) : (
-                      <ChevronDown className="h-4 w-4" aria-hidden />
-                    )}
-                    {customer._count.meetings} ביקורים
-                  </button>
-                )}
+                {/*
+                  Always offered, not only when there are viewings to count. What is
+                  behind it is also where a deal is opened, and a customer nobody has
+                  taken anywhere yet is exactly the one an agent wants to start one
+                  with — hiding the row from them was the reason the pipeline and the
+                  customer list never met.
+                */}
+                <button
+                  type="button"
+                  onClick={() => setShowing(showing === customer.id ? null : customer.id)}
+                  className="flex items-center gap-1 text-slate-600 hover:text-slate-900"
+                >
+                  {showing === customer.id ? (
+                    <ChevronUp className="h-4 w-4" aria-hidden />
+                  ) : (
+                    <ChevronDown className="h-4 w-4" aria-hidden />
+                  )}
+                  {customer._count.meetings > 0
+                    ? `${customer._count.meetings} ביקורים`
+                    : 'ביקורים ועסקאות'}
+                </button>
                 <button
                   type="button"
                   onClick={() => setBooking(customer)}
@@ -309,6 +317,7 @@ export function CustomersPage() {
             {showing === customer.id && (
               <div className="mt-3 border-t border-slate-100 pt-3">
                 <CustomerViewings customerId={customer.id} />
+                <CustomerDeals customer={customer} />
               </div>
             )}
           </li>

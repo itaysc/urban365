@@ -88,6 +88,7 @@ export const qk = {
   deals: {
     all: ['deals'] as const,
     board: ['deals', 'board'] as const,
+    forCustomer: (customerId: string) => ['deals', 'customer', customerId] as const,
   },
 
   team: {
