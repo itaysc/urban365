@@ -222,7 +222,7 @@ export function CoBrokeragePage() {
           </div>
 
           {request.status === 'pending' && (
-            <div className="flex shrink-0 items-center gap-3 text-sm">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm [&_a]:py-1.5 [&_button]:py-1.5">
               {incoming ? (
                 <>
                   <button

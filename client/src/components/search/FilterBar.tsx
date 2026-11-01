@@ -200,7 +200,13 @@ export function FilterBar({ filters, facets, activeCount, onUpdate, onReset }: P
         <PlaceSearchBox filters={draft} update={patch} />
       </div>
 
-      <div className="flex flex-wrap items-stretch divide-x divide-slate-200 overflow-visible rounded-xl border border-slate-200 bg-white">
+      {/*
+        The dividers only from `sm` up. `divide-x` draws between siblings in DOM order,
+        which on a wrapping row means vertical rules in the middle of nothing and what
+        looks like an empty cell — the bar read as broken on a phone rather than as a
+        bar that had folded.
+      */}
+      <div className="flex flex-wrap items-stretch gap-y-1 overflow-visible rounded-xl border border-slate-200 bg-white sm:divide-x sm:divide-slate-200 sm:gap-y-0">
         <div className="flex items-center p-1" role="group" aria-label="סוג עסקה">
           {SECTIONS.map((s) => (
             <button

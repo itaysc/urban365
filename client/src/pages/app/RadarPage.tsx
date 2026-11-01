@@ -213,31 +213,36 @@ export function RadarPage() {
               {/* The evidence, not a restatement of the headline. */}
               <p className="mt-1 text-sm text-slate-500">{suggestion.reason}</p>
 
-              {/* Where to go to do something about it. One link per kind: a row that
-                  tells you about a problem and leaves you to find it is half a row. */}
-              {suggestion.meeting && (
-                <Link
-                  to={`/app/calendar?day=${suggestion.meeting.startsAt.slice(0, 10)}`}
-                  className="mt-1 inline-block text-sm text-blue-700 hover:underline"
-                >
-                  ליומן
-                </Link>
-              )}
-              {suggestion.lead && (
-                <Link to="/app/leads" className="mt-1 inline-block text-sm text-blue-700 hover:underline">
-                  לפניות
-                </Link>
-              )}
-
-              {(suggestion.customer?.phone || suggestion.lead?.phone) && (
-                <a
-                  href={`tel:${suggestion.customer?.phone ?? suggestion.lead?.phone}`}
-                  dir="ltr"
-                  className="mt-1 inline-block text-sm text-slate-500 hover:text-slate-900 ms-3"
-                >
-                  {suggestion.customer?.phone ?? suggestion.lead?.phone}
-                </a>
-              )}
+              {/*
+                Where to go to do something about it, and who to ring. One row with a
+                gap rather than margins on the children: the phone carries `dir="ltr"`
+                so that a number reads left to right, and a logical margin on it would
+                resolve against *that* direction and land on the wrong side.
+              */}
+              <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+                {suggestion.meeting && (
+                  <Link
+                    to={`/app/calendar?day=${suggestion.meeting.startsAt.slice(0, 10)}`}
+                    className="text-blue-700 hover:underline"
+                  >
+                    ליומן
+                  </Link>
+                )}
+                {suggestion.lead && (
+                  <Link to="/app/leads" className="text-blue-700 hover:underline">
+                    לפניות
+                  </Link>
+                )}
+                {(suggestion.customer?.phone || suggestion.lead?.phone) && (
+                  <a
+                    href={`tel:${suggestion.customer?.phone ?? suggestion.lead?.phone}`}
+                    dir="ltr"
+                    className="text-slate-500 hover:text-slate-900"
+                  >
+                    {suggestion.customer?.phone ?? suggestion.lead?.phone}
+                  </a>
+                )}
+              </div>
 
               {/* Another agency's property: the action is an offer to them, not a
                   message to the buyer — who must not hear about it until the other
@@ -264,7 +269,7 @@ export function RadarPage() {
               )}
             </div>
 
-            <div className="flex shrink-0 items-center gap-3 text-sm">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm [&_a]:py-1.5 [&_button]:py-1.5">
               <button
                 type="button"
                 onClick={() => answer.mutate({ id: suggestion.id, done: true })}

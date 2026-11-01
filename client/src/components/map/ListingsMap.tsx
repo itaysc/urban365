@@ -82,6 +82,18 @@ export function ListingsMap({ points, offices = [], boundary, onSelect, onViewpo
       zoom: 7,
       // The attribution is a licence condition of OSM data, not decoration.
       attributionControl: { compact: true },
+      /**
+       * A full-width map in the middle of a scrolling page swallows the gesture that
+       * was meant for the page: on a phone a finger dragged across it pans the map and
+       * the results below become unreachable, and on a laptop the wheel zooms instead
+       * of scrolling past.
+       *
+       * Cooperative gestures ask for two fingers, or ctrl with the wheel, and say so
+       * on screen the first time somebody tries one finger. Panning the map is the
+       * deliberate act; scrolling the page is the ordinary one, and the ordinary one
+       * should not need a technique.
+       */
+      cooperativeGestures: true,
     });
 
     instance.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-left');

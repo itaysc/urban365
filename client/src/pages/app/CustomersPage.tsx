@@ -262,7 +262,7 @@ export function CustomersPage() {
                 )}
               </div>
 
-              <div className="flex shrink-0 items-center gap-3 text-sm">
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm [&_a]:py-1.5 [&_button]:py-1.5">
                 <span className="text-xs text-slate-400">{formatDate(customer.createdAt)}</span>
                 {customer._count.meetings > 0 && (
                   <button

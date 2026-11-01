@@ -487,7 +487,7 @@ export function CalendarPage() {
       )}
 
       <section className="rounded-xl border border-slate-200 bg-white p-4">
-        <div className="mb-3 flex items-center justify-between">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-y-2">
           <div className="flex items-center gap-1">
             <button
               type="button"
@@ -517,8 +517,10 @@ export function CalendarPage() {
           <div className="flex items-center gap-3">
             <h2 className="font-semibold text-slate-900">{spanLabel}</h2>
 
-            {/* Three spans of the same grid, so switching keeps the day you are on. */}
-            <div className="flex overflow-hidden rounded-lg border border-slate-300">
+            {/* Three spans of the same grid, so switching keeps the day you are on.
+                `shrink-0` because the label beside it will give way first — a month
+                name wraps to two lines and reads fine; a clipped button does not. */}
+            <div className="flex shrink-0 overflow-hidden rounded-lg border border-slate-300">
               {VIEWS.map((option) => (
                 <button
                   key={option}
@@ -580,31 +582,51 @@ export function CalendarPage() {
                   {day.getDate()}
                 </span>
 
-                {ours.slice(0, view === 'month' ? 2 : 8).map((m) => (
-                  <span
-                    key={m.id}
-                    className="truncate rounded bg-blue-600 px-1 py-0.5 text-[0.65rem] text-white"
-                  >
-                    {time(m.startsAt)} {m.title}
-                  </span>
-                ))}
-
-                {/* Google's own events, drawn differently because they are not ours to
-                    edit — a grey chip rather than a solid one. */}
-                {theirs.slice(0, view === 'month' ? 1 : 4).map((e) => (
-                  <span
-                    key={e.id}
-                    className="truncate rounded bg-slate-200 px-1 py-0.5 text-[0.65rem] text-slate-700"
-                  >
-                    {e.title}
-                  </span>
-                ))}
-
-                {view === 'month' && ours.length + theirs.length > 3 && (
-                  <span className="text-[0.65rem] text-slate-400">
-                    ועוד {ours.length + theirs.length - 3}
+                {/*
+                  A phone gives a seven-column grid about forty-five pixels a cell,
+                  which is not enough for a time and a title — the chip truncated to
+                  "3…" and told nobody anything. Below `sm` the cell says how many
+                  instead, which is the one thing that does fit and is worth knowing;
+                  tapping the day still opens the list underneath.
+                */}
+                {ours.length > 0 && (
+                  <span className="rounded bg-blue-600 px-1 py-0.5 text-[0.65rem] text-white sm:hidden">
+                    {ours.length}
                   </span>
                 )}
+                {theirs.length > 0 && (
+                  <span className="rounded bg-slate-200 px-1 py-0.5 text-[0.65rem] text-slate-700 sm:hidden">
+                    {theirs.length}
+                  </span>
+                )}
+
+                <span className="hidden flex-col gap-0.5 sm:flex">
+                  {ours.slice(0, view === 'month' ? 2 : 8).map((m) => (
+                    <span
+                      key={m.id}
+                      className="truncate rounded bg-blue-600 px-1 py-0.5 text-[0.65rem] text-white"
+                    >
+                      {time(m.startsAt)} {m.title}
+                    </span>
+                  ))}
+
+                  {/* Google's own events, drawn differently because they are not ours
+                      to edit — a grey chip rather than a solid one. */}
+                  {theirs.slice(0, view === 'month' ? 1 : 4).map((e) => (
+                    <span
+                      key={e.id}
+                      className="truncate rounded bg-slate-200 px-1 py-0.5 text-[0.65rem] text-slate-700"
+                    >
+                      {e.title}
+                    </span>
+                  ))}
+
+                  {view === 'month' && ours.length + theirs.length > 3 && (
+                    <span className="text-[0.65rem] text-slate-400">
+                      ועוד {ours.length + theirs.length - 3}
+                    </span>
+                  )}
+                </span>
               </button>
             );
           })}
@@ -707,7 +729,7 @@ export function CalendarPage() {
                 )}
               </div>
 
-              <div className="flex shrink-0 items-center gap-3 text-sm">
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm [&_a]:py-1.5 [&_button]:py-1.5">
                 {/* Only once it is over: asking how a viewing went before it has
                     happened is a question with no answer. */}
                 {new Date(meeting.endsAt) < today && summarising !== meeting.id && (
