@@ -273,7 +273,7 @@ ${
 }
 
 /** The whole city page. */
-export function renderCityPage(data: CityPage, appUrl: string): string {
+export function renderCityPage(data: CityPage, appUrl: string, links = ''): string {
   const voice = VOICE[data.section];
   const { summary } = data;
   const heading = `${voice.heading} ב${data.city}`;
@@ -398,6 +398,7 @@ ${nearby}
     canonical,
     indexable: summary.count >= MIN_INDEXABLE,
     onCityPages: true,
+    links,
     structuredData: [trail.data],
     appUrl,
     body,

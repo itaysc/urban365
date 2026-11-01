@@ -582,6 +582,21 @@ the grid — the licences ask for credit reasonable to the medium, and thirty na
 thirty pictures would bury the page. The URLs point at Wikimedia's own thumbnails; if
 the traffic ever justifies it, copy them into the bucket instead.
 
+### The links across the bottom
+
+Every landing page ends with a column of links per section — the twelve busiest cities
+for sale, for rent and for commercial — plus the searches and the legal pages
+(`seo/footer.ts`). Thirty-six links on every page.
+
+This is the part a search engine walks. A page is worth indexing roughly in proportion
+to what links to it, and before this a city page was reachable only from the index and
+from the few cities in its own district, which left the quiet ones three clicks from
+anywhere. Now the busiest are one click from every page on the site, which is the
+arrangement every property portal in the country uses and for the same reason.
+
+A section with fewer than three cities is left out rather than shown as a stub, and
+the list is built from the cached directory, so it costs no query per page.
+
 ### The bar across the top
 
 The same one the app has — height, border, sticky blur, wordmark, the three links —

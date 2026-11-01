@@ -11,6 +11,7 @@ import { page, SESSION_SCRIPT_HASH } from './layout.js';
 import { ListingPageService } from './listing-page.service.js';
 import { idFromSlug, listingPath } from './listing-slug.js';
 import { renderCityPage } from './render-city.js';
+import { renderFooterLinks } from './footer.js';
 import { renderIndexPage } from './render-index.js';
 import { renderGonePage, renderListingPage } from './render-listing.js';
 import {
@@ -106,6 +107,18 @@ export class SeoController {
     this.appUrl = config.getOrThrow<MailConfig>('mail').appUrl.replace(/\/+$/u, '');
   }
 
+  /**
+   * The link columns every page ends with.
+   *
+   * Built from the directory the service already caches, so a page costs no extra
+   * query for them — and rebuilt on each request rather than memoised here, because
+   * string concatenation is cheaper than the bug where the footer still names a city
+   * the agency stopped selling in an hour ago.
+   */
+  private async footer(): Promise<string> {
+    return renderFooterLinks(await this.cities.cities(), this.appUrl);
+  }
+
   @Get('robots.txt')
   @Header('Content-Type', 'text/plain; charset=utf-8')
   @Header('Cache-Control', CACHE)
@@ -164,7 +177,8 @@ export class SeoController {
   @Header('Cache-Control', CACHE)
   @Header('Content-Security-Policy', CSP)
   async index(): Promise<string> {
-    return renderIndexPage(await this.cities.byDistrict(), this.appUrl);
+    const [groups, links] = await Promise.all([this.cities.byDistrict(), this.footer()]);
+    return renderIndexPage(groups, this.appUrl, links);
   }
 
   /**
@@ -195,7 +209,7 @@ export class SeoController {
         .status(410)
         .type('text/html; charset=utf-8')
         .set('Content-Security-Policy', CSP)
-        .send(renderGonePage(result, this.appUrl));
+        .send(renderGonePage(result, this.appUrl, await this.footer()));
       return;
     }
 
@@ -209,7 +223,7 @@ export class SeoController {
       .type('text/html; charset=utf-8')
       .set('Content-Security-Policy', CSP)
       .set('Cache-Control', CACHE)
-      .send(renderListingPage(result.listing, result.similar, this.appUrl));
+      .send(renderListingPage(result.listing, result.similar, this.appUrl, await this.footer()));
   }
 
   /*
@@ -245,7 +259,7 @@ export class SeoController {
       return;
     }
 
-    res.set('Cache-Control', CACHE).send(renderCityPage(data, this.appUrl));
+    res.set('Cache-Control', CACHE).send(renderCityPage(data, this.appUrl, await this.footer()));
   }
 
   /** A 404 that is still a page: it says what happened and offers the way back. */

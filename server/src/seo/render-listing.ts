@@ -307,6 +307,7 @@ export function renderListingPage(
   listing: ListingDetail,
   similar: SimilarListing[],
   appUrl: string,
+  links = '',
 ): string {
   const title = heading(listing);
   const canonical = `${appUrl}${listingPath(listing.id, listing)}`;
@@ -374,6 +375,7 @@ ${
     canonical,
     indexable: true,
     onCityPages: true,
+    links,
     structuredData: [trail.data, listingJsonLd(listing, canonical, images)],
     appUrl,
     body,
@@ -390,6 +392,7 @@ ${
 export function renderGonePage(
   options: { city: string | null; section: Section; similar: SimilarListing[] },
   appUrl: string,
+  links = '',
 ): string {
   const where = options.city ? ` ב${options.city}` : '';
 
@@ -411,6 +414,8 @@ ${
     description: 'המודעה הורדה. אפשר לראות נכסים אחרים שמוצעים כרגע באותו אזור.',
     canonical: options.city ? `${appUrl}${cityPath(options.section, options.city)}` : `${appUrl}/nadlan`,
     indexable: false,
+    onCityPages: true,
+    links,
     appUrl,
     body,
   });

@@ -57,6 +57,13 @@ export interface PageOptions {
   appUrl: string;
   /** Marks "מחירים לפי עיר" as the section being read. */
   onCityPages?: boolean;
+  /**
+   * The link columns across the bottom, from `renderFooterLinks`.
+   *
+   * Passed in rather than built here: the layout knows nothing about cities, and the
+   * controller already holds the cached directory they come from.
+   */
+  links?: string;
   body: string;
 }
 
@@ -201,8 +208,19 @@ td.num,th.num{font-variant-numeric:tabular-nums;white-space:nowrap}
 .cta{display:inline-block;background:#1d4ed8;color:#fff;text-decoration:none;font-weight:600;
   border-radius:.625rem;padding:.625rem 1.125rem;margin-top:.5rem}
 .note{color:#64748b;font-size:.875rem}
-footer.site{border-top:1px solid #e2e8f0;background:#fff;padding:1.5rem 0;margin-top:2rem;
+footer.site{border-top:1px solid #e2e8f0;background:#fff;padding:2rem 0 1.5rem;margin-top:2.5rem;
   color:#64748b;font-size:.875rem}
+footer.site .small{margin:1.5rem 0 0;padding-top:1rem;border-top:1px solid #f1f5f9;
+  font-size:.8125rem}
+/* The link columns. Two across on a phone, as many as fit above that. */
+.sitelinks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1.5rem 1rem}
+@media (min-width:40rem){
+  .sitelinks{grid-template-columns:repeat(auto-fit,minmax(11rem,1fr));gap:1.5rem}
+}
+.sitelinks h2{margin:0 0 .5rem;font-size:.875rem;font-weight:700;color:#0f172a}
+.sitelinks ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:.3125rem}
+.sitelinks a{color:#64748b;text-decoration:none;font-size:.8125rem;line-height:1.45}
+.sitelinks a:hover{color:#1d4ed8;text-decoration:underline}
 @media (max-width:30rem){h1{font-size:1.375rem}.figure dd{font-size:1.0625rem}}
 `;
 
@@ -264,10 +282,8 @@ ${blocks}
 <main class="wrap">${options.body}</main>
 <script>${SESSION_SCRIPT}</script>
 <footer class="site"><div class="wrap">
-<a href="/nadlan">כל הערים</a> ·
-<a href="${esc(options.appUrl)}/terms">תנאי שימוש</a> ·
-<a href="${esc(options.appUrl)}/policy">פרטיות</a>
-<p>הנתונים מתבססים על המודעות המתפרסמות באתר ומשתנים עם השוק. אינם ייעוץ או הערכת שווי.</p>
+${options.links ?? ''}
+<p class="small">הנתונים מתבססים על המודעות המתפרסמות באתר ומשתנים עם השוק. אינם ייעוץ או הערכת שווי.</p>
 </div></footer>
 </body>
 </html>`;

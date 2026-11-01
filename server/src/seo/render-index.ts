@@ -90,6 +90,7 @@ ${photo(entry)}
 export function renderIndexPage(
   groups: { name: string | null; cities: CityEntry[] }[],
   appUrl: string,
+  links = '',
 ): string {
   const canonical = `${appUrl}/nadlan`;
   const cities = groups.reduce((sum, group) => sum + group.cities.length, 0);
@@ -132,6 +133,7 @@ ${sections}
     canonical,
     indexable: true,
     onCityPages: true,
+    links,
     structuredData: [trail.data],
     appUrl,
     body,
