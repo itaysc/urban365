@@ -10,6 +10,7 @@ import type { SuggestionKind } from '@/services/suggestions';
 export const KIND_ORDER: SuggestionKind[] = [
   'viewing_unanswered',
   'new_match',
+  'cobroke_match',
   'stale_lead',
   'listing_no_interest',
 ];
@@ -17,6 +18,7 @@ export const KIND_ORDER: SuggestionKind[] = [
 export const KIND_LABEL: Record<SuggestionKind, string> = {
   viewing_unanswered: 'ביקורים שלא אושרו',
   new_match: 'התאמות ללקוחות',
+  cobroke_match: 'התאמות אצל סוכנויות אחרות',
   stale_lead: 'פניות שממתינות',
   listing_no_interest: 'נכסים שאף אחד לא שואל עליהם',
 };
@@ -25,6 +27,7 @@ export const KIND_LABEL: Record<SuggestionKind, string> = {
 export const KIND_HINT: Record<SuggestionKind, string> = {
   viewing_unanswered: 'מתקיימים בימים הקרובים וצד אחד עדיין לא אישר.',
   new_match: 'נכס שנכנס תואם למה שלקוח ביקש.',
+  cobroke_match: 'נכס של סוכנות אחרת שמתאים ללקוח שלכם. אפשר להציע שיתוף פעולה.',
   stale_lead: 'מישהו פנה ולא חזרו אליו.',
   listing_no_interest: 'נצפים הרבה ואף אחד לא יוצר קשר — בדרך כלל מחיר או תמונות.',
 };

@@ -1,6 +1,7 @@
 import { CalendarModule } from './calendar/calendar.module.js';
 import { MatchingModule } from './matching/matching.module.js';
 import { DemoModule } from './demo/demo.module.js';
+import { CoBrokerageModule } from './cobrokerage/cobrokerage.module.js';
 import { LlmModule } from './llm/llm.module.js';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
@@ -35,6 +36,7 @@ import { Yad2Module } from './yad2/yad2.module.js';
     CalendarModule,
     MatchingModule,
     DemoModule,
+    CoBrokerageModule,
     ConfigModule.forRoot({ isGlobal: true, load: [configuration] }),
     // In-memory, so per-instance and reset on deploy — correct for one Railway instance.
     // A Postgres-backed limiter would put write amplification on the attacked path.

@@ -150,6 +150,16 @@ model Agency {
   suggestions Suggestion[]
   demoRecords DemoRecord[]
 
+  /// Whether this agency takes part in co-brokerage at all.
+  ///
+  /// On by default: the inventory it exposes is already public on the marketplace, and
+  /// a network nobody has joined is worth nothing to the first agency that does. One
+  /// toggle on the agency page turns it off.
+  coBrokerage Boolean @default(true)
+
+  coBrokeHolding CoBrokerageRequest[] @relation("CoBrokeHolding")
+  coBrokeSeeking CoBrokerageRequest[] @relation("CoBrokeSeeking")
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -319,6 +329,7 @@ model Listing {
   saves  SavedListing[]
   meetings Meeting[]
   suggestions Suggestion[]
+  coBrokerage CoBrokerageRequest[]
 
   @@index([ownerUserId])
   @@index([sellerCustomerId])
@@ -427,6 +438,8 @@ model User {
   assignedCustomers Customer[]        @relation("CustomerAssignee")
   meetings          Meeting[]          @relation("MeetingOwner")
   suggestions       Suggestion[]       @relation("SuggestionOwner")
+  coBrokeRequested  CoBrokerageRequest[] @relation("CoBrokeRequester")
+  coBrokeResponded  CoBrokerageRequest[] @relation("CoBrokeResponder")
   meetingFeedback   Meeting[]          @relation("MeetingFeedbackAuthor")
   googleCalendar    GoogleCalendarAccount?
   ownedDeals       Deal[]             @relation("DealOwner")
@@ -744,6 +757,7 @@ model Customer {
   /// deal. Empty for most of them: a buyer owns nothing the agency is handling.
   ownedListings Listing[] @relation("ListingSeller")
   suggestions   Suggestion[]
+  coBrokerage   CoBrokerageRequest[]
 
   /// The list is "this agency's, newest first", which is the only query there is.
   @@index([agencyId, createdAt])
@@ -1180,6 +1194,8 @@ model Suggestion {
 enum SuggestionKind {
   /// A listing this agency holds matches what a customer said they want.
   new_match
+  /// Another agency's listing matches one of ours. The co-brokerage case.
+  cobroke_match
   /// A viewing is close and one of the two sides has not said yes.
   viewing_unanswered
   /// An enquiry came in and nothing has happened to it since.
@@ -1218,4 +1234,77 @@ model DemoRecord {
   /// The clear reads "everything this agency seeded", which is the only query there is.
   @@index([agencyId, model])
   @@unique([model, recordId])
+}
+
+/// One agency asking another to work a deal together.
+///
+/// The only row in the system that belongs to two agencies, which is why its policies
+/// name both. Everything else here follows from one asymmetry: the listing is already
+/// public on the marketplace, and the buyer is not. So the holding agency learns that
+/// somebody has a buyer for their property and what that buyer is looking for — never
+/// who they are, and never what they can afford, since the listing's own price already
+/// proves they can afford it and the headroom above it is the buyer's to keep.
+model CoBrokerageRequest {
+  id String @id @default(cuid())
+
+  /// The property. Public already, so both sides see all of it.
+  listing   Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  listingId String
+
+  /// Whose property it is — the agency being asked.
+  holdingAgency   Agency @relation("CoBrokeHolding", fields: [holdingAgencyId], references: [id], onDelete: Cascade)
+  holdingAgencyId String
+
+  /// Who has the buyer — the agency asking.
+  seekingAgency   Agency @relation("CoBrokeSeeking", fields: [seekingAgencyId], references: [id], onDelete: Cascade)
+  seekingAgencyId String
+
+  /// The buyer. **Never sent to the holding agency.**
+  ///
+  /// Row-level security cannot hide a column, so this is kept out by the service: the
+  /// two sides have their own selects and only one of them mentions this. A test holds
+  /// that line, because a comment cannot.
+  customer   Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  customerId String?
+
+  /// The agent who asked, and the one who answered.
+  requestedBy   User?   @relation("CoBrokeRequester", fields: [requestedById], references: [id], onDelete: SetNull)
+  requestedById String?
+  respondedBy   User?   @relation("CoBrokeResponder", fields: [respondedById], references: [id], onDelete: SetNull)
+  respondedById String?
+
+  status CoBrokerageStatus @default(pending)
+
+  /// What the seeking agent wrote. Shown to the other side, so it is theirs to get
+  /// right — and the one place a human can say what a match cannot.
+  message String?
+
+  /// The share of the commission going to the agency that brought the buyer, as a
+  /// percentage. A record of what was said, not an agreement: the two agencies have
+  /// their own paperwork and this does not replace it.
+  commissionSplit Int @default(50)
+
+  /// What the buyer is after, as it stood when the request was made.
+  ///
+  /// Copied rather than read through `customer`, because the holding agency may read
+  /// this row and may not read that customer — and because a brief that changes next
+  /// week should not silently rewrite what somebody was asked.
+  briefSummary String?
+
+  respondedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  /// Both inboxes, and the guard against asking twice about the same pair.
+  @@unique([listingId, seekingAgencyId, customerId])
+  @@index([holdingAgencyId, status])
+  @@index([seekingAgencyId, status])
+}
+
+enum CoBrokerageStatus {
+  pending
+  accepted
+  declined
+  /// The asking agency changed its mind before an answer came.
+  withdrawn
 }

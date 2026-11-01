@@ -280,6 +280,34 @@ arithmetic on an offset drifts by an hour for half the year.
 `User.dailyBriefing` is on by default with a checkbox on the agent's own profile. The
 email says where that checkbox is.
 
+## Co-brokerage
+
+Two agencies working one deal. The sweep matches each agency's customer briefs against
+*other* agencies' published listings (`cobroke_match`, score 80+, five per sweep and at
+most one open per customer at a time), and the agent can offer the holding agency a
+split.
+
+The design rests on one asymmetry: **the listing is already public and the buyer is
+not.** So the agency being asked sees the property, the asking agency's name, the
+message, the proposed split and a summary of what the buyer wants — and never the
+buyer's name, phone or budget. The price is left out deliberately: a match already
+proves the buyer can afford the asking price, and the room above it is theirs to keep.
+
+`CoBrokerageRequest` is the only row in the system belonging to two agencies, so its
+policies name both: either party may read, only the seeking side may insert, and which
+fields each may change is enforced in the service because a policy cannot tell accepting
+from withdrawing. **Row-level security has no column dimension**, so the buyer is kept
+from the holding side by two separate projections in `projections.ts` — and by a test
+that asserts the holding side's field list, because a projection is one careless edit
+from leaking.
+
+`Agency.coBrokerage` is on by default (the inventory it exposes is already public) with
+a toggle on the agency page. Opting out removes an agency from the matching pool and
+refuses requests aimed at it. The commission split is recorded as what was said, not as
+an agreement, and the UI says so.
+
+Testing it needs two agencies: `npm run seed:dev-agency -- --slug two` makes a second.
+
 ## Demo data (development only)
 
 `DemoService` fills an agency with eight customers, eight listings, five leads and six

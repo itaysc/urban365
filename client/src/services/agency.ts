@@ -150,6 +150,8 @@ export interface AgencyProfile {
   licenseNumber: string | null;
   logoUrl: string | null;
   coverImageUrl: string | null;
+  /** Whether this agency takes part in co-brokerage with others. */
+  coBrokerage: boolean;
   _count: { listings: number; leads: number; deals: number };
 }
 
@@ -159,7 +161,9 @@ export async function fetchAgencyProfile(): Promise<AgencyProfile> {
 }
 
 export async function updateAgencyProfile(
-  input: Partial<Pick<AgencyProfile, 'name' | 'description' | 'phone' | 'contactEmail'>>,
+  input: Partial<
+    Pick<AgencyProfile, 'name' | 'description' | 'phone' | 'contactEmail' | 'coBrokerage'>
+  >,
 ) {
   const { data } = await api.patch<AgencyProfile>('/my/agency', input);
   return data;

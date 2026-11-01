@@ -2,7 +2,13 @@
  * Creates a ready-to-use agency account for local development.
  *
  *   npm run seed:dev-agency
- *   npm run seed:dev-agency -- --reset   # put the password back if it was changed
+ *   npm run seed:dev-agency -- --reset        # put the password back if it was changed
+ *   npm run seed:dev-agency -- --slug two     # a SECOND agency, for co-brokerage
+ *
+ * The slug makes a second one, with its own owner at `dev-agency-<slug>@nadlan.test`
+ * and the same password. Co-brokerage cannot be looked at with one agency — the whole
+ * feature is two of them seeing different halves of the same row — so making another
+ * has to be as easy as making the first.
  *
  * Signing up through the product is the right path for a real agency — verify the
  * email, wait for moderation — and the wrong one when you only want to look at the
@@ -24,9 +30,29 @@ import { normalizeEmail } from '../auth/normalize-email.js';
  * tomorrow. `.test` is reserved by RFC 2606 and can never be a real domain, so this
  * address cannot collide with a person's and cannot receive mail.
  */
-const EMAIL = 'dev-agency@nadlan.test';
 const PASSWORD = 'DevAgency!2026';
-const AGENCY_NAME = 'סוכנות הדגמה';
+
+/** `--slug two` gives a second agency; no slug gives the original one. */
+function identity(): { email: string; slug: string; name: string; firstName: string } {
+  const i = process.argv.indexOf('--slug');
+  const slug = i >= 0 ? process.argv[i + 1] : undefined;
+
+  if (!slug || slug === 'dev-agency') {
+    return {
+      email: 'dev-agency@nadlan.test',
+      slug: 'dev-agency',
+      name: 'סוכנות הדגמה',
+      firstName: 'דמו',
+    };
+  }
+
+  return {
+    email: `dev-agency-${slug}@nadlan.test`,
+    slug: `dev-agency-${slug}`,
+    name: `סוכנות הדגמה ${slug}`,
+    firstName: `דמו ${slug}`,
+  };
+}
 
 /** Localhost only. A known password anywhere else is a vulnerability, not a fixture. */
 function assertLocal(url: string | undefined): void {
@@ -46,7 +72,8 @@ async function main() {
   const prisma = app.get(PrismaService);
   const passwords = app.get(PasswordService);
 
-  const email = normalizeEmail(EMAIL);
+  const who = identity();
+  const email = normalizeEmail(who.email);
   const passwordHash = await passwords.hash(PASSWORD);
 
   const user = await prisma.user.upsert({
@@ -54,7 +81,7 @@ async function main() {
     create: {
       email,
       passwordHash,
-      firstName: 'דמו',
+      firstName: who.firstName,
       lastName: 'סוכנות',
       accountType: 'agency',
       // The end state of verification, not a way around it: this account never receives
@@ -77,8 +104,8 @@ async function main() {
   });
 
   const agency = await prisma.agency.upsert({
-    where: { slug: 'dev-agency' },
-    create: { name: AGENCY_NAME, slug: 'dev-agency', status: 'active', contactEmail: email },
+    where: { slug: who.slug },
+    create: { name: who.name, slug: who.slug, status: 'active', contactEmail: email },
     update: {},
   });
 
@@ -88,7 +115,8 @@ async function main() {
     update: { role: 'owner', status: 'active' },
   });
 
-  logger.log(`Agency "${AGENCY_NAME}" ready. Sign in as ${email} with the password in this file.`);
+  logger.log(`Agency "${who.name}" (${agency.id}) ready.`);
+  logger.log(`Sign in as ${email} with the password in this file.`);
   await app.close();
 }
 

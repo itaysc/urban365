@@ -30,7 +30,13 @@ export function AgencyProfilePage() {
   const canManage = user?.agency?.role === 'owner' || user?.platformRole === 'admin';
   const queryClient = useQueryClient();
   const [profile, setProfile] = useState<AgencyProfile | null>(null);
-  const [form, setForm] = useState({ name: '', description: '', phone: '', contactEmail: '' });
+  const [form, setForm] = useState({
+    name: '',
+    description: '',
+    phone: '',
+    contactEmail: '',
+    coBrokerage: true,
+  });
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -43,6 +49,7 @@ export function AgencyProfilePage() {
       description: p.description ?? '',
       phone: p.phone ?? '',
       contactEmail: p.contactEmail ?? '',
+      coBrokerage: p.coBrokerage,
     });
   };
 
@@ -61,7 +68,7 @@ export function AgencyProfilePage() {
     if (isError) setError('לא הצלחנו לטעון את פרטי הסוכנות.');
   }, [isError]);
 
-  const set = (key: keyof typeof form, value: string) => {
+  const set = (key: keyof typeof form, value: string | boolean) => {
     setForm((f) => ({ ...f, [key]: value }));
     setSaved(false);
   };
@@ -217,6 +224,30 @@ export function AgencyProfilePage() {
         Its own panel with its own save, not part of the profile form: a branch is a row
         of its own, and pressing "שמור" on the profile should not be what commits one.
       */}
+      {/*
+        Not about the public page like the rest of this screen, but it is the agency's
+        own decision, made by the same people, and it belongs where they already are.
+      */}
+      <section className="flex flex-col gap-2 rounded-xl border border-slate-200 bg-white p-4">
+        <h2 className="text-sm font-semibold text-slate-900">שיתופי פעולה</h2>
+        <label className="flex cursor-pointer items-start gap-2 text-sm text-slate-700">
+          <input
+            type="checkbox"
+            disabled={!canManage}
+            checked={form.coBrokerage}
+            onChange={(e) => set('coBrokerage', e.target.checked)}
+            className="mt-0.5 h-4 w-4 flex-none"
+          />
+          <span>
+            לקבל הצעות שיתוף פעולה מסוכנויות אחרות
+            <span className="block text-xs text-slate-500">
+              סוכנות שיש לה קונה לנכס שלכם תוכל לפנות אליכם. הנכסים שלכם ממילא מוצגים
+              בלוח, ופרטי הלקוחות שלכם לעולם לא נחשפים.
+            </span>
+          </span>
+        </label>
+      </section>
+
       <OfficesPanel />
 
       {/* Development only, and the server refuses the routes elsewhere regardless. */}

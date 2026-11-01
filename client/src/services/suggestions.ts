@@ -4,7 +4,8 @@ export type SuggestionKind =
   | 'new_match'
   | 'viewing_unanswered'
   | 'stale_lead'
-  | 'listing_no_interest';
+  | 'listing_no_interest'
+  | 'cobroke_match';
 export type SuggestionStatus = 'open' | 'done' | 'dismissed';
 
 export interface Suggestion {

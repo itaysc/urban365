@@ -20,6 +20,7 @@ import {
   saveSuggestionDraft,
   type Suggestion,
 } from '@/services/suggestions';
+import { CoBrokerageOffer } from '@/components/agency/CoBrokerageOffer';
 
 const addressOf = (listing: NonNullable<Suggestion['listing']>): string => {
   const street = [listing.street, listing.houseNumber].filter(Boolean).join(' ');
@@ -186,12 +187,23 @@ export function RadarPage() {
 
               {suggestion.listing && (
                 <p className="mt-1 text-sm text-slate-700">
-                  <Link
-                    to={`/app/listings/${suggestion.listing.id}`}
-                    className="font-medium text-blue-700 hover:underline"
-                  >
-                    {addressOf(suggestion.listing)}
-                  </Link>
+                  {/* Somebody else's property is not a link: the editor is ours and
+                      would only show them a permission error, and the public page opens
+                      from a search rather than a path of its own. The address and the
+                      figures beside it are enough to judge the fit, which is all this
+                      row is for. */}
+                  {suggestion.kind === 'cobroke_match' ? (
+                    <span className="font-medium text-slate-900">
+                      {addressOf(suggestion.listing)}
+                    </span>
+                  ) : (
+                    <Link
+                      to={`/app/listings/${suggestion.listing.id}`}
+                      className="font-medium text-blue-700 hover:underline"
+                    >
+                      {addressOf(suggestion.listing)}
+                    </Link>
+                  )}
                   {suggestion.listing.price !== null && (
                     <span className="text-slate-500"> · {formatPrice(suggestion.listing.price)}</span>
                   )}
@@ -227,8 +239,20 @@ export function RadarPage() {
                 </a>
               )}
 
-              {/* Only for a match. "Your listing is getting no enquiries" is a
-                  conversation with the seller, not a message we can write for you. */}
+              {/* Another agency's property: the action is an offer to them, not a
+                  message to the buyer — who must not hear about it until the other
+                  agency has agreed there is anything to hear about. */}
+              {suggestion.kind === 'cobroke_match' && suggestion.listing && suggestion.customer && (
+                <CoBrokerageOffer
+                  listingId={suggestion.listing.id}
+                  customerId={suggestion.customer.id}
+                  customerName={suggestion.customer.name}
+                />
+              )}
+
+              {/* Only for a match on our own listing. "Your listing is getting no
+                  enquiries" is a conversation with the seller, not a message we can
+                  write for you. */}
               {suggestion.kind === 'new_match' && (
                 <MessageDraft
                   draft={suggestion.draft}

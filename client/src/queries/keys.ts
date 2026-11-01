@@ -62,6 +62,12 @@ export const qk = {
     picker: ['customers', 'picker'] as const,
   },
 
+  cobrokerage: {
+    all: ['cobrokerage'] as const,
+    sent: ['cobrokerage', 'sent'] as const,
+    received: ['cobrokerage', 'received'] as const,
+  },
+
   suggestions: {
     all: ['suggestions'] as const,
     list: (ownerId: string) => ['suggestions', 'list', ownerId] as const,

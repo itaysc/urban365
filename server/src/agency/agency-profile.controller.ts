@@ -66,6 +66,7 @@ export class AgencyProfileController {
         licenseNumber: true,
         logoUrl: true,
         coverImageUrl: true,
+        coBrokerage: true,
         _count: { select: { listings: true, leads: true, deals: true } },
       },
     });
@@ -79,7 +80,15 @@ export class AgencyProfileController {
     return this.prisma.client.agency.update({
       where: { id: agencyId },
       data: { ...dto },
-      select: { id: true, name: true, description: true, phone: true, contactEmail: true, coverImageUrl: true },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        phone: true,
+        contactEmail: true,
+        coverImageUrl: true,
+        coBrokerage: true,
+      },
     });
   }
 

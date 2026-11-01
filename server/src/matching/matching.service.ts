@@ -13,6 +13,19 @@ import { RulesService, type Raised } from './rules.service.js';
 const PER_AGENCY_LIMIT = 50;
 
 /**
+ * And how few across agencies.
+ *
+ * Deliberately meaner than the within-agency cap. A co-brokerage match costs an agent
+ * a conversation with a stranger and half a commission, so three plausible ones are
+ * worth more than thirty: the bar for "worth asking somebody else" is higher than for
+ * "worth looking at", and the number is where that belief lives.
+ */
+const CO_BROKERAGE_LIMIT = 5;
+
+/** Below this, a cross-agency introduction is not worth anybody's phone call. */
+const CO_BROKERAGE_MIN_SCORE = 80;
+
+/**
  * And how many for any one customer.
  *
  * Without this, one vague brief takes the whole agency's allowance: "anything in Holon"
@@ -103,12 +116,13 @@ export class MatchingService {
    * somebody else, and this is not the place to settle it quietly.
    */
   async sweepAgency(agencyId: string): Promise<number> {
-    const [matches, others] = await Promise.all([
+    const [matches, elsewhere, others] = await Promise.all([
       this.matchesFor(agencyId),
+      this.coBrokerageFor(agencyId),
       this.rules.all(agencyId),
     ]);
 
-    return this.raise(agencyId, [...matches, ...others]);
+    return this.raise(agencyId, [...matches, ...elsewhere, ...others]);
   }
 
   /**
@@ -192,8 +206,106 @@ export class MatchingService {
     }));
   }
 
+  /**
+   * This agency's customers against everybody else's inventory.
+   *
+   * The co-brokerage case, and the only rule here that looks outside the agency. It can
+   * afford to: a published listing is already on the public marketplace, so nothing is
+   * revealed by noticing it. The private half — who the buyer is — never leaves this
+   * agency, and the request that may follow carries a brief rather than a person.
+   *
+   * Only between agencies that have opted in, only on strong matches, and only a few.
+   * An agent who is sent to haggle with a stranger over half a commission for a
+   * mediocre fit will not go a second time.
+   */
+  private async coBrokerageFor(agencyId: string): Promise<Raised[]> {
+    const agency = await this.prisma.agency.findUnique({
+      where: { id: agencyId },
+      select: { coBrokerage: true },
+    });
+    if (!agency?.coBrokerage) return [];
+
+    const [customers, listings] = await Promise.all([
+      this.prisma.customer.findMany({
+        where: { agencyId, kind: { in: ['buyer', 'both'] } },
+        select: BRIEF_SELECT,
+      }),
+      this.prisma.listing.findMany({
+        where: {
+          agencyId: { not: agencyId },
+          status: 'published',
+          delistedAt: null,
+          // Both sides have to be in the network, and a scraped yad2 row is not an
+          // agency on this platform agreeing to anything.
+          source: 'manual',
+          agency: { coBrokerage: true, status: 'active' },
+        },
+        select: { ...CANDIDATE_SELECT, agencyId: true },
+        take: 2000,
+      }),
+    ]);
+
+    if (customers.length === 0 || listings.length === 0) return [];
+
+    const found: FoundMatch[] = [];
+
+    for (const customer of customers) {
+      for (const listing of listings) {
+        const match = matchBrief(customer as Brief, listing as Candidate);
+        if (!match || match.score < CO_BROKERAGE_MIN_SCORE) continue;
+
+        found.push({
+          customerId: customer.id,
+          listingId: listing.id,
+          ownerId: customer.assignedToId,
+          score: match.score,
+          reason: `${match.reason} — נכס של סוכנות אחרת`,
+        });
+      }
+    }
+
+    const raisedBefore = await this.prisma.suggestion.findMany({
+      where: { agencyId, kind: 'cobroke_match' },
+      select: { dedupeKey: true, status: true, customerId: true },
+    });
+
+    const seen = new Set(raisedBefore.map((row) => row.dedupeKey));
+
+    /**
+     * Customers who already have one of these open.
+     *
+     * The caps elsewhere are per sweep, which is right when the supply runs out: a
+     * customer is offered three of their agency's listings, deals with them, and is
+     * offered the next three. Every other agency's inventory does not run out, so the
+     * same rule would add one per customer per hour until the page was nothing else.
+     *
+     * One at a time, then. The next is raised when this one has been acted on — which
+     * is also the honest signal, because an agent who has not answered the last
+     * introduction does not want a second.
+     */
+    const waiting = new Set(
+      raisedBefore.filter((row) => row.status === 'open').map((row) => row.customerId),
+    );
+
+    return shortlistMatches(
+      found,
+      (match) =>
+        seen.has(this.dedupeKey(agencyId, match, 'cobroke_match')) ||
+        waiting.has(match.customerId),
+      { perCustomer: 1, total: CO_BROKERAGE_LIMIT },
+    ).map((match) => ({
+      kind: 'cobroke_match' as const,
+      dedupeKey: this.dedupeKey(agencyId, match, 'cobroke_match'),
+      ...match,
+    }));
+  }
+
   /** The identity of the observation: this agency noticed this pair. */
-  private dedupeKey(agencyId: string, match: { customerId: string; listingId: string }): string {
-    return `${agencyId}:new_match:${match.customerId}:${match.listingId}`;
+  private dedupeKey(
+    agencyId: string,
+    match: { customerId: string; listingId: string },
+    kind = 'new_match',
+  ): string {
+    return `${agencyId}:${kind}:${match.customerId}:${match.listingId}`;
   }
 }
