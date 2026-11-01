@@ -133,7 +133,7 @@ export function HomePage() {
       <div className="mx-auto flex max-w-6xl flex-col gap-6 p-4 sm:p-8">
         <header className="flex flex-wrap items-baseline justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">נדל״ן</h1>
+            <h1 className="text-2xl font-bold text-slate-900">Urban365</h1>
             <p className="text-sm text-slate-500">ייבוא סוכנות נדל״ן מיד2</p>
           </div>
           <Link to="/" className="text-sm text-blue-700 hover:underline">

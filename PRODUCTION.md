@@ -420,8 +420,9 @@ qlmanage -t -s 180 -o /tmp /tmp/touch.svg
 cp /tmp/touch.svg.png client/public/apple-touch-icon.png
 ```
 
-The tab still reads `נדל״ן` while the mark says `U365` and the header says `Urban365`.
-Three names for one product, and the title is the one nobody has chosen yet.
+The tab, the mark and the header now agree: `Urban365`. The word `נדל״ן` elsewhere —
+`נדל״ן למכירה`, `סוכנויות נדל״ן` — is the ordinary noun for real estate and is left
+alone; only the places using it as the product's *name* were changed.
 
 ## Still open
 
@@ -459,4 +460,11 @@ production.
   same way. The lever is temperature, and raising it trades against the accuracy the
   fact check exists to protect — so it is left where it is. Each recipient sees one
   message, so this costs the agent's eye rather than the customer's.
+* **The accessibility statement's contact is a placeholder.** `client/index.html` gives
+  Open-Nagish `support@nadlan.example`, which is the address a visitor is told to write
+  to about an accessibility problem — and in Israel that statement is a legal
+  requirement rather than a courtesy.
+* **Every page has the same tab title.** Nothing sets `document.title`, so a search for
+  four rooms in Holon, the calendar and a saved-search page are all `Urban365` in a
+  list of bookmarks or open tabs.
 * **No remote.** Everything is committed locally and has never been pushed.
