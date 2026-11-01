@@ -793,6 +793,28 @@ share no package. If you change one, change the other: a buyer seeing `חדש` o
 page and not on the search for the same flat would be right to distrust both. Both
 files say so at the top, and both are tested.
 
+## The front door
+
+`/` is a home page; `/search` is the results. It was the other way round, so the site
+opened on a grid of whatever happened to be newest beside a map of the whole country —
+a page that answers a question nobody has asked yet.
+
+The home page is a cover photograph, three tabs and one box asking where. Every filter
+the results page offers is still there on arrival; putting rooms, price and property
+type on the front door would ask somebody to describe a flat before naming a city.
+Underneath, the cities by region — the same links the footer carries, in the place a
+person looks for them, and the ones a search engine follows from the strongest page on
+the site.
+
+**Every old link still works.** Shared searches, bookmarks and every link on a city
+page point at `/` with a query string; `LandingPage` carries anything with a query
+string on to `/search` unchanged. The links this repository mints were repointed at
+the same time — `seo/render-city.ts`, `seo/render-listing.ts`, `seo/footer.ts`,
+`SiteFooter` and the saved-search page.
+
+The cover is `Tel Aviv Skyline 01.jpg` from Wikimedia, CC BY-SA 4.0, credited under the
+city grid as the licence requires — the same arrangement as the city photographs.
+
 ## Still open
 
 Things that are known to be missing or unfinished, so nobody rediscovers them in

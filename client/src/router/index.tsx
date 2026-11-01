@@ -6,6 +6,7 @@ import { PrivacyPage, TermsPage } from '@/pages/LegalPage';
 import { Navigate, Outlet, createBrowserRouter } from 'react-router-dom';
 import { RequireAdmin, RequireAuth } from '@/auth/RequireAuth';
 import { HomePage } from '@/pages/HomePage';
+import { LandingPage } from '@/pages/LandingPage';
 import { SearchPage } from '@/pages/SearchPage';
 import { ForgotPasswordPage } from '@/pages/auth/ForgotPasswordPage';
 import { LoginPage } from '@/pages/auth/LoginPage';
@@ -50,11 +51,17 @@ export const router = createBrowserRouter([
     ),
     children: [
   // ── public ──────────────────────────────────────────────────────────────────
-  // Search is the front door. Filters live in the query string, so a filtered search
-  // is shareable.
-  { path: '/', element: <SearchPage /> },
-  // Kept so links minted while search lived here keep working.
-  { path: '/search', element: <Navigate to="/" replace /> },
+  /*
+   * The front door is a front door now. It used to be the results page, so the site
+   * opened on a grid of whatever was newest and a map of the whole country.
+   *
+   * Every link ever minted at `/` with a query string — shared searches, the city
+   * pages, bookmarks — is carried on to `/search` by `LandingPage` rather than landing
+   * on a page that ignores it.
+   */
+  { path: '/', element: <LandingPage /> },
+  // Filters live in the query string, so a filtered search is still shareable.
+  { path: '/search', element: <SearchPage /> },
   // An agency's public page. The yad2 importer used to sit on this component for
   // anyone to run; it now lives in the agency's own dashboard.
   { path: '/agency/:agencyId', element: <HomePage /> },

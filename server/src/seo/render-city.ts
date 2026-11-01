@@ -87,7 +87,7 @@ const money = (value: number | null, perMonth: boolean) =>
 /** A link into the app itself, with the filters already applied. */
 function searchUrl(appUrl: string, section: Section, city: string, extra: Record<string, string> = {}) {
   const params = new URLSearchParams({ section, city, ...extra });
-  return `${appUrl}/?${params}`;
+  return `${appUrl}/search?${params}`;
 }
 
 const pageUrl = (section: Section, city: string) => `/nadlan/${section}/${encodeURIComponent(toSlug(city))}`;

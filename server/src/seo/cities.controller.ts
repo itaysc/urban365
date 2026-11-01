@@ -22,12 +22,21 @@ export class CitiesController {
   // the answer changes when a scrape run finds a city we had nothing in.
   @Header('Cache-Control', 'public, max-age=600')
   async list() {
-    const entries = await this.cities.cities();
+    /*
+     * Grouped by district on the way out and flattened with the district on each city,
+     * because the two callers want it both ways: the footer lists the busiest cities
+     * whatever region they are in, and the home page lays them out region by region.
+     */
+    const groups = await this.cities.byDistrict();
 
-    return entries.map((entry) => ({
-      city: entry.city,
-      slug: toSlug(entry.city),
-      counts: entry.counts,
-    }));
+    return groups.flatMap((group) =>
+      group.cities.map((entry) => ({
+        city: entry.city,
+        slug: toSlug(entry.city),
+        /** Null for a city whose region we could not work out; it still appears. */
+        district: group.name,
+        counts: entry.counts,
+      })),
+    );
   }
 }

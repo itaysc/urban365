@@ -8,11 +8,12 @@ export const BRAND = 'Urban365';
  * pages would mean twenty-odd near-identical lines, and the one that gets forgotten is
  * invisible — a wrong tab title looks exactly like a page nobody got round to.
  *
- * Only the search page is missing from here, because its title is the search: "נדל״ן
- * למכירה בחולון" is not something a path can know. It sets its own, and this returns
- * null so the two never fight over it.
+ * Only the results page at `/search` is missing from here, because its title is the
+ * search: "נדל״ן למכירה בחולון" is not something a path can know. It sets its own, and
+ * this returns null so the two never fight over it.
  */
 const TITLES: Record<string, string> = {
+  '/': 'נדל״ן למכירה ולהשכרה בישראל',
   '/saved': 'נכסים שמורים',
   '/alerts': 'חיפושים שמורים',
   '/terms': 'תנאי שימוש',
@@ -56,7 +57,12 @@ export function titleForPath(pathname: string): string | null {
   // Trailing slashes come from hand-typed urls and would miss every exact match.
   const path = pathname.length > 1 ? pathname.replace(/\/+$/, '') : pathname;
 
-  if (path === '/') return null;
+  /*
+   * The results page names itself, because its title *is* the search and that lives in
+   * the query string rather than the path. The home page is an ordinary entry in the
+   * table below, which it was not while it was the results page.
+   */
+  if (path === '/search') return null;
   if (TITLES[path]) return TITLES[path];
 
   for (const [prefix, title] of PREFIXES) {

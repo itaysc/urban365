@@ -7,10 +7,14 @@ describe('titleForPath', () => {
     expect(titleForPath('/app/calendar')).toBe('יומן');
   });
 
-  it('leaves the search page to name itself', () => {
+  it('leaves the results page to name itself', () => {
     // Its title is the search, which lives in the query string — not something a path
     // can work out.
-    expect(titleForPath('/')).toBeNull();
+    expect(titleForPath('/search')).toBeNull();
+  });
+
+  it('names the home page, which is no longer the results page', () => {
+    expect(titleForPath('/')).toBe('נדל״ן למכירה ולהשכרה בישראל');
   });
 
   it('prefers an exact path over a prefix', () => {

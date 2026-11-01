@@ -72,7 +72,7 @@ function searchHref(search: SavedSearch): string {
   if (search.maxPrice !== null) params.set('maxPrice', String(search.maxPrice));
   if (search.minSquareMeter !== null) params.set('minSquareMeter', String(search.minSquareMeter));
 
-  return `/?${params}`;
+  return `/search?${params}`;
 }
 
 /**

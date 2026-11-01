@@ -62,9 +62,9 @@ export function renderFooterLinks(entries: CityEntry[], appUrl: string): string 
   columns.push({
     title: 'חיפוש',
     links: [
-      { href: `${appUrl}/?section=forsale`, text: 'דירות למכירה בכל הארץ' },
-      { href: `${appUrl}/?section=rent`, text: 'דירות להשכרה בכל הארץ' },
-      { href: `${appUrl}/?section=commercial`, text: 'נדל״ן מסחרי' },
+      { href: `${appUrl}/search?section=forsale`, text: 'דירות למכירה בכל הארץ' },
+      { href: `${appUrl}/search?section=rent`, text: 'דירות להשכרה בכל הארץ' },
+      { href: `${appUrl}/search?section=commercial`, text: 'נדל״ן מסחרי' },
       { href: '/nadlan', text: 'מחירים לפי עיר' },
       { href: `${appUrl}/sell/new`, text: 'פרסום נכס' },
     ],

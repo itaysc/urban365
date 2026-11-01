@@ -88,17 +88,17 @@ export function SiteFooter() {
 
           <Column title="חיפוש">
             <li>
-              <Link className={linkClass} to="/?section=forsale">
+              <Link className={linkClass} to="/search?section=forsale">
                 דירות למכירה בכל הארץ
               </Link>
             </li>
             <li>
-              <Link className={linkClass} to="/?section=rent">
+              <Link className={linkClass} to="/search?section=rent">
                 דירות להשכרה בכל הארץ
               </Link>
             </li>
             <li>
-              <Link className={linkClass} to="/?section=commercial">
+              <Link className={linkClass} to="/search?section=commercial">
                 נדל״ן מסחרי
               </Link>
             </li>

@@ -194,6 +194,8 @@ export interface CityLink {
   city: string;
   /** The city's name as it appears in a landing-page URL. */
   slug: string;
+  /** The region it sits in, or null where we could not place it. */
+  district: string | null;
   counts: { forsale: number; rent: number; commercial: number };
 }
 

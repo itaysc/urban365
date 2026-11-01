@@ -356,7 +356,7 @@ export function renderListingPage(
 <p class="headline-price">${esc(money(listing.price, listing.section))}${drop}</p>
 ${badgesFor(listing)}
 ${figures(listing)}
-<a class="cta" href="${esc(`${appUrl}/?listing=${encodeURIComponent(listing.id)}`)}">צפייה בנכס ויצירת קשר</a>
+<a class="cta" href="${esc(`${appUrl}/search?listing=${encodeURIComponent(listing.id)}`)}">צפייה בנכס ויצירת קשר</a>
 ${gallery(images, title)}
 ${describedByTheSeller(listing.description)}
 ${details(listing)}
