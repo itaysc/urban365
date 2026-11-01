@@ -124,26 +124,41 @@ export function LandingPage() {
           לכל עיר דף עם מחירים, פילוח לפי חדרים ושכונות, והנכסים שמוצעים בה כרגע.
         </p>
 
+        {/*
+          Each row carries how many properties are in that city. A column of names
+          alone is a menu; the number is the reason to pick one, and it is the only
+          thing on the card that was not already in the footer.
+        */}
         <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {cities &&
             byRegion(cities).map((region) => (
               <section
                 key={region.name}
-                className="rounded-xl border border-slate-200 bg-white p-4"
+                className="rounded-2xl border border-slate-200/80 bg-white p-5 transition hover:border-slate-300 hover:shadow-md"
               >
-                <h3 className="mb-2 text-sm font-bold text-slate-900">{region.name}</h3>
-                <ul className="flex flex-col gap-1.5">
+                <h3 className="mb-3 flex items-baseline justify-between gap-2 border-b border-slate-100 pb-2.5">
+                  <span className="text-sm font-bold text-slate-900">{region.name}</span>
+                  <span className="text-xs font-normal text-slate-400">
+                    {region.cities.length} ערים
+                  </span>
+                </h3>
+
+                <ul className="-mx-2 flex flex-col">
                   {region.cities.map((city) => (
                     <li key={city.city}>
                       {/*
                         A plain anchor: the city pages are rendered by the API and are
-                        not in this bundle's route table.
+                        not in this bundle's route table. The whole row is the target,
+                        not the three words in it.
                       */}
                       <a
-                        className="text-sm text-slate-600 transition hover:text-blue-700 hover:underline"
+                        className="flex items-baseline justify-between gap-3 rounded-lg px-2 py-1.5 text-sm text-slate-600 transition hover:bg-slate-50 hover:text-blue-700"
                         href={`/nadlan/forsale/${encodeURIComponent(city.slug)}`}
                       >
-                        {city.city}
+                        <span className="truncate">{city.city}</span>
+                        <span className="shrink-0 text-xs tabular-nums text-slate-400">
+                          {total(city)}
+                        </span>
                       </a>
                     </li>
                   ))}

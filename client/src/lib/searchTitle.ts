@@ -1,6 +1,6 @@
 import type { SearchFilters } from '@/types/search';
 
-type Places = Pick<SearchFilters, 'section' | 'city' | 'neighborhood' | 'district'>;
+type Places = Pick<SearchFilters, 'section' | 'city' | 'neighborhood' | 'district' | 'q'>;
 
 /** What is being searched for, as the heading says it. */
 const SECTION_PHRASE: Record<string, string> = {
@@ -43,5 +43,11 @@ export function searchTitle(filters: Places): string {
   if (filters.city.length > 0 || filters.neighborhood.length > 0 || filters.district.length > 0) {
     return `${what} במיקומים שנבחרו`;
   }
+  /*
+   * A free-text search is named too, with a colon rather than the בּ prefix: `q` can
+   * be a street, which reads well as "בסוקולוב", but it can equally be "4 חדרים",
+   * which does not. The colon is right for both.
+   */
+  if (filters.q?.trim()) return `${what}: ${filters.q.trim()}`;
   return what;
 }

@@ -74,3 +74,21 @@ describe('singlePlace', () => {
     expect(singlePlace({ ...base, city: ['חולון', 'בת ים'] })).toBeNull();
   });
 });
+
+describe('searchTitle with a free-text search', () => {
+  const base = { section: 'forsale' as const, city: [], neighborhood: [], district: [] };
+
+  it('names what was typed when no place was chosen', () => {
+    // The hero used to send everything as `q`, so typing "חולון" arrived under
+    // "נדל״ן למכירה" with no city in it at all.
+    expect(searchTitle({ ...base, q: 'סוקולוב' })).toBe('נדל״ן למכירה: סוקולוב');
+  });
+
+  it('prefers the place over the text when both are set', () => {
+    expect(searchTitle({ ...base, city: ['חולון'], q: 'מרפסת' })).toBe('נדל״ן למכירה בחולון');
+  });
+
+  it('ignores a query of only spaces', () => {
+    expect(searchTitle({ ...base, q: '   ' })).toBe('נדל״ן למכירה');
+  });
+});
