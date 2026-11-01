@@ -438,6 +438,89 @@ The tab, the mark and the header now agree: `Urban365`. The word `נדל״ן` el
 `נדל״ן למכירה`, `סוכנויות נדל״ן` — is the ordinary noun for real estate and is left
 alone; only the places using it as the product's *name* were changed.
 
+## City landing pages, robots.txt and sitemap.xml
+
+The client is a static React bundle: ask it for anything and the HTML that comes back is
+an empty `<div id="root">`. Google will usually run the JavaScript and see the page
+eventually; Bing, and most of what now reads the web on somebody's behalf, will not. So
+the pages worth finding are rendered a second time, as HTML, by the server that already
+holds the listings — `server/src/seo/`.
+
+| path | what it is |
+| --- | --- |
+| `/nadlan` | every city we hold listings in, grouped by district |
+| `/nadlan/:section/:city` | one city: medians, a breakdown by rooms, by neighbourhood and by property type, and the listings themselves |
+| `/sitemap.xml` | the index page and every city page with enough listings to be worth reading |
+| `/robots.txt` | what crawlers may have, and where the sitemap is |
+
+`:section` is `forsale`, `rent` or `commercial`. `:city` is the city name with its
+spaces hyphenated and the whole thing percent-encoded — `/nadlan/forsale/בת-ים`. Nothing
+is stored under that slug: the request is matched against the city names the listings
+actually carry, through the same `cityKey` normalisation the search uses, so a feed that
+changes how it spells a place does not 404 the page.
+
+### The one thing to set up
+
+**These paths have to be served from the public domain.** They are rendered by the API,
+which in production is a different origin, and a city page sitting on
+`api.example.com` is a second website competing with the first. Every canonical, every
+sitemap entry and every link into the app is written against `APP_URL` on the assumption
+that the host serving the client proxies them through:
+
+Netlify — in `client/public/_redirects`, **above** the SPA catch-all, which otherwise
+swallows them:
+
+```
+/nadlan/*     https://api.example.com/nadlan/:splat   200
+/sitemap.xml  https://api.example.com/sitemap.xml     200
+/robots.txt   https://api.example.com/robots.txt      200
+/*            /index.html                             200
+```
+
+Vercel — `rewrites` in `vercel.json`, same three paths. Cloudflare Pages does **not**
+proxy to an external origin from `_redirects`; it needs a Pages Function, or the API
+behind the same hostname.
+
+Until that is in place the pages work and can be checked directly on the API origin, but
+nothing links to them from the public domain and the canonicals point at URLs that 404.
+
+### What the pages decide for themselves
+
+* **A thin page is not indexed.** Below six listings a city page carries
+  `noindex,follow` and stays out of the sitemap — `MIN_INDEXABLE` in
+  `seo/render-city.ts`, and the sitemap reads the same constant, because a sitemap
+  offering a page the page itself declines is a contradiction a crawler resolves by
+  trusting neither. The page is still built and served: somebody following a link to a
+  quiet town should find what we have.
+* **A breakdown with nothing to compare is dropped.** A band needs three listings before
+  it gets a row (`MIN_BAND_SUPPORT`), and a table needs either two rows or one row
+  covering less than most of the city — otherwise "by property type" is the headline
+  median printed twice. The meta description is built from the tables that survived, so
+  the snippet never promises a section the page does not have.
+* **Every figure is a median**, never a mean, and the page says in words that these are
+  asking prices on live ads rather than closed deals.
+* **Rent says `לחודש`** on every figure it prints.
+
+### What it costs
+
+One `groupBy` builds the city directory and is cached in memory for ten minutes
+(`seo/cached.ts`); it serves slug resolution, the index page and the sitemap. A city
+page is two indexed reads on top of that and is not cached in the process — the
+responses carry `Cache-Control: public, max-age=300, stale-while-revalidate=3600`, so a
+CDN in front of the public domain means most crawls never reach the application.
+
+The pages carry their own `Content-Security-Policy`, because helmet's default
+`img-src 'self' data:` would blank every listing photograph. Theirs allows images over
+https and nothing else at all — no scripts, no frames, no forms.
+
+### Linking a single property
+
+`/?listing=<id>` on the search page opens that property, the way `/agency/:id?listing=`
+always has. That is what the cards on a city page link to, and it makes a property
+shareable for the first time. It is **not** a page of its own — a crawler sees `/` with
+a parameter — so individual listings are still not indexable. That is the next piece of
+this work, not part of it.
+
 ## Still open
 
 Things that are known to be missing or unfinished, so nobody rediscovers them in
@@ -449,6 +532,14 @@ production.
   them while any remain, and both documents need a lawyer's pass before launch — which
   the banner also says.
 * **No admin queue for flagged listings** (§5).
+* **A single property has no page of its own.** `/?listing=<id>` opens one and is
+  shareable, but to a crawler it is the search page with a parameter, so no property is
+  indexable and none can carry its own title, description or `RealEstateListing`
+  structured data. The city pages link to them anyway, which is as far as this goes
+  without a real route.
+* **The SEO pages are not proxied yet**, because no host has been chosen for the
+  client. Until the three rules in `client/public/_redirects` are live, the city pages
+  exist only on the API origin and their canonicals point at URLs that 404.
 * **Reminders are email only.** Most customers are a phone number, and there is no SMS
   or WhatsApp provider wired up — the calendar says so per meeting rather than failing
   quietly, but those customers have to be rung. The same is true of the request that

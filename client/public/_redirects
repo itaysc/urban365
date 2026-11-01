@@ -1,3 +1,15 @@
-# SPA: every path (e.g. /agency/6816047?listing=…) is served by index.html and
+# The server-rendered pages come first: they are real paths on the public domain, and
+# the SPA catch-all below would otherwise swallow them and answer with index.html.
+#
+# They are rendered by the API (server/src/seo/), which in production is a different
+# origin — so they have to be proxied here, or they end up as a second website on the
+# API's hostname competing with this one. Uncomment and set the host. See PRODUCTION.md,
+# "City landing pages, robots.txt and sitemap.xml".
+#
+# /nadlan/*     https://API-HOST/nadlan/:splat   200
+# /sitemap.xml  https://API-HOST/sitemap.xml     200
+# /robots.txt   https://API-HOST/robots.txt      200
+
+# SPA: every other path (e.g. /agency/6816047?listing=…) is served by index.html and
 # resolved client-side by react-router.
 /*    /index.html   200

@@ -69,10 +69,27 @@ export function SiteHeader({ leading, subtitle, fullWidth = false }: Props) {
             Urban<span className="text-blue-500">365</span>
           </Link>
 
-          {subtitle && (
+          {subtitle ? (
             <span className="hidden border-s border-slate-200 ps-3 text-sm text-slate-500 sm:inline">
               {subtitle}
             </span>
+          ) : (
+            /*
+              The way in to the city pages, and the only link to them from the app.
+              Those pages are rendered by the API rather than by this bundle, so this is
+              a plain anchor: a react-router <Link> would try to resolve /nadlan in the
+              client's own route table and find nothing.
+
+              Only where there is no subtitle, which is the buyer-facing pages. On the
+              agency dashboard the space beside the logo already says which agency you
+              are in, and a third item there reads as a breadcrumb that goes nowhere.
+            */
+            <a
+              href="/nadlan"
+              className="hidden border-s border-slate-200 ps-3 text-sm text-slate-600 transition hover:text-slate-900 sm:inline"
+            >
+              מחירים לפי עיר
+            </a>
           )}
         </div>
 

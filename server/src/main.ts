@@ -66,9 +66,18 @@ async function bootstrap() {
   app.enableCors({ origin: config.corsOrigins, credentials: true });
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
 
-  // Everything is versioned under /api/v1; /health stays at the root so Railway's
-  // healthcheck and uptime probes do not have to track the API version.
-  app.setGlobalPrefix('api/v1', { exclude: ['health'] });
+  /*
+   * Everything is versioned under /api/v1; /health stays at the root so Railway's
+   * healthcheck and uptime probes do not have to track the API version.
+   *
+   * The SEO pages are excluded for a different reason: they are pages, not API
+   * resources. A crawler indexes the URL it was given and keeps it for years, so a
+   * version number in the path would be a promise to break every link one day. See
+   * src/seo/seo.controller.ts.
+   */
+  app.setGlobalPrefix('api/v1', {
+    exclude: ['health', 'robots.txt', 'sitemap.xml', 'nadlan', 'nadlan/:section/:city'],
+  });
 
   app.enableShutdownHooks();
   installShutdownHooks(app);

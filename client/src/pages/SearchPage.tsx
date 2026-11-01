@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { selectClass } from '@/components/ui/Field';
 import { AssetModal } from '@/components/AssetModal';
@@ -34,7 +35,15 @@ export function SearchPage() {
   // rather than in the table the other pages use.
   useDocumentTitle(searchTitle(filters));
   const { status, data, error } = useListingSearch(filters);
-  const [selected, setSelected] = useState<Asset | null>(null);
+  /*
+   * What has been fetched, and which id it was fetched for.
+   *
+   * Kept together so the modal can be derived during render: showing it means "the id
+   * in the URL is the one we hold", which is false while a new one is loading and false
+   * once the parameter is gone. Without the pairing this needed an effect to null it,
+   * and an effect that only corrects state is a render the user can sometimes see.
+   */
+  const [selected, setSelected] = useState<{ id: string; asset: Asset } | null>(null);
   const [loadingToken, setLoadingToken] = useState<string | null>(null);
 
   const [bounds, setBounds] = useState<MapBounds | null>(null);
@@ -58,6 +67,34 @@ export function SearchPage() {
     placeholderData: keepPreviousData,
   });
 
+  /*
+   * Which listing is open lives in the query string, like the filters above it.
+   *
+   * That makes a property a thing you can link to: Back closes the modal instead of
+   * leaving the page, a link in a message opens what the sender was looking at, and the
+   * server-rendered city pages can point at a particular flat rather than at a search
+   * that probably contains it. It is still not a page of its own — the URL is `/` with
+   * a parameter, so a crawler sees one page — but it is the same shape the agency view
+   * has used all along.
+   */
+  const [params, setParams] = useSearchParams();
+  const listingId = params.get('listing');
+
+  const showListing = useCallback(
+    (id: string | null) => {
+      setParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          if (id) next.set('listing', id);
+          else next.delete('listing');
+          return next;
+        },
+        { preventScrollReset: true },
+      );
+    },
+    [setParams],
+  );
+
   // Detail is fetched on demand: the search response carries only what a card needs.
   // Keyed on the id rather than the whole row, because a map pin has only the id —
   // both views then open the identical modal.
@@ -65,15 +102,42 @@ export function SearchPage() {
     setLoadingToken(id);
     try {
       const full = await fetchListing(id);
-      setSelected(full as unknown as Asset);
+      setSelected({ id, asset: full as unknown as Asset });
+      return true;
     } catch {
       setSelected(null);
+      return false;
     } finally {
       setLoadingToken(null);
     }
   }, []);
 
-  const open = useCallback((listing: SearchListing) => void openById(listing.id), [openById]);
+  /*
+   * The URL is what is in charge: a click sets the parameter and this fetches what the
+   * parameter names, so arriving with one in the address bar and clicking a card here
+   * take the identical path. `fetched` stops a re-render re-requesting the same flat.
+   */
+  const fetched = useRef<string | null>(null);
+  useEffect(() => {
+    if (!listingId) {
+      fetched.current = null;
+      return;
+    }
+    if (fetched.current === listingId) return;
+    fetched.current = listingId;
+
+    void openById(listingId).then((ok) => {
+      // A link to something sold, or to an id that never existed. Dropping the
+      // parameter leaves the search behind it rather than an address that lies.
+      if (!ok) showListing(null);
+    });
+  }, [listingId, openById, showListing]);
+
+  const open = useCallback((listing: SearchListing) => showListing(listing.id), [showListing]);
+
+  // Only what the URL currently names, so a closed modal and a half-loaded one both
+  // show nothing rather than the listing before them.
+  const shown = selected?.id === listingId ? selected.asset : null;
 
   // Scroll to the top only when the *page* changes. This used to depend on `status`,
   // which goes to 'done' after any search — so ticking a filter yanked you to the top,
@@ -231,7 +295,7 @@ export function SearchPage() {
                 points={mapData?.points ?? []}
                 offices={mapData?.offices ?? []}
                 boundary={mapData?.boundary}
-                onSelect={(id) => void openById(id)}
+                onSelect={(id) => showListing(id)}
                 onViewportChange={setBounds}
               />
 
@@ -245,7 +309,7 @@ export function SearchPage() {
         </div>
       </div>
 
-      {selected && <AssetModal asset={selected} onClose={() => setSelected(null)} />}
+      {shown && <AssetModal asset={shown} onClose={() => showListing(null)} />}
 
     </div>
   );
