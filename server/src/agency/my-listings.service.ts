@@ -11,6 +11,7 @@ import { TenantPrismaService } from '../tenancy/tenant-prisma.service.js';
 import { GeocodeService } from '../geocode/geocode.service.js';
 import { StorageService } from '../storage/storage.service.js';
 import { can } from '../auth/permissions.js';
+import { dropColumns, priceChange } from '../listings/price-history.js';
 import { EXCLUSIVE_AMENITY } from '../yad2/yad2.transform.js';
 import { duplicateWhere, hasEnoughSignal, type DuplicateCandidate } from './duplicate.js';
 import { listingImageUrl } from './image-url.js';
@@ -97,10 +98,22 @@ export class MyListingsService {
     await this.assertNotDuplicate({ ...existing, ...dto }, existing.id);
     await this.assertSellerIsOurs(dto.sellerCustomerId);
 
+    /*
+     * The price's own record, kept whichever of the three doors a listing came
+     * through — this one, the seller's form, or the scrape. One of them forgetting is
+     * how a history quietly stops being one.
+     */
+    const change = priceChange(existing.id, existing.price, dto.price);
+    const at = new Date();
+    if (change) {
+      await this.prisma.client.listingPriceChange.create({ data: { ...change, changedAt: at } });
+    }
+
     return this.prisma.client.listing.update({
       where: { id: existing.id },
       data: {
         ...this.toData(dto, existing),
+        ...(change ? dropColumns(change, at) : {}),
         ...(await this.locate({ ...existing, ...dto })),
         ...(dto.section ? { section: dto.section } : {}),
         ...(dto.status ? { status: dto.status } : {}),

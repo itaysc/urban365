@@ -242,8 +242,20 @@ model Listing {
 
   // --- the fields search actually filters and sorts on
   price               Int?
+  /// yad2's own "was" figure, straight from their feed. Only a scraped listing has one,
+  /// and only while yad2 chooses to show it — `ListingPriceChange` is ours and is the
+  /// one that covers every listing and keeps every change.
   priceBeforeDrop     Int?
   pricePerSquareMeter Int?
+
+  // ── the most recent drop, kept here as well as in the history ────────────────
+  // A results page badges thirty cards at once and must not ask the history thirty
+  // questions to do it. Written whenever a drop is recorded and cleared when the price
+  // goes back up, because a listing that rose is not a listing on sale.
+
+  /// How much the price came down by, in shekels. Always positive.
+  lastPriceDropAmount Int?
+  lastPriceDropAt     DateTime?
 
   propertyType       String?
   propertyGroup      String?
@@ -324,6 +336,7 @@ model Listing {
   updatedAt DateTime @updatedAt
 
   images      ListingImage[]
+  priceChanges ListingPriceChange[]
   engagements ListingEngagement[]
   leads  Lead[]
   deals  Deal[]
@@ -687,6 +700,33 @@ model AuthToken {
 
 /// Photos an agency uploaded here. Scraped listings keep using Listing.imageUrls,
 /// which are yad2 CDN links and will be retired once agencies upload their own.
+/// Every price a listing has carried.
+///
+/// So that "it came down" is a fact with a date on it rather than a number somebody
+/// remembered. `Listing.priceBeforeDrop` is yad2's version of the same idea and is
+/// neither ours nor complete: it exists only on scraped rows, holds one figure, and
+/// disappears when their feed stops sending it.
+///
+/// Written by every path that can change a price — the scrape, the agency editor and
+/// the seller's own form — so the history does not depend on which of the three a
+/// listing happens to come through.
+model ListingPriceChange {
+  id        String  @id @default(cuid())
+  listing   Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  listingId String
+
+  /// What it was before. Null on the first price ever recorded for this listing, which
+  /// is a beginning rather than a change and is kept so the series has a start.
+  previous Int?
+  /// What it became.
+  price    Int
+
+  changedAt DateTime @default(now())
+
+  /// The only query there is: this listing's prices, newest first.
+  @@index([listingId, changedAt])
+}
+
 model ListingImage {
   id         String   @id @default(cuid())
   listing    Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)

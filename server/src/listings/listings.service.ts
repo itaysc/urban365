@@ -19,6 +19,11 @@ export interface SearchListing {
   section: string;
   price: number | null;
   priceBeforeDrop: number | null;
+  /** How far the price last came down, and when — for the badge on a card. */
+  lastPriceDropAmount: number | null;
+  lastPriceDropAt: string | null;
+  /** When it went on the market, which is what "new" is measured from. */
+  listedAt: string | null;
   pricePerSquareMeter: number | null;
   propertyType: string | null;
   rooms: number | null;
@@ -560,6 +565,16 @@ export class ListingsService {
       section: row.section,
       price: row.price,
       priceBeforeDrop: row.priceBeforeDrop,
+      lastPriceDropAmount: row.lastPriceDropAmount,
+      lastPriceDropAt: row.lastPriceDropAt?.toISOString() ?? null,
+      /*
+       * When it went on the market: what the source says, or when it was published
+       * here. Deliberately **not** `firstSeenAt`, which is when *we* first saw it — on
+       * a bulk import that is the same afternoon for the whole catalogue, and every
+       * card in the country would wear a "new" badge for a week. Null where neither is
+       * known, and a listing we cannot date is not announced as new.
+       */
+      listedAt: (row.listedAt ?? row.publishedAt)?.toISOString() ?? null,
       pricePerSquareMeter: row.pricePerSquareMeter,
       propertyType: row.propertyType,
       rooms: row.rooms,

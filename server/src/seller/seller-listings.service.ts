@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, Logger, NotFoundException } from '@nes
 import { PrismaService } from '../prisma/prisma.service.js';
 import { GeocodeService } from '../geocode/geocode.service.js';
 import { StorageService } from '../storage/storage.service.js';
+import { dropColumns, priceChange } from '../listings/price-history.js';
 import { listingImageUrl } from '../agency/image-url.js';
 import { ListingReviewService } from '../moderation/listing-review.service.js';
 import type { CreateSellerListingDto, SellerListingDto } from './dto/seller-listing.dto.js';
@@ -85,12 +86,20 @@ export class SellerListingsService {
   }
 
   async update(userId: string, id: string, dto: SellerListingDto) {
-    await this.requireOwn(userId, id);
+    const existing = await this.requireOwn(userId, id);
+
+    // The same record the agency editor and the scrape keep; see `price-history.ts`.
+    const change = priceChange(id, existing.price, dto.price);
+    const at = new Date();
+    if (change) {
+      await this.prisma.listingPriceChange.create({ data: { ...change, changedAt: at } });
+    }
 
     return this.prisma.listing.update({
       where: { id },
       data: {
         ...dto,
+        ...(change ? dropColumns(change, at) : {}),
         ...(await this.locate(dto)),
         ...this.pricePerSquareMeter(dto),
       },

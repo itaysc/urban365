@@ -43,6 +43,11 @@ export interface SearchListing {
   section: string;
   price: number | null;
   priceBeforeDrop: number | null;
+  /** How far the price last came down, and when. */
+  lastPriceDropAmount: number | null;
+  lastPriceDropAt: string | null;
+  /** When it went on the market, which is what "new" is measured from. */
+  listedAt: string | null;
   pricePerSquareMeter: number | null;
   propertyType: string | null;
   rooms: number | null;

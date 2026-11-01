@@ -4,6 +4,7 @@ import { PrismaService } from '../prisma/prisma.service.js';
 import { listingRowToAsset } from './listing-row.js';
 import { EXCLUSIVE_AMENITY, toAgencySummary, toAsset, toTeam } from './yad2.transform.js';
 import type { AgencyDump, AgencyResult, Asset, RawListing, Section } from './yad2.types.js';
+import { dropColumns, priceChange } from '../listings/price-history.js';
 
 const toDbSection = (section: Section): DbSection => section as DbSection;
 const asDate = (v: string | undefined | null): Date | null => (v ? new Date(v) : null);
@@ -151,12 +152,62 @@ export class AgencyRepository {
       }
 
       const now = new Date();
+
+      /*
+       * What each of these listings costs today, read before anything is written.
+       *
+       * One query for the batch rather than one per listing: a feed page is fifty
+       * properties and the scrape runs hourly. After the upsert the old price is gone,
+       * so this has to happen first — which is the whole reason the loop below cannot
+       * simply compare as it goes.
+       */
+      const tokens = assets.map(({ asset }) => asset.token);
+      const before = new Map(
+        (
+          await tx.listing.findMany({
+            where: { token: { in: tokens } },
+            select: { id: true, token: true, price: true },
+          })
+        ).map((row) => [row.token as string, row]),
+      );
+
       for (const { asset, item } of assets) {
         const data = this.listingData(asset, item, agency.id, section);
+        const was = before.get(asset.token);
+        const change = was ? priceChange(was.id, was.price, data.price) : null;
+
         await tx.listing.upsert({
           where: { token: asset.token },
           create: { token: asset.token, ...data, firstSeenAt: now, lastSeenAt: now },
-          update: { ...data, lastSeenAt: now },
+          update: {
+            ...data,
+            lastSeenAt: now,
+            ...(change ? dropColumns(change, now) : {}),
+          },
+        });
+
+        if (change) {
+          await tx.listingPriceChange.create({ data: { ...change, changedAt: now } });
+        }
+      }
+
+      /*
+       * A listing we are seeing for the first time gets the price it arrived with as
+       * the start of its series. Done after the upsert because that is when it has an
+       * id, and only for the ones that were not there before.
+       */
+      const fresh = await tx.listing.findMany({
+        where: { token: { in: tokens.filter((t) => !before.has(t)) }, price: { not: null } },
+        select: { id: true, price: true },
+      });
+      if (fresh.length > 0) {
+        await tx.listingPriceChange.createMany({
+          data: fresh.map((row) => ({
+            listingId: row.id,
+            previous: null,
+            price: row.price as number,
+            changedAt: now,
+          })),
         });
       }
 

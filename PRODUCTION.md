@@ -754,6 +754,39 @@ Bucket deletions are best-effort: a storage outage must not leave somebody unabl
 delete their own listing. A failed object is a stray file, which costs storage; a failed
 delete would be a person told no.
 
+## Price history, and the two badges on a card
+
+Every price a listing has carried is kept in `ListingPriceChange` — what it was, what
+it became, and when. Written by all three paths that can move a price: the yad2 scrape,
+the agency editor and a seller's own form. One of them forgetting is how a history
+quietly stops being one, so the decision of what counts as a change lives in one tested
+place, `listings/price-history.ts`, rather than in three `if` statements.
+
+`Listing.priceBeforeDrop` is **not** this. It is yad2's own "was" figure from their
+feed: only on scraped rows, one value, and gone when they stop sending it.
+
+Two denormalised columns, `lastPriceDropAmount` and `lastPriceDropAt`, carry the most
+recent drop beside the listing — a results page badges thirty cards at once and must not
+ask the history thirty questions. **A rise clears them.** A flat that went up is not a
+flat on offer, and a badge saying otherwise costs somebody a viewing.
+
+### The badges
+
+* **`ירידת מחיר -300,000 ₪`** — shown for 30 days after a drop (`DROP_IS_NEWS_FOR_DAYS`).
+* **`חדש!`** — shown for 7 days from `listedAt`, or `publishedAt` where the source gave
+  no date.
+
+Both are time-limited on purpose: a badge that never expires stops being news, and a
+page where half the cards shout has told the reader nothing.
+
+`listedAt` deliberately does **not** fall back to `firstSeenAt`. That is when *we* first
+saw a listing, which on a bulk import is the same afternoon for the entire catalogue —
+every card in the country would wear a "new" badge for a week. A listing we cannot date
+is simply not announced as new.
+
+The rules are in `client/src/lib/listingBadges.ts`, pure and tested, because "is this
+still news" is a judgement that should not be rewritten per card.
+
 ## Still open
 
 Things that are known to be missing or unfinished, so nobody rediscovers them in

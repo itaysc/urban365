@@ -1,7 +1,8 @@
 import { EXCLUSIVE_LABEL, isExclusiveListing } from '@/lib/exclusivity';
 import { SaveButton } from '@/components/SaveButton';
+import { isNew, priceDrop } from '@/lib/listingBadges';
 import { amenityIcon } from '@/components/listing/amenities';
-import { formatAddress, formatPrice } from '@/lib/format';
+import { formatAddress, formatPrice, formatShekel } from '@/lib/format';
 import type { SearchListing } from '@/types/search';
 
 const Spec = ({ label, value }: { label: string; value: string | number | null }) =>
@@ -30,6 +31,10 @@ export function ListingCard({
         : listing.floor;
 
   const exclusive = isExclusiveListing(listing.amenities);
+  // Both time-limited; see `listingBadges`. A page where half the cards shout has
+  // told the reader nothing.
+  const drop = priceDrop(listing);
+  const fresh = isNew(listing);
   // The badge over the photo already says it; the chips list what the property has.
   const amenities = listing.amenities.filter((a) => a !== EXCLUSIVE_LABEL);
 
@@ -64,6 +69,23 @@ export function ListingCard({
           badges facing each other across the photo read as unrelated to one another.
         */}
         <div className="absolute top-2 start-2 flex flex-col items-start gap-1">
+          {/*
+            The drop first: it is the one that changes a decision. Dark green and the
+            figure spelled out, because "ירידת מחיר" without the number is an
+            advertisement and with it is information.
+          */}
+          {drop !== null && (
+            <span className="rounded-md bg-emerald-700 px-2 py-0.5 text-xs font-semibold text-white shadow-sm">
+              ירידת מחיר {formatShekel(-drop)}
+            </span>
+          )}
+
+          {fresh && (
+            <span className="rounded-md bg-amber-200 px-2 py-0.5 text-xs font-bold text-amber-900 shadow-sm">
+              חדש!
+            </span>
+          )}
+
           {exclusive && (
             <span className="rounded-md bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800 shadow-sm">
               {EXCLUSIVE_LABEL}
