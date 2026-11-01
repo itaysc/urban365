@@ -3,7 +3,7 @@ import { AlertsPage } from '@/pages/AlertsPage';
 import { SellerViewingPage } from '@/pages/SellerViewingPage';
 import { ViewingPage } from '@/pages/ViewingPage';
 import { PrivacyPage, TermsPage } from '@/pages/LegalPage';
-import { Navigate, createBrowserRouter } from 'react-router-dom';
+import { Navigate, Outlet, createBrowserRouter } from 'react-router-dom';
 import { RequireAdmin, RequireAuth } from '@/auth/RequireAuth';
 import { HomePage } from '@/pages/HomePage';
 import { SearchPage } from '@/pages/SearchPage';
@@ -32,8 +32,23 @@ import { ListingEditorPage } from '@/pages/app/ListingEditorPage';
 import { ModerationPage } from '@/pages/admin/ModerationPage';
 import { MySalePage } from '@/pages/sell/MySalePage';
 import { PublishPage } from '@/pages/sell/PublishPage';
+import { PageTitle } from '@/components/PageTitle';
 
 export const router = createBrowserRouter([
+  {
+    /*
+      A pathless root, so there is somewhere for things that belong to every route to
+      live. `PageTitle` is the first of them: it needs the router's own location, so it
+      cannot sit outside the provider, and mounting it here means it survives every
+      navigation rather than remounting per page.
+    */
+    element: (
+      <>
+        <PageTitle />
+        <Outlet />
+      </>
+    ),
+    children: [
   // ── public ──────────────────────────────────────────────────────────────────
   // Search is the front door. Filters live in the query string, so a filtered search
   // is shareable.
@@ -135,6 +150,8 @@ export const router = createBrowserRouter([
         element: <AppLayout />,
         children: [{ path: '/admin/moderation', element: <ModerationPage /> }],
       },
+    ],
+  },
     ],
   },
 ]);

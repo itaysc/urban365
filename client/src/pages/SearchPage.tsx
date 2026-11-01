@@ -16,6 +16,7 @@ import { searchTitle } from '@/lib/searchTitle';
 import { SORT_LABELS, SORTS, type SearchListing } from '@/types/search';
 import type { Asset } from '@/types/yad2';
 import { SaveSearchButton } from '@/components/search/SaveSearchButton';
+import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 
 /** Hebrew does not take a numeral before a singular noun here. */
 function resultCount(total: number | undefined): string {
@@ -27,6 +28,11 @@ function resultCount(total: number | undefined): string {
 
 export function SearchPage() {
   const { filters, update, reset, activeCount } = useSearchFilters();
+
+  // The tab says what the page says. This is the one title a route cannot work out on
+  // its own — the search is in the query string, not the path — so it is set here
+  // rather than in the table the other pages use.
+  useDocumentTitle(searchTitle(filters));
   const { status, data, error } = useListingSearch(filters);
   const [selected, setSelected] = useState<Asset | null>(null);
   const [loadingToken, setLoadingToken] = useState<string | null>(null);

@@ -401,6 +401,20 @@ Two ways in: a panel on the agency page, rendered only in a development build, a
 **The server refuses all three routes when `NODE_ENV=production`, and refuses anyone
 but an owner anywhere** — the client's hiding is a convenience, not the protection.
 
+## Tab titles
+
+`PageTitle` sits on a pathless root route and maps the path to a name — one table in
+`lib/pageTitle.ts` rather than a `useDocumentTitle` call in each of two dozen pages,
+because the page that gets forgotten is invisible: a stale tab title looks exactly like
+a page nobody got round to.
+
+The search page is the exception and sets its own, because its title *is* the search —
+`נדל״ן למכירה בחולון` comes from the query string, which a path cannot know. The table
+returns null for `/` so the two never fight over it.
+
+Multi-value filters in a search URL are comma-separated (`?city=חולון,בת ים`); the
+parser reads the first value of a repeated key and ignores the rest.
+
 ## The tab icon
 
 `client/public/favicon.svg` is the source: a blue tile with `U365` in white, drawn as
@@ -464,7 +478,4 @@ production.
   Open-Nagish `support@nadlan.example`, which is the address a visitor is told to write
   to about an accessibility problem — and in Israel that statement is a legal
   requirement rather than a courtesy.
-* **Every page has the same tab title.** Nothing sets `document.title`, so a search for
-  four rooms in Holon, the calendar and a saved-search page are all `Urban365` in a
-  list of bookmarks or open tabs.
 * **No remote.** Everything is committed locally and has never been pushed.

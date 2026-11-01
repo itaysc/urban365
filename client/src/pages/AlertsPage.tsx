@@ -56,8 +56,14 @@ function describe(search: SavedSearch): string {
 function searchHref(search: SavedSearch): string {
   const params = new URLSearchParams();
   if (search.section) params.set('section', search.section);
-  for (const city of search.cities) params.append('city', city);
-  for (const type of search.propertyTypes) params.append('propertyType', type);
+  /*
+    Comma-separated, which is what the search page reads. Appending the key once per
+    value produced `?city=A&city=B`, and the parser takes the first — so a saved search
+    across two cities showed the results for one of them and looked like the search had
+    been saved wrong.
+  */
+  if (search.cities.length > 0) params.set('city', search.cities.join(','));
+  if (search.propertyTypes.length > 0) params.set('propertyType', search.propertyTypes.join(','));
   if (search.minRooms !== null) params.set('minRooms', String(search.minRooms));
   if (search.maxRooms !== null) params.set('maxRooms', String(search.maxRooms));
   if (search.minPrice !== null) params.set('minPrice', String(search.minPrice));
