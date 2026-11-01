@@ -1,9 +1,10 @@
 import { useRef, useState } from 'react';
+import { Trash2 } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { qk } from '@/queries/keys';
 import { useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/Button';
-import { Field, inputClass, selectClass } from '@/components/ui/Field';
+import { Field, inputClass } from '@/components/ui/Field';
 import { useToast } from '@/components/ui/Toast';
 import { errorMessageOf } from '@/lib/apiError';
 import { formatDate, formatPrice } from '@/lib/format';
@@ -20,14 +21,50 @@ import {
 } from '@/services/crm';
 import { PhoneField } from '@/components/ui/PhoneField';
 
-const STATUSES: { value: LeadStatus; label: string }[] = [
-  { value: 'new', label: 'חדשות' },
-  { value: 'contacted', label: 'נוצר קשר' },
-  { value: 'viewing', label: 'ביקור' },
-  { value: 'offer', label: 'הצעה' },
-  { value: 'won', label: 'נסגר' },
-  { value: 'lost', label: 'אבוד' },
-];
+/**
+ * A status, named. One set, used wherever a single enquiry's status is shown.
+ *
+ * These read as the name of a state rather than as a sentence about the enquiry —
+ * `חדש`, not `חדשה` — so nothing here has to agree with the gender of פנייה.
+ */
+const STATUS_LABEL: Record<LeadStatus, string> = {
+  new: 'חדש',
+  contacted: 'נוצר קשר',
+  viewing: 'ביקור',
+  offer: 'הצעה',
+  won: 'נסגר',
+  lost: 'אבוד',
+};
+
+/** The order they happen in, which is the order the filter chips are read in. */
+const STATUS_ORDER: LeadStatus[] = ['new', 'contacted', 'viewing', 'offer', 'won', 'lost'];
+
+/**
+ * What a filter chip says, which is `STATUS_LABEL` except where counting changes it.
+ *
+ * A chip stands for a group — "חדשות (3)" — and only `new` has a plural that differs.
+ * Written as an override rather than a second full list, so a status renamed above is
+ * renamed in both places.
+ */
+const CHIP_LABEL: Partial<Record<LeadStatus, string>> = { new: 'חדשות' };
+
+const chipLabel = (status: LeadStatus) => CHIP_LABEL[status] ?? STATUS_LABEL[status];
+
+/**
+ * The status as a colour, so a page of enquiries can be read without reading it.
+ *
+ * `new` is the only one that is a claim on somebody's time, so it is the only one that
+ * carries the brand's own blue; `lost` is deliberately grey, because a closed enquiry
+ * should recede rather than compete with the three above it that are still live.
+ */
+const STATUS_TINT: Record<LeadStatus, string> = {
+  new: 'border-blue-300 bg-blue-50 text-blue-900',
+  contacted: 'border-indigo-200 bg-indigo-50 text-indigo-900',
+  viewing: 'border-amber-200 bg-amber-50 text-amber-900',
+  offer: 'border-purple-200 bg-purple-50 text-purple-900',
+  won: 'border-green-300 bg-green-50 text-green-900',
+  lost: 'border-slate-200 bg-slate-100 text-slate-500',
+};
 
 const SOURCE_LABEL: Record<Lead['source'], string> = {
   web: 'מהאתר',
@@ -35,7 +72,7 @@ const SOURCE_LABEL: Record<Lead['source'], string> = {
   import: 'יבוא',
 };
 
-const isStatus = (v: string | null): v is LeadStatus => STATUSES.some((s) => s.value === v);
+const isStatus = (v: string | null): v is LeadStatus => STATUS_ORDER.includes(v as LeadStatus);
 
 export function LeadsPage() {
   const toast = useToast();
@@ -47,6 +84,8 @@ export function LeadsPage() {
   const [error, setError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
+  /** The enquiry whose status is in flight, so its control cannot be used twice. */
+  const [busy, setBusy] = useState<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
 
@@ -68,14 +107,24 @@ export function LeadsPage() {
   const reload = () => queryClient.invalidateQueries({ queryKey: qk.leads.all });
 
   const changeStatus = async (lead: Lead, next: LeadStatus) => {
+    setBusy(lead.id);
     try {
       await updateLead(lead.id, { status: next });
-      toast.success('הסטטוס עודכן.');
+      /*
+       * Says where it went, not just that something happened.
+       *
+       * While a filter is on, moving an enquiry out of it takes the row off the screen,
+       * and "הסטטוס עודכן" next to a list that is one shorter reads as a deletion. The
+       * new status named is the difference between a row vanishing and a row moving.
+       */
+      toast.success(`${lead.name} — ${STATUS_LABEL[next]}.`);
       await reload();
     } catch (e) {
       const message = errorMessageOf(e, 'העדכון נכשל.');
       setError(message);
       toast.error(message);
+    } finally {
+      setBusy(null);
     }
   };
 
@@ -170,12 +219,12 @@ export function LeadsPage() {
 
       <div className="flex flex-wrap gap-2">
         <FilterChip label="הכול" active={!status} onClick={() => setParams({}, { replace: true })} />
-        {STATUSES.map((s) => (
+        {STATUS_ORDER.map((value) => (
           <FilterChip
-            key={s.value}
-            label={`${s.label}${counts[s.value] ? ` (${counts[s.value]})` : ''}`}
-            active={status === s.value}
-            onClick={() => setParams({ status: s.value }, { replace: true })}
+            key={value}
+            label={`${chipLabel(value)}${counts[value] ? ` (${counts[value]})` : ''}`}
+            active={status === value}
+            onClick={() => setParams({ status: value }, { replace: true })}
           />
         ))}
       </div>
@@ -207,33 +256,49 @@ export function LeadsPage() {
               </div>
 
               <div className="flex shrink-0 items-center gap-2">
+                {/*
+                  The status chip *is* the control.
+                  
+                  It was a bare dropdown at the foot of the card, which told you nothing
+                  at a glance and did not look like anything you could press — the
+                  status was only legible by reading the one element that could change
+                  it. As a tinted chip up here with the source and the date it can be
+                  scanned down a page of enquiries, and it is still the select it always
+                  was.
+                */}
+                <label className="sr-only" htmlFor={`status-${lead.id}`}>
+                  סטטוס הפנייה של {lead.name}
+                </label>
+                <select
+                  id={`status-${lead.id}`}
+                  disabled={busy === lead.id}
+                  className={`select-chevron cursor-pointer rounded-md border py-1 ps-2 pe-7 text-xs font-medium transition disabled:opacity-50 ${
+                    STATUS_TINT[lead.status]
+                  }`}
+                  value={lead.status}
+                  onChange={(e) => void changeStatus(lead, e.target.value as LeadStatus)}
+                >
+                  {STATUS_ORDER.map((value) => (
+                    <option key={value} value={value}>
+                      {STATUS_LABEL[value]}
+                    </option>
+                  ))}
+                </select>
+
                 <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
                   {SOURCE_LABEL[lead.source]}
                 </span>
                 <span className="text-xs text-slate-400">{formatDate(lead.createdAt)}</span>
+
+                <button
+                  type="button"
+                  aria-label={`מחיקת הפנייה של ${lead.name}`}
+                  className="rounded-lg p-1.5 text-slate-400 transition hover:bg-red-50 hover:text-red-700"
+                  onClick={() => void remove(lead)}
+                >
+                  <Trash2 className="h-4 w-4" aria-hidden />
+                </button>
               </div>
-            </div>
-
-            <div className="mt-2 flex flex-wrap items-center gap-2">
-              <select
-                className={`${selectClass} py-1 text-xs`}
-                value={lead.status}
-                onChange={(e) => void changeStatus(lead, e.target.value as LeadStatus)}
-              >
-                {STATUSES.map((s) => (
-                  <option key={s.value} value={s.value}>
-                    {s.label}
-                  </option>
-                ))}
-              </select>
-
-              <button
-                type="button"
-                className="text-xs text-red-700 hover:underline"
-                onClick={() => void remove(lead)}
-              >
-                מחק
-              </button>
             </div>
           </li>
         ))}
