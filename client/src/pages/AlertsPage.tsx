@@ -135,7 +135,19 @@ export function AlertsPage() {
               className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-slate-200 bg-white p-4"
             >
               <div className="min-w-0 flex-1">
-                <p className="font-semibold text-slate-900">{search.name}</p>
+                {/* State belongs in a chip and the action in the button. Before this
+                    the button carried both and could only manage one: "התראה פעילה"
+                    told you where you stood and not what pressing it would do. */}
+                <p className="flex flex-wrap items-center gap-2 font-semibold text-slate-900">
+                  {search.name}
+                  <span
+                    className={`rounded px-2 py-0.5 text-xs font-normal ${
+                      search.alert ? 'bg-blue-50 text-blue-800' : 'bg-slate-100 text-slate-500'
+                    }`}
+                  >
+                    {search.alert ? 'התראה פעילה' : 'התראה כבויה'}
+                  </span>
+                </p>
                 <p className="mt-1 text-sm text-slate-500">{describe(search)}</p>
 
                 <Link
@@ -151,16 +163,15 @@ export function AlertsPage() {
                   type="button"
                   onClick={() => toggle.mutate({ id: search.id, alert: !search.alert })}
                   disabled={toggle.isPending}
-                  className={`flex items-center gap-1 disabled:opacity-50 ${
-                    search.alert ? 'text-blue-700 hover:underline' : 'text-slate-400 hover:text-slate-700'
-                  }`}
+                  className="flex items-center gap-1 text-blue-700 hover:underline disabled:opacity-50"
                 >
+                  {/* The icon shows what the press leads to, like the words beside it. */}
                   {search.alert ? (
-                    <Bell className="h-4 w-4" aria-hidden />
-                  ) : (
                     <BellOff className="h-4 w-4" aria-hidden />
+                  ) : (
+                    <Bell className="h-4 w-4" aria-hidden />
                   )}
-                  {search.alert ? 'התראה פעילה' : 'התראה כבויה'}
+                  {search.alert ? 'כיבוי ההתראה' : 'הפעלת ההתראה'}
                 </button>
 
                 <button
