@@ -34,6 +34,19 @@ export default defineConfig({
     proxy: {
       '/api': { target: serverTarget, changeOrigin: true },
       '/health': { target: serverTarget, changeOrigin: true },
+      /*
+       * The server-rendered pages, which are real paths on this origin and not routes
+       * in the client's table — so without these the router answers its own 404 and the
+       * header's "מחירים לפי עיר" leads nowhere.
+       *
+       * The same three paths the static host has to proxy in production; see the rules
+       * in public/_redirects and PRODUCTION.md. Keeping dev and production pointed at
+       * the same set is the point: a link that works here and 404s there is the kind of
+       * difference nobody finds until it is live.
+       */
+      '/nadlan': { target: serverTarget, changeOrigin: true },
+      '/sitemap': { target: serverTarget, changeOrigin: true },
+      '/robots.txt': { target: serverTarget, changeOrigin: true },
     },
   },
   build: {

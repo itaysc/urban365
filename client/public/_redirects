@@ -6,9 +6,14 @@
 # API's hostname competing with this one. Uncomment and set the host. See PRODUCTION.md,
 # "City landing pages, robots.txt and sitemap.xml".
 #
-# /nadlan/*     https://API-HOST/nadlan/:splat   200
-# /sitemap.xml  https://API-HOST/sitemap.xml     200
-# /robots.txt   https://API-HOST/robots.txt      200
+# The dev server proxies this same set; see `server.proxy` in vite.config.ts. Change one
+# and change the other, or a link works in dev and 404s in production.
+#
+# /nadlan        https://API-HOST/nadlan                  200
+# /nadlan/*      https://API-HOST/nadlan/:splat           200
+# /sitemap.xml   https://API-HOST/sitemap.xml             200
+# /sitemap-*     https://API-HOST/sitemap-:splat          200
+# /robots.txt    https://API-HOST/robots.txt              200
 
 # SPA: every other path (e.g. /agency/6816047?listing=…) is served by index.html and
 # resolved client-side by react-router.

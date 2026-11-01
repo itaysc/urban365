@@ -502,6 +502,13 @@ behind the same hostname.
 Until that is in place the pages work and can be checked directly on the API origin, but
 nothing links to them from the public domain and the canonicals point at URLs that 404.
 
+**The dev server proxies the same set** — `server.proxy` in `client/vite.config.ts`.
+Change one and change the other: these paths are the only part of the site whose
+routing lives outside the client, so a link that works in dev and 404s in production is
+exactly the mistake they invite. `npm run check:seo -- --base http://localhost:5173`
+runs the audit through the client's origin rather than straight at the API, which is
+the arrangement production will have.
+
 ### What the pages decide for themselves
 
 * **A thin page is not indexed.** Below six listings a city page carries
