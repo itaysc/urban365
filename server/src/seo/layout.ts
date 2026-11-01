@@ -64,7 +64,20 @@ td.num,th.num{font-variant-numeric:tabular-nums;white-space:nowrap}
 .card .price{font-weight:700}
 .card .where{font-size:.875rem;color:#334155}
 .card .facts{font-size:.8125rem;color:#64748b;margin-top:auto}
+.headline-price{font-size:1.5rem;font-weight:700;margin:.25rem 0 0}
+.headline-price .was{margin-inline-start:.625rem;font-size:1rem;font-weight:400;color:#94a3b8;
+  text-decoration:line-through}
+.gallery{list-style:none;padding:0;margin:1.25rem 0 0;display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(14rem,1fr));gap:.5rem}
+.gallery img{width:100%;height:11rem;object-fit:cover;border-radius:.625rem;background:#e2e8f0;
+  display:block}
+/* The first photograph is the one somebody looks at, so it gets the room. */
+.gallery li:first-child{grid-column:1/-1}
+.gallery li:first-child img{height:20rem}
 .chips{list-style:none;padding:0;margin:.5rem 0 0;display:flex;flex-wrap:wrap;gap:.5rem}
+/* The same shape as the link chips, for facts that are not links anywhere. */
+.chips.plain span{display:inline-block;background:#fff;border:1px solid #e2e8f0;
+  border-radius:9999px;padding:.25rem .75rem;font-size:.875rem;color:#334155}
 .chips a{display:inline-block;background:#fff;border:1px solid #cbd5e1;border-radius:9999px;
   padding:.25rem .75rem;font-size:.875rem;text-decoration:none;color:#1e293b}
 .chips a:hover{border-color:#1d4ed8;color:#1d4ed8}

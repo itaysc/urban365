@@ -2,6 +2,7 @@ import type { Section } from '../yad2/yad2.types.js';
 import type { Band } from './stats.js';
 import type { CityListing, CityPage } from './city-page.service.js';
 import { toSlug } from './city-slug.js';
+import { listingPath } from './listing-slug.js';
 import { addressLine, esc, hebrewDate, number, price, priceWords, properties } from './html.js';
 import { breadcrumbs, page } from './layout.js';
 
@@ -209,7 +210,7 @@ function bandTable(
 </table>`;
 }
 
-function card(listing: CityListing, appUrl: string, perMonth: boolean): string {
+function card(listing: CityListing, perMonth: boolean): string {
   const where = addressLine(listing);
   const facts = [
     listing.rooms ? `${number(listing.rooms)} חדרים` : null,
@@ -218,7 +219,15 @@ function card(listing: CityListing, appUrl: string, perMonth: boolean): string {
     listing.propertyType,
   ].filter(Boolean);
 
-  const href = `${appUrl}/?listing=${encodeURIComponent(listing.id)}`;
+  /*
+   * The property's own page, not the app.
+   *
+   * This is the link that makes the set crawlable: a card pointing into the app is a
+   * query parameter on `/`, which to a search engine is the same page every time, so
+   * every city page used to end in thirty-six links to one URL. The listing page then
+   * offers the app itself, for the map, the gallery and the phone number.
+   */
+  const href = listingPath(listing.id, listing);
   const label = where || listing.propertyType || 'נכס';
 
   return `<li class="card">
@@ -312,7 +321,7 @@ export function renderCityPage(data: CityPage, appUrl: string): string {
           ? `${number(data.listings.length)} מתוך ${number(summary.count)} הנכסים, החדשים ביותר תחילה.`
           : 'כל הנכסים שמוצעים כרגע, החדשים ביותר תחילה.',
       )}</p>
-<ul class="cards">${data.listings.map((l) => card(l, appUrl, voice.perMonth)).join('')}</ul>`
+<ul class="cards">${data.listings.map((l) => card(l, voice.perMonth)).join('')}</ul>`
     : '';
 
   const body = `${trail.html}

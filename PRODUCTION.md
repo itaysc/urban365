@@ -450,7 +450,10 @@ holds the listings — `server/src/seo/`.
 | --- | --- |
 | `/nadlan` | every city we hold listings in, grouped by district |
 | `/nadlan/:section/:city` | one city: medians, a breakdown by rooms, by neighbourhood and by property type, and the listings themselves |
-| `/sitemap.xml` | the index page and every city page with enough listings to be worth reading |
+| `/nadlan/property/:slug` | one property: price, photographs, description, details, and others near it |
+| `/sitemap.xml` | an index of the two below |
+| `/sitemap-cities.xml` | the home page, the city index, and every city page worth reading |
+| `/sitemap-listings-N.xml` | the listing pages, five thousand per file, numbered from 1 |
 | `/robots.txt` | what crawlers may have, and where the sitemap is |
 
 `:section` is `forsale`, `rent` or `commercial`. `:city` is the city name with its
@@ -458,6 +461,20 @@ spaces hyphenated and the whole thing percent-encoded — `/nadlan/forsale/בת-
 is stored under that slug: the request is matched against the city names the listings
 actually carry, through the same `cityKey` normalisation the search uses, so a feed that
 changes how it spells a place does not 404 the page.
+
+A property's slug is its address followed by its id —
+`/nadlan/property/סוקולוב-15-חולון-cmvu0ayux0046xzh0ifihzgx6` — and only the last
+segment is ever looked up. A listing whose address is corrected keeps working on the old
+link and is moved to the new one with a 301, so the spelling in somebody's saved link is
+never load-bearing. A bare id redirects the same way.
+
+A listing that has left the market answers **410 Gone**, not 404, with a page that says
+so and offers the others near it: 410 tells a search engine the URL is deliberately
+finished and gets it dropped in one pass instead of re-crawled for weeks.
+
+**No phone number appears on any of these pages.** The app hands one out at a time from
+a rate-limited route behind a button, and a page written for crawlers is exactly where
+that restraint would otherwise be undone. `npm run check:seo` fails if one ever shows up.
 
 ### The one thing to set up
 
@@ -471,10 +488,11 @@ Netlify — in `client/public/_redirects`, **above** the SPA catch-all, which ot
 swallows them:
 
 ```
-/nadlan/*     https://api.example.com/nadlan/:splat   200
-/sitemap.xml  https://api.example.com/sitemap.xml     200
-/robots.txt   https://api.example.com/robots.txt      200
-/*            /index.html                             200
+/nadlan/*        https://api.example.com/nadlan/:splat      200
+/sitemap.xml     https://api.example.com/sitemap.xml        200
+/sitemap-*.xml   https://api.example.com/sitemap-:splat.xml 200
+/robots.txt      https://api.example.com/robots.txt         200
+/*               /index.html                                200
 ```
 
 Vercel — `rewrites` in `vercel.json`, same three paths. Cloudflare Pages does **not**
@@ -515,11 +533,30 @@ https and nothing else at all — no scripts, no frames, no forms.
 
 ### Linking a single property
 
-`/?listing=<id>` on the search page opens that property, the way `/agency/:id?listing=`
-always has. That is what the cards on a city page link to, and it makes a property
-shareable for the first time. It is **not** a page of its own — a crawler sees `/` with
-a parameter — so individual listings are still not indexable. That is the next piece of
-this work, not part of it.
+`/?listing=<id>` on the search page opens that property in the app, the way
+`/agency/:id?listing=` always has. Every listing page offers it as "צפייה בנכס ויצירת
+קשר" — that is where the map, the gallery and the phone number are. The cards on a city
+page link to the listing *page* rather than into the app, because a query parameter on
+`/` is the same URL to a crawler and a city page would otherwise end in thirty-six links
+to one address.
+
+### The check
+
+```bash
+npm run check:seo
+```
+
+Fetches the pages from a running API and reads what a crawler would get: robots.txt and
+the sitemaps agree, every sampled page answers 200 with one `<h1>`, a title and
+description of a sensible length that no other page shares, a canonical on the public
+site, parsing JSON-LD, no JavaScript and no phone number — and that 404, 410 and the
+canonical 301 all behave. `--base` points it somewhere other than localhost, `--sample`
+changes how many pages of each kind it opens.
+
+It is the counterpart of the `check:seo` in foozool-initiatives, which keeps a set of
+constants, a build script and a static sitemap in agreement. There is no second copy of
+the truth to check here — these pages are generated from the database — so this checks
+the output instead.
 
 ## Still open
 
@@ -532,11 +569,6 @@ production.
   them while any remain, and both documents need a lawyer's pass before launch — which
   the banner also says.
 * **No admin queue for flagged listings** (§5).
-* **A single property has no page of its own.** `/?listing=<id>` opens one and is
-  shareable, but to a crawler it is the search page with a parameter, so no property is
-  indexable and none can carry its own title, description or `RealEstateListing`
-  structured data. The city pages link to them anyway, which is as far as this goes
-  without a real route.
 * **The SEO pages are not proxied yet**, because no host has been chosen for the
   client. Until the three rules in `client/public/_redirects` are live, the city pages
   exist only on the API origin and their canonicals point at URLs that 404.

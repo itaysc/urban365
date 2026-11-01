@@ -1,7 +1,7 @@
 {
   "name": "nadlan",
   "version": "1.0.0",
-  "description": "Nadlan — React client and NestJS API",
+  "description": "Nadlan \u2014 React client and NestJS API",
   "license": "ISC",
   "author": "Itay Schmidt",
   "private": true,
@@ -17,6 +17,7 @@
     "build:server": "cd server && npm run build",
     "install:all": "npm install && cd server && npm install && cd ../client && npm install",
     "lint": "cd server && npm run lint && cd ../client && npm run lint",
+    "check:seo": "node scripts/check-seo.mjs",
     "test": "cd server && npm test"
   },
   "engines": {

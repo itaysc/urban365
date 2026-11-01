@@ -76,7 +76,16 @@ async function bootstrap() {
    * src/seo/seo.controller.ts.
    */
   app.setGlobalPrefix('api/v1', {
-    exclude: ['health', 'robots.txt', 'sitemap.xml', 'nadlan', 'nadlan/:section/:city'],
+    exclude: [
+      'health',
+      'robots.txt',
+      'sitemap.xml',
+      'sitemap-cities.xml',
+      'sitemap-listings-:index.xml',
+      'nadlan',
+      'nadlan/property/:slug',
+      'nadlan/:section/:city',
+    ],
   });
 
   app.enableShutdownHooks();
