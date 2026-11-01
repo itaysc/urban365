@@ -2,6 +2,7 @@ import { BadRequestException, ForbiddenException, Injectable, NotFoundException 
 import type { Prisma } from '@prisma/client';
 import { can } from '../auth/permissions.js';
 import { addressOf } from '../calendar/address.js';
+import { PrismaService } from '../prisma/prisma.service.js';
 import { RequestContextService } from '../tenancy/request-context.service.js';
 import { TenantPrismaService } from '../tenancy/tenant-prisma.service.js';
 import { DraftService } from './draft.service.js';
@@ -47,6 +48,8 @@ export class SuggestionsService {
     private readonly prisma: TenantPrismaService,
     private readonly context: RequestContextService,
     private readonly drafts: DraftService,
+    /** For `User`, which the tenant role cannot see. */
+    private readonly owner: PrismaService,
   ) {}
 
   /** The open ones, strongest first. */
@@ -124,7 +127,13 @@ export class SuggestionsService {
       throw new BadRequestException('אין מספיק פרטים כדי לכתוב הודעה.');
     }
 
-    const me = await this.prisma.client.user.findUnique({
+    /*
+     * On the owner client: `User` is invisible to the tenant role, so this read
+     * returned null through the tenant one and the draft went out unsigned. It looked
+     * fine for a while because the model was inventing a name to fill the gap — the
+     * data bug and the hallucination were hiding each other.
+     */
+    const me = await this.owner.user.findUnique({
       where: { id: this.context.getPrincipal()?.userId ?? '' },
       select: { firstName: true },
     });

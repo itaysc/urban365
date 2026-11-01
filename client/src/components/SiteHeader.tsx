@@ -1,7 +1,7 @@
 import { useRef, useState, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Heart, Plus } from 'lucide-react';
+import { Bell, Heart, Plus } from 'lucide-react';
 import { useAuth } from '@/auth/auth-context';
 import { LoginDialog } from '@/components/auth/LoginDialog';
 import { Avatar } from '@/components/ui/Avatar';
@@ -149,6 +149,19 @@ export function SiteHeader({ leading, subtitle, fullWidth = false }: Props) {
             </span>
             <span className="hidden sm:inline">שמורים</span>
           </Link>
+
+          {/* Only signed in: a saved search belongs to an account, unlike a saved
+              listing, which a signed-out browser keeps on its own. Offering it to
+              everybody would be offering a page that can only say "sign in first". */}
+          {user && (
+            <Link
+              to="/alerts"
+              className="flex items-center gap-1.5 text-sm text-slate-600 hover:text-slate-900"
+            >
+              <Bell className="h-5 w-5" aria-hidden />
+              <span className="hidden sm:inline">התראות</span>
+            </Link>
+          )}
 
           {/*
             Signed in, this has to be the account — not a sign-in link. The login page

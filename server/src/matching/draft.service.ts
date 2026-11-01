@@ -35,11 +35,12 @@ The agent knows this person. They have spoken before and the buyer told the agen
 Rules:
 - Hebrew only. 2–3 short sentences, under 50 words. This is a WhatsApp message, not an advertisement.
 - Mention only facts you are given. Never invent a floor, a balcony, a view, a renovation, a parking space or a neighbourhood.
+- Copy the address exactly as it is written in the data, character for character. It is a real street and a real number, and a Hebrew street name that is almost right is wrong — "אחד העם" is not "חת העם".
 - Say briefly why you thought of them — it fits what they asked for. That is what makes it a message rather than a broadcast.
 - End with a light question, such as whether they would like to see it or hear more. Never pressure, never a deadline, never "a rare opportunity".
 - Do NOT know this person's gender. Avoid gendered verbs and adjectives addressed to them. Prefer forms that work either way: "חשבתי עליך", "יש לי משהו שיכול להתאים", "רוצה שנקפוץ לראות?". Greet them by the name you are given and nothing else — no example name in these instructions is a name to use. Never write "מצאתי לך" with a gendered verb aimed at them, and never guess from the name.
 - No emoji. No exclamation marks. No "הזדמנות", "בלעדי", "מחיר מציאה", "חייבים למכור".
-- Sign off with the agent's first name on its own line. Do not add the agency name, a phone number or a link.
+- Do NOT sign the message and do NOT write any name at the end. The agent's own name is added afterwards. Do not add the agency name, a phone number or a link either.
 
 Reply with the message text only — no quotes, no preamble, no explanation.`;
 
@@ -78,7 +79,7 @@ export class DraftService {
       const text = response.data?.trim();
       if (!text) throw new Error('the model returned nothing');
 
-      return this.tidy(text);
+      return this.sign(this.tidy(text), request.agentName.split(' ')[0]);
     } catch (error) {
       this.logger.error(`Draft failed: ${(error as Error).message}`);
       throw new ServiceUnavailableException('לא הצלחנו לכתוב טיוטה. אפשר לנסות שוב.');
@@ -95,7 +96,10 @@ export class DraftService {
     if (request.squareMeter !== null) property.squareMeters = request.squareMeter;
 
     return {
-      agentFirstName: request.agentName.split(' ')[0],
+      // The agent's own name is deliberately absent. Given one, the model signed with
+      // a different name every time — ליאון, אורן, רן — none of them the agent's. It
+      // cannot misuse what it is never told, and the real name is appended afterwards
+      // from the record rather than generated from anything.
       agencyName: request.agencyName,
       buyerFirstName: request.customerFirstName,
       property,
@@ -113,5 +117,30 @@ export class DraftService {
   private tidy(text: string): string {
     const withoutPreamble = text.replace(/^[^\n]*:\s*\n+(?=[^\n])/u, '');
     return withoutPreamble.replace(/^["'״׳]+|["'״׳]+$/gu, '').trim();
+  }
+
+  /**
+   * The agent's own name at the bottom, from the record rather than from the model.
+   *
+   * Told the agent's name, the model signed with somebody else's — a different
+   * invented name on every draft. So it is no longer told, and any name it signs
+   * anyway is removed here before the real one is added: a short last line with no
+   * sentence punctuation is a signature, and a sentence is not.
+   *
+   * An agent with no first name on their record gets no signature rather than an
+   * empty line, because a message that ends in whitespace looks unfinished.
+   */
+  private sign(text: string, firstName: string): string {
+    const lines = text.split('\n').map((line) => line.trim());
+    while (lines.length > 0 && lines[lines.length - 1] === '') lines.pop();
+
+    const last = lines[lines.length - 1] ?? '';
+    const looksLikeSignature = last.length > 0 && last.length <= 20 && !/[.!?،,:]$/u.test(last);
+    if (looksLikeSignature && lines.length > 1) lines.pop();
+
+    while (lines.length > 0 && lines[lines.length - 1] === '') lines.pop();
+
+    const body = lines.join('\n').trim();
+    return firstName ? `${body}\n\n${firstName}` : body;
   }
 }

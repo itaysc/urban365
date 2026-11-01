@@ -342,6 +342,25 @@ drawn only from the weeks that had leads hides the dry month somebody opened it 
 
 The charts are divs, not a library — a dozen bars with no axes, no zoom and no legend.
 
+## Saved searches and buyer alerts
+
+A buyer saves the search they just ran — the public search's own filters, so the email
+can link back to exactly it — and `AlertsService` emails them when a new listing fits.
+It uses the same `matchBrief` the agency side uses on a customer's brief, deliberately:
+two implementations of "4 rooms in Holon up to 2.4m" would disagree within a month.
+
+Three separate pieces of state, each doing one job. `alert` is whether to write at all,
+so a search can be kept and silent. `lastAlertAt` caps it at one email a day. And
+`notifiedUpTo` is what "new" is measured against — a watermark advanced to the newest
+listing *scanned*, not the newest that matched, so the window stays bounded and nothing
+is skipped. It starts at the moment the search is saved, so a new alert does not open
+with the back catalogue. A failed send puts all of it back.
+
+Alerts only go out between 08:00 and 21:00 Israel time. Not everything a filter bar
+offers survives into an alert — free text, neighbourhoods, amenities and districts have
+no column the matcher compares — and the save panel names what it is dropping rather
+than discarding it quietly.
+
 ## Demo data (development only)
 
 `DemoService` fills an agency with eight customers, eight listings, five leads and six
@@ -391,12 +410,9 @@ production.
 * **Matching only sees the agency's own inventory.** A customer who fits another
   agency's listing is the co-brokerage case, and it is a product decision about what an
   agency's customer list is worth to somebody else, not a line to change quietly.
-* **The OpenAI key in `.env` is rejected (401).** Drafting returns a plain "try again"
-  and the radar is otherwise unaffected. The same key feeds the private-seller spam
-  check, which is built to publish when the model cannot be reached — so until the key
-  is replaced, listings are very likely going out unchecked without anything in the UI
-  saying so.
-* **The drafts' wording has never been read.** The plumbing is tested against a stubbed
-  model; the prompt itself has not run against a real one, for the reason above. It
-  wants a look at a dozen real drafts before anybody sends one.
+* **A draft can still garble a Hebrew proper noun.** Reading real output caught the
+  model writing `חת העם` for `אחד העם`; the instruction now says to copy the address
+  character for character and it stopped, but nothing *enforces* it. The agent reads
+  the draft before sending, which is the backstop — and the reason nothing is sent
+  automatically.
 * **No remote.** Everything is committed locally and has never been pushed.

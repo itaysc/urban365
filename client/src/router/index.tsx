@@ -1,4 +1,5 @@
 import { SavedPage } from '@/pages/SavedPage';
+import { AlertsPage } from '@/pages/AlertsPage';
 import { SellerViewingPage } from '@/pages/SellerViewingPage';
 import { ViewingPage } from '@/pages/ViewingPage';
 import { PrivacyPage, TermsPage } from '@/pages/LegalPage';
@@ -48,6 +49,7 @@ export const router = createBrowserRouter([
   // Buyers are most people, so they get the short paths. The agency sign-in is a link
   // from them rather than the other way round — the same arrangement yad2 uses.
   { path: '/saved', element: <SavedPage /> },
+  { path: '/alerts', element: <AlertsPage /> },
   // Where a viewing email lands. Public: the customer has never signed in, and the
   // token in the path is the whole of the authorisation.
   // Two segments, so it cannot be mistaken for a buyer's token — and the two links are

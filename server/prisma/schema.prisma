@@ -442,6 +442,7 @@ model User {
   coBrokeRequested  CoBrokerageRequest[] @relation("CoBrokeRequester")
   coBrokeResponded  CoBrokerageRequest[] @relation("CoBrokeResponder")
   coBrokeMessages   CoBrokerageMessage[] @relation("CoBrokeMessageAuthor")
+  savedSearches     SavedSearch[]
   meetingFeedback   Meeting[]          @relation("MeetingFeedbackAuthor")
   googleCalendar    GoogleCalendarAccount?
   ownedDeals       Deal[]             @relation("DealOwner")
@@ -1378,4 +1379,52 @@ enum CoBrokerageStatus {
   declined
   /// The asking agency changed its mind before an answer came.
   withdrawn
+}
+
+/// A search somebody wants to be told about.
+///
+/// The criteria are the public search's own filters rather than a new vocabulary, so
+/// "alert me about this" is the search they just ran and the email can link back to
+/// exactly it. The agency side already works this way — `Customer`'s brief is stored in
+/// the same shape — and the matching code is shared between them.
+model SavedSearch {
+  id     String @id @default(cuid())
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+
+  /// What they called it. "4 חדרים בחולון" is a better subject line than a filter list.
+  name String
+
+  // ── the criteria ────────────────────────────────────────────────────────────
+  section        Section?
+  cities         String[]
+  propertyTypes  String[]
+  minRooms       Float?
+  maxRooms       Float?
+  minPrice       Int?
+  maxPrice       Int?
+  minSquareMeter Int?
+
+  /// Whether to email at all. Off leaves the search saved and silent, which is a thing
+  /// people want: the list is useful without the post.
+  alert Boolean @default(true)
+
+  /// When we last wrote to them, which is also what stops two emails in one day.
+  lastAlertAt DateTime?
+
+  /// The newest listing we have already told them about.
+  ///
+  /// "New" is measured against this rather than against `lastAlertAt`, so a sweep that
+  /// was late or an email that failed skips nothing — and so a search saved today does
+  /// not open with the entire back catalogue, because this starts at the moment it was
+  /// created.
+  notifiedUpTo DateTime @default(now())
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  /// Theirs, newest first — the only query the account page makes.
+  @@index([userId, createdAt])
+  /// And the sweep's: everyone who wants an email.
+  @@index([alert, lastAlertAt])
 }

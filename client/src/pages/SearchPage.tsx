@@ -15,6 +15,7 @@ import { fetchSavedAmong } from '@/services/saved';
 import { searchTitle } from '@/lib/searchTitle';
 import { SORT_LABELS, SORTS, type SearchListing } from '@/types/search';
 import type { Asset } from '@/types/yad2';
+import { SaveSearchButton } from '@/components/search/SaveSearchButton';
 
 /** Hebrew does not take a numeral before a singular noun here. */
 function resultCount(total: number | undefined): string {
@@ -118,7 +119,13 @@ export function SearchPage() {
             <p className="text-sm text-slate-500">{resultCount(data?.total)}</p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-start gap-3">
+            {/* Beside the sort rather than in the filter bar: the alert is for the
+                search they ran, and the bar holds a draft they have not committed. */}
+            <div className="flex flex-col">
+              <SaveSearchButton filters={filters} />
+            </div>
+
             <select
               value={filters.sort}
               onChange={(e) => update({ sort: e.target.value as (typeof SORTS)[number] })}

@@ -87,6 +87,8 @@ export const qk = {
 
   overview: ['overview'] as const,
 
+  searches: ['saved-searches'] as const,
+
   deals: {
     all: ['deals'] as const,
     board: ['deals', 'board'] as const,

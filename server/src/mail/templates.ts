@@ -307,3 +307,68 @@ export const coBrokerageUpdateTemplate = (params: {
     ),
   };
 };
+
+/** One listing in an alert: enough to decide whether to open the link. */
+export interface AlertListing {
+  address: string;
+  rooms: number | null;
+  price: number | null;
+  squareMeter: number | null;
+}
+
+/**
+ * To a buyer, when something they asked about appears.
+ *
+ * Named after their own search, because that is what they will recognise — "4 חדרים
+ * בחולון" means something to them and a list of filters does not. The link goes to the
+ * saved searches page rather than to one listing: they asked about a search, and the
+ * one that interests them may be the third.
+ */
+export const savedSearchAlertTemplate = (params: {
+  firstName: string;
+  searchName: string;
+  listings: AlertListing[];
+  more: number;
+  appUrl: string;
+}) => {
+  const line = (l: AlertListing) =>
+    [
+      l.rooms !== null ? `${l.rooms} חדרים` : null,
+      l.squareMeter !== null ? `${l.squareMeter} מ״ר` : null,
+      l.price !== null ? `${l.price.toLocaleString('he-IL')} ₪` : null,
+    ]
+      .filter(Boolean)
+      .join(' · ');
+
+  return {
+    subject:
+      params.listings.length === 1
+        ? `נכס חדש שמתאים ל"${escape(params.searchName)}"`
+        : `${params.listings.length + params.more} נכסים חדשים שמתאימים ל"${escape(params.searchName)}"`,
+    html: shell(
+      `שלום ${escape(params.firstName)},`,
+      `<p style="color:#334155;line-height:1.6">
+         נכנסו נכסים חדשים שמתאימים לחיפוש השמור שלכם —
+         <strong>${escape(params.searchName)}</strong>.
+       </p>
+       ${params.listings
+         .map(
+           (l) => `
+         <div style="border-right:3px solid #3b82f6;padding-right:12px;margin:16px 0">
+           <p style="margin:0;color:#0f172a;font-weight:600">${escape(l.address)}</p>
+           <p style="margin:2px 0 0;color:#475569;font-size:14px">${escape(line(l))}</p>
+         </div>`,
+         )
+         .join('')}
+       ${
+         params.more > 0
+           ? `<p style="color:#64748b;font-size:14px">ועוד ${params.more} באתר.</p>`
+           : ''
+       }
+       ${button(`${params.appUrl}/alerts`, 'לחיפושים השמורים')}
+       <p style="font-size:12px;color:#94a3b8">
+         אפשר לכבות את ההתראה או למחוק את החיפוש באותו עמוד.
+       </p>`,
+    ),
+  };
+};

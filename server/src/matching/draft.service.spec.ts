@@ -47,11 +47,34 @@ describe('DraftService', () => {
     expect(params.systemMsg).not.toContain('אלמוג');
   });
 
-  it('gives the agent first name only, which is how people sign a text', async () => {
+  it('never tells the model the agent name', async () => {
+    // Given one, it signed with a different invented name on every draft. It cannot
+    // misuse what it is never told.
     await service.write(REQUEST);
 
-    const [params] = ask.mock.calls[0] as [{ prompt: string }];
-    expect((JSON.parse(params.prompt) as { agentFirstName: string }).agentFirstName).toBe('יעל');
+    const [params] = ask.mock.calls[0] as [{ prompt: string; systemMsg: string }];
+    expect(params.prompt).not.toContain('יעל');
+    expect(params.systemMsg).not.toContain('יעל');
+  });
+
+  it('signs with the agent own name, from the record', async () => {
+    const text = await service.write(REQUEST);
+    expect(text.endsWith('\n\nיעל')).toBe(true);
+  });
+
+  it('removes a name the model signed anyway', async () => {
+    const llm = fakeLlm('שלום, נכנסה דירה חדשה שיכולה להתאים.\n\nאורן');
+    const text = await new DraftService(llm.service).write(REQUEST);
+
+    expect(text).not.toContain('אורן');
+    expect(text).toContain('יעל');
+  });
+
+  it('does not mistake a closing sentence for a signature', async () => {
+    const llm = fakeLlm('שלום, יש לי משהו בשבילך.\nרוצה שנקפוץ לראות?');
+    const text = await new DraftService(llm.service).write(REQUEST);
+
+    expect(text).toContain('רוצה שנקפוץ לראות?');
   });
 
   it('leaves out what nobody filled in rather than describing it as missing', async () => {
@@ -69,21 +92,21 @@ describe('DraftService', () => {
     const llm = fakeLlm('"שלום דני, יש לי משהו בשבילך."');
     const text = await new DraftService(llm.service).write(REQUEST);
 
-    expect(text).toBe('שלום דני, יש לי משהו בשבילך.');
+    expect(text).toBe('שלום דני, יש לי משהו בשבילך.\n\nיעל');
   });
 
   it('strips a preamble line before the message', async () => {
     const llm = fakeLlm('הנה ההודעה:\n\nשלום דני, נכנסה דירה חדשה.');
     const text = await new DraftService(llm.service).write(REQUEST);
 
-    expect(text).toBe('שלום דני, נכנסה דירה חדשה.');
+    expect(text).toBe('שלום דני, נכנסה דירה חדשה.\n\nיעל');
   });
 
   it('keeps a colon inside the message itself', async () => {
     const llm = fakeLlm('שלום דני, שתי אפשרויות: רביעי או חמישי.');
     const text = await new DraftService(llm.service).write(REQUEST);
 
-    expect(text).toBe('שלום דני, שתי אפשרויות: רביעי או חמישי.');
+    expect(text).toBe('שלום דני, שתי אפשרויות: רביעי או חמישי.\n\nיעל');
   });
 
   it('says so when there is no key, rather than returning a template', async () => {
