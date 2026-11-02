@@ -1,7 +1,20 @@
 import { Link } from 'react-router-dom';
-import { PRIVACY, TERMS, type LegalDocument } from '@/content/legal';
+import { ACCESSIBILITY, PRIVACY, TERMS, type LegalDocument } from '@/content/legal';
 import { SiteFooter } from '@/components/SiteFooter';
 import { SiteHeader } from '@/components/SiteHeader';
+
+/**
+ * The three documents and where they live.
+ *
+ * One list rather than a condition per page: the foot of each document offers the
+ * other two, and with three of them "the other one" stopped being a thing a ternary
+ * could express — it had already started sending the privacy policy to itself.
+ */
+const DOCUMENTS: { doc: LegalDocument; to: string; label: string }[] = [
+  { doc: TERMS, to: '/terms', label: 'תנאי השימוש' },
+  { doc: PRIVACY, to: '/policy', label: 'מדיניות הפרטיות' },
+  { doc: ACCESSIBILITY, to: '/accessibility', label: 'הצהרת הנגישות' },
+];
 
 /** Anything still in `[[…]]` is a blank the business has to fill before this goes live. */
 const PLACEHOLDER = /\[\[[^\]]+\]\]/g;
@@ -42,8 +55,8 @@ function Document({ doc }: { doc: LegalDocument }) {
 
         {unfilled > 0 && (
           <p className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-            טיוטה. נותרו {unfilled} פרטים להשלמה (מסומנים ברקע צהוב), והמסמך טעון בדיקה
-            משפטית לפני פרסום.
+            טיוטה. נותרו {unfilled} פרטים להשלמה (מסומנים ברקע צהוב), והמסמך טעון{' '}
+            {doc.review ?? 'בדיקה משפטית'} לפני פרסום.
           </p>
         )}
 
@@ -71,10 +84,12 @@ function Document({ doc }: { doc: LegalDocument }) {
           </section>
         ))}
 
-        <footer className="border-t border-slate-200 pt-4 text-sm text-slate-500">
-          <Link to={doc === TERMS ? '/policy' : '/terms'} className="text-blue-700 hover:underline">
-            {doc === TERMS ? 'מדיניות הפרטיות' : 'תנאי השימוש'}
-          </Link>
+        <footer className="flex flex-wrap gap-x-4 gap-y-2 border-t border-slate-200 pt-4 text-sm text-slate-500">
+          {DOCUMENTS.filter((entry) => entry.doc !== doc).map((entry) => (
+            <Link key={entry.to} to={entry.to} className="text-blue-700 hover:underline">
+              {entry.label}
+            </Link>
+          ))}
         </footer>
       </div>
 
@@ -89,4 +104,8 @@ export function TermsPage() {
 
 export function PrivacyPage() {
   return <Document doc={PRIVACY} />;
+}
+
+export function AccessibilityPage() {
+  return <Document doc={ACCESSIBILITY} />;
 }

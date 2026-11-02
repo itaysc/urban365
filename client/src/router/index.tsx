@@ -2,7 +2,7 @@ import { SavedPage } from '@/pages/SavedPage';
 import { AlertsPage } from '@/pages/AlertsPage';
 import { SellerViewingPage } from '@/pages/SellerViewingPage';
 import { ViewingPage } from '@/pages/ViewingPage';
-import { PrivacyPage, TermsPage } from '@/pages/LegalPage';
+import { AccessibilityPage, PrivacyPage, TermsPage } from '@/pages/LegalPage';
 import { Navigate, Outlet, createBrowserRouter } from 'react-router-dom';
 import { RequireAdmin, RequireAuth } from '@/auth/RequireAuth';
 import { HomePage } from '@/pages/HomePage';
@@ -83,6 +83,12 @@ export const router = createBrowserRouter([
   { path: '/viewing/:token', element: <ViewingPage /> },
   { path: '/terms', element: <TermsPage /> },
   { path: '/policy', element: <PrivacyPage /> },
+  /*
+    Linked from the foot of every page and from the accessibility toolbar's own button,
+    both of which pointed here while there was no route — so the regulations' statement
+    was a blank screen.
+  */
+  { path: '/accessibility', element: <AccessibilityPage /> },
   // The earlier spelling, kept so links already in the wild still land somewhere.
   { path: '/privacy', element: <Navigate to="/policy" replace /> },
   { path: '/login', element: <AccountLoginPage /> },
