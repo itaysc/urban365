@@ -37,7 +37,7 @@ type Mode = 'payment' | 'budget' | 'household';
 const TAB: Record<Mode, string> = {
   payment: 'מה יהיה ההחזר החודשי',
   budget: 'איזו דירה אפשר לקנות',
-  household: 'כמה החזר באמת מתאים',
+  household: 'כמה החזר מתאים לי',
 };
 
 /**

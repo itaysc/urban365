@@ -114,7 +114,7 @@ export function HouseholdPlanner({
 
   return (
     <section className="mt-5 rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-6">
-      <h2 className="text-lg font-bold text-slate-900">כמה החזר באמת מתאים לכם?</h2>
+      <h2 className="text-lg font-bold text-slate-900">כמה החזר באמת מתאים לי?</h2>
       <p className="mt-1 max-w-3xl text-sm leading-relaxed text-slate-600">
         הבנק שואל אם ההחזר נכנס ב־40% מההכנסה. הוא לא שואל מה שאר הכסף כבר עושה. כאן
         ממלאים את ההוצאות האמיתיות של הבית, ומקבלים את הסכום שנשאר — ומה יקרה לו כשהבית
