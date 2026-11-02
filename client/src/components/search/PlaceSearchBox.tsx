@@ -25,6 +25,15 @@ const MIN_TERM = 2;
 interface Props {
   filters: SearchFilters;
   update: (patch: Partial<SearchFilters>) => void;
+  /**
+   * `hero` drops the border and grows the text, so the box can *be* the home page's
+   * search pill rather than sit as a second pill inside it. Everything else — the
+   * suggestions, the recent places, the geolocation, the arrow keys — is the same
+   * component, which is the point: two boxes that behaved almost alike would be worse
+   * than one that behaves one way.
+   */
+  tone?: 'default' | 'hero';
+  placeholder?: string;
 }
 
 /** A chosen place, flattened so the chip row does not care which list it came from. */
@@ -34,7 +43,7 @@ interface Chosen {
   label: string;
 }
 
-export function PlaceSearchBox({ filters, update }: Props) {
+export function PlaceSearchBox({ filters, update, tone = 'default', placeholder }: Props) {
   const [term, setTerm] = useState('');
   const [open, setOpen] = useState(false);
   const [highlighted, setHighlighted] = useState(0);
@@ -263,8 +272,17 @@ export function PlaceSearchBox({ filters, update }: Props) {
 
   return (
     <div ref={box} className="relative">
-      <div className="flex items-center gap-2 rounded-full border border-slate-300 bg-white px-4 py-2.5 focus-within:border-slate-400">
-        <MapPin className="h-4 w-4 shrink-0 text-slate-400" aria-hidden />
+      <div
+        className={
+          tone === 'hero'
+            ? 'flex items-center gap-2 bg-transparent px-3'
+            : 'flex items-center gap-2 rounded-full border border-slate-300 bg-white px-4 py-2.5 focus-within:border-slate-400'
+        }
+      >
+        <MapPin
+          className={`shrink-0 text-slate-400 ${tone === 'hero' ? 'h-5 w-5' : 'h-4 w-4'}`}
+          aria-hidden
+        />
         <input
           value={term}
           onChange={(e) => {
@@ -273,12 +291,16 @@ export function PlaceSearchBox({ filters, update }: Props) {
           }}
           onFocus={() => setOpen(true)}
           onKeyDown={onKeyDown}
-          placeholder={chosen.length > 0 ? `${chosen.length} מיקומים נבחרו` : 'עיר או שכונה'}
+          placeholder={
+            chosen.length > 0 ? `${chosen.length} מיקומים נבחרו` : (placeholder ?? 'עיר או שכונה')
+          }
           aria-label="חיפוש לפי מיקום"
           role="combobox"
           aria-expanded={open}
           aria-controls="place-suggestions"
-          className="w-full bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-400"
+          className={`w-full bg-transparent text-slate-900 outline-none placeholder:text-slate-400 ${
+            tone === 'hero' ? 'py-3 text-base' : 'text-sm'
+          }`}
         />
       </div>
 

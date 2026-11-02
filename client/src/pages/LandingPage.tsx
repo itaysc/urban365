@@ -91,7 +91,13 @@ export function LandingPage() {
     <div className="min-h-screen bg-slate-50">
       <SiteHeader />
 
-      <section className="relative isolate overflow-hidden">
+      {/*
+        No `overflow-hidden`: the suggestion dropdown hangs below the search box and
+        past the foot of the hero, and hiding the overflow cut it in half. The cover
+        does not need the clip — `absolute inset-0 object-cover` already fits it to
+        this box exactly.
+      */}
+      <section className="relative isolate">
         <img
           src={COVER_URL}
           alt=""
