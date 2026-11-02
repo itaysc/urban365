@@ -54,6 +54,22 @@ export const totalOutgoings = (o: Outgoings): number =>
  */
 export const DEFAULT_BUFFER_SHARE = 0.1;
 
+/**
+ * How much more expensive living here gets each year.
+ *
+ * The geometric mean of Israel's annual CPI inflation over the ten years 2016–2025,
+ * from the World Bank's series (indicator FP.CPI.TOTL.ZG): −0.54, 0.25, 0.81, 0.82,
+ * −0.58, 1.48, 4.41, 4.23, 3.07, 3.04. That compounds to 18.2% over the decade, or
+ * 1.68% a year. Geometric rather than the arithmetic 1.70%, because this is applied
+ * by compounding and the arithmetic mean of a compounding series overstates it.
+ *
+ * It is a real figure rather than a guess, which is why it is here at all — but it
+ * is an average of an unusual decade, holding both two years of falling prices and
+ * the 2022 spike. It is the opening value of a slider, not a forecast, and a
+ * household that believes something else should say so.
+ */
+export const DEFAULT_COST_GROWTH = 1.7;
+
 export interface Household {
   /** Net, monthly, everything that arrives. */
   netIncome: number;
@@ -66,6 +82,8 @@ export interface Household {
   plannedChildCost: number;
   /** Expected annual pay rise, as a percentage. */
   salaryGrowth: number;
+  /** How fast the outgoings grow each year, as a percentage. */
+  costGrowth: number;
   /** The share of net income to keep out of the repayment. */
   bufferShare: number;
 }
@@ -118,18 +136,22 @@ export interface Horizon {
  * year the household changes shape. Only the changes the household has actually named
  * are modelled: a child they are planning, and a rise they expect.
  *
- * **The outgoings are held flat** in every row but the child's. They will not be —
- * everything costs more in ten years — and pretending to know by how much would mean
- * inventing an inflation rate and compounding it over somebody's groceries. A row
- * that only grows the income is optimistic, and the page says so rather than hiding
- * the assumption in a number.
+ * Both sides move. The outgoings used to be held flat, which made every row
+ * flattering in exactly the place people plan from: a salary growing at 3% against
+ * groceries frozen at today's price turned a year-five surplus of 2,400 into 5,478.
+ * They now compound at `costGrowth`, which opens on a decade of actual Israeli CPI
+ * rather than on a number this file made up — and which the household can change,
+ * including to zero if they want the old behaviour back.
+ *
+ * A planned child's cost is given in today's money and inflated to the year it
+ * starts, like everything else.
  */
 export function horizons(h: Household, repayment: number): Horizon[] {
   const base = totalOutgoings(h.outgoings);
 
   const at = (inYears: number, reason: Horizon['reason'], extra = 0): Horizon => {
     const income = grown(h.netIncome, h.salaryGrowth, inYears);
-    const outgoings = base + extra;
+    const outgoings = grown(base + extra, h.costGrowth, inYears);
     const disposable = income - outgoings;
 
     return {

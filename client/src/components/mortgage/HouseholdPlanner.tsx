@@ -7,6 +7,7 @@ import {
   advise,
   childNotes,
   DEFAULT_BUFFER_SHARE,
+  DEFAULT_COST_GROWTH,
   horizons,
   NO_OUTGOINGS,
   OUTGOING_LABELS,
@@ -75,6 +76,7 @@ export function HouseholdPlanner({
   const [plannedChildIn, setPlannedChildIn] = useState(2);
   const [plannedChildCost, setPlannedChildCost] = useState(0);
   const [salaryGrowth, setSalaryGrowth] = useState(0);
+  const [costGrowth, setCostGrowth] = useState(DEFAULT_COST_GROWTH);
   const [bufferShare, setBufferShare] = useState(DEFAULT_BUFFER_SHARE);
 
   const household: Household = {
@@ -86,6 +88,7 @@ export function HouseholdPlanner({
     plannedChildIn: planning ? plannedChildIn : null,
     plannedChildCost: planning ? plannedChildCost : 0,
     salaryGrowth,
+    costGrowth,
     bufferShare,
   };
 
@@ -257,6 +260,22 @@ export function HouseholdPlanner({
           />
 
           <Slide
+            id="cost-growth"
+            label="התייקרות שנתית של ההוצאות"
+            value={costGrowth}
+            onChange={setCostGrowth}
+            min={0}
+            max={6}
+            step={0.1}
+            format={(v) => `${v.toFixed(1)}%`}
+          />
+          <p className="-mt-2 text-xs leading-relaxed text-slate-500">
+            פותח על {DEFAULT_COST_GROWTH}% — הממוצע השנתי של מדד המחירים לצרכן בישראל
+            בעשור 2016–2025 לפי נתוני הבנק העולמי, עשור שכולל גם שנתיים של ירידת מחירים
+            וגם את הזינוק של 2022. אפשר לשנות, ואפס משאיר את ההוצאות קפואות.
+          </p>
+
+          <Slide
             id="buffer"
             label="כרית ביטחון שנשארת בצד"
             value={Math.round(bufferShare * 100)}
@@ -351,8 +370,9 @@ export function HouseholdPlanner({
               </table>
 
               <p className="mt-2 text-xs leading-relaxed text-slate-500">
-                ההוצאות מוחזקות קבועות בשורות האלה, חוץ מהתוספת על הילד. בפועל הן יעלו,
-                כך שהשורות האלה אופטימיות.
+                {costGrowth > 0
+                  ? `ההוצאות מתייקרות ב־${costGrowth.toFixed(1)}% בשנה בשורות האלה, וההחזר נשאר קבוע — כך הוא נשאר במסלול לא צמוד.`
+                  : 'ההוצאות מוחזקות קפואות בשורות האלה. בפועל הן יעלו, כך שהשורות האלה אופטימיות.'}
               </p>
             </div>
           )}

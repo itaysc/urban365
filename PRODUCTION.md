@@ -891,10 +891,22 @@ childcare, how long until the eldest is eighteen — and never for amounts; ther
 test asserting that a child note can never carry one.
 
 The horizons table re-runs the same subtraction at the moments the household itself
-said it would change: a child they are planning, a rise they expect. **The outgoings
-are held flat** in those rows, which is optimistic and is stated on the table, because
-the alternative is inventing an inflation rate and compounding it over somebody's
-shopping.
+said it would change: a child they are planning, a rise they expect. Both sides of it
+move: the outgoings compound at `DEFAULT_COST_GROWTH`, **1.7%**, which is the
+geometric mean of Israel's CPI over 2016–2025 from the World Bank's series — the one
+number on this tab that is not the household's, and it is there because it is measured
+rather than guessed. Geometric, not the arithmetic 1.70%, since it is applied by
+compounding. The slider lets them change it, and zero restores the old flat behaviour.
+
+Holding costs flat was the previous behaviour and it flattered badly in the row people
+plan from: a salary growing 3% against frozen groceries turned a year-five surplus of
+about 2,400 into 5,478. There is a test asserting the inflated row leaves less than the
+flat one, so the two can never silently converge again. Note that the decade behind the
+figure is an unusual one — two years of falling prices and the 2022 spike — which the
+UI says under the slider.
+
+A planned child's cost is named in today's money and inflated to the year it starts,
+like every other figure on the form.
 
 Income and existing commitments live on the page, not in the planner. They appear on
 two tabs and for a while had state in each, which is two fields holding one fact and

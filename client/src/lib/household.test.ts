@@ -16,6 +16,9 @@ const household = (over: Partial<Household> = {}): Household => ({
   plannedChildIn: null,
   plannedChildCost: 0,
   salaryGrowth: 0,
+  // Flat by default in the fixtures, so a test that is not about inflation does not
+  // have to account for it.
+  costGrowth: 0,
   bufferShare: DEFAULT_BUFFER_SHARE,
   ...over,
 });
@@ -85,9 +88,30 @@ describe('horizons', () => {
     expect(later?.income).toBe(Math.round(30_000 * 1.03 ** 5));
   });
 
-  it('holds the outgoings flat, which is the optimistic half of the row', () => {
-    const rows = horizons(household({ salaryGrowth: 3 }), 8_000);
+  it('compounds the outgoings too, at their own rate', () => {
+    const rows = horizons(household({ salaryGrowth: 3, costGrowth: 1.7 }), 8_000);
+    const later = rows.find((r) => r.reason === 'growth');
+
+    expect(later?.outgoings).toBe(Math.round(9_500 * 1.017 ** 5));
+  });
+
+  it('holds them flat when told to, which is what zero means', () => {
+    const rows = horizons(household({ salaryGrowth: 3, costGrowth: 0 }), 8_000);
     expect(rows.every((r) => r.outgoings === 9_500)).toBe(true);
+  });
+
+  it('leaves far less spare than a flat-cost row claimed', () => {
+    /*
+     * The reason this exists. Same household, same salary growth, same repayment —
+     * the only difference is whether the shopping is allowed to get more expensive.
+     * Freezing it roughly doubled the surplus the year-five row promised.
+     */
+    const flat = horizons(household({ salaryGrowth: 3, costGrowth: 0 }), 8_000);
+    const real = horizons(household({ salaryGrowth: 3, costGrowth: 1.7 }), 8_000);
+    const year5 = (rows: ReturnType<typeof horizons>) =>
+      rows.find((r) => r.reason === 'growth')!.spare;
+
+    expect(year5(real)).toBeLessThan(year5(flat));
   });
 
   it('carries the child forward into the later row', () => {
@@ -100,6 +124,17 @@ describe('horizons', () => {
     const later = rows.find((r) => r.reason === 'growth');
 
     expect(later?.outgoings).toBe(11_500);
+  });
+
+  it('inflates the child to the year it arrives', () => {
+    // The cost is named in today's money, like every other figure on the form.
+    const rows = horizons(
+      household({ costGrowth: 1.7, plannedChildIn: 4, plannedChildCost: 2_000 }),
+      8_000,
+    );
+    const child = rows.find((r) => r.reason === 'child');
+
+    expect(child?.outgoings).toBe(Math.round(11_500 * 1.017 ** 4));
   });
 
   it('does not repeat a row the reader has already seen', () => {
