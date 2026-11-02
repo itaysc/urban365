@@ -112,9 +112,9 @@ describe('budget', () => {
     expect(result.monthly).toBeLessThan(result.ceiling);
   });
 
-  it('is held back by the income when the deposit is the larger', () => {
+  it('is held back by the repayment when the deposit is the larger', () => {
     const result = budget(buyer);
-    expect(result.limitedBy).toBe('income');
+    expect(result.limitedBy).toBe('payment');
     expect(result.price).toBe(1_000_000 + result.loan);
     expect(result.monthly).toBeCloseTo(result.ceiling, -1);
   });
@@ -306,5 +306,88 @@ describe('extraBudgetFor', () => {
     expect(before.limitedBy).toBe('equity');
     expect(after.limitedBy).toBe('equity');
     expect(after.price - before.price).toBeCloseTo(extraBudgetFor('first', 100_000), 0);
+  });
+});
+
+describe('budget with a chosen repayment', () => {
+  const base = {
+    income: 30_000,
+    commitments: 0,
+    equity: 1_000_000,
+    annualRate: 5,
+    years: 25,
+    buyer: 'first' as const,
+  };
+
+  it('uses the ceiling when no figure is named', () => {
+    expect(budget(base).spend).toBe(12_000);
+    expect(budget(base).overCeiling).toBe(false);
+  });
+
+  it('buys less flat on a smaller repayment the buyer chose', () => {
+    // The common case: a bank would sign 12,000 and the household does not want to
+    // live on what is left afterwards.
+    const chosen = budget({ ...base, monthly: 7_000 });
+
+    expect(chosen.spend).toBe(7_000);
+    expect(chosen.price).toBeLessThan(budget(base).price);
+    expect(chosen.monthly).toBeCloseTo(7_000, -1);
+    expect(chosen.overCeiling).toBe(false);
+  });
+
+  it('answers the question asked and flags it, rather than quietly clamping', () => {
+    // 15,000 is half this income, which no bank here will approve. The price still
+    // reflects 15,000 — silently answering for 12,000 would be answering a question
+    // nobody asked, and the flag is what the page turns into a warning.
+    const over = budget({ ...base, monthly: 15_000 });
+
+    expect(over.spend).toBe(15_000);
+    expect(over.overCeiling).toBe(true);
+    expect(over.price).toBeGreaterThan(budget(base).price);
+  });
+
+  it('treats the ceiling itself as within it', () => {
+    expect(budget({ ...base, monthly: 12_000 }).overCeiling).toBe(false);
+  });
+
+  it('refuses to borrow against a negative repayment', () => {
+    const none = budget({ ...base, monthly: -5_000 });
+    expect(none.spend).toBe(0);
+    expect(none.loan).toBe(0);
+    expect(none.price).toBe(1_000_000);
+  });
+
+  it('still stops at the deposit when that is the lower limit', () => {
+    // A big repayment does not get past the LTV rule: 1,000,000 down on a first home
+    // tops out at four million however much is paid each month.
+    const over = budget({ ...base, monthly: 40_000 });
+    expect(over.limitedBy).toBe('equity');
+    expect(over.price).toBe(4_000_000);
+  });
+});
+
+describe('budget, when the deposit prevents the repayment anyway', () => {
+  it('does not warn about a repayment the buyer will never make', () => {
+    /*
+     * 15,000 a month is half this income and no bank would sign it — but 500,000 down
+     * on a first home stops the price at two million, so the repayment actually taken
+     * is under nine thousand, which is inside the ceiling. There is nothing here for a
+     * bank to refuse, and a warning would be about a number that exists only in the
+     * input box.
+     */
+    const reach = budget({
+      income: 25_000,
+      commitments: 0,
+      equity: 500_000,
+      annualRate: 5,
+      years: 25,
+      buyer: 'first',
+      monthly: 15_000,
+    });
+
+    expect(reach.limitedBy).toBe('equity');
+    expect(reach.price).toBe(2_000_000);
+    expect(reach.monthly).toBeLessThan(reach.ceiling);
+    expect(reach.overCeiling).toBe(false);
   });
 });

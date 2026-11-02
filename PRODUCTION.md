@@ -861,6 +861,18 @@ nobody retypes it; and the footer, in both places. The teaser is gated on
 `dealType === 'מכירה'` — there is no mortgage on a rental, and that field is set from
 the same subcategory map whether the listing was scraped or created here.
 
+**The repayment on the budget tab is the buyer's to set.** It opens on the regulator's
+ceiling — 40% of net income, less existing commitments — and anything typed replaces
+it, because most people have a figure they are willing to live on rather than the
+largest one a bank would sign. A chosen figure is never silently clamped: the budget
+answers the question asked, and `overCeiling` turns into a warning beside it.
+
+That flag is measured on the repayment actually taken, not on the figure typed. Ask to
+pay 15,000 with 500,000 down and the LTV rule stops the price at two million, so the
+real payment is under nine thousand and there is nothing for a bank to refuse —
+warning about the number in the input box would be a warning about nothing. There is a
+test named for that case.
+
 ### The mix (תמהיל)
 
 The repayment tab builds a real mix rather than applying one rate to the whole loan,

@@ -135,6 +135,22 @@ export function plan({ price, equity, annualRate, years, buyer }: PlanInput): Pl
 export interface Budget {
   /** The most this income will carry each month, once commitments are out. */
   ceiling: number;
+  /**
+   * What the repayment is actually set to: the ceiling, or a smaller figure the
+   * buyer named. Most people have a number they are willing to live on rather than
+   * the largest one a bank would sign, and the budget should follow theirs.
+   */
+  spend: number;
+  /**
+   * The repayment this budget actually requires is above what a bank would approve.
+   *
+   * Measured on `monthly`, the payment on the loan that is really taken — not on
+   * `spend`, the figure that was typed. Somebody can ask to pay 15,000 and be held to
+   * a smaller flat by their deposit, and end up paying 8,769: there is nothing for a
+   * bank to refuse, and warning them about the number they typed rather than the one
+   * they would pay is a warning about nothing.
+   */
+  overCeiling: boolean;
   /** The most the buyer can pay for a flat. */
   price: number;
   /** What is borrowed at that price — everything above the deposit. */
@@ -149,11 +165,14 @@ export interface Budget {
    */
   monthly: number;
   /**
-   * Which rule produced that price — the repayment the income carries, or the equity
-   * the bank requires. Worth saying out loud: the two want opposite things done about
-   * them, and somebody held back by their deposit gains nothing from a longer term.
+   * Which rule produced that price — the repayment, or the equity the bank requires.
+   * Worth saying out loud: the two want opposite things done about them, and somebody
+   * held back by their deposit gains nothing from a longer term.
+   *
+   * `payment` rather than `income`, because the repayment is no longer necessarily
+   * what the income dictates: it is whatever the buyer decided to spend.
    */
-  limitedBy: 'income' | 'equity';
+  limitedBy: 'payment' | 'equity';
 }
 
 export interface BudgetInput {
@@ -165,6 +184,11 @@ export interface BudgetInput {
   annualRate: number;
   years: number;
   buyer: BuyerKind;
+  /**
+   * What they intend to pay each month. Left out, the regulator's ceiling is used —
+   * which is the most a bank would allow, not necessarily a sum anybody wants to pay.
+   */
+  monthly?: number;
 }
 
 /** The reverse question, and the one most buyers are really asking: how much flat? */
@@ -175,8 +199,17 @@ export function budget({
   annualRate,
   years,
   buyer,
+  monthly,
 }: BudgetInput): Budget {
   const ceiling = Math.max(0, income * INCOME_CAP - commitments);
+
+  /*
+   * What they said they would pay, or the most a bank would allow if they said
+   * nothing. A chosen figure above the ceiling is not clamped — it is reported as
+   * over it. Quietly lowering somebody's number and then answering a question they
+   * did not ask is worse than telling them a bank will refuse it.
+   */
+  const spend = monthly === undefined ? ceiling : Math.max(0, monthly);
 
   /*
    * Two ceilings, and the lower one is the answer.
@@ -185,20 +218,24 @@ export function budget({
    * allows is the price at which that deposit is exactly the share the bank requires —
    * so equity / (1 - cap), which is where the LTV rule bites first for most buyers.
    */
-  const byIncome = equity + loanFor(ceiling, annualRate, years);
+  const byPayment = equity + loanFor(spend, annualRate, years);
   const byEquity = equity / (1 - LTV_CAP[buyer]);
 
   // The price is settled first and everything else is read back off it, so the three
   // figures on the screen agree with each other down to the shekel.
-  const price = Math.floor(Math.min(byIncome, byEquity));
+  const price = Math.floor(Math.min(byPayment, byEquity));
   const loan = Math.max(0, price - equity);
+  const willPay = monthlyPayment(loan, annualRate, years);
 
   return {
     ceiling: Math.round(ceiling),
+    spend: Math.round(spend),
+    // A shekel over is rounding, not a breach worth a panel of its own.
+    overCeiling: willPay - ceiling > 1,
     price,
     loan,
-    monthly: Math.round(monthlyPayment(loan, annualRate, years)),
-    limitedBy: byEquity < byIncome ? 'equity' : 'income',
+    monthly: Math.round(willPay),
+    limitedBy: byEquity < byPayment ? 'equity' : 'payment',
   };
 }
 

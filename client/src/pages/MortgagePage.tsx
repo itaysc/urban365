@@ -407,8 +407,26 @@ export function MortgagePage() {
   const [income, setIncome] = useState(25_000);
   const [commitments, setCommitments] = useState(0);
 
+  /*
+   * What they are willing to pay each month, once they say so.
+   *
+   * Null until then, which is not the same as zero: it means "whatever the bank would
+   * allow", so the field keeps following the income while the income is still being
+   * typed. The moment somebody sets a figure it stops moving under them — nobody
+   * wants the number they just chose rewritten because they corrected their salary.
+   */
+  const [chosenMonthly, setChosenMonthly] = useState<number | null>(null);
+
   const result = plan({ price, equity, annualRate: rate, years, buyer });
-  const reach = budget({ income, commitments, equity, annualRate: rate, years, buyer });
+  const reach = budget({
+    income,
+    commitments,
+    equity,
+    annualRate: rate,
+    years,
+    buyer,
+    monthly: chosenMonthly ?? undefined,
+  });
 
   /*
    * The mix, which is the part of a mortgage a borrower actually decides.
@@ -563,6 +581,32 @@ export function MortgagePage() {
                 />
                 <Money id="equity-budget" label="הון עצמי" value={equity} onChange={setEquity} />
 
+                <div className="flex flex-col gap-1">
+                  <Money
+                    id="monthly"
+                    label="החזר חודשי"
+                    hint={
+                      chosenMonthly === null
+                        ? `ברירת המחדל היא התקרה שהבנק יאשר על ההכנסה הזו. אפשר לקבוע סכום אחר.`
+                        : `התקרה שהבנק יאשר על ההכנסה הזו היא ${formatShekel(reach.ceiling)}.`
+                    }
+                    value={reach.spend}
+                    onChange={setChosenMonthly}
+                  />
+
+                  {/* Only once they have taken the wheel, and only when it would
+                      actually change the figure back. */}
+                  {chosenMonthly !== null && chosenMonthly !== reach.ceiling && (
+                    <button
+                      type="button"
+                      onClick={() => setChosenMonthly(null)}
+                      className="self-start text-xs text-blue-700 hover:underline"
+                    >
+                      חזרה לתקרה שהבנק יאשר
+                    </button>
+                  )}
+                </div>
+
                 {buyerPicker}
 
                 {/*
@@ -708,9 +752,26 @@ export function MortgagePage() {
               */}
               <p className="mt-4 rounded-xl bg-slate-50 px-4 py-3 text-sm leading-relaxed text-slate-700">
                 {reach.limitedBy === 'equity'
-                  ? `ההון העצמי הוא מה שמגביל כאן: ההכנסה נושאת החזר גבוה יותר, אבל ל${BUYER_LABEL[buyer]} הבנק מלווה עד ${Math.round(LTV_CAP[buyer] * 100)}% מהמחיר. כל ${formatShekel(EXTRA_EQUITY)} שיתווספו להון העצמי יגדילו את התקציב ${extraBudgetPhrase(buyer)}.`
-                  : 'ההכנסה היא מה שמגביל כאן, לא ההון העצמי. תקופה ארוכה יותר תקטין את ההחזר ותגדיל את התקציב — ותייקר את הריבית הכוללת.'}
+                  ? `ההון העצמי הוא מה שמגביל כאן: ההחזר נושא סכום גבוה יותר, אבל ל${BUYER_LABEL[buyer]} הבנק מלווה עד ${Math.round(LTV_CAP[buyer] * 100)}% מהמחיר. כל ${formatShekel(EXTRA_EQUITY)} שיתווספו להון העצמי יגדילו את התקציב ${extraBudgetPhrase(buyer)}.`
+                  : chosenMonthly === null
+                    ? 'ההכנסה היא מה שמגביל כאן, לא ההון העצמי. תקופה ארוכה יותר תקטין את ההחזר ותגדיל את התקציב — ותייקר את הריבית הכוללת.'
+                    : 'ההחזר שבחרתם הוא מה שמגביל כאן, לא ההון העצמי. החזר גבוה יותר או תקופה ארוכה יותר יגדילו את התקציב — ותקופה ארוכה גם תייקר את הריבית הכוללת.'}
               </p>
+
+              {/*
+                Said where the answer is, not beside the field. Somebody who typed a
+                repayment they cannot be lent should see the price it produced and the
+                reason it will not happen in the same glance — the number is the
+                attractive part, and the refusal has to travel with it.
+              */}
+              {reach.overCeiling && (
+                <p className="mt-3 rounded-xl bg-amber-50 px-4 py-3 text-sm leading-relaxed text-amber-900">
+                  ההחזר שבחרתם גבוה מהתקרה שהבנק יאשר על ההכנסה הזו
+                  ({formatShekel(reach.ceiling)}, שהם {Math.round(INCOME_CAP * 100)}%
+                  מההכנסה הפנויה). התקציב שמוצג כאן מבוסס על ההחזר שבחרתם, ובנק לא יאשר
+                  אותו בלי הכנסה גבוהה יותר או לווה נוסף.
+                </p>
+              )}
 
               {/* The point of the whole page, on a site that sells flats: a budget is
                   only useful pointed at what it buys. */}
