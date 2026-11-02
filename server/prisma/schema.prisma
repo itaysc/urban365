@@ -1589,3 +1589,38 @@ model MarketDeal {
   /// The sync's own cursor.
   @@index([source, firstSeen])
 }
+
+/// A cadastral parcel — one (gush, chelka) and the ground it covers.
+///
+/// Imported once from the Survey of Israel's parcels layer, published as open data on
+/// data.gov.il. Held locally because the lookup it serves — which parcel is this
+/// listing on — is the only join between our listings and the transaction registry,
+/// and because the obvious alternative, GovMap's parcel endpoint, serves browsers
+/// only (see `CadastreService`).
+///
+/// `cellLat`/`cellLng` are a hand-rolled spatial index: this Postgres has no PostGIS,
+/// and a btree over the bounding box is useless because `minLat <= :lat` matches half
+/// the table. Parcels are filed by the cell their centroid falls in and a lookup reads
+/// the nine cells around the point — see `parcel-index.ts` for why nine is enough.
+model Parcel {
+  gush   Int
+  chelka Int
+
+  /// Bounding box in WGS84, for the cheap rejection before ray casting.
+  minLat Float
+  maxLat Float
+  minLng Float
+  maxLng Float
+
+  cellLat Int
+  cellLng Int
+
+  /// GeoJSON, in the same shape `CityBoundary.geometry` uses so the existing
+  /// point-in-polygon code reads it without a second format to maintain.
+  geometry Json
+
+  importedAt DateTime @default(now())
+
+  @@id([gush, chelka])
+  @@index([cellLat, cellLng])
+}

@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
-import { CadastreService } from './cadastre.service.js';
+import { ParcelService } from './parcel.service.js';
 
 export interface BackfillResult {
   considered: number;
@@ -22,17 +22,27 @@ export class CadastreBackfill {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly cadastre: CadastreService,
+    private readonly parcels: ParcelService,
   ) {}
 
   async run(limit: number, retryUnplaced = false): Promise<BackfillResult> {
+    /*
+     * Nothing to match against means nothing to do — and stamping every listing
+     * "could not place" against an empty table would poison the whole catalogue in
+     * one run, since `cadastreAt` is what stops a listing being retried.
+     */
+    if ((await this.parcels.count()) === 0) {
+      this.logger.warn('No parcels imported yet; skipping. Run the parcels import first.');
+      return { considered: 0, resolved: 0, unplaced: 0 };
+    }
+
     const listings = await this.prisma.listing.findMany({
       where: {
         latitude: { not: null },
         longitude: { not: null },
         gush: null,
         /*
-         * `cadastreAt` is how a listing GovMap could not place stops being asked
+         * `cadastreAt` is how a listing we could not place stops being asked
          * about on every run. Without it the job would spend its whole budget each
          * night on the same handful of points in the sea.
          */
@@ -45,7 +55,7 @@ export class CadastreBackfill {
     const result: BackfillResult = { considered: listings.length, resolved: 0, unplaced: 0 };
 
     for (const listing of listings) {
-      const parcel = await this.cadastre.parcelAt(listing.latitude!, listing.longitude!);
+      const parcel = await this.parcels.parcelAt(listing.latitude!, listing.longitude!);
 
       await this.prisma.listing.update({
         where: { id: listing.id },

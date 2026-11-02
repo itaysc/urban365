@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { CadastreBackfill } from './cadastre.backfill.js';
 import { CadastreService } from './cadastre.service.js';
+import { ParcelService } from './parcel.service.js';
 
 /**
  * GovMap's cadastral lookup, and the job that stamps our listings with it.
@@ -9,7 +10,7 @@ import { CadastreService } from './cadastre.service.js';
  * instance, the same reason `GeocodeModule` exists.
  */
 @Module({
-  providers: [CadastreService, CadastreBackfill],
-  exports: [CadastreService, CadastreBackfill],
+  providers: [CadastreService, CadastreBackfill, ParcelService],
+  exports: [CadastreService, CadastreBackfill, ParcelService],
 })
 export class CadastreModule {}
