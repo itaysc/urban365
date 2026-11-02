@@ -12,6 +12,7 @@ import {
   DEFAULT_RATE,
   DEFAULT_YEARS,
   defaultMix,
+  extraBudgetFor,
   INCOME_CAP,
   LTV_CAP,
   MAX_YEARS,
@@ -33,6 +34,23 @@ type Mode = 'payment' | 'budget';
 const TAB: Record<Mode, string> = {
   payment: 'מה יהיה ההחזר החודשי',
   budget: 'איזו דירה אפשר לקנות',
+};
+
+/**
+ * The caveat, per tab, because the two tabs no longer compute the same way.
+ *
+ * This used to be one sentence apologising for a single fixed rate across the whole
+ * loan and explaining that a real mortgage is several tracks. On the repayment tab
+ * that apology is now obsolete — the page builds the tracks — and a disclaimer that
+ * describes something the page is not doing teaches the reader to skip the rest of
+ * it. On the budget tab it is still one rate, so there it still says so, and points
+ * at where the mix lives.
+ */
+const CAVEAT: Record<Mode, string> = {
+  payment:
+    'החישוב הוא לוח שפיצר, כל מסלול לפי הריבית והתקופה שהוזנו בו. במסלולים צמודי מדד ההחזר מוצג במחירי היום — הקרן וההחזר יעלו עם המדד, וזה אינו מגולם כאן.',
+  budget:
+    'החישוב הוא לוח שפיצר בריבית אחת על כל ההלוואה, להמחשה. משכנתא אמיתית מורכבת מכמה מסלולים בריביות שונות, ואת התמהיל אפשר לבנות בלשונית ההחזר החודשי.',
 };
 
 /** Everything typed is a round number of shekels, so anything else is not a digit. */
@@ -178,18 +196,32 @@ function BuyerPicker({ value, onChange }: { value: BuyerKind; onChange: (v: Buye
   );
 }
 
+/** The deposit the sentence below talks in. A round, imaginable sum of money. */
+const EXTRA_EQUITY = 100_000;
+
 /**
- * What one more shekel of deposit is worth to a buyer the LTV rule is holding back.
+ * What another 100,000 of deposit is worth, as money.
  *
- * It is 1 / (1 - cap), so it is four for a first home and only two for an investor —
- * which is exactly why it is worked out from the cap rather than written into the
- * sentence that says it.
+ * This said "widens your budget by 4" for a while, which is a number with no unit —
+ * four shekels? four per cent? four flats? The ratio is real and useful, but only
+ * once it is spent: 100,000 more in the bank is 400,000 more of flat for a first-time
+ * buyer and 200,000 for an investor, and those are figures somebody can act on.
  */
-function leverage(buyer: BuyerKind): string {
-  const times = 1 / (1 - LTV_CAP[buyer]);
-  // "3.3" where it is not a whole number, "4" where it is: a budget multiplier with a
-  // trailing .0 reads as a measurement rather than a rule of thumb.
-  return Number.isInteger(times) ? `${times}` : times.toFixed(1);
+function extraBudgetPhrase(buyer: BuyerKind): string {
+  const exact = extraBudgetFor(buyer, EXTRA_EQUITY);
+  const rounded = Math.round(exact / 1_000) * 1_000;
+
+  /*
+   * The preposition comes from here, not from the sentence.
+   *
+   * Hedged only where it is actually a rounding — 400,000 is exact, 333,333 is not —
+   * and in Hebrew the hedge fuses with the preposition: "בכ־333,000", one word. Left
+   * to the sentence to prefix, it came out "ב־כ־333,000", which is two prefixes and
+   * no word.
+   */
+  return rounded === exact
+    ? `ב־${formatShekel(rounded)}`
+    : `בכ־${formatShekel(rounded)}`;
 }
 
 /** A small number typed rather than dragged — a rate from a bank, or a term in years. */
@@ -676,7 +708,7 @@ export function MortgagePage() {
               */}
               <p className="mt-4 rounded-xl bg-slate-50 px-4 py-3 text-sm leading-relaxed text-slate-700">
                 {reach.limitedBy === 'equity'
-                  ? `ההון העצמי הוא מה שמגביל כאן: ההכנסה נושאת החזר גבוה יותר, אבל ל${BUYER_LABEL[buyer]} הבנק מלווה עד ${Math.round(LTV_CAP[buyer] * 100)}% מהמחיר. כל שקל שיתווסף להון העצמי מרחיב את התקציב ב־${leverage(buyer)}.`
+                  ? `ההון העצמי הוא מה שמגביל כאן: ההכנסה נושאת החזר גבוה יותר, אבל ל${BUYER_LABEL[buyer]} הבנק מלווה עד ${Math.round(LTV_CAP[buyer] * 100)}% מהמחיר. כל ${formatShekel(EXTRA_EQUITY)} שיתווספו להון העצמי יגדילו את התקציב ${extraBudgetPhrase(buyer)}.`
                   : 'ההכנסה היא מה שמגביל כאן, לא ההון העצמי. תקופה ארוכה יותר תקטין את ההחזר ותגדיל את התקציב — ותייקר את הריבית הכוללת.'}
               </p>
 
@@ -695,9 +727,8 @@ export function MortgagePage() {
         </div>
 
         <p className="mt-6 text-xs leading-relaxed text-slate-500">
-          החישוב הוא לוח שפיצר בריבית קבועה אחת, להמחשה בלבד. משכנתא אמיתית מורכבת מכמה
-          מסלולים — פריים, קבועה צמודה ולא צמודה — בריביות שונות ובהצמדה למדד, והריבית
-          שתקבלו תלויה בכם, בבנק וביום. המספרים כאן אינם הצעה, התחייבות או ייעוץ.
+          {CAVEAT[mode]} הריביות שמוצגות הן נקודת פתיחה — הריבית שתקבלו תלויה בכם, בבנק
+          וביום. המספרים כאן אינם הצעה, התחייבות או ייעוץ.
         </p>
       </main>
 

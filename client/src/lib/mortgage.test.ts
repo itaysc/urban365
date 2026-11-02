@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   budget,
   defaultMix,
+  extraBudgetFor,
   loanFor,
   LTV_CAP,
   mix,
@@ -283,5 +284,27 @@ describe('rebalance', () => {
 
   it('leaves an empty mix alone', () => {
     expect(rebalance([], 1_000_000)).toEqual([]);
+  });
+});
+
+describe('extraBudgetFor', () => {
+  it('turns a shekel of deposit into the price it unlocks', () => {
+    // 75% financing: the deposit is a quarter of the price, so each shekel of it
+    // carries four.
+    expect(extraBudgetFor('first', 100_000)).toBeCloseTo(400_000, 6);
+    expect(extraBudgetFor('upgrader', 100_000)).toBeCloseTo(333_333.33, 2);
+    expect(extraBudgetFor('investor', 100_000)).toBe(200_000);
+  });
+
+  it('agrees with the budget it is explaining', () => {
+    // The sentence is only worth printing if the number it quotes is the one the
+    // calculator would produce from the larger deposit.
+    const base = { income: 60_000, commitments: 0, annualRate: 5, years: 30, buyer: 'first' as const };
+    const before = budget({ ...base, equity: 500_000 });
+    const after = budget({ ...base, equity: 600_000 });
+
+    expect(before.limitedBy).toBe('equity');
+    expect(after.limitedBy).toBe('equity');
+    expect(after.price - before.price).toBeCloseTo(extraBudgetFor('first', 100_000), 0);
   });
 });

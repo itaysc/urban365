@@ -431,3 +431,14 @@ export function rebalance(parts: MixPart[], loan: number): MixPart[] {
 
   return scaled;
 }
+
+/**
+ * What another shekel of deposit is worth to a buyer the LTV rule is holding back.
+ *
+ * It is `extra / (1 - cap)`: at 75% financing a shekel of equity unlocks three more of
+ * loan, so four of price. Worth saying in shekels rather than as a multiplier — "it
+ * widens your budget by 4" answers a question nobody asked, in units nobody can name.
+ */
+export function extraBudgetFor(buyer: BuyerKind, extraEquity: number): number {
+  return extraEquity / (1 - LTV_CAP[buyer]);
+}
