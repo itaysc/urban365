@@ -48,11 +48,18 @@ export function ListingPopupCard({ point, onOpen }: Props) {
           the design this follows has it. Everything here is laid out in logical
           properties, so an LTR locale mirrors it without a second stylesheet.
         */}
+        {/*
+          Clickable, but out of the tab order and hidden from assistive technology: the
+          panel beside it is the same action on the same listing, and two identical tab
+          stops that do one thing is worse than one. A pointer still gets the whole
+          card; a keyboard gets it once, named by the price and the address.
+        */}
         <button
           type="button"
           onClick={() => onOpen(point.id)}
+          tabIndex={-1}
+          aria-hidden
           className="relative h-32 w-36 shrink-0 bg-slate-100 text-start"
-          aria-label="פתיחת הנכס"
         >
           {point.coverImageUrl ? (
             <img

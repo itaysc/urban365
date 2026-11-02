@@ -24,8 +24,10 @@ export function AssetCard({ asset, onOpen }: { asset: Asset; onOpen: (asset: Ass
       className="flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white text-right transition hover:border-slate-400 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-slate-900"
     >
       <div className="relative h-44 bg-slate-100">
+        {/* `alt=""`, as on the search card: this whole card is one button, and the
+            words under the photo already say the property type and the city. */}
         {asset.coverImageUrl ? (
-          <img src={asset.coverImageUrl} alt={asset.propertyType} className="h-full w-full object-cover" loading="lazy" />
+          <img src={asset.coverImageUrl} alt="" className="h-full w-full object-cover" loading="lazy" />
         ) : (
           <div className="flex h-full items-center justify-center text-sm text-slate-500">ללא תמונה</div>
         )}
