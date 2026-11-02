@@ -17,6 +17,18 @@ function GoogleMark() {
  * Whether the server has Google credentials. Exported so a page can hide the "or"
  * divider along with the button — a separator with nothing on one side of it looks
  * like something failed to load.
+ *
+ * It used to make exactly one attempt. A request that landed while the API was
+ * restarting took the only one-click sign-in off the dialog, with nothing on screen to
+ * say so — "hidden" is precisely what a correctly-configured absence looks like here,
+ * so the failure is invisible rather than merely unfortunate. Reopening the dialog did
+ * ask again, but nobody closes a sign-in box and opens it a second time to see whether
+ * a different button appears.
+ *
+ * Three attempts, so one blip is survived without the user doing anything.
+ *
+ * A success is still cached for the session: whether a server has credentials is not
+ * something that changes while somebody is signing in.
  */
 export function useGoogleAvailable(): boolean {
   const { data } = useQuery({
@@ -26,7 +38,7 @@ export function useGoogleAvailable(): boolean {
       return data;
     },
     staleTime: Infinity,
-    retry: false,
+    retry: 2,
   });
 
   return data?.available ?? false;

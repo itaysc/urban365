@@ -200,7 +200,9 @@ function similarTo(similar: SimilarListing[], section: Section, city: string | n
 ${badgesFor(other)}
 ${
   other.coverImageUrl
-    ? `<img src="${esc(other.coverImageUrl)}" alt="${esc(where)}" loading="lazy" width="320" height="144">`
+    ? // `alt=""`: the card is a single link whose text is this same address, so a
+      // repeat here is read twice and describes nothing — nobody here took the photo.
+      `<img src="${esc(other.coverImageUrl)}" alt="" loading="lazy" width="320" height="144">`
     : '<div class="noimage" aria-hidden="true"></div>'
 }
 <div class="body">

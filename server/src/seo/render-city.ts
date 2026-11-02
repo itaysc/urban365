@@ -261,7 +261,9 @@ function card(listing: CityListing, perMonth: boolean): string {
 ${badgesFor(listing)}
 ${
   listing.coverImageUrl
-    ? `<img src="${esc(listing.coverImageUrl)}" alt="${esc(label)}" loading="lazy" width="320" height="144">`
+    ? // `alt=""`: the card is a single link whose text is this same address, so a
+      // repeat here is read twice and describes nothing — nobody here took the photo.
+      `<img src="${esc(listing.coverImageUrl)}" alt="" loading="lazy" width="320" height="144">`
     : // The same block of space, empty. Without it the cards in a row are different
       // heights and the grid reads as broken rather than as one listing having no photo.
       '<div class="noimage" aria-hidden="true"></div>'

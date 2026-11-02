@@ -168,6 +168,28 @@ td.num,th.num{font-variant-numeric:tabular-nums;white-space:nowrap}
    flow under the price rather than over anything. */
 .headline-price + .badges{position:static;flex-direction:row;margin-top:.5rem}
 .card .where{font-size:.875rem;color:#334155}
+/*
+ * The whole card is the link, without a line of script.
+ *
+ * The address was the only clickable thing on it, so the photograph, the price and
+ * the specs — most of the card's area, and the parts a person actually aims at — did
+ * nothing. This stretches the one link over the card instead of wrapping everything
+ * in an anchor: one link in the accessibility tree rather than three, and the link
+ * text stays the address rather than becoming the whole card read aloud.
+ *
+ * The "z-index:1" matches the badges. The overlay comes later in the markup, so at the
+ * same level it wins, and the corner of the card under a badge is clickable too.
+ *
+ * The cost is text selection: nothing inside a card can be selected with the pointer
+ * any more. Everything on a card is repeated on the page it opens, so that is the
+ * cheaper side of the trade.
+ */
+.card .where::after{content:"";position:absolute;inset:0;z-index:1}
+/* The card has to look like the target it now is, and the focus ring has to be around
+   the card rather than around the three words that carry the href. */
+.card:hover{border-color:#cbd5e1;box-shadow:0 1px 3px rgb(15 23 42 / .12)}
+.card:focus-within{outline:2px solid #0f172a;outline-offset:2px}
+.card .where:focus-visible{outline:none}
 .card .facts{font-size:.8125rem;color:#64748b;margin-top:auto}
 .headline-price{font-size:1.5rem;font-weight:700;margin:.25rem 0 0}
 .headline-price .was{margin-inline-start:.625rem;font-size:1rem;font-weight:400;color:#64748b;
