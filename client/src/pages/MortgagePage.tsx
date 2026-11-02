@@ -21,7 +21,7 @@ type Mode = 'payment' | 'budget';
 
 const TAB: Record<Mode, string> = {
   payment: 'מה יהיה ההחזר החודשי',
-  budget: 'כמה דירה אפשר לקנות',
+  budget: 'איזו דירה אפשר לקנות',
 };
 
 /** Everything typed is a round number of shekels, so anything else is not a digit. */
