@@ -1,3 +1,4 @@
+import { DealsModule } from './deals/deals.module.js';
 import { CalendarModule } from './calendar/calendar.module.js';
 import { MatchingModule } from './matching/matching.module.js';
 import { DemoModule } from './demo/demo.module.js';
@@ -60,6 +61,7 @@ import { Yad2Module } from './yad2/yad2.module.js';
     SellerModule,
     AgencyModule,
     AdminModule,
+    DealsModule,
   ],
   // Order matters: rate limit, then CSRF, then identity, then authorization.
   // A global JwtAuthGuard makes authentication the default; open routes say @Public().

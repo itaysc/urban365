@@ -118,16 +118,16 @@ model Agency {
   reviewedById    String?
   rejectionReason String?
 
-  name          String
-  licenseNumber String?
-  phone         String?
-  logoUrl       String?
+  name            String
+  licenseNumber   String?
+  phone           String?
+  logoUrl         String?
   /// Banner on the agency's public page. Uploaded here, unlike logoUrl which may still
   /// point at yad2's CDN for scraped agencies. The URL is a path this API serves; the
   /// object itself lives in a private bucket under `coverStorageKey`.
   coverImageUrl   String?
   coverStorageKey String?
-  description   String?
+  description     String?
 
   /// [{ day, open, close }]
   openingHours Json?
@@ -229,10 +229,10 @@ model Listing {
   /// What the spam check made of this listing, for the ones that get checked — which is
   /// private sellers. An agency has a licence and a claim on the line; a stranger with
   /// an email address does not, and that is the whole difference.
-  reviewStatus ListingReviewStatus @default(unchecked)
+  reviewStatus     ListingReviewStatus @default(unchecked)
   /// Why, in the model's own words. Kept so a person reviewing the queue can see what
   /// it objected to rather than re-reading the listing cold.
-  reviewReason String?
+  reviewReason     String?
   /// 0–100. How sure it was, not how bad the listing is.
   reviewConfidence Int?
   reviewedAt       DateTime?
@@ -278,6 +278,19 @@ model Listing {
   latitude     Float?
   longitude    Float?
 
+  /// The cadastral block and parcel this listing sits on, from GovMap.
+  ///
+  /// Resolved once on write and stored, never looked up while a page renders. It is
+  /// the only key that joins a listing to `Deal`: the transaction registry records a
+  /// location as settlement plus gush/chelka and has no street addresses at all, so
+  /// without these two numbers our listings and the country's sale prices cannot be
+  /// put in the same sentence.
+  gush       Int?
+  chelka     Int?
+  /// When the lookup last ran — including when it ran and found nothing, so a listing
+  /// GovMap cannot place is not retried on every pass.
+  cadastreAt DateTime?
+
   /// Labels of what the property has. A GIN index makes "has מעלית and ממ\"ד" fast.
   amenities String[]
   tags      String[]
@@ -288,8 +301,8 @@ model Listing {
   imageUrls     String[]
   imagesCount   Int      @default(0)
 
-  contactName         String?
-  brokerName          String?
+  contactName String?
+  brokerName  String?
 
   /// Whose property it is, as a record in the agency's own CRM.
   ///
@@ -298,8 +311,8 @@ model Listing {
   /// with a phone and an address, so a viewing can be put to them before it is promised
   /// to a buyer. Null on a scraped listing and on one nobody has got round to filling
   /// in, which is why every path that needs it says so rather than assuming.
-  sellerCustomer   Customer? @relation("ListingSeller", fields: [sellerCustomerId], references: [id], onDelete: SetNull)
-  sellerCustomerId String?
+  sellerCustomer      Customer? @relation("ListingSeller", fields: [sellerCustomerId], references: [id], onDelete: SetNull)
+  sellerCustomerId    String?
   brokerLicenseNumber String?
 
   /// Whether the detail page was read, or only the agency-feed card.
@@ -335,15 +348,15 @@ model Listing {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  images      ListingImage[]
+  images       ListingImage[]
   priceChanges ListingPriceChange[]
-  engagements ListingEngagement[]
-  leads  Lead[]
-  deals  Deal[]
-  saves  SavedListing[]
-  meetings Meeting[]
-  suggestions Suggestion[]
-  coBrokerage CoBrokerageRequest[]
+  engagements  ListingEngagement[]
+  leads        Lead[]
+  deals        Deal[]
+  saves        SavedListing[]
+  meetings     Meeting[]
+  suggestions  Suggestion[]
+  coBrokerage  CoBrokerageRequest[]
 
   @@index([ownerUserId])
   @@index([sellerCustomerId])
@@ -386,9 +399,9 @@ model User {
   email        String @unique
   passwordHash String
 
-  firstName String
-  lastName  String
-  phone     String?
+  firstName     String
+  lastName      String
+  phone         String?
   /// Profile picture. `avatarUrl` is a path this API serves; the object lives in the
   /// private bucket under `avatarStorageKey`. Null means fall back to initials.
   /// Whether they want the morning email of what is worth doing today.
@@ -415,7 +428,7 @@ model User {
   /// change to either document can be told apart from an account that predates it.
   termsAcceptedAt DateTime?
 
-  platformRole    PlatformRole?
+  platformRole PlatformRole?
 
   /// Bumping this invalidates every outstanding token: a cheap "log out everywhere".
   sessionEpoch     Int       @default(0)
@@ -441,33 +454,33 @@ model User {
   /// flow; only the consumer-specific data lives separately.
   buyerProfile BuyerProfile?
 
-  memberships      AgencyMembership[]
-  sessions         Session[]
-  authTokens       AuthToken[]
-  claims           AgencyClaim[]
-  createdListings  Listing[]          @relation("ListingCreator")
-  ownedListings    Listing[]          @relation("ListingOwner")
-  ownedLeads       Lead[]             @relation("LeadOwner")
-  assignedLeads    Lead[]             @relation("LeadAssignee")
-  assignedCustomers Customer[]        @relation("CustomerAssignee")
-  meetings          Meeting[]          @relation("MeetingOwner")
-  suggestions       Suggestion[]       @relation("SuggestionOwner")
-  coBrokeRequested  CoBrokerageRequest[] @relation("CoBrokeRequester")
-  coBrokeResponded  CoBrokerageRequest[] @relation("CoBrokeResponder")
-  coBrokeMessages   CoBrokerageMessage[] @relation("CoBrokeMessageAuthor")
+  memberships       AgencyMembership[]
+  sessions          Session[]
+  authTokens        AuthToken[]
+  claims            AgencyClaim[]
+  createdListings   Listing[]              @relation("ListingCreator")
+  ownedListings     Listing[]              @relation("ListingOwner")
+  ownedLeads        Lead[]                 @relation("LeadOwner")
+  assignedLeads     Lead[]                 @relation("LeadAssignee")
+  assignedCustomers Customer[]             @relation("CustomerAssignee")
+  meetings          Meeting[]              @relation("MeetingOwner")
+  suggestions       Suggestion[]           @relation("SuggestionOwner")
+  coBrokeRequested  CoBrokerageRequest[]   @relation("CoBrokeRequester")
+  coBrokeResponded  CoBrokerageRequest[]   @relation("CoBrokeResponder")
+  coBrokeMessages   CoBrokerageMessage[]   @relation("CoBrokeMessageAuthor")
   savedSearches     SavedSearch[]
-  meetingFeedback   Meeting[]          @relation("MeetingFeedbackAuthor")
+  meetingFeedback   Meeting[]              @relation("MeetingFeedbackAuthor")
   googleCalendar    GoogleCalendarAccount?
-  ownedDeals       Deal[]             @relation("DealOwner")
-  reviewedAgencies Agency[]           @relation("AgencyReviewer")
-  reviewedClaims   AgencyClaim[]      @relation("ClaimReviewer")
+  ownedDeals        Deal[]                 @relation("DealOwner")
+  reviewedAgencies  Agency[]               @relation("AgencyReviewer")
+  reviewedClaims    AgencyClaim[]          @relation("ClaimReviewer")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@unique([authProvider, authProviderId])
   @@index([platformRole])
   @@index([accountType])
-  @@unique([authProvider, authProviderId])
 }
 
 enum AuthProvider {
@@ -781,10 +794,10 @@ model Customer {
   /// Flat, penthouse, and so on. Empty means no preference stated.
   lookingTypes   String[]
 
-  minRooms Float?
-  maxRooms Float?
-  minPrice Int?
-  maxPrice Int?
+  minRooms       Float?
+  maxRooms       Float?
+  minPrice       Int?
+  maxPrice       Int?
   minSquareMeter Int?
 
   // ── the commission agreement ────────────────────────────────────────────────
@@ -813,7 +826,7 @@ model Customer {
   /// Where the signed copy is, its reference, which property it covers — whatever the
   /// agency needs to find it again. Free text on purpose: every office files
   /// differently and a structured field would be wrong for most of them.
-  agreementNote     String?
+  agreementNote              String?
 
   /// The agent who looks after them. Optional: a walk-in belongs to the agency before
   /// anybody has picked them up.
@@ -823,10 +836,10 @@ model Customer {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  meetings Meeting[]
+  meetings      Meeting[]
   /// The properties this person is selling, for a customer on the other side of the
   /// deal. Empty for most of them: a buyer owns nothing the agency is handling.
-  ownedListings Listing[] @relation("ListingSeller")
+  ownedListings Listing[]            @relation("ListingSeller")
   suggestions   Suggestion[]
   coBrokerage   CoBrokerageRequest[]
   deals         Deal[]
@@ -837,11 +850,11 @@ model Customer {
 }
 
 model Lead {
-  id        String   @id @default(cuid())
+  id       String  @id @default(cuid())
   /// Null when the enquiry is about a private seller's listing, which has no agency.
   /// Exactly one of `agencyId` and `ownerUserId` is set.
-  agency    Agency?  @relation(fields: [agencyId], references: [id], onDelete: Cascade)
-  agencyId  String?
+  agency   Agency? @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  agencyId String?
 
   /// The private seller the enquiry is for. An enquiry nobody receives is worse than
   /// no enquiry form, so this exists for the same reason `Listing.ownerUserId` does.
@@ -950,8 +963,8 @@ model Meeting {
   customer   Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
   customerId String?
   /// The property it is about, for a viewing.
-  listing   Listing? @relation(fields: [listingId], references: [id], onDelete: SetNull)
-  listingId String?
+  listing    Listing?  @relation(fields: [listingId], references: [id], onDelete: SetNull)
+  listingId  String?
 
   title    String
   startsAt DateTime
@@ -965,13 +978,13 @@ model Meeting {
 
   /// What the customer said. `pending` covers both "not asked" and "asked, no answer":
   /// `confirmationSentAt` is what tells those apart.
-  attendeeResponse AttendeeResponse @default(pending)
+  attendeeResponse    AttendeeResponse @default(pending)
   attendeeRespondedAt DateTime?
 
   /// Unguessable, and the only thing standing between a stranger and somebody else's
   /// appointment — so it is issued per meeting and only when a confirmation is sent.
   /// The page behind it shows a time, a place and a first name, and nothing else.
-  confirmationToken String? @unique
+  confirmationToken  String?   @unique
   confirmationSentAt DateTime?
 
   /// When the reminder went out, which is also what stops it going out twice. Null and
@@ -986,17 +999,17 @@ model Meeting {
   // agent most needs to see, and a single flag cannot say it.
 
   /// What the property's owner said about this time.
-  sellerResponse      AttendeeResponse @default(pending)
-  sellerRespondedAt   DateTime?
+  sellerResponse    AttendeeResponse @default(pending)
+  sellerRespondedAt DateTime?
 
   /// What they said in their own words — nearly always when the answer is no, and
   /// nearly always the useful part: "not before five" saves a round of telephone tag.
-  sellerNote          String?
+  sellerNote String?
 
   /// Their own link, separate from the buyer's. One token for both would let either of
   /// them answer as the other.
-  sellerToken         String?   @unique
-  sellerAskedAt       DateTime?
+  sellerToken   String?   @unique
+  sellerAskedAt DateTime?
 
   // ── after the viewing ───────────────────────────────────────────────────────
 
@@ -1130,7 +1143,7 @@ model Street {
   id String @id @default(cuid())
 
   /// The locality as the source spells it, kept for display and for tracing a row back.
-  city String
+  city    String
   /// What the lookup matches on — `cityKey(city)`, because the city on a form comes
   /// from the locality file and the two spellings of a hyphenated name must meet.
   cityKey String
@@ -1178,7 +1191,7 @@ model CityBoundary {
   osmRelationId BigInt? @unique
   /// 8 is a municipality. 10 would be a neighbourhood, where Israeli coverage is thin.
   /// A region carries the level of the units it was built from.
-  adminLevel    Int    @default(8)
+  adminLevel    Int     @default(8)
 
   /// A GeoJSON Polygon or MultiPolygon. Kept whole rather than normalised into points:
   /// nothing queries inside it, the map just draws it.
@@ -1314,9 +1327,9 @@ model DemoRecord {
 
   createdAt DateTime @default(now())
 
+  @@unique([model, recordId])
   /// The clear reads "everything this agency seeded", which is the only query there is.
   @@index([agencyId, model])
-  @@unique([model, recordId])
 }
 
 /// One agency asking another to work a deal together.
@@ -1495,4 +1508,84 @@ model SavedSearch {
   @@index([userId, createdAt])
   /// And the sweep's: everyone who wants an email.
   @@index([alert, lastAlertAt])
+}
+
+/// Where a transaction came from, so two sources can run side by side and be compared.
+enum MarketDealSource {
+  /// The community mirror of the Tax Authority registry.
+  mashkof
+  /// The registry itself, once we have our own access to it.
+  taxAuthority
+}
+
+/// One real-estate transaction reported to the Israel Tax Authority.
+///
+/// Our own copy, synced on a schedule — never fetched while a page is rendering. The
+/// upstream is somebody else's server, and a property page that waits on it is exactly
+/// as fast and as available as they are. Holding the data also means comps are a join
+/// on our own indexes rather than a filter applied to whatever an HTTP API returns.
+///
+/// **The registry has no street addresses.** A deal is located by settlement plus
+/// gush/chelka — the cadastral block and parcel — which is why `Listing` carries those
+/// two columns as well. They are the only key that joins our listings to this table.
+///
+/// History is kept in full, back to 1998. Comps are computed over a recent window and
+/// would be poisoned by a deal from 2003, but a property page showing what this flat
+/// sold for in 2014 and again in 2021 needs 2014 — and the back catalogue is the part
+/// that can never be re-fetched if the upstream goes away.
+/// Named `MarketDeal`, not `Deal`: the CRM already has a `Deal`, and that one is an
+/// opportunity in an agency's own pipeline. This is a sale that happened, recorded by
+/// the state. Two very different things that both get called "עסקה" in Hebrew.
+model MarketDeal {
+  /// The upstream's own id, so a re-run upserts rather than duplicates.
+  id     String           @id
+  source MarketDealSource
+
+  /// When we last wrote this row, and the source's own data cut-off at that moment.
+  /// Together they answer "how fresh is this really", which a user is entitled to ask.
+  syncedAt DateTime  @default(now())
+  dataAsOf DateTime?
+
+  settlementCode Int
+  settlement     String
+  gush           Int
+  chelka         Int
+  subChelka      Int?
+
+  dealDate   DateTime
+  /// Price of the share sold. See `isFullDeal` before comparing it with anything.
+  dealAmount BigInt
+
+  rooms       Float?
+  area        Int?
+  pricePerSqm Int?
+  yearBuilt   Int?
+
+  /// The upstream's grouping — residential, land, commercial — and the raw Hebrew
+  /// description of the transaction, kept as given rather than mapped to our own enum.
+  propertyGroup String?
+  dealNature    String?
+
+  /// False when only part of a property changed hands, which makes `dealAmount`
+  /// incomparable with a full price. The upstream's own statistics exclude these.
+  isFullDeal Boolean @default(true)
+  /// The upstream's verdict on whether this row belongs in a median at all: it marks
+  /// outliers, multi-unit rows and partial deals. Trusted rather than recomputed —
+  /// they have the whole set and we have a copy.
+  inStats    Boolean @default(true)
+
+  latitude  Float?
+  longitude Float?
+
+  /// When the upstream first saw this row. The cursor the daily sync advances on, and
+  /// deliberately not `dealDate`: deals surface in the registry about three months
+  /// after they happen, so syncing on the deal date would miss every late report.
+  firstSeen DateTime?
+
+  /// The join to our own listings, and the only index a property page uses.
+  @@index([gush, chelka])
+  /// Everything a city or neighbourhood page asks: deals here, newest first.
+  @@index([settlementCode, dealDate])
+  /// The sync's own cursor.
+  @@index([source, firstSeen])
 }

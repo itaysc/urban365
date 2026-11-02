@@ -19,6 +19,8 @@
     "grant:admin": "node dist/scripts/grant-admin.js",
     "seed:dev-agency": "node dist/scripts/seed-dev-agency.js",
     "seed:demo": "npm run build && node dist/scripts/seed-demo-data.js",
+    "sync:deals": "npm run build && node dist/scripts/sync-deals.js",
+    "backfill:cadastre": "npm run build && node dist/scripts/backfill-cadastre.js",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
