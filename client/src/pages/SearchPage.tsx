@@ -184,7 +184,7 @@ export function SearchPage() {
       <div className="lg:flex lg:h-screen lg:flex-col lg:overflow-hidden">
         <SiteHeader />
 
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 sm:p-8 lg:min-h-0 lg:flex-1">
+      <main id="main" tabIndex={-1} className="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 sm:p-8 lg:min-h-0 lg:flex-1">
         <header className="flex flex-wrap items-baseline justify-between gap-3">
           <div>
             {/*
@@ -194,7 +194,21 @@ export function SearchPage() {
               the screen.
             */}
             <h1 className="text-2xl font-bold text-slate-900">{searchTitle(filters)}</h1>
-            <p className="text-sm text-slate-500">{resultCount(data?.total)}</p>
+            {/*
+              A live region, because this line is the answer to every filter change and
+              nothing else on the page says it. Somebody who cannot see the grid redraw
+              ticked a box and got silence — the count changed, the results changed, and
+              the only way to find out was to go and read the list.
+
+              `status` rather than `alert`: it waits for a gap in speech instead of
+              cutting the user off mid-word, which is right for a number that settles a
+              few hundred milliseconds after the click. `atomic` so the whole phrase is
+              read — without it a change from "12 תוצאות" to "13 תוצאות" can be read as
+              the single word that differs.
+            */}
+            <p role="status" aria-atomic="true" className="text-sm text-slate-500">
+              {resultCount(data?.total)}
+            </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
@@ -315,7 +329,7 @@ export function SearchPage() {
             </div>
           </aside>
         </div>
-      </div>
+      </main>
 
         {shown && <AssetModal asset={shown} onClose={() => showListing(null)} />}
       </div>

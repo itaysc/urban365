@@ -91,115 +91,117 @@ export function LandingPage() {
     <div className="min-h-screen bg-slate-50">
       <SiteHeader />
 
-      {/*
-        No `overflow-hidden`: the suggestion dropdown hangs below the search box and
-        past the foot of the hero, and hiding the overflow cut it in half. The cover
-        does not need the clip — `absolute inset-0 object-cover` already fits it to
-        this box exactly.
-      */}
-      <section className="relative isolate">
-        <img
-          src={COVER_URL}
-          alt=""
-          className="absolute inset-0 -z-10 h-full w-full object-cover"
-          fetchPriority="high"
-        />
-        {/* Dark enough for white text to pass contrast over a bright sky. */}
-        <div className="absolute inset-0 -z-10 bg-slate-900/55" aria-hidden />
+      <main id="main" tabIndex={-1}>
+        {/*
+          No `overflow-hidden`: the suggestion dropdown hangs below the search box and
+          past the foot of the hero, and hiding the overflow cut it in half. The cover
+          does not need the clip — `absolute inset-0 object-cover` already fits it to
+          this box exactly.
+        */}
+        <section className="relative isolate">
+          <img
+            src={COVER_URL}
+            alt=""
+            className="absolute inset-0 -z-10 h-full w-full object-cover"
+            fetchPriority="high"
+          />
+          {/* Dark enough for white text to pass contrast over a bright sky. */}
+          <div className="absolute inset-0 -z-10 bg-slate-900/55" aria-hidden />
 
-        <div className="mx-auto flex max-w-4xl flex-col items-center gap-6 px-4 py-16 text-center sm:py-24">
-          <div>
-            <h1 className="text-3xl font-extrabold text-white drop-shadow-sm sm:text-4xl">
-              דירות למכירה ולהשכרה בישראל
-            </h1>
-            <p className="mt-2 text-base text-white/90 sm:text-lg">
-              כל הנכסים מהסוכנויות ומבעלי הבתים, במקום אחד.
+          <div className="mx-auto flex max-w-4xl flex-col items-center gap-6 px-4 py-16 text-center sm:py-24">
+            <div>
+              <h1 className="text-3xl font-extrabold text-white drop-shadow-sm sm:text-4xl">
+                דירות למכירה ולהשכרה בישראל
+              </h1>
+              <p className="mt-2 text-base text-white/90 sm:text-lg">
+                כל הנכסים מהסוכנויות ומבעלי הבתים, במקום אחד.
+              </p>
+            </div>
+
+            <HeroSearch />
+
+            {/*
+              The second question every buyer has, under the first one. A calculator
+              reachable only from the footer is a calculator nobody opens, and the
+              budget it produces is what turns the box above into a useful search
+              rather than a guess at a round number.
+            */}
+            <p className="text-sm text-white/80">
+              לא בטוחים מה התקציב?{' '}
+              <Link
+                to="/mortgage"
+                className="font-semibold text-white underline decoration-white/40 underline-offset-4 transition hover:decoration-white"
+              >
+                מחשבון המשכנתא
+              </Link>{' '}
+              מחשב כמה אפשר לקנות ומה ההחזר החודשי.
             </p>
           </div>
+        </section>
 
-          <HeroSearch />
+        <div className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-8">
+          <h2 className="text-xl font-bold text-slate-900">נדל״ן לפי עיר</h2>
+          <p className="mt-1 text-sm text-slate-500">
+            לכל עיר דף עם מחירים, פילוח לפי חדרים ושכונות, והנכסים שמוצעים בה כרגע.
+          </p>
 
           {/*
-            The second question every buyer has, under the first one. A calculator
-            reachable only from the footer is a calculator nobody opens, and the
-            budget it produces is what turns the box above into a useful search
-            rather than a guess at a round number.
+            Each row carries how many properties are in that city. A column of names
+            alone is a menu; the number is the reason to pick one, and it is the only
+            thing on the card that was not already in the footer.
           */}
-          <p className="text-sm text-white/80">
-            לא בטוחים מה התקציב?{' '}
-            <Link
-              to="/mortgage"
-              className="font-semibold text-white underline decoration-white/40 underline-offset-4 transition hover:decoration-white"
-            >
-              מחשבון המשכנתא
-            </Link>{' '}
-            מחשב כמה אפשר לקנות ומה ההחזר החודשי.
+          <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {cities &&
+              byRegion(cities).map((region) => (
+                <section
+                  key={region.name}
+                  className="rounded-2xl border border-slate-200/80 bg-white p-5 transition hover:border-slate-300 hover:shadow-md"
+                >
+                  <h3 className="mb-3 flex items-baseline justify-between gap-2 border-b border-slate-100 pb-2.5">
+                    <span className="text-sm font-bold text-slate-900">{region.name}</span>
+                    <span className="text-xs font-normal text-slate-500">
+                      {region.cities.length} ערים
+                    </span>
+                  </h3>
+
+                  <ul className="-mx-2 flex flex-col">
+                    {region.cities.map((city) => (
+                      <li key={city.city}>
+                        {/*
+                          A plain anchor: the city pages are rendered by the API and are
+                          not in this bundle's route table. The whole row is the target,
+                          not the three words in it.
+                        */}
+                        <a
+                          className="flex items-baseline justify-between gap-3 rounded-lg px-2 py-1.5 text-sm text-slate-600 transition hover:bg-slate-50 hover:text-blue-700"
+                          href={`/nadlan/forsale/${encodeURIComponent(city.slug)}`}
+                        >
+                          <span className="truncate">{city.city}</span>
+                          <span className="shrink-0 text-xs tabular-nums text-slate-500">
+                            {total(city)}
+                          </span>
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              ))}
+          </div>
+
+          <p className="mt-5 text-sm">
+            <a className="text-blue-700 hover:underline" href="/nadlan">
+              כל הערים ומחירי הנדל״ן בהן ←
+            </a>
+          </p>
+
+          <p className="mt-6 text-xs text-slate-500">
+            תמונות הערים ותמונת השער מוויקיפדיה ומוויקישיתוף.{' '}
+            <a className="hover:underline" href="/nadlan/credits">
+              קרדיט לצלמים
+            </a>
           </p>
         </div>
-      </section>
-
-      <div className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-8">
-        <h2 className="text-xl font-bold text-slate-900">נדל״ן לפי עיר</h2>
-        <p className="mt-1 text-sm text-slate-500">
-          לכל עיר דף עם מחירים, פילוח לפי חדרים ושכונות, והנכסים שמוצעים בה כרגע.
-        </p>
-
-        {/*
-          Each row carries how many properties are in that city. A column of names
-          alone is a menu; the number is the reason to pick one, and it is the only
-          thing on the card that was not already in the footer.
-        */}
-        <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {cities &&
-            byRegion(cities).map((region) => (
-              <section
-                key={region.name}
-                className="rounded-2xl border border-slate-200/80 bg-white p-5 transition hover:border-slate-300 hover:shadow-md"
-              >
-                <h3 className="mb-3 flex items-baseline justify-between gap-2 border-b border-slate-100 pb-2.5">
-                  <span className="text-sm font-bold text-slate-900">{region.name}</span>
-                  <span className="text-xs font-normal text-slate-400">
-                    {region.cities.length} ערים
-                  </span>
-                </h3>
-
-                <ul className="-mx-2 flex flex-col">
-                  {region.cities.map((city) => (
-                    <li key={city.city}>
-                      {/*
-                        A plain anchor: the city pages are rendered by the API and are
-                        not in this bundle's route table. The whole row is the target,
-                        not the three words in it.
-                      */}
-                      <a
-                        className="flex items-baseline justify-between gap-3 rounded-lg px-2 py-1.5 text-sm text-slate-600 transition hover:bg-slate-50 hover:text-blue-700"
-                        href={`/nadlan/forsale/${encodeURIComponent(city.slug)}`}
-                      >
-                        <span className="truncate">{city.city}</span>
-                        <span className="shrink-0 text-xs tabular-nums text-slate-400">
-                          {total(city)}
-                        </span>
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            ))}
-        </div>
-
-        <p className="mt-5 text-sm">
-          <a className="text-blue-700 hover:underline" href="/nadlan">
-            כל הערים ומחירי הנדל״ן בהן ←
-          </a>
-        </p>
-
-        <p className="mt-6 text-xs text-slate-400">
-          תמונות הערים ותמונת השער מוויקיפדיה ומוויקישיתוף.{' '}
-          <a className="hover:underline" href="/nadlan/credits">
-            קרדיט לצלמים
-          </a>
-        </p>
-      </div>
+      </main>
 
       <SiteFooter />
     </div>

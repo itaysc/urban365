@@ -27,7 +27,7 @@ export function Pagination({ page, totalPages, onChange }: Props) {
 
       {pageNumbers(page, totalPages).map((p, i) =>
         p === '…' ? (
-          <span key={`gap-${i}`} className="px-1 text-slate-400">
+          <span key={`gap-${i}`} className="px-1 text-slate-500">
             …
           </span>
         ) : (

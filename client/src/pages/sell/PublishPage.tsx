@@ -231,7 +231,7 @@ export function PublishPage() {
     <div className="min-h-screen bg-slate-50">
       <SiteHeader />
 
-      <div className="mx-auto flex max-w-3xl flex-col gap-6 p-4 sm:p-8">
+      <main id="main" tabIndex={-1} className="mx-auto flex max-w-3xl flex-col gap-6 p-4 sm:p-8">
         <header className="flex flex-wrap items-baseline justify-between gap-3">
           <div>
             <h1 className="text-2xl font-bold text-slate-900">
@@ -391,7 +391,7 @@ export function PublishPage() {
             {/* Quiet until it is nearly spent: a counter from the first letter reads as
                 a limit on what you are allowed to say. */}
             {description.length > DESCRIPTION_MAX * 0.8 && (
-              <p dir="ltr" className="self-start text-xs text-slate-400">
+              <p dir="ltr" className="self-start text-xs text-slate-500">
                 {description.length} / {DESCRIPTION_MAX}
               </p>
             )}
@@ -445,7 +445,7 @@ export function PublishPage() {
             )}
           </div>
         </form>
-      </div>
+      </main>
 
       {/*
         Radix rather than the browser's own confirm, which is unstyled, untranslated and

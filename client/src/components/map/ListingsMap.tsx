@@ -506,7 +506,21 @@ export function ListingsMap({ points, offices = [], boundary, onSelect, onViewpo
     // screen before a single card is visible; tall enough on a desktop to be worth
     // reading beside the results.
     <div // Fills the column on a wide screen, which now has a fixed height of its own.
+      role="region"
+      aria-label="מפת הנכסים"
       className="relative h-[45vh] w-full shrink-0 overflow-hidden rounded-xl border border-slate-200 lg:h-full lg:min-h-0 lg:flex-1">
+      {/*
+        The pins are drawn on a canvas, so there is nothing for a screen reader to
+        reach and nothing for Tab to land on — a limitation of rendering a map this
+        way, not something a label fixes. What a label can do is stop the region being
+        an unexplained hole in the page, and say where the same properties can be
+        reached instead. The list beside it holds every point on the map.
+      */}
+      <p className="sr-only">
+        המפה מוצגת כגרפיקה ואינה נגישה לניווט במקלדת. כל הנכסים שעליה מופיעים גם ברשימת
+        התוצאות שבעמוד, שנגישה במלואה.
+      </p>
+
       <div ref={container} className="h-full w-full" />
 
       {active && (

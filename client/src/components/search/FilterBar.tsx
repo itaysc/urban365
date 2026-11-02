@@ -110,13 +110,13 @@ function FilterPopover({ label, value, width = 'w-72', children }: PopoverProps)
         }`}
       >
         <span className="flex min-w-0 flex-col leading-tight">
-          <span className="text-xs text-slate-400">{label}</span>
-          <span className={`truncate ${value ? 'font-semibold' : 'text-slate-400'}`}>
+          <span className="text-xs text-slate-500">{label}</span>
+          <span className={`truncate ${value ? 'font-semibold' : 'text-slate-500'}`}>
             {value ?? 'הכול'}
           </span>
         </span>
         <ChevronDown
-          className={`h-4 w-4 shrink-0 text-slate-400 transition ${open ? 'rotate-180' : ''}`}
+          className={`h-4 w-4 shrink-0 text-slate-500 transition ${open ? 'rotate-180' : ''}`}
           aria-hidden
         />
       </button>

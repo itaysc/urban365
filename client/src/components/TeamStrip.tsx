@@ -26,7 +26,7 @@ export function TeamStrip({ team, agencyName }: { team: TeamMember[]; agencyName
                 className="mx-auto h-24 w-24 rounded-full object-cover"
               />
             ) : (
-              <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-full bg-slate-100 text-xl font-semibold text-slate-400">
+              <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-full bg-slate-100 text-xl font-semibold text-slate-500">
                 {initials(member.name)}
               </div>
             )}

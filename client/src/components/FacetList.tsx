@@ -46,9 +46,9 @@ export function FacetList({ title, facets, selected, onToggle, initiallyShown = 
                   onChange={() => onToggle(f.value)}
                   className="h-4 w-4 flex-none"
                 />
-                {Icon && <Icon className="h-4 w-4 flex-none text-slate-400" aria-hidden />}
+                {Icon && <Icon className="h-4 w-4 flex-none text-slate-500" aria-hidden />}
                 <span className="flex-1 truncate">{f.value}</span>
-                <span className="text-xs text-slate-400">{f.count}</span>
+                <span className="text-xs text-slate-500">{f.count}</span>
               </label>
             </li>
           );

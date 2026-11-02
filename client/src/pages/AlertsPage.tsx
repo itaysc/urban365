@@ -114,7 +114,7 @@ export function AlertsPage() {
     <div className="min-h-screen bg-slate-50">
       <SiteHeader />
 
-      <main className="mx-auto flex w-full max-w-3xl flex-col gap-5 p-4 sm:p-6">
+      <main id="main" tabIndex={-1} className="mx-auto flex w-full max-w-3xl flex-col gap-5 p-4 sm:p-6">
         <SavedTabs />
 
         <header>
@@ -129,7 +129,7 @@ export function AlertsPage() {
         {!isPending && searches.length === 0 && (
           <div className="flex flex-col items-center gap-2 rounded-xl border border-slate-200 bg-white p-8 text-center">
             <p className="text-sm text-slate-600">עוד לא שמרתם חיפושים.</p>
-            <p className="text-sm text-slate-400">
+            <p className="text-sm text-slate-500">
               אפשר לשמור חיפוש מעמוד החיפוש, אחרי שבוחרים עיר ומה שחשוב לכם.
             </p>
             <Link to="/" className="text-sm text-blue-700 hover:underline">
@@ -188,7 +188,7 @@ export function AlertsPage() {
                   type="button"
                   onClick={() => remove.mutate(search.id)}
                   disabled={remove.isPending}
-                  className="flex items-center gap-1 text-slate-400 hover:text-red-700 disabled:opacity-50"
+                  className="flex items-center gap-1 text-slate-500 hover:text-red-700 disabled:opacity-50"
                 >
                   <Trash2 className="h-4 w-4" aria-hidden />
                   מחיקה

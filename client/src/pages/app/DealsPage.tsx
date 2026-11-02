@@ -193,7 +193,7 @@ export function DealsPage() {
                     {deals.map((deal) => cardFor(deal, true))}
 
                     {deals.length === 0 && (
-                      <li className="rounded-xl border border-dashed border-slate-300 p-4 text-center text-xs text-slate-400">
+                      <li className="rounded-xl border border-dashed border-slate-300 p-4 text-center text-xs text-slate-500">
                         ריק
                       </li>
                     )}

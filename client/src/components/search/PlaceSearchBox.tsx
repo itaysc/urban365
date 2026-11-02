@@ -265,7 +265,7 @@ export function PlaceSearchBox({ filters, update, tone = 'default', placeholder 
         }`}
       >
         <span>{highlight(option.label, debounced)}</span>
-        {option.count > 0 && <span className="shrink-0 text-xs text-slate-400">{option.count}</span>}
+        {option.count > 0 && <span className="shrink-0 text-xs text-slate-500">{option.count}</span>}
       </button>
     </li>
   );
@@ -280,7 +280,7 @@ export function PlaceSearchBox({ filters, update, tone = 'default', placeholder 
         }
       >
         <MapPin
-          className={`shrink-0 text-slate-400 ${tone === 'hero' ? 'h-5 w-5' : 'h-4 w-4'}`}
+          className={`shrink-0 text-slate-500 ${tone === 'hero' ? 'h-5 w-5' : 'h-4 w-4'}`}
           aria-hidden
         />
         <input
@@ -298,7 +298,7 @@ export function PlaceSearchBox({ filters, update, tone = 'default', placeholder 
           role="combobox"
           aria-expanded={open}
           aria-controls="place-suggestions"
-          className={`w-full bg-transparent text-slate-900 outline-none placeholder:text-slate-400 ${
+          className={`w-full bg-transparent text-slate-900 outline-none placeholder:text-slate-500 ${
             tone === 'hero' ? 'py-3 text-base' : 'text-sm'
           }`}
         />
@@ -396,7 +396,7 @@ export function PlaceSearchBox({ filters, update, tone = 'default', placeholder 
                         disabled={remaining <= 0}
                         className="flex w-full items-center gap-2 px-4 py-2.5 text-start text-sm text-slate-600 hover:bg-slate-50 disabled:opacity-40"
                       >
-                        <Clock className="h-4 w-4 shrink-0 text-slate-400" aria-hidden />
+                        <Clock className="h-4 w-4 shrink-0 text-slate-500" aria-hidden />
                         {place.label}
                       </button>
                     </li>
@@ -406,13 +406,13 @@ export function PlaceSearchBox({ filters, update, tone = 'default', placeholder 
             )}
 
             {debounced.length < MIN_TERM && recent.length === 0 && (
-              <p className="px-4 py-6 text-center text-sm text-slate-400">
+              <p className="px-4 py-6 text-center text-sm text-slate-500">
                 הקלידו שם של עיר או שכונה
               </p>
             )}
 
             {debounced.length >= MIN_TERM && options.length === 0 && (
-              <p className="px-4 py-6 text-center text-sm text-slate-400">לא נמצאו מיקומים מתאימים</p>
+              <p className="px-4 py-6 text-center text-sm text-slate-500">לא נמצאו מיקומים מתאימים</p>
             )}
 
             {districts.length > 0 && (

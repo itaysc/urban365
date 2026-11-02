@@ -187,7 +187,7 @@ export function MyProfilePage() {
           </Field>
           <p
             className={`mt-1 text-xs ${
-              form.bio.length >= BIO_MAX_LENGTH ? 'text-amber-700' : 'text-slate-400'
+              form.bio.length >= BIO_MAX_LENGTH ? 'text-amber-700' : 'text-slate-500'
             }`}
           >
             {form.bio.length}/{BIO_MAX_LENGTH}

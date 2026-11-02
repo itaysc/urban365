@@ -47,7 +47,7 @@ function Document({ doc }: { doc: LegalDocument }) {
     <div className="min-h-screen bg-slate-50">
       <SiteHeader />
 
-      <div className="mx-auto flex max-w-3xl flex-col gap-6 p-6 sm:p-10">
+      <main id="main" tabIndex={-1} className="mx-auto flex max-w-3xl flex-col gap-6 p-6 sm:p-10">
         <header>
           <h1 className="text-2xl font-bold text-slate-900">{doc.title}</h1>
           <p className="mt-1 text-sm text-slate-500">עודכן לאחרונה: {doc.updated}</p>
@@ -91,7 +91,7 @@ function Document({ doc }: { doc: LegalDocument }) {
             </Link>
           ))}
         </footer>
-      </div>
+      </main>
 
       <SiteFooter />
     </div>

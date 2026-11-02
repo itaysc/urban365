@@ -236,7 +236,7 @@ export function CoBrokeragePage() {
                     type="button"
                     onClick={() => answer.mutate({ id: request.id, accept: false })}
                     disabled={answer.isPending}
-                    className="flex items-center gap-1 text-slate-400 hover:text-slate-700 disabled:opacity-50"
+                    className="flex items-center gap-1 text-slate-500 hover:text-slate-700 disabled:opacity-50"
                   >
                     <X className="h-4 w-4" aria-hidden />
                     דחייה
@@ -247,7 +247,7 @@ export function CoBrokeragePage() {
                   type="button"
                   onClick={() => withdraw.mutate(request.id)}
                   disabled={withdraw.isPending}
-                  className="text-sm text-slate-400 hover:text-slate-700 disabled:opacity-50"
+                  className="text-sm text-slate-500 hover:text-slate-700 disabled:opacity-50"
                 >
                   ביטול הבקשה
                 </button>

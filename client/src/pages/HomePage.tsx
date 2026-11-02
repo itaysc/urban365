@@ -161,7 +161,7 @@ export function HomePage() {
               <div className="flex flex-wrap items-baseline justify-between gap-3">
                 <h2 className="text-lg font-semibold text-slate-900">{result.meta.total} נכסים</h2>
                 <CsvDownloads agencyId={result.meta.agencyId} section={result.meta.section} />
-                <p className="w-full text-xs text-slate-400 sm:w-auto">
+                <p className="w-full text-xs text-slate-500 sm:w-auto">
                   {result.meta.source === 'cache' ? 'מתוך מטמון' : 'נסרק עכשיו'} ·{' '}
                   {formatDate(result.meta.scrapedAt)}
                   {result.meta.listingsWithoutDetails > 0 &&

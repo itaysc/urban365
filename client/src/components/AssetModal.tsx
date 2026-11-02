@@ -113,14 +113,14 @@ export function AssetModal({ asset, onClose }: { asset: Asset; onClose: () => vo
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <h2 className="text-2xl font-bold text-slate-900">{formatPrice(asset.price)}</h2>
               {asset.priceBeforeDrop && (
-                <span className="text-slate-400 line-through">{formatPrice(asset.priceBeforeDrop)}</span>
+                <span className="text-slate-500 line-through">{formatPrice(asset.priceBeforeDrop)}</span>
               )}
             </div>
             <p className="mt-1 text-lg text-slate-800">
               {[asset.propertyType, asset.rooms && `${asset.rooms} חדרים`].filter(Boolean).join(', ')}
             </p>
             <p className="text-slate-500">{formatAddress(asset)}</p>
-            <p className="text-sm text-slate-400">
+            <p className="text-sm text-slate-500">
               {[asset.area, asset.region].filter(Boolean).join(' · ')}
             </p>
           </div>

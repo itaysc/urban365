@@ -81,7 +81,7 @@ export function LoginPage() {
         {googleAvailable && (
           <div className="flex items-center gap-3">
             <span className="h-px flex-1 bg-slate-200" />
-            <span className="text-xs text-slate-400">או</span>
+            <span className="text-xs text-slate-500">או</span>
             <span className="h-px flex-1 bg-slate-200" />
           </div>
         )}
@@ -111,7 +111,7 @@ export function LoginPage() {
             short window, where it was easy to miss entirely. */}
         <div className="flex items-center gap-3 pt-2">
           <span className="h-px flex-1 bg-slate-200" />
-          <span className="text-xs text-slate-400">או</span>
+          <span className="text-xs text-slate-500">או</span>
           <span className="h-px flex-1 bg-slate-200" />
         </div>
 

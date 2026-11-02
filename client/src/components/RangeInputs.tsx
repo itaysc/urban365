@@ -20,7 +20,7 @@ export function RangeInputs({ title, suffix, min, max, onChange, step = 1 }: Pro
   return (
     <fieldset className="border-t border-slate-100 pt-3">
       <legend className="mb-2 text-sm font-semibold text-slate-900">
-        {title} {suffix && <span className="font-normal text-slate-400">({suffix})</span>}
+        {title} {suffix && <span className="font-normal text-slate-500">({suffix})</span>}
       </legend>
 
       <div className="flex items-center gap-2">
@@ -34,7 +34,7 @@ export function RangeInputs({ title, suffix, min, max, onChange, step = 1 }: Pro
           onChange={(e) => onChange({ min: parse(e.target.value), max })}
           className={field}
         />
-        <span className="text-slate-400">–</span>
+        <span className="text-slate-500">–</span>
         <input
           type="number"
           inputMode="numeric"

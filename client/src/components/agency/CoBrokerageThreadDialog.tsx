@@ -126,14 +126,14 @@ export function CoBrokerageThreadDialog({
                     ))}
                   </select>
                   {/* Said once: an agent who thinks only they can move it will not. */}
-                  <span className="text-xs text-slate-400">שתי הסוכנויות רואות ומעדכנות.</span>
+                  <span className="text-xs text-slate-500">שתי הסוכנויות רואות ומעדכנות.</span>
                 </label>
               )}
             </div>
 
             <Dialog.Close
               aria-label="סגירה"
-              className="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+              className="rounded-lg p-1.5 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
             >
               <X className="h-5 w-5" />
             </Dialog.Close>
@@ -179,7 +179,7 @@ export function CoBrokerageThreadDialog({
             {settled ? (
               // The thread stays readable. Writing into a finished deal is how a record
               // becomes an argument.
-              <p className="text-sm text-slate-400">הבקשה נסגרה. השיחה נשמרת לתיעוד.</p>
+              <p className="text-sm text-slate-500">הבקשה נסגרה. השיחה נשמרת לתיעוד.</p>
             ) : (
               <div className="flex items-end gap-3">
                 <textarea

@@ -38,7 +38,7 @@ function Stat({
 }) {
   return (
     <div className="flex flex-col items-center gap-1 rounded-lg bg-slate-50 p-3">
-      <Icon className="h-4 w-4 text-slate-400" aria-hidden />
+      <Icon className="h-4 w-4 text-slate-500" aria-hidden />
       <span className="text-lg font-bold text-slate-900">{value}</span>
       <span className="text-center text-[0.7rem] leading-tight text-slate-500">{label}</span>
     </div>
@@ -107,7 +107,7 @@ export function MySalePage() {
     <div className="min-h-screen bg-slate-50">
       <SiteHeader />
 
-      <div className="mx-auto flex max-w-4xl flex-col gap-6 p-4 sm:p-8">
+      <main id="main" tabIndex={-1} className="mx-auto flex max-w-4xl flex-col gap-6 p-4 sm:p-8">
         <header className="flex flex-wrap items-baseline justify-between gap-3">
           <div>
             <h1 className="text-2xl font-bold text-slate-900">הנכסים שלי למכירה</h1>
@@ -155,7 +155,7 @@ export function MySalePage() {
                     {listing.coverImageUrl ? (
                       <img src={listing.coverImageUrl} alt="" className="h-full w-full object-cover" />
                     ) : (
-                      <span className="flex h-full items-center justify-center text-xs text-slate-400">
+                      <span className="flex h-full items-center justify-center text-xs text-slate-500">
                         ללא תמונה
                       </span>
                     )}
@@ -213,7 +213,7 @@ export function MySalePage() {
                         type="button"
                         onClick={() => setDeleting(listing)}
                         aria-label={`מחיקת ${address(listing) || 'הנכס'}`}
-                        className="ms-auto flex items-center gap-1 text-slate-400 transition hover:text-red-700"
+                        className="ms-auto flex items-center gap-1 text-slate-500 transition hover:text-red-700"
                       >
                         <Trash2 className="h-4 w-4" aria-hidden />
                         מחיקה
@@ -236,7 +236,7 @@ export function MySalePage() {
             );
           })}
         </ul>
-      </div>
+      </main>
 
       {/*
         Says what goes, rather than asking "are you sure?" about an unnamed thing. The

@@ -72,6 +72,27 @@ export function SiteHeader({ leading, subtitle, fullWidth = false }: Props) {
 
   return (
     <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur">
+      {/*
+        The first thing in the tab order, invisible until it has focus.
+
+        Without it, reaching the results on a phone-width page means tabbing through the
+        whole bar — the logo, the publish button, saved, searches, the account — on
+        every single page, which is exactly the "bypass blocks" the standard is about.
+        It is `absolute` rather than in the flow so it cannot push the bar down when it
+        appears, and the header is `sticky`, which is positioned, so it has something to
+        be absolute against.
+
+        Every page that renders this header also has `<main id="main">`. A skip link
+        pointing at an id that is not there is worse than no skip link: it moves focus
+        nowhere and says nothing about it.
+      */}
+      <a
+        href="#main"
+        className="sr-only rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white focus:not-sr-only focus:absolute focus:start-4 focus:top-2.5 focus:z-50"
+      >
+        דילוג לתוכן המרכזי
+      </a>
+
       <div
         className={`flex h-14 w-full items-center justify-between gap-3 px-4 sm:px-8 ${
           fullWidth ? '' : 'mx-auto max-w-7xl'

@@ -170,7 +170,7 @@ td.num,th.num{font-variant-numeric:tabular-nums;white-space:nowrap}
 .card .where{font-size:.875rem;color:#334155}
 .card .facts{font-size:.8125rem;color:#64748b;margin-top:auto}
 .headline-price{font-size:1.5rem;font-weight:700;margin:.25rem 0 0}
-.headline-price .was{margin-inline-start:.625rem;font-size:1rem;font-weight:400;color:#94a3b8;
+.headline-price .was{margin-inline-start:.625rem;font-size:1rem;font-weight:400;color:#64748b;
   text-decoration:line-through}
 .gallery{list-style:none;padding:0;margin:1.25rem 0 0;display:grid;
   grid-template-columns:repeat(auto-fill,minmax(14rem,1fr));gap:.5rem}

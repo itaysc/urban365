@@ -83,7 +83,7 @@ export function NewDealDialog({ open, onOpenChange, onCreated, initialStage }: P
 
             <Dialog.Close
               aria-label="סגירה"
-              className="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+              className="rounded-lg p-1.5 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
             >
               <X className="h-5 w-5" />
             </Dialog.Close>

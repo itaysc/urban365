@@ -93,7 +93,7 @@ export function MessageDraft({ draft, phone, busy, onWrite, onSave }: Props) {
           </a>
         ) : (
           // Said rather than left as a missing button, so nobody hunts for it.
-          <span className="text-xs text-slate-400">אין מספר טלפון לשליחה</span>
+          <span className="text-xs text-slate-500">אין מספר טלפון לשליחה</span>
         )}
 
         <button type="button" onClick={copy} className="flex items-center gap-1 text-slate-600 hover:text-slate-900">
@@ -111,7 +111,7 @@ export function MessageDraft({ draft, phone, busy, onWrite, onSave }: Props) {
           {busy ? 'כותב…' : 'נוסח אחר'}
         </button>
 
-        <span className="text-xs text-slate-400">ההודעה נשלחת רק אחרי שתאשרו בוואטסאפ.</span>
+        <span className="text-xs text-slate-500">ההודעה נשלחת רק אחרי שתאשרו בוואטסאפ.</span>
       </div>
     </div>
   );

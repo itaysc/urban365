@@ -92,7 +92,7 @@ export function ImageManager({ listing, onChange }: Props) {
       )}
 
       {listing.images.length === 0 ? (
-        <p className="text-center text-xs text-slate-400">התמונה הראשונה תופיע ככריכה.</p>
+        <p className="text-center text-xs text-slate-500">התמונה הראשונה תופיע ככריכה.</p>
       ) : (
         <ul className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {listing.images.map((image, index) => (

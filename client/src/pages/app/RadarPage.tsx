@@ -146,7 +146,7 @@ export function RadarPage() {
           {/* The likeliest reason the list is empty, said once rather than left to be
               discovered: matching needs somebody to have written down what a customer
               wants. */}
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-slate-500">
             התאמות נוצרות מהבקשות שרשומות בכרטיסי הלקוחות. כדאי למלא מה הם מחפשים.
           </p>
           <Link to="/app/customers" className="text-sm text-blue-700 hover:underline">
@@ -283,7 +283,7 @@ export function RadarPage() {
                 type="button"
                 onClick={() => answer.mutate({ id: suggestion.id, done: false })}
                 disabled={answer.isPending}
-                className="flex items-center gap-1 text-slate-400 hover:text-slate-700 disabled:opacity-50"
+                className="flex items-center gap-1 text-slate-500 hover:text-slate-700 disabled:opacity-50"
               >
                 <X className="h-4 w-4" aria-hidden />
                 לא רלוונטי

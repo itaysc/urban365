@@ -65,18 +65,18 @@ export function ViewingPage() {
 
             <dl className="mt-4 flex flex-col gap-2 rounded-xl bg-slate-50 p-4 text-sm">
               <div className="flex items-center gap-2 text-slate-800">
-                <Calendar className="h-4 w-4 shrink-0 text-slate-400" aria-hidden />
+                <Calendar className="h-4 w-4 shrink-0 text-slate-500" aria-hidden />
                 <span>{when(data.startsAt)}</span>
               </div>
               {data.location && (
                 <div className="flex items-center gap-2 text-slate-800">
-                  <MapPin className="h-4 w-4 shrink-0 text-slate-400" aria-hidden />
+                  <MapPin className="h-4 w-4 shrink-0 text-slate-500" aria-hidden />
                   <span>{data.location}</span>
                 </div>
               )}
               {data.agencyPhone && (
                 <div className="flex items-center gap-2 text-slate-800">
-                  <Phone className="h-4 w-4 shrink-0 text-slate-400" aria-hidden />
+                  <Phone className="h-4 w-4 shrink-0 text-slate-500" aria-hidden />
                   <a href={`tel:${data.agencyPhone}`} dir="ltr" className="hover:underline">
                     {data.agencyPhone}
                   </a>
@@ -125,7 +125,7 @@ export function ViewingPage() {
                 </div>
 
                 {/* Changing your mind is normal, and ringing to do it is friction. */}
-                <p className="mt-3 text-xs text-slate-400">
+                <p className="mt-3 text-xs text-slate-500">
                   אפשר לשנות את התשובה כאן בכל זמן עד הפגישה.
                 </p>
               </>

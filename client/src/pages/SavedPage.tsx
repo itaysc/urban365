@@ -49,7 +49,7 @@ export function SavedPage() {
     <div className="min-h-screen bg-slate-50">
       <SiteHeader />
 
-      <div className="mx-auto flex max-w-5xl flex-col gap-6 p-4 sm:p-8">
+      <main id="main" tabIndex={-1} className="mx-auto flex max-w-5xl flex-col gap-6 p-4 sm:p-8">
         <SavedTabs />
 
         <header className="flex flex-wrap items-baseline justify-between gap-3">
@@ -94,7 +94,7 @@ export function SavedPage() {
             />
           ))}
         </div>
-      </div>
+      </main>
 
       {selected && <AssetModal asset={selected} onClose={() => setSelected(null)} />}
 

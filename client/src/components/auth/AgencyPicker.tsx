@@ -79,14 +79,14 @@ export function AgencyPicker({ claimed, onClaimedChange, agencyName, onAgencyNam
                     className="flex w-full items-center justify-between px-3 py-2 text-right text-sm hover:bg-slate-50"
                   >
                     <span>{m.name}</span>
-                    <span className="text-xs text-slate-400">{m.listingCount} נכסים</span>
+                    <span className="text-xs text-slate-500">{m.listingCount} נכסים</span>
                   </button>
                 </li>
               ))}
             </ul>
           )}
 
-          <p className="my-2 text-center text-xs text-slate-400">או</p>
+          <p className="my-2 text-center text-xs text-slate-500">או</p>
 
           <Field label="שם סוכנות חדשה" htmlFor="agencyName">
             <input

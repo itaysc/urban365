@@ -92,7 +92,7 @@ export function DealCard({
         <button
           type="button"
           aria-label={`מחיקת העסקה ${deal.title}`}
-          className="shrink-0 rounded-lg p-1.5 text-slate-400 transition hover:bg-red-50 hover:text-red-700"
+          className="shrink-0 rounded-lg p-1.5 text-slate-500 transition hover:bg-red-50 hover:text-red-700"
           onClick={onRemove}
         >
           <Trash2 className="h-4 w-4" aria-hidden />

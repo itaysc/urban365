@@ -58,10 +58,18 @@ export function ListingCard({
         className="flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white text-right transition hover:border-slate-400 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-slate-900"
       >
       <div className="relative h-44 bg-slate-100">
+        {/*
+          The photo carries `alt=""` on purpose. The whole card is one button, so its
+          accessible name is everything inside it — and the words under the photo
+          already say the property type and the city. An alt of "דירת גן" made a
+          screen reader read that twice before reaching the price, and bought nothing:
+          nobody here has seen this photograph, so it cannot be described, only
+          re-labelled.
+        */}
         {listing.coverImageUrl ? (
-          <img src={listing.coverImageUrl} alt={listing.propertyType ?? ''} className="h-full w-full object-cover" loading="lazy" />
+          <img src={listing.coverImageUrl} alt="" className="h-full w-full object-cover" loading="lazy" />
         ) : (
-          <div className="flex h-full items-center justify-center text-sm text-slate-400">ללא תמונה</div>
+          <div className="flex h-full items-center justify-center text-sm text-slate-500">ללא תמונה</div>
         )}
 
         {/*
@@ -114,7 +122,7 @@ export function ListingCard({
         <div className="flex items-baseline justify-between gap-2">
           <span className="text-xl font-bold text-slate-900">{formatPrice(listing.price)}</span>
           {listing.priceBeforeDrop && (
-            <span className="text-sm text-slate-400 line-through">{formatPrice(listing.priceBeforeDrop)}</span>
+            <span className="text-sm text-slate-500 line-through">{formatPrice(listing.priceBeforeDrop)}</span>
           )}
         </div>
 
@@ -147,7 +155,7 @@ export function ListingCard({
                   key={a}
                   className="flex items-center gap-1 rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-600"
                 >
-                  <Icon className="h-3 w-3 text-slate-400" aria-hidden />
+                  <Icon className="h-3 w-3 text-slate-500" aria-hidden />
                   {a}
                 </span>
               );
@@ -155,7 +163,7 @@ export function ListingCard({
           </div>
         )}
 
-        <div className="flex items-center justify-between text-xs text-slate-400">
+        <div className="flex items-center justify-between text-xs text-slate-500">
           {/* A private seller has no agency. Saying who is selling matters to a buyer,
               so the absence is filled rather than left blank. */}
           <span className="truncate">{listing.agency?.name ?? 'מוכר פרטי'}</span>

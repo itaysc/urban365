@@ -61,7 +61,7 @@ export function GoogleButton({
     return (
       <span
         aria-disabled
-        className="flex cursor-not-allowed items-center justify-center gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-400"
+        className="flex cursor-not-allowed items-center justify-center gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-500"
       >
         {label ?? 'המשך עם Google'}
       </span>

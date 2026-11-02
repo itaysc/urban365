@@ -60,7 +60,7 @@ function Waiting({
       className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-4 transition hover:border-slate-900"
     >
       <span className="flex items-center gap-2 text-sm text-slate-600">
-        <Icon className="h-4 w-4 shrink-0 text-slate-400" aria-hidden />
+        <Icon className="h-4 w-4 shrink-0 text-slate-500" aria-hidden />
         {label}
       </span>
       <span
@@ -79,7 +79,7 @@ function Figure({ label, value, hint }: { label: string; value: string; hint?: s
     <div className="rounded-xl border border-slate-200 bg-white p-4">
       <p className="text-sm text-slate-500">{label}</p>
       <p className="mt-1 text-xl font-bold text-slate-900">{value}</p>
-      {hint && <p className="mt-0.5 text-xs text-slate-400">{hint}</p>}
+      {hint && <p className="mt-0.5 text-xs text-slate-500">{hint}</p>}
     </div>
   );
 }

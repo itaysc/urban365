@@ -71,7 +71,7 @@ export function CustomerDeals({ customer }: { customer: Customer }) {
     <div className="mt-3 rounded-lg bg-slate-50 p-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h4 className="flex items-center gap-1 text-sm font-semibold text-slate-900">
-          <Handshake className="h-4 w-4 text-slate-400" aria-hidden />
+          <Handshake className="h-4 w-4 text-slate-500" aria-hidden />
           עסקאות ({deals.length})
         </h4>
 

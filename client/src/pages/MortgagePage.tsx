@@ -55,7 +55,7 @@ function Money({
         up against it — the number and its unit read as one thing.
       */}
       <div className="flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-3 py-2.5 transition focus-within:border-slate-900 focus-within:ring-4 focus-within:ring-slate-900/5">
-        <span className="text-sm text-slate-400" aria-hidden>
+        <span className="text-sm text-slate-500" aria-hidden>
           ₪
         </span>
         <input
@@ -256,7 +256,7 @@ export function MortgagePage() {
     <div className="min-h-screen bg-slate-50">
       <SiteHeader />
 
-      <div className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-8 sm:py-12">
+      <main id="main" tabIndex={-1} className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-8 sm:py-12">
         <h1 className="text-2xl font-extrabold text-slate-900 sm:text-3xl">מחשבון משכנתא</h1>
         <p className="mt-2 max-w-2xl text-sm text-slate-600 sm:text-base">
           ההחזר החודשי על לוח שפיצר, והבדיקה שהבנק עושה ממילא — כמה הוא מוכן להלוות על
@@ -405,7 +405,7 @@ export function MortgagePage() {
           מסלולים — פריים, קבועה צמודה ולא צמודה — בריביות שונות ובהצמדה למדד, והריבית
           שתקבלו תלויה בכם, בבנק וביום. המספרים כאן אינם הצעה, התחייבות או ייעוץ.
         </p>
-      </div>
+      </main>
 
       <SiteFooter />
     </div>

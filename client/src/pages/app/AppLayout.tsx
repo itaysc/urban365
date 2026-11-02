@@ -107,7 +107,7 @@ export function AppLayout() {
           </div>
         </aside>
 
-        <main className="min-w-0 flex-1 p-4 sm:p-6">
+        <main id="main" tabIndex={-1} className="min-w-0 flex-1 p-4 sm:p-6">
           {/* The shell is full width so the sidebar sits against the window edge, but
               the content itself is capped — a form stretched across 1800px is unusable.
               The cap lives here rather than on the shell, which is what used to leave a

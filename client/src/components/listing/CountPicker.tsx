@@ -53,7 +53,7 @@ export function CountPicker({
         })}
       </div>
 
-      <p className="mt-2 text-xs text-slate-400">{hint}</p>
+      <p className="mt-2 text-xs text-slate-500">{hint}</p>
     </fieldset>
   );
 }

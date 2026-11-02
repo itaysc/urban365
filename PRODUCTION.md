@@ -870,15 +870,25 @@ from the toolbar's own button — both of which pointed at it for some time befo
 route existed, so the statement was a blank screen.
 
 **It does not claim conformance.** No מורשה נגישות has audited this site against
-ת״י 5568, so the document says that, lists what was done, and lists the gaps it knows
-about: the map, which is a third-party component that is hard to drive from a
-keyboard; photographs whose alt text can only name the property, since nobody here
-took them; the missing skip link; search results that change without being announced
-(`aria-live` is only on the toasts and the mortgage calculator); form errors shown
-beside a field but not tied to it in code; contrast checked where it came up in
-development rather than systematically; agency-written ad text we do not control;
-and the CSV exports. The regulations ask for the known gaps, and a statement with none listed
-is one nobody wrote honestly. Fix an item, delete its bullet.
+ת״י 5568, so the document says that, lists what was done, and lists what is still
+missing. The regulations ask for the known gaps, and a statement with none listed is
+one nobody wrote honestly. Fix an item, move its bullet from one list to the other.
+
+What is left on the gap list is the part that cannot be written away: the map's pins
+are drawn on a canvas and cannot be reached at all, so the region is labelled and the
+results list is named as the full alternative; the photographs are other people's and
+nobody here can describe them; the ad text is the agencies'; the CSV exports are for
+a spreadsheet, not a reader.
+
+**What closing the rest of the list took**, since each of these is a thing to keep:
+
+| | |
+| --- | --- |
+| Skip link | In `SiteHeader`, so it is the first tab stop everywhere, pointing at `#main`. Every page that renders that header now has a `<main id="main" tabIndex={-1}>` — a page that grows a header without one would ship a link that moves focus nowhere. |
+| Results count | `role="status" aria-atomic` on the line under the heading in `SearchPage`. It is the only thing on the page that answers a filter change, and it used to answer in silence. |
+| Form errors | `Field` clones `aria-describedby` and `aria-invalid` onto its child — but only when the child is a plain DOM element, since `PhoneField` and `SuggestBox` would swallow the props. The message element is always rendered and `empty:hidden`, because a live region has to exist before it fills to be announced. |
+| Contrast | `client/src/lib/contrast.test.ts` holds every text pair the app uses and fails the suite under AA. Adding `slate-400` is what found the problem: 2.56:1 on white, roughly half what AA asks, across 96 uses. They are all `slate-500` now (4.76:1), which cost the design its third tier of grey. `.headline-price .was` on the server-rendered pages was the same colour and the same fix. |
+| Card photographs | `alt=""`. The card is one button whose name already says the property type and city, so the old `alt="דירת גן"` was read twice and described nothing. The gallery was already right: its main image sits in an `aria-hidden` button and its thumbnails are labelled. |
 
 **The toolbar is OpenNagish**, pinned in `client/index.html`, and §3 of the statement
 describes what it offers. It is named there as an aid on top of the site rather than
@@ -900,9 +910,10 @@ production.
   `[[טלפון רכז הנגישות]]`. Each page shows a draft banner counting the ones it still
   has, and says which review it is waiting for — a lawyer for the terms and the
   privacy policy, a מורשה נגישות שירות for the accessibility statement.
-* **No accessibility audit.** The statement says so itself, and lists the gaps it
-  knows about (§ The accessibility statement). Naming a coordinator and booking the
-  audit are the two things that have to happen before launch.
+* **No accessibility audit.** The statement says so itself, and lists what is still
+  missing (§ The accessibility statement). The gaps a developer could close are
+  closed; naming a coordinator and booking the audit are the two that are left, and
+  both have to happen before launch.
 * **No admin queue for flagged listings** (§5).
 * **The SEO pages are not proxied yet**, because no host has been chosen for the
   client. Until the three rules in `client/public/_redirects` are live, the city pages

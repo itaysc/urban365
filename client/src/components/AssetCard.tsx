@@ -27,7 +27,7 @@ export function AssetCard({ asset, onOpen }: { asset: Asset; onOpen: (asset: Ass
         {asset.coverImageUrl ? (
           <img src={asset.coverImageUrl} alt={asset.propertyType} className="h-full w-full object-cover" loading="lazy" />
         ) : (
-          <div className="flex h-full items-center justify-center text-sm text-slate-400">ללא תמונה</div>
+          <div className="flex h-full items-center justify-center text-sm text-slate-500">ללא תמונה</div>
         )}
 
         {asset.tags.length > 0 && (
@@ -45,7 +45,7 @@ export function AssetCard({ asset, onOpen }: { asset: Asset; onOpen: (asset: Ass
         <div className="flex items-baseline justify-between gap-2">
           <span className="text-xl font-bold text-slate-900">{formatPrice(asset.price)}</span>
           {asset.priceBeforeDrop && (
-            <span className="text-sm text-slate-400 line-through">{formatPrice(asset.priceBeforeDrop)}</span>
+            <span className="text-sm text-slate-500 line-through">{formatPrice(asset.priceBeforeDrop)}</span>
           )}
         </div>
 
@@ -73,7 +73,7 @@ export function AssetCard({ asset, onOpen }: { asset: Asset; onOpen: (asset: Ass
                   key={a.key}
                   className="flex items-center gap-1 rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-600"
                 >
-                  <Icon className="h-3 w-3 text-slate-400" aria-hidden />
+                  <Icon className="h-3 w-3 text-slate-500" aria-hidden />
                   {a.label}
                 </span>
               );
@@ -81,7 +81,7 @@ export function AssetCard({ asset, onOpen }: { asset: Asset; onOpen: (asset: Ass
           </div>
         )}
 
-        {asset.brokerName && <div className="text-xs text-slate-400">{asset.brokerName}</div>}
+        {asset.brokerName && <div className="text-xs text-slate-500">{asset.brokerName}</div>}
       </div>
     </button>
   );

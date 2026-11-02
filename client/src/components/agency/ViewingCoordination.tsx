@@ -40,7 +40,7 @@ function Side({ who, response, labels, askedAt, onAsk, missing, busy }: SideProp
         </button>
       ) : (
         // Why the button is not there, rather than no button and no explanation.
-        missing && <span className="text-xs text-slate-400">{missing}</span>
+        missing && <span className="text-xs text-slate-500">{missing}</span>
       )}
     </div>
   );
@@ -100,7 +100,7 @@ export function ViewingCoordination({ meeting, onAskBuyer, onAskSeller, busy }: 
       {/* The one line that saves a phone call, so it is not hidden behind anything. */}
       {meeting.sellerNote && (
         <p className="text-slate-600">
-          <span className="text-slate-400">בעל הנכס: </span>
+          <span className="text-slate-500">בעל הנכס: </span>
           {meeting.sellerNote}
         </p>
       )}

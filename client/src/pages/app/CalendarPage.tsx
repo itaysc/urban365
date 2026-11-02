@@ -551,7 +551,7 @@ export function CalendarPage() {
         </div>
 
         {view !== 'day' && (
-          <div className="grid grid-cols-7 gap-1 text-center text-xs text-slate-400">
+          <div className="grid grid-cols-7 gap-1 text-center text-xs text-slate-500">
             {DAY_NAMES.map((d) => (
               <div key={d} className="py-1">
                 {d}
@@ -632,7 +632,7 @@ export function CalendarPage() {
                   ))}
 
                   {view === 'month' && ours.length + theirs.length > 3 && (
-                    <span className="text-[0.65rem] text-slate-400">
+                    <span className="text-[0.65rem] text-slate-500">
                       ועוד {ours.length + theirs.length - 3}
                     </span>
                   )}
@@ -695,7 +695,7 @@ export function CalendarPage() {
                     </span>
                   )}
                   {meeting.googleEventId && (
-                    <span className="flex items-center gap-1 text-xs text-slate-400">
+                    <span className="flex items-center gap-1 text-xs text-slate-500">
                       <CalendarDays className="h-3.5 w-3.5" aria-hidden />
                       ביומן Google
                     </span>
@@ -810,7 +810,7 @@ export function CalendarPage() {
               </span>{' '}
               {event.title}
             </p>
-            <p className="mt-1 text-xs text-slate-400">מיומן Google שלכם — לעריכה שם</p>
+            <p className="mt-1 text-xs text-slate-500">מיומן Google שלכם — לעריכה שם</p>
           </article>
         ))}
       </section>

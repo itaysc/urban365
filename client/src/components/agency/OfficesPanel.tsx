@@ -156,7 +156,7 @@ export function OfficesPanel() {
                   onClick={() => remove.mutate(office.id)}
                   disabled={remove.isPending}
                   aria-label="הסרת הסניף"
-                  className="rounded-lg p-1.5 text-slate-400 transition hover:bg-red-50 hover:text-red-700 disabled:opacity-50"
+                  className="rounded-lg p-1.5 text-slate-500 transition hover:bg-red-50 hover:text-red-700 disabled:opacity-50"
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>

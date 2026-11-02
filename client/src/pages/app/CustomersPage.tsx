@@ -179,7 +179,7 @@ export function CustomersPage() {
 
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative flex-1">
-          <Search className="absolute inset-y-0 end-3 my-auto h-4 w-4 text-slate-400" aria-hidden />
+          <Search className="absolute inset-y-0 end-3 my-auto h-4 w-4 text-slate-500" aria-hidden />
           <input
             className={`${inputClass} w-full pe-9`}
             placeholder="חיפוש לפי שם, טלפון, אימייל או עיר"
@@ -308,7 +308,7 @@ export function CustomersPage() {
               </div>
 
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm [&_a]:py-1.5 [&_button]:py-1.5">
-                <span className="text-xs text-slate-400">{formatDate(customer.createdAt)}</span>
+                <span className="text-xs text-slate-500">{formatDate(customer.createdAt)}</span>
                 {/*
                   Always offered, not only when there are viewings to count. What is
                   behind it is also where a deal is opened, and a customer nobody has

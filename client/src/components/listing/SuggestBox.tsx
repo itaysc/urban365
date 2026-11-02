@@ -164,7 +164,7 @@ export function SuggestBox({
                   i === highlighted ? 'bg-slate-50' : ''
                 }`}
               >
-                <MapPin className="h-4 w-4 shrink-0 text-slate-400" aria-hidden />
+                <MapPin className="h-4 w-4 shrink-0 text-slate-500" aria-hidden />
                 <span>{highlight(option, term)}</span>
               </button>
             </li>

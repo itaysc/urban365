@@ -137,7 +137,7 @@ export function TeamPage() {
                   <div className="min-w-0">
                     <p className="text-sm font-medium text-slate-900">
                       {member.user.firstName} {member.user.lastName}
-                      {isSelf && <span className="ms-2 text-xs text-slate-400">(את/ה)</span>}
+                      {isSelf && <span className="ms-2 text-xs text-slate-500">(את/ה)</span>}
                     </p>
                     <p className="text-xs text-slate-500">
                       {member.user.email}

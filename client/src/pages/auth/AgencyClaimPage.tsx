@@ -94,7 +94,7 @@ export function AgencyClaimPage() {
           {submitting ? 'שולח…' : 'שליחת הבקשה'}
         </Button>
 
-        <p className="text-center text-xs text-slate-400">
+        <p className="text-center text-xs text-slate-500">
           הבקשה עוברת לאישור שלנו. עד אז אפשר להשתמש בחשבון כרגיל.
         </p>
       </form>

@@ -74,7 +74,7 @@ export function AccountSignupPage() {
         {googleAvailable && (
           <div className="flex items-center gap-3">
             <span className="h-px flex-1 bg-slate-200" />
-            <span className="text-xs text-slate-400">או</span>
+            <span className="text-xs text-slate-500">או</span>
             <span className="h-px flex-1 bg-slate-200" />
           </div>
         )}

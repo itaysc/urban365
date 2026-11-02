@@ -62,7 +62,7 @@ export function ListingPopupCard({ point, onOpen }: Props) {
               className="h-full w-full object-cover"
             />
           ) : (
-            <span className="flex h-full w-full items-center justify-center text-xs text-slate-400">
+            <span className="flex h-full w-full items-center justify-center text-xs text-slate-500">
               ללא תמונה
             </span>
           )}

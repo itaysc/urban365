@@ -48,7 +48,7 @@ export function CustomerViewings({ customerId }: { customerId: string }) {
           <li key={viewing.id} className="rounded-lg border border-slate-200 bg-white p-3 text-sm">
             <div className="flex flex-wrap items-center gap-2">
               <span className="flex items-center gap-1 font-medium text-slate-900">
-                <Building2 className="h-3.5 w-3.5 text-slate-400" aria-hidden />
+                <Building2 className="h-3.5 w-3.5 text-slate-500" aria-hidden />
                 {/* A meeting with no property is a coffee at the office, which is still
                     worth seeing in the history — so it says so rather than being hidden. */}
                 {address ?? viewing.title}

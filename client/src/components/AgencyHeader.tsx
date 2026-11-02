@@ -42,7 +42,7 @@ export function AgencyHeader({ agency }: { agency: AgencySummary }) {
       )}
 
       {agency.openingHours.length > 0 && (
-        <p className="mt-3 text-xs text-slate-400">
+        <p className="mt-3 text-xs text-slate-500">
           {agency.openingHours.map((h) => `${h.day} ${h.open}–${h.close}`).join(' · ')}
         </p>
       )}

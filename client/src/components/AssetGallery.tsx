@@ -23,7 +23,7 @@ export function AssetGallery({ images, alt }: { images: string[]; alt: string })
   }, [images.length]);
 
   if (images.length === 0) {
-    return <div className="flex h-72 items-center justify-center bg-slate-100 text-slate-400">ללא תמונות</div>;
+    return <div className="flex h-72 items-center justify-center bg-slate-100 text-slate-500">ללא תמונות</div>;
   }
 
   const arrow =

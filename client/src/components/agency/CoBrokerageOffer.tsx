@@ -101,7 +101,7 @@ export function CoBrokerageOffer({ listingId, customerId, customerName }: Props)
 
       {/* It is a record of what was said, and saying otherwise would be worse than
           saying nothing. */}
-      <p className="text-xs text-slate-400">
+      <p className="text-xs text-slate-500">
         החלוקה נרשמת כאן כתיעוד של מה שסוכם, ואינה הסכם משפטי.
       </p>
 

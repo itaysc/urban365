@@ -87,7 +87,7 @@ export function RoomsPicker({ min, max, onChange, single = false, legend = 'חד
         {above.map((value) => step(value, false))}
       </div>
 
-      <p className="mt-2 text-xs text-slate-400">
+      <p className="mt-2 text-xs text-slate-500">
         {single
           ? 'לחיצה חוזרת על הערך שנבחר תנקה אותו.'
           : selected.length === 0

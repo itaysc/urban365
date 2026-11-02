@@ -78,7 +78,7 @@ export function BarSeries({ bars, tone = 'bg-blue-500', secondaryTone = 'bg-slat
         {bars.map((bar, i) => (
           <span
             key={`l-${bar.label}-${i}`}
-            className="min-w-0 flex-1 truncate text-center text-[0.6rem] text-slate-400"
+            className="min-w-0 flex-1 truncate text-center text-[0.6rem] text-slate-500"
           >
             {bar.label}
           </span>

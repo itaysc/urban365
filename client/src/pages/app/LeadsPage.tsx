@@ -288,12 +288,12 @@ export function LeadsPage() {
                 <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
                   {SOURCE_LABEL[lead.source]}
                 </span>
-                <span className="text-xs text-slate-400">{formatDate(lead.createdAt)}</span>
+                <span className="text-xs text-slate-500">{formatDate(lead.createdAt)}</span>
 
                 <button
                   type="button"
                   aria-label={`מחיקת הפנייה של ${lead.name}`}
-                  className="rounded-lg p-1.5 text-slate-400 transition hover:bg-red-50 hover:text-red-700"
+                  className="rounded-lg p-1.5 text-slate-500 transition hover:bg-red-50 hover:text-red-700"
                   onClick={() => void remove(lead)}
                 >
                   <Trash2 className="h-4 w-4" aria-hidden />

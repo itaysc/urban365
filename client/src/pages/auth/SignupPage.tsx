@@ -98,14 +98,14 @@ export function SignupPage() {
         {googleAvailable && (
           <div className="flex items-center gap-3">
             <span className="h-px flex-1 bg-slate-200" />
-            <span className="text-xs text-slate-400">או</span>
+            <span className="text-xs text-slate-500">או</span>
             <span className="h-px flex-1 bg-slate-200" />
           </div>
         )}
       </div>
 
       {!formik.values.acceptedTerms && googleAvailable && (
-        <p className="-mt-2 text-xs text-slate-400">
+        <p className="-mt-2 text-xs text-slate-500">
           כדי להמשיך עם Google יש לאשר קודם את תנאי השימוש בתחתית הטופס.
         </p>
       )}

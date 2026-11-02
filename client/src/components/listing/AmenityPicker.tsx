@@ -31,7 +31,7 @@ export function AmenityPicker({ selected, onToggle }: Props) {
             }`}
           >
             {/* Decorative: the label beside it already says what this is. */}
-            <Icon className={`h-4 w-4 ${on ? 'text-white' : 'text-slate-400'}`} aria-hidden />
+            <Icon className={`h-4 w-4 ${on ? 'text-white' : 'text-slate-500'}`} aria-hidden />
             {label}
           </button>
         );
