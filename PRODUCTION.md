@@ -854,12 +854,45 @@ stated in the text wherever a number derived from them is printed, and the page 
 a standing note that a real mortgage is several tracks at several rates, some of them
 index-linked. Nothing here is an offer or advice, and it should stay that way.
 
-**Where it is reached from.** A line under the home page's search box; a
-`MortgageTeaser` on every listing for sale, under the specs, which hands the price over
-in `?price=` so nobody retypes it; and the footer, on both the app's and the
-server-rendered pages. The teaser is gated on `dealType === 'מכירה'` — there is no
-mortgage on a rental, and that field is set from the same subcategory map whether the
-listing was scraped or created here.
+**Where it is reached from.** The navbar, beside מחירים לפי עיר, on both the app and
+the server-rendered pages; a line under the home page's search box; a `MortgageTeaser`
+on every listing for sale, under the specs, which hands the price over in `?price=` so
+nobody retypes it; and the footer, in both places. The teaser is gated on
+`dealType === 'מכירה'` — there is no mortgage on a rental, and that field is set from
+the same subcategory map whether the listing was scraped or created here.
+
+### The mix (תמהיל)
+
+The repayment tab builds a real mix rather than applying one rate to the whole loan,
+because a mortgage here is two to four loans taken together and the split between them
+is most of what a borrower decides. Each part carries its own amount, rate and term,
+is priced on its own, and the parts are added — which is what a bank does.
+
+`TRACKS` holds the five a normal mix is made of: קבועה לא צמודה, קבועה צמודה, פריים,
+and משתנה כל 5 שנים in both linked and unlinked forms. A bank will also write other
+reset intervals, a זכאות loan and currency-linked loans; adding one is an entry in that
+record. **Every rate in it is an illustrative starting point, not a quote** — the row is
+editable precisely so the number from your own bank replaces it. `BOI_RATE` is the one
+line to change when the committee moves: prime is derived from it, and the prime track's
+note prints both.
+
+**`VARIABLE_CAP` is two thirds, not the 66.66% the directive prints.** Those are the
+same number, but comparing against the rounded literal rejects the one mix the
+directive's own explanatory note permits — "at least one-third at a fixed rate, and the
+up to two-thirds remaining at a variable rate" — because two thirds is 66.667%. A test
+for exactly that mix is what caught it. The prime sub-limit that used to sit beside it
+(at most a third in prime) was **deleted** from section 7.2 at the end of 2020, so one
+third fixed against two thirds prime is now legal where it once was not.
+
+**Linkage is not variability.** A קבועה צמודה has a rate fixed for thirty years and
+counts towards the fixed third however far the index moves it. Only the rate resetting
+makes a track variable, and only that is what the cap counts — the one place people
+reliably get this wrong, so there is a test naming it.
+
+The index-linked part of a mix is shown at today's prices and the page says so: its
+principal and payment climb with the CPI, and no inflation is assumed anywhere in the
+arithmetic. Without that sentence a mix of linked tracks looks the cheapest on screen,
+which is exactly how it is mis-sold.
 
 ## The accessibility statement
 

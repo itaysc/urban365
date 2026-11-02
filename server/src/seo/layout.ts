@@ -102,10 +102,13 @@ header.site .wrap{display:flex;align-items:center;justify-content:space-between;
 .brand{font-size:1.25rem;font-weight:800;letter-spacing:-.025em;color:#1d4ed8;
   text-decoration:none}
 .brand span{color:#3b82f6}
-/* The divider and the link beside the wordmark, as the app has them. */
+/* The divider and the links beside the wordmark, as the app has them. The divider
+   belongs to the group rather than to each link, or two links would draw two. */
 .navl .here{border-inline-start:1px solid #e2e8f0;padding-inline-start:.75rem;
-  font-size:.875rem;color:#475569;text-decoration:none}
-.navl .here[aria-current]{color:#0f172a;font-weight:600}
+  display:flex;align-items:center;gap:.75rem;font-size:.875rem;color:#475569}
+.navl .here a{color:inherit;text-decoration:none;white-space:nowrap}
+.navl .here a:hover{color:#0f172a}
+.navl .here a[aria-current]{color:#0f172a;font-weight:600}
 .navr a{display:flex;align-items:center;gap:.375rem;font-size:.875rem;color:#475569;
   text-decoration:none}
 /* display:flex above beats the browser's own rule for [hidden], so the sign-in link
@@ -295,7 +298,10 @@ ${blocks}
 <header class="site"><div class="wrap">
 <div class="navl">
 <a class="brand" href="${esc(options.appUrl)}/">Urban<span>365</span></a>
-<a class="here" href="/nadlan"${options.onCityPages ? ' aria-current="page"' : ''}>מחירים לפי עיר</a>
+<nav class="here">
+<a href="/nadlan"${options.onCityPages ? ' aria-current="page"' : ''}>מחירים לפי עיר</a>
+<a href="${esc(options.appUrl)}/mortgage">מחשבון משכנתא</a>
+</nav>
 </div>
 <div class="navr">
 <a class="publish" href="${esc(options.appUrl)}/sell/new">${ICON.plus}<span class="word">פרסום נכס</span></a>

@@ -1,5 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { budget, loanFor, LTV_CAP, monthlyPayment, plan } from './mortgage';
+import {
+  budget,
+  defaultMix,
+  loanFor,
+  LTV_CAP,
+  mix,
+  mixProblems,
+  monthlyPayment,
+  plan,
+  rebalance,
+  type MixPart,
+} from './mortgage';
 
 describe('monthlyPayment', () => {
   it('matches the figure a bank quotes', () => {
@@ -113,5 +124,164 @@ describe('budget', () => {
     expect(result.loan).toBe(0);
     expect(result.monthly).toBe(0);
     expect(result.price).toBe(1_000_000);
+  });
+});
+
+describe('mix', () => {
+  const part = (over: Partial<MixPart> = {}): MixPart => ({
+    key: 'fixed',
+    amount: 500_000,
+    annualRate: 5,
+    years: 25,
+    ...over,
+  });
+
+  it('is the parts priced separately and added', () => {
+    // Which is what a bank does: three loans that happen to share a property.
+    const parts = [part({ amount: 600_000 }), part({ key: 'prime', amount: 400_000 })];
+    const expected =
+      monthlyPayment(600_000, 5, 25) + monthlyPayment(400_000, 5, 25);
+
+    expect(mix(parts).monthly).toBe(Math.round(expected));
+    expect(mix(parts).amount).toBe(1_000_000);
+  });
+
+  it('prices a part on its own term, not a shared one', () => {
+    // A short fixed track beside a long prime one is the usual shape, and averaging
+    // the terms would quietly misprice both.
+    const short = mix([part({ amount: 300_000, years: 10 })]);
+    const long = mix([part({ amount: 300_000, years: 30 })]);
+
+    expect(short.monthly).toBeGreaterThan(long.monthly);
+    expect(short.totalInterest).toBeLessThan(long.totalInterest);
+  });
+
+  it('counts the variable share by rate, not by linkage', () => {
+    // The distinction the rule turns on: a קבועה צמודה has a rate fixed for thirty
+    // years and counts towards the fixed third, however much the index moves it.
+    const summary = mix([
+      part({ key: 'fixedLinked', amount: 500_000 }),
+      part({ key: 'prime', amount: 500_000 }),
+    ]);
+
+    expect(summary.variableShare).toBeCloseTo(0.5, 10);
+    expect(summary.linkedShare).toBeCloseTo(0.5, 10);
+  });
+
+  it('blends the rate by amount', () => {
+    const summary = mix([
+      part({ amount: 750_000, annualRate: 4 }),
+      part({ key: 'prime', amount: 250_000, annualRate: 8 }),
+    ]);
+
+    expect(summary.weightedRate).toBeCloseTo(5, 10);
+  });
+
+  it('says nothing is variable when there is nothing at all', () => {
+    const summary = mix([]);
+    expect(summary.amount).toBe(0);
+    expect(summary.variableShare).toBe(0);
+    expect(summary.weightedRate).toBe(0);
+  });
+});
+
+describe('mixProblems', () => {
+  const fixed = (amount: number): MixPart => ({
+    key: 'fixed',
+    amount,
+    annualRate: 5,
+    years: 25,
+  });
+  const prime = (amount: number): MixPart => ({
+    key: 'prime',
+    amount,
+    annualRate: 4.25,
+    years: 25,
+  });
+
+  it('passes a mix that adds up and keeps a third fixed', () => {
+    expect(mixProblems([fixed(400_000), prime(600_000)], 1_000_000)).toEqual([]);
+  });
+
+  it('allows exactly two thirds variable, which the 2020 amendment made legal', () => {
+    // A third fixed and two thirds prime was forbidden until the prime sub-limit was
+    // deleted. The cap is the published 66.66%, so two thirds sits just under it.
+    const problems = mixProblems([fixed(1_000_000 / 3), prime((1_000_000 * 2) / 3)], 1_000_000);
+    expect(problems).toEqual([]);
+  });
+
+  it('refuses a mix with more than two thirds variable', () => {
+    const problems = mixProblems([fixed(200_000), prime(800_000)], 1_000_000);
+    expect(problems).toContainEqual({ kind: 'variable-over-cap', share: 0.8 });
+  });
+
+  it('reports a mix that does not reach the loan', () => {
+    expect(mixProblems([fixed(400_000)], 1_000_000)).toContainEqual({
+      kind: 'short',
+      by: 600_000,
+    });
+  });
+
+  it('reports a mix that overshoots it', () => {
+    expect(mixProblems([fixed(600_000), prime(600_000)], 1_000_000)).toContainEqual({
+      kind: 'over',
+      by: 200_000,
+    });
+  });
+
+  it('ignores a shekel of rounding either way', () => {
+    expect(mixProblems([fixed(999_999)], 1_000_000)).toEqual([]);
+    expect(mixProblems([fixed(1_000_001)], 1_000_000)).toEqual([]);
+  });
+
+  it('puts the arithmetic first, because the share is of the wrong total until it adds up', () => {
+    const problems = mixProblems([prime(400_000)], 1_000_000);
+    expect(problems[0].kind).toBe('short');
+    expect(problems[1].kind).toBe('variable-over-cap');
+  });
+});
+
+describe('defaultMix', () => {
+  it('adds up to the loan exactly, whatever the rounding', () => {
+    for (const loan of [1_000_000, 1_000_001, 999_998, 1_750_000]) {
+      const parts = defaultMix(loan, 25);
+      expect(parts.reduce((sum, p) => sum + p.amount, 0)).toBe(loan);
+    }
+  });
+
+  it('opens on a mix a bank would write', () => {
+    expect(mixProblems(defaultMix(1_500_000, 25), 1_500_000)).toEqual([]);
+  });
+});
+
+describe('rebalance', () => {
+  const parts: MixPart[] = [
+    { key: 'fixed', amount: 500_000, annualRate: 5, years: 25 },
+    { key: 'prime', amount: 300_000, annualRate: 4.25, years: 25 },
+    { key: 'variable5', amount: 200_000, annualRate: 4.6, years: 20 },
+  ];
+
+  it('hits the loan exactly, however the rounding falls', () => {
+    for (const loan of [1_000_000, 1_234_567, 999_999, 777_777]) {
+      const next = rebalance(parts, loan);
+      expect(next.reduce((sum, p) => sum + p.amount, 0)).toBe(loan);
+    }
+  });
+
+  it('keeps the shape the borrower chose', () => {
+    const next = rebalance(parts, 2_000_000);
+    expect(next.map((p) => p.amount)).toEqual([1_000_000, 600_000, 400_000]);
+    // And nothing else about a part is touched.
+    expect(next.map((p) => p.years)).toEqual([25, 25, 20]);
+  });
+
+  it('splits evenly when there is no shape to keep', () => {
+    const empty: MixPart[] = parts.map((p) => ({ ...p, amount: 0 }));
+    const next = rebalance(empty, 900_000);
+    expect(next.map((p) => p.amount)).toEqual([300_000, 300_000, 300_000]);
+  });
+
+  it('leaves an empty mix alone', () => {
+    expect(rebalance([], 1_000_000)).toEqual([]);
   });
 });

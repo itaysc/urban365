@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { Plus, X } from 'lucide-react';
 import { SiteFooter } from '@/components/SiteFooter';
 import { SiteHeader } from '@/components/SiteHeader';
+import { selectClass } from '@/components/ui/Field';
 import { formatPrice, formatShekel } from '@/lib/format';
 import {
   BUYER_LABEL,
@@ -9,11 +11,20 @@ import {
   DEFAULT_EQUITY_SHARE,
   DEFAULT_RATE,
   DEFAULT_YEARS,
+  defaultMix,
   INCOME_CAP,
   LTV_CAP,
   MAX_YEARS,
+  mix,
+  mixProblems,
+  monthlyPayment,
   plan,
+  rebalance,
+  TRACKS,
+  VARIABLE_CAP,
   type BuyerKind,
+  type MixPart,
+  type TrackKey,
 } from '@/lib/mortgage';
 
 /** Which question is being asked. The two are the same sum read from opposite ends. */
@@ -181,6 +192,149 @@ function leverage(buyer: BuyerKind): string {
   return Number.isInteger(times) ? `${times}` : times.toFixed(1);
 }
 
+/** A small number typed rather than dragged — a rate from a bank, or a term in years. */
+function Num({
+  label,
+  value,
+  onChange,
+  step,
+  min,
+  max,
+  suffix,
+}: {
+  label: string;
+  value: number;
+  onChange: (value: number) => void;
+  step: number;
+  min: number;
+  max: number;
+  suffix: string;
+}) {
+  return (
+    <label className="flex flex-col gap-1">
+      <span className="text-xs text-slate-500">{label}</span>
+      <div className="flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-2 py-1.5 focus-within:border-slate-900">
+        <input
+          type="number"
+          dir="ltr"
+          inputMode="decimal"
+          step={step}
+          min={min}
+          max={max}
+          value={value}
+          onChange={(e) => onChange(Number(e.target.value))}
+          className="w-full min-w-0 bg-transparent text-end text-sm tabular-nums text-slate-900 outline-none"
+        />
+        <span className="text-xs text-slate-500">{suffix}</span>
+      </div>
+    </label>
+  );
+}
+
+/**
+ * One track of the mix.
+ *
+ * Everything about a track is editable, the rate included, because the rate is the
+ * one number the calculator cannot know: it comes from a bank, for a borrower, on a
+ * day. What is shipped is a starting point, and the row exists so it can be replaced
+ * with the real quote.
+ */
+function TrackRow({
+  part,
+  onChange,
+  onRemove,
+  removable,
+}: {
+  part: MixPart;
+  onChange: (next: MixPart) => void;
+  onRemove: () => void;
+  removable: boolean;
+}) {
+  const spec = TRACKS[part.key];
+  const monthly = Math.round(monthlyPayment(part.amount, part.annualRate, part.years));
+
+  return (
+    <li className="rounded-xl border border-slate-200 bg-slate-50/60 p-3">
+      <div className="flex items-start gap-2">
+        <select
+          aria-label="מסלול"
+          className={`${selectClass} min-w-0 flex-1 bg-white`}
+          value={part.key}
+          onChange={(e) => {
+            const key = e.target.value as TrackKey;
+            // The rate moves with the track, because a prime rate on a fixed track is
+            // not a starting point, it is a wrong answer. An edited rate is replaced
+            // on purpose: picking a different track is picking its pricing.
+            onChange({ ...part, key, annualRate: TRACKS[key].rate });
+          }}
+        >
+          {(Object.keys(TRACKS) as TrackKey[]).map((key) => (
+            <option key={key} value={key}>
+              {TRACKS[key].label}
+            </option>
+          ))}
+        </select>
+
+        {removable && (
+          <button
+            type="button"
+            onClick={onRemove}
+            aria-label={`הסרת ${spec.label}`}
+            className="rounded-lg p-1.5 text-slate-500 transition hover:bg-slate-200 hover:text-slate-900"
+          >
+            <X className="h-4 w-4" aria-hidden />
+          </button>
+        )}
+      </div>
+
+      <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <label className="col-span-2 flex flex-col gap-1 sm:col-span-2">
+          <span className="text-xs text-slate-500">סכום</span>
+          <div className="flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-2 py-1.5 focus-within:border-slate-900">
+            <span className="text-xs text-slate-500" aria-hidden>
+              ₪
+            </span>
+            <input
+              dir="ltr"
+              inputMode="numeric"
+              value={part.amount === 0 ? '' : grouped.format(part.amount)}
+              placeholder="0"
+              onChange={(e) => onChange({ ...part, amount: digits(e.target.value) })}
+              className="w-full min-w-0 bg-transparent text-end text-sm font-medium tabular-nums text-slate-900 outline-none"
+            />
+          </div>
+        </label>
+
+        <Num
+          label="ריבית"
+          value={part.annualRate}
+          onChange={(annualRate) => onChange({ ...part, annualRate })}
+          step={0.05}
+          min={0}
+          max={15}
+          suffix="%"
+        />
+        <Num
+          label="שנים"
+          value={part.years}
+          onChange={(years) => onChange({ ...part, years })}
+          step={1}
+          min={4}
+          max={MAX_YEARS}
+          suffix="שנ׳"
+        />
+      </div>
+
+      <div className="mt-2 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+        <p className="text-xs leading-relaxed text-slate-500">{spec.note}</p>
+        <p className="shrink-0 text-sm font-semibold tabular-nums text-slate-900">
+          {formatShekel(monthly)} לחודש
+        </p>
+      </div>
+    </li>
+  );
+}
+
 const panelClass = 'rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-6';
 
 /**
@@ -224,33 +378,33 @@ export function MortgagePage() {
   const result = plan({ price, equity, annualRate: rate, years, buyer });
   const reach = budget({ income, commitments, equity, annualRate: rate, years, buyer });
 
-  const shared = (
-    <>
-      <BuyerPicker value={buyer} onChange={setBuyer} />
+  /*
+   * The mix, which is the part of a mortgage a borrower actually decides.
+   *
+   * Seeded from the loan the opening price needs, and then left alone: it is not
+   * recomputed when the price moves, because that would overwrite a split somebody
+   * had just built. When the two stop agreeing the page says so and offers to resize
+   * the mix, which keeps its shape.
+   */
+  const [parts, setParts] = useState<MixPart[]>(() => defaultMix(result.loan, DEFAULT_YEARS));
 
-      <Slide
-        id="rate"
-        label="ריבית שנתית"
-        value={rate}
-        onChange={setRate}
-        min={1}
-        max={9}
-        step={0.1}
-        format={(v) => `${v.toFixed(1)}%`}
-      />
+  const summary = mix(parts);
+  const problems = mixProblems(parts, result.loan);
 
-      <Slide
-        id="years"
-        label="תקופת ההלוואה"
-        value={years}
-        onChange={setYears}
-        min={4}
-        max={MAX_YEARS}
-        step={1}
-        format={(v) => `${v} שנים`}
-      />
-    </>
-  );
+  const setPart = (at: number, next: MixPart) =>
+    setParts((current) => current.map((p, i) => (i === at ? next : p)));
+
+  /** The track to offer next: the first that is not already in the mix, else prime. */
+  const addPart = () =>
+    setParts((current) => {
+      const used = new Set(current.map((p) => p.key));
+      const key = (Object.keys(TRACKS) as TrackKey[]).find((k) => !used.has(k)) ?? 'prime';
+      // Opens at nothing rather than guessing: the amount comes out of the other
+      // tracks, and the page cannot know which.
+      return [...current, { key, amount: 0, annualRate: TRACKS[key].rate, years: DEFAULT_YEARS }];
+    });
+
+  const buyerPicker = <BuyerPicker value={buyer} onChange={setBuyer} />;
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -305,6 +459,59 @@ export function MortgagePage() {
                   value={equity}
                   onChange={setEquity}
                 />
+
+                {buyerPicker}
+
+                <section className="flex flex-col gap-3 border-t border-slate-200 pt-5">
+                  <div>
+                    <h2 className="text-sm font-semibold text-slate-900">תמהיל המשכנתא</h2>
+                    <p className="mt-1 text-xs leading-relaxed text-slate-500">
+                      משכנתא כמעט אף פעם אינה הלוואה אחת. כל מסלול נושא ריבית, תקופה
+                      וסיכון משלו — והחלוקה ביניהם היא רוב מה שבאמת בוחרים.
+                    </p>
+                  </div>
+
+                  <ul className="flex flex-col gap-2">
+                    {parts.map((part, at) => (
+                      <TrackRow
+                        key={at}
+                        part={part}
+                        onChange={(next) => setPart(at, next)}
+                        onRemove={() => setParts((c) => c.filter((_, i) => i !== at))}
+                        removable={parts.length > 1}
+                      />
+                    ))}
+                  </ul>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={addPart}
+                      disabled={parts.length >= Object.keys(TRACKS).length}
+                      className="flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-slate-900 disabled:opacity-40"
+                    >
+                      <Plus className="h-4 w-4" aria-hidden />
+                      הוספת מסלול
+                    </button>
+
+                    {/*
+                      Only when it is needed. A button that resizes a mix which already
+                      adds up is a button that does nothing, and the reader has to work
+                      that out by pressing it.
+                    */}
+                    {problems.some((p) => p.kind === 'short' || p.kind === 'over') && (
+                      <button
+                        type="button"
+                        onClick={() => setParts((c) => rebalance(c, result.loan))}
+                        className="rounded-lg bg-slate-900 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-slate-800"
+                      >
+                        {/* The ל prefix takes a hyphen before a numeral, as ב- does
+                            in the messages beside it. */}
+                        התאמה ל-{formatShekel(result.loan)}
+                      </button>
+                    )}
+                  </div>
+                </section>
               </>
             ) : (
               <>
@@ -323,25 +530,112 @@ export function MortgagePage() {
                   onChange={setCommitments}
                 />
                 <Money id="equity-budget" label="הון עצמי" value={equity} onChange={setEquity} />
+
+                {buyerPicker}
+
+                {/*
+                  One rate and one term on this side. The question is how much flat an
+                  income can carry, and answering it through a four-track mix would ask
+                  somebody to design a mortgage before they know what they are shopping
+                  for. The mix belongs on the other tab, where there is a price.
+                */}
+                <Slide
+                  id="rate"
+                  label="ריבית שנתית"
+                  value={rate}
+                  onChange={setRate}
+                  min={1}
+                  max={9}
+                  step={0.1}
+                  format={(v) => `${v.toFixed(1)}%`}
+                />
+                <Slide
+                  id="years"
+                  label="תקופת ההלוואה"
+                  value={years}
+                  onChange={setYears}
+                  min={4}
+                  max={MAX_YEARS}
+                  step={1}
+                  format={(v) => `${v} שנים`}
+                />
               </>
             )}
-
-            {shared}
           </form>
 
           {mode === 'payment' ? (
             <section className={panelClass} aria-live="polite">
               <p className="text-sm text-slate-500">החזר חודשי</p>
               <p className="mt-1 text-4xl font-extrabold tabular-nums text-slate-900">
-                {formatShekel(result.monthly)}
+                {formatShekel(summary.monthly)}
               </p>
 
               <div className="mt-4">
                 <Row label="סכום המשכנתא" value={formatShekel(result.loan)} />
                 <Row label="מימון מהמחיר" value={`${Math.round(result.ltv * 100)}%`} />
-                <Row label="סך הריבית לאורך התקופה" value={formatShekel(result.totalInterest)} tone="muted" />
-                <Row label="סך ההחזר" value={formatShekel(result.totalPaid)} tone="muted" />
+                <Row label="ריבית משוקללת" value={`${summary.weightedRate.toFixed(2)}%`} />
+                <Row label="סך הריבית לאורך התקופה" value={formatShekel(summary.totalInterest)} tone="muted" />
+                <Row label="סך ההחזר" value={formatShekel(summary.totalPaid)} tone="muted" />
               </div>
+
+              {/*
+                The composition rule, stated as a share rather than as a pass mark —
+                somebody at 58% wants to know how much room is left, not merely that
+                they are inside it.
+              */}
+              <div className="mt-4 rounded-xl bg-slate-50 px-4 py-3">
+                <div className="flex items-baseline justify-between gap-3 text-sm">
+                  <span className="text-slate-600">בריבית משתנה</span>
+                  <span className="font-semibold tabular-nums text-slate-900">
+                    {Math.round(summary.variableShare * 100)}%
+                  </span>
+                </div>
+                {/*
+                  The ceiling in words, not as a second percentage. Rounded to the
+                  shekel both numbers print as 67, and "67% מתוך 67%" reads as a
+                  tautology rather than as a limit — which is exactly what the default
+                  mix, a third in each of three tracks, lands on.
+                */}
+                <p className="mt-0.5 text-xs text-slate-500">
+                  התקרה: שני שלישים מהמשכנתא. לפחות שליש חייב להיות בריבית קבועה.
+                </p>
+                <div
+                  className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-200"
+                  role="presentation"
+                >
+                  <div
+                    className={`h-full rounded-full ${
+                      summary.variableShare > VARIABLE_CAP ? 'bg-red-600' : 'bg-slate-900'
+                    }`}
+                    style={{ width: `${Math.min(100, summary.variableShare * 100)}%` }}
+                  />
+                </div>
+
+                {summary.linkedShare > 0 && (
+                  <p className="mt-2 text-xs leading-relaxed text-slate-500">
+                    {Math.round(summary.linkedShare * 100)}% מהתמהיל צמוד למדד. ההחזר שמוצג
+                    עליו הוא במחירי היום — הקרן וההחזר יעלו עם המדד, וזה לא מגולם כאן.
+                  </p>
+                )}
+              </div>
+
+              {problems.map((problem) => (
+                <p
+                  key={problem.kind}
+                  className={`mt-3 rounded-xl px-4 py-3 text-sm leading-relaxed ${
+                    problem.kind === 'variable-over-cap'
+                      ? 'bg-red-50 text-red-900'
+                      : 'bg-amber-50 text-amber-900'
+                  }`}
+                >
+                  {problem.kind === 'short' &&
+                    `המסלולים מסתכמים ב-${formatShekel(summary.amount)}, וחסרים עוד ${formatShekel(problem.by)} כדי להגיע לסכום המשכנתא.`}
+                  {problem.kind === 'over' &&
+                    `המסלולים מסתכמים ב-${formatShekel(summary.amount)}, ${formatShekel(problem.by)} מעל סכום המשכנתא.`}
+                  {problem.kind === 'variable-over-cap' &&
+                    `${Math.round(problem.share * 100)}% מהתמהיל בריבית משתנה. בנק ישראל מתיר עד שני שלישים, כלומר לפחות שליש חייב להיות בריבית קבועה — בנק לא יאשר את התמהיל הזה.`}
+                </p>
+              ))}
 
               {/*
                 The part a payment calculator normally leaves out, and the part that

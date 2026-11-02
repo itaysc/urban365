@@ -125,12 +125,25 @@ export function SiteHeader({ leading, subtitle, fullWidth = false }: Props) {
               agency dashboard the space beside the logo already says which agency you
               are in, and a third item there reads as a breadcrumb that goes nowhere.
             */
-            <a
-              href="/nadlan"
-              className="hidden border-s border-slate-200 ps-3 text-sm text-slate-600 transition hover:text-slate-900 sm:inline"
-            >
-              מחירים לפי עיר
-            </a>
+            <nav className="hidden items-center gap-3 border-s border-slate-200 ps-3 sm:flex">
+              {/*
+                A plain anchor, unlike its neighbour: the city pages are rendered by the
+                API and are not in this bundle's route table, so a <Link> would try to
+                resolve /nadlan here and find nothing.
+              */}
+              <a
+                href="/nadlan"
+                className="text-sm text-slate-600 transition hover:text-slate-900"
+              >
+                מחירים לפי עיר
+              </a>
+              <Link
+                to="/mortgage"
+                className="text-sm text-slate-600 transition hover:text-slate-900"
+              >
+                מחשבון משכנתא
+              </Link>
+            </nav>
           )}
         </div>
 
