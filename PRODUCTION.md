@@ -873,6 +873,38 @@ real payment is under nine thousand and there is nothing for a bank to refuse �
 warning about the number in the input box would be a warning about nothing. There is a
 test named for that case.
 
+### What the household can bear (the third tab)
+
+The first two tabs answer the bank's questions. The third answers the one the bank
+never asks: what is the rest of the money already doing? `lib/household.ts` subtracts
+the household's own outgoings from its income, sets aside a buffer, and the remainder
+is the repayment — then holds that down to the bank's own 40% ceiling, because
+recommending more than anyone will lend is advice nobody can act on. When the ceiling
+is what bites, the panel says so; "you can bear more than they will give you" is worth
+knowing and is invisible otherwise.
+
+**Nothing is filled in on the household's behalf.** No average family budget, no
+cost-per-child table, no inflation on the groceries. Those figures exist and every one
+of them is wrong for somebody, and this one would be sitting under a recommendation to
+commit for thirty years. The children's ages are used for dates only — who is still in
+childcare, how long until the eldest is eighteen — and never for amounts; there is a
+test asserting that a child note can never carry one.
+
+The horizons table re-runs the same subtraction at the moments the household itself
+said it would change: a child they are planning, a rise they expect. **The outgoings
+are held flat** in those rows, which is optimistic and is stated on the table, because
+the alternative is inventing an inflation rate and compounding it over somebody's
+shopping.
+
+Income and existing commitments live on the page, not in the planner. They appear on
+two tabs and for a while had state in each, which is two fields holding one fact and
+therefore two fields that disagree. Both tabs stay mounted — `hidden`, not unmounted,
+so six outgoings and two children survive a glance at the תמהיל — which is also why
+the planner's copies are `id="household-…"`: two elements with the same id is a label
+pointing at whichever the browser met first. Note that `hidden` must go on a bare
+wrapper: Tailwind's `grid` on the same element beats the UA `[hidden]{display:none}`
+and both panels render at once, the same trap the header hit with `.navr a`.
+
 ### The mix (תמהיל)
 
 The repayment tab builds a real mix rather than applying one rate to the whole loan,

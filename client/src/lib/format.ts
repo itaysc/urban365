@@ -24,3 +24,14 @@ export function formatAddress(parts: {
   const street = [parts.street, parts.houseNumber].filter(Boolean).join(' ');
   return [street, parts.neighborhood, parts.city].filter(Boolean).join(', ');
 }
+
+/**
+ * The digits out of whatever was typed into a money field.
+ *
+ * Every amount these forms take is a whole number of shekels, so a separator, a ₪ or
+ * a stray letter is not part of the value — and an empty field is zero, not NaN.
+ */
+export const digits = (text: string): number => Number(text.replace(/\D/g, '')) || 0;
+
+/** The same grouping `formatShekel` uses, for the places that print a bare number. */
+export const grouped = new Intl.NumberFormat('he-IL');

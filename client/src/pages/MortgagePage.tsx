@@ -4,7 +4,10 @@ import { Plus, X } from 'lucide-react';
 import { SiteFooter } from '@/components/SiteFooter';
 import { SiteHeader } from '@/components/SiteHeader';
 import { selectClass } from '@/components/ui/Field';
-import { formatPrice, formatShekel } from '@/lib/format';
+import { HouseholdPlanner } from '@/components/mortgage/HouseholdPlanner';
+import { Money, Num, Row, Slide } from '@/components/mortgage/fields';
+import { panelClass } from '@/components/mortgage/panel';
+import { digits, formatPrice, formatShekel, grouped } from '@/lib/format';
 import {
   BUYER_LABEL,
   budget,
@@ -29,11 +32,12 @@ import {
 } from '@/lib/mortgage';
 
 /** Which question is being asked. The two are the same sum read from opposite ends. */
-type Mode = 'payment' | 'budget';
+type Mode = 'payment' | 'budget' | 'household';
 
 const TAB: Record<Mode, string> = {
   payment: 'מה יהיה ההחזר החודשי',
   budget: 'איזו דירה אפשר לקנות',
+  household: 'כמה החזר באמת מתאים',
 };
 
 /**
@@ -51,122 +55,13 @@ const CAVEAT: Record<Mode, string> = {
     'החישוב הוא לוח שפיצר, כל מסלול לפי הריבית והתקופה שהוזנו בו. במסלולים צמודי מדד ההחזר מוצג במחירי היום — הקרן וההחזר יעלו עם המדד, וזה אינו מגולם כאן.',
   budget:
     'החישוב הוא לוח שפיצר בריבית אחת על כל ההלוואה, להמחשה. משכנתא אמיתית מורכבת מכמה מסלולים בריביות שונות, ואת התמהיל אפשר לבנות בלשונית ההחזר החודשי.',
+  household:
+    'כאן אין ריבית ואין לוח סילוקין — רק חיסור של מה שהבית מוציא ממה שהוא מכניס. זו לא תחזית, והיא טובה בדיוק כמו הסכומים שתמלאו.',
 };
 
-/** Everything typed is a round number of shekels, so anything else is not a digit. */
-const digits = (text: string): number => Number(text.replace(/\D/g, '')) || 0;
 
-const grouped = new Intl.NumberFormat('he-IL');
 
-function Money({
-  id,
-  label,
-  hint,
-  value,
-  onChange,
-}: {
-  id: string;
-  label: string;
-  hint?: string;
-  value: number;
-  onChange: (value: number) => void;
-}) {
-  return (
-    <div className="flex flex-col gap-1.5">
-      <label htmlFor={id} className="text-sm font-medium text-slate-700">
-        {label}
-      </label>
 
-      {/*
-        The ₪ is a sibling rather than a suffix inside the field, so it cannot be
-        deleted, typed over or sent as part of the value. First in the markup puts it
-        at the right of an RTL row, and `text-end` under `dir="ltr"` brings the digits
-        up against it — the number and its unit read as one thing.
-      */}
-      <div className="flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-3 py-2.5 transition focus-within:border-slate-900 focus-within:ring-4 focus-within:ring-slate-900/5">
-        <span className="text-sm text-slate-500" aria-hidden>
-          ₪
-        </span>
-        <input
-          id={id}
-          dir="ltr"
-          inputMode="numeric"
-          autoComplete="off"
-          className="w-full bg-transparent text-end text-base font-medium tabular-nums text-slate-900 outline-none"
-          value={value === 0 ? '' : grouped.format(value)}
-          placeholder="0"
-          onChange={(e) => onChange(digits(e.target.value))}
-        />
-      </div>
-
-      {hint && <p className="text-xs text-slate-500">{hint}</p>}
-    </div>
-  );
-}
-
-/**
- * A slider rather than a box for the two values nobody knows exactly.
- *
- * A rate and a term are chosen by feel — "about five per cent", "twenty-five years" —
- * and a slider both says what the sensible range is and lets the answer move while you
- * watch, which is most of what somebody comes here to do.
- */
-function Slide({
-  id,
-  label,
-  value,
-  onChange,
-  min,
-  max,
-  step,
-  format,
-}: {
-  id: string;
-  label: string;
-  value: number;
-  onChange: (value: number) => void;
-  min: number;
-  max: number;
-  step: number;
-  format: (value: number) => string;
-}) {
-  return (
-    <div className="flex flex-col gap-1">
-      <div className="flex items-baseline justify-between gap-2">
-        <label htmlFor={id} className="text-sm font-medium text-slate-700">
-          {label}
-        </label>
-        <span className="text-sm font-semibold tabular-nums text-slate-900">{format(value)}</span>
-      </div>
-      <input
-        id={id}
-        type="range"
-        min={min}
-        max={max}
-        step={step}
-        value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
-        className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-slate-200 accent-blue-600"
-      />
-    </div>
-  );
-}
-
-/** One line of the figures beside the headline. */
-function Row({ label, value, tone }: { label: string; value: string; tone?: 'muted' }) {
-  return (
-    <div className="flex items-baseline justify-between gap-3 border-b border-slate-100 py-2.5 last:border-0">
-      <span className="text-sm text-slate-500">{label}</span>
-      <span
-        className={`text-sm font-semibold tabular-nums ${
-          tone === 'muted' ? 'text-slate-500' : 'text-slate-900'
-        }`}
-      >
-        {value}
-      </span>
-    </div>
-  );
-}
 
 function BuyerPicker({ value, onChange }: { value: BuyerKind; onChange: (v: BuyerKind) => void }) {
   return (
@@ -224,44 +119,6 @@ function extraBudgetPhrase(buyer: BuyerKind): string {
     : `בכ־${formatShekel(rounded)}`;
 }
 
-/** A small number typed rather than dragged — a rate from a bank, or a term in years. */
-function Num({
-  label,
-  value,
-  onChange,
-  step,
-  min,
-  max,
-  suffix,
-}: {
-  label: string;
-  value: number;
-  onChange: (value: number) => void;
-  step: number;
-  min: number;
-  max: number;
-  suffix: string;
-}) {
-  return (
-    <label className="flex flex-col gap-1">
-      <span className="text-xs text-slate-500">{label}</span>
-      <div className="flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-2 py-1.5 focus-within:border-slate-900">
-        <input
-          type="number"
-          dir="ltr"
-          inputMode="decimal"
-          step={step}
-          min={min}
-          max={max}
-          value={value}
-          onChange={(e) => onChange(Number(e.target.value))}
-          className="w-full min-w-0 bg-transparent text-end text-sm tabular-nums text-slate-900 outline-none"
-        />
-        <span className="text-xs text-slate-500">{suffix}</span>
-      </div>
-    </label>
-  );
-}
 
 /**
  * One track of the mix.
@@ -367,7 +224,6 @@ function TrackRow({
   );
 }
 
-const panelClass = 'rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-6';
 
 /**
  * The mortgage calculator.
@@ -490,6 +346,20 @@ export function MortgagePage() {
           ))}
         </div>
 
+        {/*
+          The `hidden` sits on a bare wrapper, not on the grid itself. `[hidden]` is
+          a UA rule of `display:none`, and Tailwind's `grid` on the same element
+          beats it on specificity — the attribute was set, the panel stayed on screen,
+          and both tabs rendered at once. The same trap the header hit with
+          `.navr a{display:flex}`.
+
+          Hidden rather than unmounted, both ways. A household that filled in six
+          outgoings, two children and a planned third should not lose all of it by
+          glancing at the תמהיל tab — and `hidden` keeps whichever tab is waiting out
+          of the tab order and the accessibility tree, which rendering one or the
+          other would do too, at the cost of everything typed into it.
+        */}
+        <div hidden={mode === 'household'}>
         <div className="mt-5 grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
           <form className={`${panelClass} flex flex-col gap-5`} onSubmit={(e) => e.preventDefault()}>
             {mode === 'payment' ? (
@@ -575,7 +445,7 @@ export function MortgagePage() {
                 <Money
                   id="commitments"
                   label="החזרים חודשיים קיימים"
-                  hint="הלוואות וליסינג שרצים כבר. הבנק מקזז אותם מהיכולת."
+                  hint="סכום ההחזר בחודש על הלוואות וליסינג שרצים כבר — לא יתרת החוב. הבנק מקזז אותו מהיכולת."
                   value={commitments}
                   onChange={setCommitments}
                 />
@@ -785,6 +655,26 @@ export function MortgagePage() {
               )}
             </section>
           )}
+        </div>
+        </div>
+
+        {/*
+          Its answer is a repayment, and the repayment is the budget tab's input, so
+          the button inside it writes straight into that field and sends the reader
+          there with a number they chose rather than one the bank allowed.
+        */}
+        <div hidden={mode !== 'household'}>
+          <HouseholdPlanner
+            netIncome={income}
+            onNetIncome={setIncome}
+            commitments={commitments}
+            onCommitments={setCommitments}
+            repayment={reach.spend}
+            onUse={(monthly) => {
+              setChosenMonthly(monthly);
+              setMode('budget');
+            }}
+          />
         </div>
 
         <p className="mt-6 text-xs leading-relaxed text-slate-500">
