@@ -15,6 +15,7 @@ export const BRAND = 'Urban365';
 const TITLES: Record<string, string> = {
   '/': 'נדל״ן למכירה ולהשכרה בישראל',
   '/saved': 'נכסים שמורים',
+  '/mortgage': 'מחשבון משכנתא',
   '/alerts': 'חיפושים שמורים',
   '/terms': 'תנאי שימוש',
   '/policy': 'מדיניות פרטיות',

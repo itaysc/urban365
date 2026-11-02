@@ -66,6 +66,7 @@ export function renderFooterLinks(entries: CityEntry[], appUrl: string): string 
       { href: `${appUrl}/search?section=rent`, text: 'דירות להשכרה בכל הארץ' },
       { href: `${appUrl}/search?section=commercial`, text: 'נדל״ן מסחרי' },
       { href: '/nadlan', text: 'מחירים לפי עיר' },
+      { href: `${appUrl}/mortgage`, text: 'מחשבון משכנתא' },
       { href: `${appUrl}/sell/new`, text: 'פרסום נכס' },
     ],
   });

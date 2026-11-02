@@ -108,6 +108,11 @@ export function SiteFooter() {
               </a>
             </li>
             <li>
+              <Link className={linkClass} to="/mortgage">
+                מחשבון משכנתא
+              </Link>
+            </li>
+            <li>
               <Link className={linkClass} to="/sell/new">
                 פרסום נכס
               </Link>

@@ -6,9 +6,13 @@ import { useEffect, useRef } from 'react';
 import { AmenityGrid } from '@/components/AmenityGrid';
 import { AssetGallery } from '@/components/AssetGallery';
 import { DetailGrid, type Detail } from '@/components/DetailGrid';
+import { MortgageTeaser } from '@/components/MortgageTeaser';
 import { EXCLUSIVE_LABEL, isExclusiveAsset } from '@/lib/exclusivity';
 import { formatAddress, formatDate, formatPrice, formatShekel } from '@/lib/format';
 import type { Asset } from '@/types/yad2';
+
+/** The `dealType` of a purchase, as the server's own subcategory map spells it. */
+const SALE = 'מכירה';
 
 const Spec = ({ label, value }: { label: string; value: string | number | null }) =>
   value === null || value === '' ? null : (
@@ -137,6 +141,17 @@ export function AssetModal({ asset, onClose }: { asset: Asset; onClose: () => vo
             <Spec label='מ"ר' value={asset.squareMeter} />
             <Spec label="חניות" value={asset.parkingSpacesCount} />
           </div>
+
+          {/*
+            Straight after the specs, which is where "and what would it cost me" gets
+            asked. Only on a sale: there is no mortgage on a rental, and `dealType` is
+            the one field that says which this is on every path into this modal —
+            scraped or created here, both go through the same subcategory map on the
+            server, so a rental reads 'השכרה' and a shop 'מסחרי'.
+          */}
+          {asset.dealType === SALE && asset.price !== null && asset.price > 0 && (
+            <MortgageTeaser price={asset.price} />
+          )}
 
           {asset.description && (
             <section>

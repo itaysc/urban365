@@ -827,6 +827,40 @@ the same time — `seo/render-city.ts`, `seo/render-listing.ts`, `seo/footer.ts`
 The cover is `Tel Aviv Skyline 01.jpg` from Wikimedia, CC BY-SA 4.0, credited under the
 city grid as the licence requires — the same arrangement as the city photographs.
 
+## The mortgage calculator
+
+`/mortgage`, with the arithmetic in `client/src/lib/mortgage.ts`. Two questions off one
+set of sums: what a given price costs per month, and what a given income and deposit
+can buy. The second ends in a link to `/search?maxPrice=…`, which is the point of
+having it on a site that sells flats rather than on a bank's.
+
+**The three numbers that are not ours to choose.** They come from Bank of Israel's
+directive 329, which every bank here applies, and they are what separates this from a
+payment formula that will send somebody to a bank for a loan nobody will write:
+
+| | |
+| --- | --- |
+| `LTV_CAP` | 75% of the price for a first home, 70% for somebody selling one flat to buy another, 50% for a second home kept as an investment. |
+| `INCOME_CAP` | 40% of net monthly income. The regulation forbids lending above 50% and makes anything over 40% expensive for the bank to hold, so 40% is where approvals stop in practice. |
+| `MAX_YEARS` | 30. |
+
+If the regulator moves any of them, they are three constants at the top of that file
+and nothing else needs touching — the page, the shortfall warning and the teaser all
+read them.
+
+**The rate and the term are assumptions, not quotes.** `DEFAULT_RATE` and
+`DEFAULT_YEARS` are what the sliders open on and what the teaser assumes; both are
+stated in the text wherever a number derived from them is printed, and the page carries
+a standing note that a real mortgage is several tracks at several rates, some of them
+index-linked. Nothing here is an offer or advice, and it should stay that way.
+
+**Where it is reached from.** A line under the home page's search box; a
+`MortgageTeaser` on every listing for sale, under the specs, which hands the price over
+in `?price=` so nobody retypes it; and the footer, on both the app's and the
+server-rendered pages. The teaser is gated on `dealType === 'מכירה'` — there is no
+mortgage on a rental, and that field is set from the same subcategory map whether the
+listing was scraped or created here.
+
 ## Still open
 
 Things that are known to be missing or unfinished, so nobody rediscovers them in

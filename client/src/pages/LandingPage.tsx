@@ -1,4 +1,4 @@
-import { Navigate, useSearchParams } from 'react-router-dom';
+import { Link, Navigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { HeroSearch } from '@/components/home/HeroSearch';
 import { SiteFooter } from '@/components/SiteFooter';
@@ -118,6 +118,23 @@ export function LandingPage() {
           </div>
 
           <HeroSearch />
+
+          {/*
+            The second question every buyer has, under the first one. A calculator
+            reachable only from the footer is a calculator nobody opens, and the
+            budget it produces is what turns the box above into a useful search
+            rather than a guess at a round number.
+          */}
+          <p className="text-sm text-white/80">
+            לא בטוחים מה התקציב?{' '}
+            <Link
+              to="/mortgage"
+              className="font-semibold text-white underline decoration-white/40 underline-offset-4 transition hover:decoration-white"
+            >
+              מחשבון המשכנתא
+            </Link>{' '}
+            מחשב כמה אפשר לקנות ומה ההחזר החודשי.
+          </p>
         </div>
       </section>
 
