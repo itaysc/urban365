@@ -8,14 +8,14 @@
   "type": "commonjs",
   "scripts": {
     "db": "bash scripts/start-db.sh",
-    "dev": "npm run db && npm-run-all --parallel dev:server dev:client",
+    "dev": "node server/scripts/check-node.mjs && npm run db && npm-run-all --parallel dev:server dev:client",
     "dev:client": "node scripts/wait-for-server.mjs && cd client && npm run dev",
     "dev:server": "cd server && npm run dev",
     "chrome:debug": "bash scripts/chrome-debug.sh",
     "build": "npm run build:server && npm run build:client",
     "build:client": "cd client && npm run build",
     "build:server": "cd server && npm run build",
-    "install:all": "npm install && cd server && npm install && cd ../client && npm install",
+    "install:all": "node server/scripts/check-node.mjs && npm install && cd server && npm install && cd ../client && npm install",
     "lint": "cd server && npm run lint && cd ../client && npm run lint",
     "check:seo": "node scripts/check-seo.mjs",
     "test": "cd server && npm test"
