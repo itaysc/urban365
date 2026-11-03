@@ -46,8 +46,25 @@ Vite dev proxy, which does not exist in production.
 npm run db:deploy --prefix server
 ```
 
-Railway runs this as the pre-deploy command. Nothing else applies migrations — the app
-does not migrate on boot.
+Railway runs this as the pre-deploy command — **configured and working as of
+2026-11-03**, under Settings → Deploy → Pre-deploy Command, as
+`npx prisma migrate deploy`. Nothing else applies migrations; the app does not migrate
+on boot.
+
+It runs on *every* deploy, which is what you want: `migrate deploy` reads the
+`_prisma_migrations` ledger and applies only what is missing, so an ordinary deploy
+costs a second and does nothing. If it fails, the deploy fails and the old container
+keeps serving — a half-migrated schema never takes traffic.
+
+Two things had to be fixed before it would run at all, both worth knowing if this is
+ever rebuilt elsewhere:
+
+* **The image build needs a `DATABASE_URL` that it never uses.** `prisma.config.ts`
+  resolves the variable when the config file loads, so `prisma generate` refuses to
+  start without one even though it only reads the schema. The builder stage sets a
+  placeholder pointing at a loopback address; it dies with the stage.
+* **`dotenv` has to be a runtime dependency.** `prisma.config.ts` opens with
+  `import 'dotenv/config'`, and the runtime stage installs with `--omit=dev`.
 
 ---
 
@@ -1195,4 +1212,20 @@ production.
   Open-Nagish `support@nadlan.example`, which is the address a visitor is told to write
   to about an accessibility problem — and in Israel that statement is a legal
   requirement rather than a courtesy.
-* **No remote.** Everything is committed locally and has never been pushed.
+* **Under Attack Mode is on** for the Railway service. Railway's own description:
+  *"API clients and webhooks without a verified browser session are blocked."* Every
+  non-browser request to the API gets a 429, which includes the client app and any
+  webhook. Turn it off unless there is an attack in progress.
+* **Config-as-code is deprecated.** Railway's settings page says existing files keep
+  working **until 2026-12-01** and that services which never opted in no longer can.
+  `railway.toml` still describes this service, but the dashboard holds the real
+  configuration and the file's life is finite. Nothing here depends on it today beyond
+  documentation.
+* **The production database is empty of reference data.** The schema exists as of
+  2026-11-03, but §4 has not been run against it: no boundaries, no streets, no
+  parcels, no transactions. Until the transactions backfill runs, the valuation tool
+  has nothing to value from; until the streets sync runs, its street field suggests
+  nothing. These are long jobs and belong on the Railway side of the private network,
+  not on a laptop over the public connection string.
+* **`PORT` is set by hand** in the service variables. Railway injects it, and setting
+  it as well is one more thing that can disagree with the platform.
