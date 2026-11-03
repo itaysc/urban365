@@ -35,6 +35,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends openssl \
 
 COPY package.json package-lock.json prisma.config.ts ./
 COPY prisma ./prisma/
+
+# The three scripts that are production operations rather than development ones.
+#
+# PRODUCTION.md §4 and §7 tell whoever sets this up to run them here, and until now
+# they were not in the image to run — the reference-data syncs and the bucket check
+# all live in `scripts/` as plain .mjs, outside anything the build compiles. They read
+# `.env` if there is one and fall back to `process.env`, which is how Railway supplies
+# it, and they import nothing that `--omit=dev` removes.
+#
+# Named one by one on purpose. The rest of that directory is development tooling and
+# the CBS source files it chews on, which have no business in a running image.
+COPY scripts/sync-streets.mjs scripts/sync-boundaries.mjs scripts/init-storage.mjs ./scripts/
+
 COPY --from=builder /app/dist ./dist
 
 RUN npm ci --omit=dev
