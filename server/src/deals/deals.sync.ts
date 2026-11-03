@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service.js';
 import type { DealsCursor, DealsSource, IncomingDeal } from './deals.source.js';
 
@@ -57,6 +58,17 @@ export class DealsSyncService {
       );
 
       if (!page.next) break;
+
+      /*
+       * A cursor that has not moved means the source handed back the same last row
+       * again, and following it would loop for ever against somebody else's server.
+       * It has never happened; it costs two lines to make sure it cannot.
+       */
+      if (after && after.dealDate === page.next.dealDate && after.id === page.next.id) {
+        this.logger.warn(`${source.name}: cursor stopped advancing at ${after.dealDate}/${after.id}`);
+        break;
+      }
+
       after = page.next;
     }
 
@@ -71,12 +83,19 @@ export class DealsSyncService {
   }
 
   /**
-   * Upsert by the upstream's own id, in chunks.
+   * Upsert by the upstream's own id, one statement per chunk.
    *
-   * `createMany ... skipDuplicates` would be faster and wrong: a deal that was
-   * corrected upstream — a price restated, a row moved out of the statistics — has to
-   * land as an update, and skipping it would freeze the first version we ever saw.
-   * The daily window re-reads rows we already hold precisely so corrections arrive.
+   * `createMany ... skipDuplicates` would be simpler and wrong: a deal corrected
+   * upstream — a price restated, a row moved out of the statistics — has to land as
+   * an update, and skipping it would freeze the first version we ever saw. The daily
+   * window re-reads rows we already hold precisely so corrections arrive.
+   *
+   * So: one `INSERT … ON CONFLICT DO UPDATE` with a thousand value tuples, rather
+   * than a thousand `upsert` calls inside an interactive transaction. The first
+   * version did the latter and died at page 14 of the backfill — a chunk took
+   * 5,197 ms against Prisma's 5,000 ms transaction timeout, because every upsert is
+   * its own round trip and they get slower as the indexes grow. One statement is one
+   * round trip, needs no interactive transaction at all, and is atomic by itself.
    */
   private async write(
     source: DealsSource,
@@ -84,20 +103,50 @@ export class DealsSyncService {
     dataAsOf: Date | null,
   ): Promise<number> {
     let written = 0;
+    const syncedAt = new Date();
 
     for (let at = 0; at < deals.length; at += CHUNK) {
       const chunk = deals.slice(at, at + CHUNK);
 
-      await this.prisma.$transaction(
-        chunk.map((deal) => {
-          const row = { ...deal, source: source.name, dataAsOf, syncedAt: new Date() };
-          return this.prisma.marketDeal.upsert({
-            where: { id: deal.id },
-            create: row,
-            update: row,
-          });
-        }),
+      const values = chunk.map(
+        (d) => Prisma.sql`(${d.id}, ${source.name}::"MarketDealSource", ${syncedAt}, ${dataAsOf},
+          ${d.settlementCode}, ${d.settlement}, ${d.gush}, ${d.chelka}, ${d.subChelka},
+          ${d.dealDate}, ${d.dealAmount}, ${d.rooms}, ${d.area}, ${d.pricePerSqm},
+          ${d.yearBuilt}, ${d.propertyGroup}, ${d.dealNature}, ${d.isFullDeal},
+          ${d.inStats}, ${d.latitude}, ${d.longitude}, ${d.firstSeen})`,
       );
+
+      await this.prisma.$executeRaw`
+        INSERT INTO "MarketDeal" (
+          "id", "source", "syncedAt", "dataAsOf", "settlementCode", "settlement",
+          "gush", "chelka", "subChelka", "dealDate", "dealAmount", "rooms", "area",
+          "pricePerSqm", "yearBuilt", "propertyGroup", "dealNature", "isFullDeal",
+          "inStats", "latitude", "longitude", "firstSeen"
+        )
+        VALUES ${Prisma.join(values)}
+        ON CONFLICT ("id") DO UPDATE SET
+          "source" = EXCLUDED."source",
+          "syncedAt" = EXCLUDED."syncedAt",
+          "dataAsOf" = EXCLUDED."dataAsOf",
+          "settlementCode" = EXCLUDED."settlementCode",
+          "settlement" = EXCLUDED."settlement",
+          "gush" = EXCLUDED."gush",
+          "chelka" = EXCLUDED."chelka",
+          "subChelka" = EXCLUDED."subChelka",
+          "dealDate" = EXCLUDED."dealDate",
+          "dealAmount" = EXCLUDED."dealAmount",
+          "rooms" = EXCLUDED."rooms",
+          "area" = EXCLUDED."area",
+          "pricePerSqm" = EXCLUDED."pricePerSqm",
+          "yearBuilt" = EXCLUDED."yearBuilt",
+          "propertyGroup" = EXCLUDED."propertyGroup",
+          "dealNature" = EXCLUDED."dealNature",
+          "isFullDeal" = EXCLUDED."isFullDeal",
+          "inStats" = EXCLUDED."inStats",
+          "latitude" = EXCLUDED."latitude",
+          "longitude" = EXCLUDED."longitude",
+          "firstSeen" = EXCLUDED."firstSeen"
+      `;
 
       written += chunk.length;
     }

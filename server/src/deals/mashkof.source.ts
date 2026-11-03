@@ -5,10 +5,12 @@ import type { DealsCursor, DealsPull, DealsSource, IncomingDeal, PullOptions } f
 const ENDPOINT = 'https://mashkof.pov.sh/api/sql';
 
 /**
- * Their published ceiling is 10,000 rows a response and 8 MB. Ten thousand narrow
- * rows is comfortably inside the size cap and turns 3.18M rows into ~320 requests.
+ * Their published ceilings are 10,000 rows a response and 8 MB — and the size cap is
+ * the one that bites: a page of ten thousand rows carrying Hebrew settlement names
+ * and deal descriptions can come back short, which is why this is half of what is
+ * allowed. The backfill is ~640 requests either way and runs once.
  */
-export const MAX_ROWS = 10_000;
+export const MAX_ROWS = 5_000;
 
 /** 60 requests a minute is their limit; one a second stays well under it. */
 const MIN_INTERVAL_MS = 1_000;
@@ -41,6 +43,7 @@ const COLUMNS = [
 interface SqlResponse {
   columns?: { name: string }[];
   rows?: unknown[][];
+  truncated?: boolean;
   data_as_of?: string;
   error?: { code?: string; message?: string };
 }
@@ -121,11 +124,25 @@ export class MashkofSource implements DealsSource {
       else this.logger.debug(`Skipped an unusable row from ${this.name}`);
     }
 
+    /*
+     * The end of the data is an empty page, and nothing else.
+     *
+     * This used to stop as soon as a page came back with fewer rows than asked for,
+     * which is the obvious reading and is wrong: the response is also capped at 8 MB,
+     * so a short page can mean "that is all that fits" rather than "that is all there
+     * is". The backfill quietly stopped after four pages and reported success — the
+     * worst kind of failure, because it looks exactly like a finished job. Paging on
+     * a keyset means a short page costs nothing: the cursor still advances past its
+     * last row.
+     */
     const last = (body.rows ?? []).at(-1);
-    const next: DealsCursor | null =
-      (body.rows ?? []).length < rows || !last
-        ? null
-        : { dealDate: text(at(last, 'deal_date')) ?? '', id: text(at(last, 'id')) ?? '' };
+    const next: DealsCursor | null = last
+      ? { dealDate: text(at(last, 'deal_date')) ?? '', id: text(at(last, 'id')) ?? '' }
+      : null;
+
+    if (body.truncated) {
+      this.logger.debug(`${this.name} truncated a page at ${body.rows?.length ?? 0} rows`);
+    }
 
     return { deals, dataAsOf: date(body.data_as_of), next };
   }
