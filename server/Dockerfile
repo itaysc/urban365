@@ -7,6 +7,17 @@ COPY package.json package-lock.json tsconfig.json tsconfig.build.json nest-cli.j
 COPY prisma ./prisma/
 COPY src ./src/
 
+# A placeholder, and it is never connected to.
+#
+# Prisma 7 takes the connection string from `prisma.config.ts`, which resolves
+# DATABASE_URL eagerly when the config loads — so `prisma generate` refuses to start
+# without one even though generating a client reads the schema and touches no
+# database. A build must not need a live database, and Railway rightly injects no
+# service variables into the image build, so the build supplies its own. This ENV
+# belongs to the builder stage, which is thrown away; the runtime stage below starts
+# from a clean image and gets the real URL from Railway.
+ENV DATABASE_URL="postgresql://placeholder:placeholder@127.0.0.1:5432/placeholder"
+
 # `prisma generate` must run before the build: the compiled code imports the client.
 RUN npm ci --include=dev \
  && npx prisma generate \
