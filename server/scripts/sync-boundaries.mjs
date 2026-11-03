@@ -301,6 +301,12 @@ async function syncCities() {
       kind: 'city',
       adminLevel,
       geometry,
+      // Empty, and said rather than left out: `memberCities` is what a *region*
+      // contains, and a city contains no cities. The column is a non-null `String[]`
+      // with no default, so omitting it sends NULL and Postgres rejects the row —
+      // which is exactly what happened the first time this ran against a fresh
+      // database, where it failed on the very first city and wrote nothing at all.
+      memberCities: [],
       ...boundsOf(geometry),
       syncedAt: new Date(),
     };
