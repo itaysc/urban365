@@ -90,6 +90,8 @@ and have to be filled, or the feature they back silently offers nothing.
 | Neighbourhoods (2,752) | `client/src/data/neighborhoods.ts` | none — in the bundle |
 | Municipal + region boundaries | `CityBoundary` table | `npm run boundaries:sync --prefix server` |
 | Streets (62,261) | `Street` table | `npm run streets:sync --prefix server` |
+| Cadastral parcels (1.1M) | `Parcel` table | § 4.1 below — needs a file downloaded by hand |
+| Transactions (3.18M) | `MarketDeal` table | § 4.2 below — one backfill, then a daily job |
 
 ```bash
 npm run boundaries:sync --prefix server   # OpenStreetMap, via Overpass
@@ -115,6 +117,79 @@ something new.
 The two committed lists are regenerated from sources in `server/scripts/` when the CBS
 publishes a new file — see `generate-cities.mjs` and `extract-neighborhoods.py` /
 `merge-neighborhoods.mjs`. That is a development step; the output is committed.
+
+### 4.1 Cadastral parcels — do this one first
+
+**Order matters.** Parcels, then the listing backfill, then deals. The parcels are what
+turn a listing's coordinates into a gush and chelka, and that pair is the only key that
+joins our listings to the transaction registry — the registry holds no street addresses
+at all. Deals imported before parcels are not wrong, they are simply unreachable from
+any listing.
+
+**The file cannot be fetched by a script.** `parcel_all.zip` on data.gov.il is openly
+licensed but sits behind CloudFront, which refuses unauthenticated requests and
+redirects a browser to a Google sign-in. Somebody has to download it with an account
+and put it on the box:
+
+1. Open <https://data.gov.il/dataset/shape> and sign in when prompted.
+2. Download **חלקות shape** (`parcel_all.zip`, ~700 MB) and unzip it.
+3. Point the importer at the base name, without an extension:
+
+```bash
+npm run import:parcels --prefix server -- /path/to/parcel_all/PARCEL_ALL
+```
+
+About six minutes for 1.1 million parcels, streaming — it never holds the 1.1 GB
+`.shp` in memory. Re-importing a newer layer means `TRUNCATE "Parcel"` first: the
+importer skips duplicate `(gush, chelka)` rather than merging two vintages, and the
+source genuinely contains a few duplicate pairs as separate polygons.
+
+**The layer is in Israel TM Grid and is converted on the way in** (`israel-tm.ts`), so
+WGS84 is the only coordinate system in the database. That conversion includes the
+Israel 1993 → WGS84 datum shift, and it has to: without it every parcel lands 77 m
+from where it belongs, which is near enough to look correct and far enough to return
+the neighbour's sale history. The seven-parameter transform (EPSG:9676) is accurate to
+about 0.3 m here; the three-parameter one EPSG also publishes leaves a systematic 7 m
+bias, which is worse than random error because it picks the same wrong neighbour every
+time. There is a test that converts a real parcel and asserts a known address falls
+inside it — a 13 m-wide parcel is a test a near-miss cannot pass.
+
+Then stamp the listings:
+
+```bash
+npm run backfill:cadastre --prefix server                 # 500 at a time
+npm run backfill:cadastre --prefix server -- --status
+```
+
+It refuses to run against an empty `Parcel` table. It has to: it records `cadastreAt`
+so a listing it could not place is not retried for ever, so one run against no parcels
+would mark the whole catalogue unplaceable.
+
+New listings still need this. The lookup is cheap and local, but nothing calls it on
+write yet — until that is wired in, the backfill is also the way new listings get a
+parcel, so it belongs on a schedule beside the deals sync.
+
+### 4.2 Transactions
+
+```bash
+npm run sync:deals --prefix server -- --backfill   # once: 3.18M rows, ~30 min
+npm run sync:deals --prefix server                 # daily
+npm run sync:deals --prefix server -- --status
+```
+
+**The daily run needs a scheduler and does not have one.** The reminder, matching and
+alert sweeps run from `@Cron` inside Nest; this is a CLI script and nothing invokes it.
+Before launch it needs either a platform cron calling the script or a scheduler class
+like the others. Decide which — but it cannot be left as a thing somebody remembers.
+
+**Watch `dataAsOf`.** Every row records the upstream's own cut-off and the sync warns
+when it has not advanced in 45 days. That warning is the only way to learn the source
+has frozen: a mirror that stopped updating still answers every request perfectly, and
+without the warning the first sign is a user noticing the newest comp is eight months
+old. Route it somewhere a person reads.
+
+See *Transaction data* below for the shape of the pipeline and why the cursor is what
+it is.
 
 ---
 
@@ -1058,6 +1133,12 @@ production.
   `[[טלפון רכז הנגישות]]`. Each page shows a draft banner counting the ones it still
   has, and says which review it is waiting for — a lawyer for the terms and the
   privacy policy, a מורשה נגישות שירות for the accessibility statement.
+* **The transaction mirror has no stated licence**, and we have not asked. It is one
+  person's copy of the Tax Authority registry, openly served with no key, but nothing
+  on it grants commercial reuse. Ask before launch, or move to the Authority's own
+  access — which is free and public by court order and now needs a registered account.
+  This is a go-live blocker for anything that shows deal prices to the public.
+* **Nothing schedules the deals sync** (§ 4.2) or the cadastre backfill (§ 4.1).
 * **No accessibility audit.** The statement says so itself, and lists what is still
   missing (§ The accessibility statement). The gaps a developer could close are
   closed; naming a coordinator and booking the audit are the two that are left, and

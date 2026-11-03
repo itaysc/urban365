@@ -20,6 +20,7 @@
     "seed:dev-agency": "node dist/scripts/seed-dev-agency.js",
     "seed:demo": "npm run build && node dist/scripts/seed-demo-data.js",
     "sync:deals": "npm run build && node dist/scripts/sync-deals.js",
+    "import:parcels": "npm run build && node dist/scripts/import-parcels.js",
     "backfill:cadastre": "npm run build && node dist/scripts/backfill-cadastre.js",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start:dev": "nest start --watch",
