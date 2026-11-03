@@ -67,8 +67,14 @@ export function RoomsPicker({ min, max, onChange, single = false, legend = 'חד
     </button>
   );
 
+  /*
+   * `min-w-0` undoes the browser's own `min-width: min-content` on a fieldset, which
+   * no flex or grid rule overrides. Without it the row of eleven steps sets a floor of
+   * about 456px on every ancestor, the `overflow-x-auto` below never engages, and a
+   * narrow container is taken sideways instead. It only ever permits shrinking.
+   */
   return (
-    <fieldset>
+    <fieldset className="min-w-0">
       <legend className="mb-2 text-sm font-semibold text-slate-900">{legend}</legend>
 
       {/*

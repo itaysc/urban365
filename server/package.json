@@ -22,6 +22,8 @@
     "sync:deals": "npm run build && node dist/scripts/sync-deals.js",
     "import:parcels": "npm run build && node dist/scripts/import-parcels.js",
     "backfill:cadastre": "npm run build && node dist/scripts/backfill-cadastre.js",
+    "backfill:deal-cells": "npm run build && node dist/scripts/backfill-deal-cells.js",
+    "fit:valuation": "npm run build && node dist/scripts/fit-valuation-params.js",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
@@ -36,7 +38,9 @@
     "boundaries:sync": "node scripts/sync-boundaries.mjs",
     "cities:generate": "node scripts/generate-cities.mjs",
     "neighborhoods:build": "node scripts/merge-neighborhoods.mjs",
-    "streets:sync": "node scripts/sync-streets.mjs"
+    "streets:sync": "node scripts/sync-streets.mjs",
+    "try:valuation": "npm run build && node dist/scripts/try-valuation.js",
+    "backtest:valuation": "npm run build && node dist/scripts/backtest-valuation.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "3.726.1",

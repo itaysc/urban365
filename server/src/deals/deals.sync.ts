@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { cellOf } from '../cadastre/parcel-index.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import type { DealsCursor, DealsSource, IncomingDeal } from './deals.source.js';
 
@@ -108,20 +109,30 @@ export class DealsSyncService {
     for (let at = 0; at < deals.length; at += CHUNK) {
       const chunk = deals.slice(at, at + CHUNK);
 
-      const values = chunk.map(
-        (d) => Prisma.sql`(${d.id}, ${source.name}::"MarketDealSource", ${syncedAt}, ${dataAsOf},
+      const values = chunk.map((d) => {
+        /*
+         * The grid cell is computed here, with the same `cellOf` the lookup uses, so
+         * there is exactly one definition of which cell a point is in. A second one
+         * written in SQL would drift by a rounding rule and every comp query would
+         * quietly miss — a bug with no error message.
+         */
+        const cell =
+          d.latitude === null || d.longitude === null ? null : cellOf(d.latitude, d.longitude);
+
+        return Prisma.sql`(${d.id}, ${source.name}::"MarketDealSource", ${syncedAt}, ${dataAsOf},
           ${d.settlementCode}, ${d.settlement}, ${d.gush}, ${d.chelka}, ${d.subChelka},
           ${d.dealDate}, ${d.dealAmount}, ${d.rooms}, ${d.area}, ${d.pricePerSqm},
           ${d.yearBuilt}, ${d.propertyGroup}, ${d.dealNature}, ${d.isFullDeal},
-          ${d.inStats}, ${d.latitude}, ${d.longitude}, ${d.firstSeen})`,
-      );
+          ${d.inStats}, ${d.latitude}, ${d.longitude}, ${d.firstSeen},
+          ${cell?.cellLat ?? null}, ${cell?.cellLng ?? null})`;
+      });
 
       await this.prisma.$executeRaw`
         INSERT INTO "MarketDeal" (
           "id", "source", "syncedAt", "dataAsOf", "settlementCode", "settlement",
           "gush", "chelka", "subChelka", "dealDate", "dealAmount", "rooms", "area",
           "pricePerSqm", "yearBuilt", "propertyGroup", "dealNature", "isFullDeal",
-          "inStats", "latitude", "longitude", "firstSeen"
+          "inStats", "latitude", "longitude", "firstSeen", "cellLat", "cellLng"
         )
         VALUES ${Prisma.join(values)}
         ON CONFLICT ("id") DO UPDATE SET
@@ -145,7 +156,9 @@ export class DealsSyncService {
           "inStats" = EXCLUDED."inStats",
           "latitude" = EXCLUDED."latitude",
           "longitude" = EXCLUDED."longitude",
-          "firstSeen" = EXCLUDED."firstSeen"
+          "firstSeen" = EXCLUDED."firstSeen",
+          "cellLat" = EXCLUDED."cellLat",
+          "cellLng" = EXCLUDED."cellLng"
       `;
 
       written += chunk.length;

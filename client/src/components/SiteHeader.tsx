@@ -35,6 +35,33 @@ interface Props {
  * to stop agreeing. The agency dashboard passes its own drawer trigger and agency name
  * through rather than keeping a second header of its own.
  */
+/**
+ * The rule between two navigation items.
+ *
+ * `aria-hidden` because it is punctuation for the eye only: a screen reader already
+ * hears three separate links and would otherwise hear a stray "vertical line" between
+ * each pair. Lighter than the words it separates, so it divides without competing.
+ */
+const NavBar = () => (
+  <span aria-hidden="true" className="text-sm text-slate-300">
+    |
+  </span>
+);
+
+type LoginIntent = 'account' | 'sell' | 'valuation';
+
+/**
+ * What each sign-in was asked for: what to say, and where to carry on to.
+ *
+ * Signing in for its own sake has neither — no reason to give and nowhere to go, so
+ * the dialog's own wording stands and the page stays where it is.
+ */
+const ASKED_FOR: Record<LoginIntent, { because?: string; then?: string }> = {
+  account: {},
+  sell: { because: 'פרסום נכס פתוח למשתמשים רשומים', then: '/sell/new' },
+  valuation: { because: 'הערכת שווי פתוחה למשתמשים רשומים', then: '/valuation' },
+};
+
 export function SiteHeader({ leading, subtitle, fullWidth = false }: Props) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -42,9 +69,10 @@ export function SiteHeader({ leading, subtitle, fullWidth = false }: Props) {
   const [loginOpen, setLoginOpen] = useState(false);
   // What the sign-in is *for*, which decides what the dialog says and where it goes
   // afterwards. 'account' is somebody signing in for its own sake.
-  const [loginIntent, setLoginIntent] = useState<'account' | 'sell'>('account');
+  const [loginIntent, setLoginIntent] = useState<LoginIntent>('account');
   const loginButton = useRef<HTMLButtonElement>(null);
   const publishButton = useRef<HTMLButtonElement>(null);
+  const valuationButton = useRef<HTMLButtonElement>(null);
 
   const { data: savedCount } = useQuery({
     queryKey: qk.saved.count,
@@ -125,7 +153,7 @@ export function SiteHeader({ leading, subtitle, fullWidth = false }: Props) {
               agency dashboard the space beside the logo already says which agency you
               are in, and a third item there reads as a breadcrumb that goes nowhere.
             */
-            <nav className="hidden items-center gap-3 border-s border-slate-200 ps-3 sm:flex">
+            <nav className="hidden items-center gap-2.5 border-s border-slate-200 ps-3 sm:flex">
               {/*
                 A plain anchor, unlike its neighbour: the city pages are rendered by the
                 API and are not in this bundle's route table, so a <Link> would try to
@@ -137,12 +165,40 @@ export function SiteHeader({ leading, subtitle, fullWidth = false }: Props) {
               >
                 מחירים לפי עיר
               </a>
+              <NavBar />
               <Link
                 to="/mortgage"
                 className="text-sm text-slate-600 transition hover:text-slate-900"
               >
                 מחשבון משכנתא
               </Link>
+              <NavBar />
+              {/*
+                A dialog rather than a link when signed out, for the same reason as
+                the publish button below: the page behind it is useless without a
+                session, and sending someone to a sign-in page to find that out costs
+                them a navigation to learn something we already knew.
+              */}
+              {user ? (
+                <Link
+                  to="/valuation"
+                  className="text-sm text-slate-600 transition hover:text-slate-900"
+                >
+                  הערכת שווי
+                </Link>
+              ) : (
+                <button
+                  ref={valuationButton}
+                  type="button"
+                  onClick={() => {
+                    setLoginIntent('valuation');
+                    setLoginOpen(true);
+                  }}
+                  className="text-sm text-slate-600 transition hover:text-slate-900"
+                >
+                  הערכת שווי
+                </button>
+              )}
             </nav>
           )}
         </div>
@@ -304,11 +360,16 @@ export function SiteHeader({ leading, subtitle, fullWidth = false }: Props) {
       <LoginDialog
         open={loginOpen}
         onOpenChange={setLoginOpen}
-        returnFocusTo={loginIntent === 'sell' ? publishButton : loginButton}
-        description={loginIntent === 'sell' ? 'פרסום נכס פתוח למשתמשים רשומים' : undefined}
+        returnFocusTo={
+          { account: loginButton, sell: publishButton, valuation: valuationButton }[loginIntent]
+        }
+        description={ASKED_FOR[loginIntent].because}
         // Google leaves the site, so for it the intent has to travel as a destination.
-        returnTo={loginIntent === 'sell' ? '/sell/new' : undefined}
-        onSignedIn={loginIntent === 'sell' ? () => navigate('/sell/new') : undefined}
+        returnTo={ASKED_FOR[loginIntent].then}
+        onSignedIn={() => {
+          const next = ASKED_FOR[loginIntent].then;
+          if (next) navigate(next);
+        }}
       />
     </header>
   );

@@ -113,6 +113,11 @@ export function SiteFooter() {
               </Link>
             </li>
             <li>
+              <Link className={linkClass} to="/valuation">
+                הערכת שווי
+              </Link>
+            </li>
+            <li>
               <Link className={linkClass} to="/sell/new">
                 פרסום נכס
               </Link>
@@ -138,8 +143,19 @@ export function SiteFooter() {
           </Column>
         </nav>
 
+        {/*
+          Two separate claims, and they are not the same one. The listing figures on
+          the site are asking prices and are not a valuation of anything. The
+          valuation tool is a valuation — an indicative one, from recorded sales —
+          and what it is not is a שמאות מקרקעין, which is a licensed opinion that
+          banks and courts accept and this is not.
+        */}
         <p className="mt-6 border-t border-slate-100 pt-4 text-[0.8125rem] text-slate-500">
-          הנתונים מתבססים על המודעות המתפרסמות באתר ומשתנים עם השוק. אינם ייעוץ או הערכת שווי.
+          הנתונים מתבססים על המודעות המתפרסמות באתר ומשתנים עם השוק, ואינם ייעוץ.{' '}
+          <Link className={linkClass} to="/valuation">
+            הערכת השווי
+          </Link>{' '}
+          היא אינדיקטיבית, מבוססת על עסקאות שנרשמו, ואינה תחליף לשמאות מקרקעין.
         </p>
       </div>
     </footer>

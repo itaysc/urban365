@@ -8,6 +8,7 @@ import { RequireAdmin, RequireAuth } from '@/auth/RequireAuth';
 import { HomePage } from '@/pages/HomePage';
 import { LandingPage } from '@/pages/LandingPage';
 import { MortgagePage } from '@/pages/MortgagePage';
+import { ValuationPage } from '@/pages/ValuationPage';
 import { SearchPage } from '@/pages/SearchPage';
 import { ForgotPasswordPage } from '@/pages/auth/ForgotPasswordPage';
 import { LoginPage } from '@/pages/auth/LoginPage';
@@ -65,6 +66,7 @@ export const router = createBrowserRouter([
   { path: '/search', element: <SearchPage /> },
   // Takes `?price=` from a listing, so arriving from one opens on that flat's figures.
   { path: '/mortgage', element: <MortgagePage /> },
+  { path: '/valuation', element: <ValuationPage /> },
   // An agency's public page. The yad2 importer used to sit on this component for
   // anyone to run; it now lives in the agency's own dashboard.
   { path: '/agency/:agencyId', element: <HomePage /> },

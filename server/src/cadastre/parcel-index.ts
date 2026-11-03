@@ -48,6 +48,30 @@ export function cellRange(latitude: number, longitude: number) {
   };
 }
 
+/**
+ * The block of cells covering everything within `metres` of a point.
+ *
+ * {@link cellRange} is fixed at 3×3 because a parcel lookup only ever asks "which
+ * shape contains this point". Comp selection asks a different question — every sale
+ * within 2.5 km — and that reaches further than one neighbouring cell. Longitude
+ * cells narrow with latitude, so the two axes are widened separately; at Israel's
+ * latitudes a cell is about 1.1 km tall and 0.94 km wide.
+ */
+export function cellRangeWithin(latitude: number, longitude: number, metres: number) {
+  const { cellLat, cellLng } = cellOf(latitude, longitude);
+
+  const latCells = Math.ceil(metres / (CELL_DEGREES * 111_320)) + 1;
+  const metresPerLngCell = CELL_DEGREES * 111_320 * Math.max(0.1, Math.cos((latitude * Math.PI) / 180));
+  const lngCells = Math.ceil(metres / metresPerLngCell) + 1;
+
+  return {
+    minCellLat: cellLat - latCells,
+    maxCellLat: cellLat + latCells,
+    minCellLng: cellLng - lngCells,
+    maxCellLng: cellLng + lngCells,
+  };
+}
+
 export interface Bounds {
   minLat: number;
   maxLat: number;

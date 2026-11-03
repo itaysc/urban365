@@ -367,6 +367,9 @@ model Listing {
   @@index([rooms])
   @@index([delistedAt])
   @@index([amenities], type: Gin)
+  /// The join to `MarketDeal`. The index was created by the migration that added the
+  /// columns but never declared here, so `migrate dev` would have proposed dropping it.
+  @@index([gush, chelka])
 }
 
 /// One row per scrape, so a bad run can be told apart from a shrinking inventory.
@@ -474,6 +477,7 @@ model User {
   ownedDeals        Deal[]                 @relation("DealOwner")
   reviewedAgencies  Agency[]               @relation("AgencyReviewer")
   reviewedClaims    AgencyClaim[]          @relation("ClaimReviewer")
+  valuations        Valuation[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1153,6 +1157,18 @@ model Street {
   /// anything yet; kept because re-deriving it later would mean another import.
   code Int?
 
+  /// A point on the street, filled in the first time anyone asks for this one.
+  ///
+  /// The register has names and no coordinates, so these come from the geocoder and
+  /// are kept forever once found — see `PlaceService.locateStreet` for why that
+  /// caching is the whole reason this is allowed to exist.
+  latitude  Float?
+  longitude Float?
+
+  /// When the geocoder was last asked, whether or not it answered. Without it a
+  /// street the geocoder cannot place is looked up again on every single request.
+  locatedAt DateTime?
+
   syncedAt DateTime @default(now())
 
   /// One row per street per city. The sync upserts on it, so a re-run updates rather
@@ -1582,12 +1598,23 @@ model MarketDeal {
   /// after they happen, so syncing on the deal date would miss every late report.
   firstSeen DateTime?
 
+  /// The grid cell this deal's point falls in — the same hand-rolled spatial index
+  /// `Parcel` uses, for the same reason: there is no PostGIS here, and valuation asks
+  /// "every deal within 400 m of this flat" over three million rows. A bounding-box
+  /// filter on latitude alone matches half the table however it is indexed; an
+  /// equality range on a cell pair does not. See `cadastre/parcel-index.ts`, whose
+  /// `cellOf` fills these.
+  cellLat Int?
+  cellLng Int?
+
   /// The join to our own listings, and the only index a property page uses.
   @@index([gush, chelka])
   /// Everything a city or neighbourhood page asks: deals here, newest first.
   @@index([settlementCode, dealDate])
   /// The sync's own cursor.
   @@index([source, firstSeen])
+  /// Comp selection: the nine cells around a point, newest first.
+  @@index([cellLat, cellLng, dealDate])
 }
 
 /// A cadastral parcel — one (gush, chelka) and the ground it covers.
@@ -1623,4 +1650,64 @@ model Parcel {
 
   @@id([gush, chelka])
   @@index([cellLat, cellLng])
+}
+
+/// One estimate we gave someone, kept exactly as it was given.
+///
+/// Sellers screenshot numbers and come back to them months later, and an agent will
+/// be asked to defend one in front of a buyer. So this records not only the answer
+/// but everything it was computed from: the inputs, the parameter version, and the
+/// comparable sales themselves. Refitting the parameters must never silently change
+/// what an old valuation said.
+model Valuation {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  /// Who asked, when we know. Anonymous valuations are expected and allowed.
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userId String?
+
+  /// The data sheet as it was submitted, so the estimate can be recomputed from it.
+  input Json
+
+  /// Where the subject is, denormalised out of `input` for the queries we actually run.
+  settlementCode Int?
+  city           String
+  gush           Int?
+  chelka         Int?
+  latitude       Float?
+  longitude      Float?
+  rooms          Float
+  area           Int
+
+  /// The answer. Null when we refused — `verdict` says why, and a refusal is worth
+  /// storing: a town we cannot price is a product problem, not an absence of data.
+  low      Int?
+  high     Int?
+  expected Int?
+  asking   Int?
+
+  /// 'good' | 'indicative' | 'too-thin' | a refusal reason.
+  verdict String
+
+  /// How the estimate was reached, for the explanation and for the back-test:
+  /// pooled rate, the size exponent used, the quality multiplier and its parts,
+  /// the market verdict, and every comparable with its weight and distance.
+  workings Json
+
+  /// Which `valuation-params.json` produced this. Without it the number is not
+  /// reproducible, which would make the two fields above a liability.
+  paramsVersion Int
+  /// The index base — how current the market data behind this estimate was.
+  paramsBase    String
+
+  /// Effective comparable count and their dispersion, kept out of `workings` because
+  /// every quality report groups by them.
+  effectiveComps Float
+  spread         Float
+
+  @@index([createdAt])
+  @@index([userId, createdAt])
+  /// Quality reporting: how we do per town, and where we refuse.
+  @@index([settlementCode, verdict])
 }

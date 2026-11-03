@@ -28,6 +28,26 @@ const UA = 'Urban365-CityPhotos/1.0 (https://github.com/urban365; one photograph
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /**
+ * The key each photograph is filed under, which has to be what the page looks it up by.
+ *
+ * A copy of `cityKey` in `src/listings/city-name.ts`, which is the source of truth —
+ * this is a plain script and cannot import the TypeScript. Keep the two in step.
+ *
+ * It is not cosmetic. The names were written out raw until now, so every city with a
+ * gershayim or a maqaf in it filed its photograph under a key the page would never
+ * ask for: בני עי"ש had a picture and showed a coloured tile, and 61 of the 1,196
+ * settlement names in the deals table are spelled that way.
+ */
+const cityKey = (name) =>
+  name
+    .normalize('NFKC')
+    .replace(/[־‐-―-]/g, ' ')
+    .replace(/[׳״'"׳״]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+
+/**
  * Wikimedia asks for a descriptive User-Agent and a gentle pace. Both are honoured.
  *
  * It answers 429 when it thinks you are not being gentle, and the right response to
@@ -49,9 +69,17 @@ async function api(host, params, attempt = 0) {
   return res.json();
 }
 
-/** Emblems, flags, maps and icons: everything an article carries that is not a photo. */
+/**
+ * Emblems, flags, maps and icons: everything an article carries that is not a photo.
+ *
+ * `plaque` and `שלט` are here for a subtler reason than the rest. A sign *naming* the
+ * town is not a picture of it, and the name in the file makes it score well on every
+ * other test: Kiryat Yam's article offered a street plaque in Créteil, France, which
+ * passed the is-it-this-city check with flying colours because the city's name is
+ * written on it in capital letters.
+ */
 const NOT_A_PHOTO =
-  /(coa|coat[_ ]of[_ ]arms|logo|seal|emblem|flag|map|locator|icon|symbol|wiki|commons|blank|outline|star[_ ]of[_ ]david|crystal|gnome|edit|signature)/i;
+  /(coa|coat[_ ]of[_ ]arms|logo|seal|emblem|flag|map|locator|icon|symbol|wiki|commons|blank|outline|star[_ ]of[_ ]david|crystal|gnome|edit|signature|plaque|שלט)/i;
 
 /**
  * What makes one photograph a better card than another.
@@ -284,7 +312,7 @@ export interface CityPhoto {
 export const CITY_PHOTOS: Record<string, CityPhoto> = ${JSON.stringify(
     Object.fromEntries(
       chosen.map((p) => [
-        p.city,
+        cityKey(p.city),
         { url: p.thumb, credit: `${p.artist}, ${p.licence}`, page: p.page },
       ]),
     ),

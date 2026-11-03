@@ -4,6 +4,7 @@ import {
   CELL_DEGREES,
   cellOf,
   cellRange,
+  cellRangeWithin,
   centroidOf,
   pickParcel,
   type ParcelShape,
@@ -151,5 +152,49 @@ describe('pickParcel', () => {
       expect(filed.cellLng).toBeGreaterThanOrEqual(range.minCellLng);
       expect(filed.cellLng).toBeLessThanOrEqual(range.maxCellLng);
     }
+  });
+});
+
+describe('cellRangeWithin', () => {
+  const TEL_AVIV = { lat: 32.0853, lng: 34.7818 };
+
+  it('covers at least the radius asked for, on both axes', () => {
+    const range = cellRangeWithin(TEL_AVIV.lat, TEL_AVIV.lng, 2_500);
+    const here = cellOf(TEL_AVIV.lat, TEL_AVIV.lng);
+
+    // A cell is ~1.11 km tall, so 2.5 km needs three either side at minimum.
+    expect(here.cellLat - range.minCellLat).toBeGreaterThanOrEqual(3);
+    expect(range.maxCellLat - here.cellLat).toBeGreaterThanOrEqual(3);
+  });
+
+  /*
+   * Longitude cells are narrower than latitude cells away from the equator — about
+   * 0.94 km against 1.11 km at Israel's latitudes — so the same radius needs at
+   * least as many cells east-west as north-south. Reusing the latitude count for
+   * both would quietly clip comparables on the east and west edges.
+   */
+  it('widens further in longitude, where cells are narrower', () => {
+    const range = cellRangeWithin(TEL_AVIV.lat, TEL_AVIV.lng, 2_500);
+    const latSpan = range.maxCellLat - range.minCellLat;
+    const lngSpan = range.maxCellLng - range.minCellLng;
+
+    expect(lngSpan).toBeGreaterThanOrEqual(latSpan);
+  });
+
+  it('grows with the radius', () => {
+    const near = cellRangeWithin(TEL_AVIV.lat, TEL_AVIV.lng, 150);
+    const far = cellRangeWithin(TEL_AVIV.lat, TEL_AVIV.lng, 2_500);
+
+    expect(far.maxCellLat - far.minCellLat).toBeGreaterThan(near.maxCellLat - near.minCellLat);
+  });
+
+  it('still includes the point’s own cell for a tiny radius', () => {
+    const range = cellRangeWithin(TEL_AVIV.lat, TEL_AVIV.lng, 1);
+    const here = cellOf(TEL_AVIV.lat, TEL_AVIV.lng);
+
+    expect(here.cellLat).toBeGreaterThanOrEqual(range.minCellLat);
+    expect(here.cellLat).toBeLessThanOrEqual(range.maxCellLat);
+    expect(here.cellLng).toBeGreaterThanOrEqual(range.minCellLng);
+    expect(here.cellLng).toBeLessThanOrEqual(range.maxCellLng);
   });
 });

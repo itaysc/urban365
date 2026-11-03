@@ -126,7 +126,12 @@ export function LandingPage() {
               budget it produces is what turns the box above into a useful search
               rather than a guess at a round number.
             */}
-            <p className="text-sm text-white/80">
+            {/*
+              Heavier and less transparent than the body text it sits beside: this line
+              is white on a photograph, where 400 at 80% opacity thins out against the
+              lighter parts of the image. The link inside it stays a step above at 600.
+            */}
+            <p className="text-sm font-medium text-white/90">
               לא בטוחים מה התקציב?{' '}
               <Link
                 to="/mortgage"

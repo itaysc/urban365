@@ -301,6 +301,7 @@ ${blocks}
 <nav class="here">
 <a href="/nadlan"${options.onCityPages ? ' aria-current="page"' : ''}>מחירים לפי עיר</a>
 <a href="${esc(options.appUrl)}/mortgage">מחשבון משכנתא</a>
+<a href="${esc(options.appUrl)}/valuation">הערכת שווי</a>
 </nav>
 </div>
 <div class="navr">
@@ -323,7 +324,14 @@ ${blocks}
 <script>${SESSION_SCRIPT}</script>
 <footer class="site"><div class="wrap">
 ${options.links ?? ''}
-<p class="small">הנתונים מתבססים על המודעות המתפרסמות באתר ומשתנים עם השוק. אינם ייעוץ או הערכת שווי.</p>
+<!--
+  Two claims, deliberately separated. The listing figures above are asking prices
+  and value nothing. The valuation tool does give a value — an indicative one, read
+  off recorded sales — and what it is not is a שמאות מקרקעין, the licensed opinion
+  banks and courts accept. Saying "not a valuation" flatly, as this did, stopped
+  being true the day that tool shipped.
+-->
+<p class="small">הנתונים מתבססים על המודעות המתפרסמות באתר ומשתנים עם השוק, ואינם ייעוץ. <a href="${esc(options.appUrl)}/valuation">הערכת השווי</a> היא אינדיקטיבית, מבוססת על עסקאות שנרשמו, ואינה תחליף לשמאות מקרקעין.</p>
 </div></footer>
 </body>
 </html>`;

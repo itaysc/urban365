@@ -625,9 +625,28 @@ that merely match the word, including studio portraits of strangers.
 node scripts/fetch-city-photos.mjs cities.txt    # one city per line
 ```
 
-writes `src/seo/city-photos.ts`. Today 32 of 33 cities have one; חריש, built in the
-last decade, has no photograph in its article and gets a tile instead
-(`seo/tile.ts`, a colour derived from the name so it is the same on every build).
+writes `src/seo/city-photos.ts`. The list is **not** just the cities we hold listings
+in: it is every settlement with 2,000 or more recorded deals, about 130 of them, so a
+city that gets its first listing tomorrow already has its picture. 109 of those have
+one. Only חריש, built in the last decade, has no photograph in its own article among
+the cities currently on the index, and gets a tile instead (`seo/tile.ts`, a colour
+derived from the name so it is the same on every build).
+
+Two things to know before running it again:
+
+* **Check the weak picks by eye.** The script scores candidates on their file names,
+  and a Hebrew file name with none of its keywords scores zero whether the photograph
+  is a fine aerial of the town or the inside of a factory. Of the thirty-seven that
+  scored zero, a sample of five turned up one street sign in Créteil, France (filed
+  under קריית ים, which is what the street there is named after) and one olive-press
+  interior with identifiable people (מגאר). Both were dropped by hand and will not
+  come back — `plaque` and `שלט` are now rejected outright — but the rest of that tier
+  has not been opened.
+* **The key is `cityKey`, not the name.** Photographs used to be filed under the name
+  as written, while the page looks them up normalised, so every city with a gershayim
+  or a maqaf in it showed a tile while holding a perfectly good photograph. בני עי״ש
+  did exactly that. 61 of the 1,196 settlement names in the deals table are spelled
+  that way.
 
 Four things the script has to get right, each of which it got wrong first:
 

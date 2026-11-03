@@ -3,6 +3,15 @@ import { Injectable, Logger } from '@nestjs/common';
 export interface Coordinates {
   latitude: number;
   longitude: number;
+  /**
+   * What OpenStreetMap thinks it found — its `addresstype`, such as `residential`,
+   * `tertiary` or `city`.
+   *
+   * Carried because asking for a street and being handed a town is not a failure
+   * Nominatim reports: it answers with whatever it matched, and the coordinates look
+   * just as good either way. Callers that care check; the rest ignore it.
+   */
+  kind?: string;
 }
 
 export interface AddressParts {
@@ -16,8 +25,9 @@ const VIEWBOX = { minLng: 34.2, minLat: 29.45, maxLng: 35.95, maxLat: 33.35 };
 
 /**
  * Nominatim asks callers for no more than one request a second, and means it.
- * Geocoding here happens when an agency saves an office — a handful of times ever — so
- * this is about being a good citizen rather than about throughput.
+ * Geocoding here happens when an agency saves an office, and once per street the
+ * valuation form is ever asked about — both a handful of times ever, because both
+ * write the answer down. This is about being a good citizen rather than throughput.
  */
 const MIN_INTERVAL_MS = 1100;
 
@@ -26,8 +36,10 @@ const MIN_INTERVAL_MS = 1100;
  *
  * OpenStreetMap's own geocoder, for the same reason the boundaries come from OSM: no
  * key to hold, no per-request bill, and an acceptable-use policy this fits inside. It
- * is used on *write* only — an office is geocoded once when it is saved, never when a
- * map is drawn, which is the use the policy actually forbids.
+ * is used on *write* only — an office is geocoded once when it is saved, a street once
+ * the first time anyone asks for it, and neither is ever asked again. Geocoding afresh
+ * every time a map is drawn is the use the policy actually forbids; writing the answer
+ * down is what keeps both of these on the right side of it.
  *
  * Failure is not an error. An address Nominatim cannot place still describes a real
  * office; it is stored without coordinates and left off the map.
@@ -66,7 +78,7 @@ export class GeocodeService {
         headers: {
           // The policy requires an identifiable caller; anonymous traffic is the first
           // thing blocked.
-          'User-Agent': 'nadlan/1.0 (agency office geocoding; one request per save)',
+          'User-Agent': 'nadlan/1.0 (geocoding on write only; every answer cached)',
         },
         signal: AbortSignal.timeout(10_000),
       });
@@ -76,14 +88,18 @@ export class GeocodeService {
         return null;
       }
 
-      const [hit] = (await response.json()) as { lat?: string; lon?: string }[];
+      const [hit] = (await response.json()) as {
+        lat?: string;
+        lon?: string;
+        addresstype?: string;
+      }[];
       if (!hit?.lat || !hit?.lon) return null;
 
       const latitude = Number(hit.lat);
       const longitude = Number(hit.lon);
       if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
 
-      return { latitude, longitude };
+      return { latitude, longitude, kind: hit.addresstype };
     } catch (e) {
       // Including a timeout. The office is saved either way.
       this.logger.warn(`Could not geocode "${query}": ${(e as Error).message}`);

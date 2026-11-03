@@ -49,9 +49,9 @@ export const CITY_PHOTOS: Record<string, CityPhoto> = {
     "page": "https://commons.wikimedia.org/wiki/File:Kugel_Sokolov_Junction_Holon_Panorama.JPG"
   },
   "יבנאל": {
-    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e8/Yavneel.JPG/960px-Yavneel.JPG",
-    "credit": "Ben Herzberg, CC BY-SA 3.0",
-    "page": "https://commons.wikimedia.org/wiki/File:Yavneel.JPG"
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b4/Zoltan_Kluger._Jawneel_%28Galilee%29.jpg/960px-Zoltan_Kluger._Jawneel_%28Galilee%29.jpg",
+    "credit": "Zoltan Kluger, Public domain",
+    "page": "https://commons.wikimedia.org/wiki/File:Zoltan_Kluger._Jawneel_(Galilee).jpg"
   },
   "ירוחם": {
     "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/ef/MosheSaidiYeruham06.jpg/960px-MosheSaidiYeruham06.jpg",
@@ -119,9 +119,9 @@ export const CITY_PHOTOS: Record<string, CityPhoto> = {
     "page": "https://commons.wikimedia.org/wiki/File:Ramon_Park,_Giv%27at_Shmuel.jpg"
   },
   "יהוד מונוסון": {
-    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/66/I_love_Yehud_Monoson.jpg/960px-I_love_Yehud_Monoson.jpg",
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/bd/Oklahoma_garden_1.jpg/960px-Oklahoma_garden_1.jpg",
     "credit": "Avi1111 dr. avishai teicher, CC BY-SA 4.0",
-    "page": "https://commons.wikimedia.org/wiki/File:I_love_Yehud_Monoson.jpg"
+    "page": "https://commons.wikimedia.org/wiki/File:Oklahoma_garden_1.jpg"
   },
   "כפר סבא": {
     "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/94/Kfar_Saba_Park%2C_Israel.jpg/960px-Kfar_Saba_Park%2C_Israel.jpg",
@@ -173,9 +173,394 @@ export const CITY_PHOTOS: Record<string, CityPhoto> = {
     "credit": "RaphaelQS, CC BY-SA 4.0",
     "page": "https://commons.wikimedia.org/wiki/File:Panorama_of_Tel_Aviv.jpg"
   },
-  "בני עי\"ש": {
+  "אילת": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/14/Royal_Beach_Hotel_in_Eilat_%281%29.JPG/960px-Royal_Beach_Hotel_in_Eilat_%281%29.JPG",
+    "credit": "Avi1111 dr. avishai teicher, CC BY-SA 4.0",
+    "page": "https://commons.wikimedia.org/wiki/File:Royal_Beach_Hotel_in_Eilat_(1).JPG"
+  },
+  "בני עיש": {
     "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/72/Water_tower_bnei_ayish.jpg/960px-Water_tower_bnei_ayish.jpg",
     "credit": "denus12, Public domain",
     "page": "https://commons.wikimedia.org/wiki/File:Water_tower_bnei_ayish.jpg"
+  },
+  "חיפה": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/fe/Haifa%2C_viewed_from_Rambam_Medical_Center.jpg/960px-Haifa%2C_viewed_from_Rambam_Medical_Center.jpg",
+    "credit": "David Shay, CC BY-SA 3.0",
+    "page": "https://commons.wikimedia.org/wiki/File:Haifa,_viewed_from_Rambam_Medical_Center.jpg"
+  },
+  "באר שבע": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/26/SeattlePark2.jpg/960px-SeattlePark2.jpg",
+    "credit": "Assis1 (Nachoom Assis נחום עסיס), CC BY-SA 4.0",
+    "page": "https://commons.wikimedia.org/wiki/File:SeattlePark2.jpg"
+  },
+  "חדרה": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/55/%D7%95%D7%99%D7%9C%D7%92_%D7%97%D7%93%D7%A8%D7%94_%D7%9E%D7%95%D7%9C_%D7%94%D7%97%D7%95%D7%A3.jpg/960px-%D7%95%D7%99%D7%9C%D7%92_%D7%97%D7%93%D7%A8%D7%94_%D7%9E%D7%95%D7%9C_%D7%94%D7%97%D7%95%D7%A3.jpg",
+    "credit": "ניר ודל, CC BY-SA 4.0",
+    "page": "https://commons.wikimedia.org/wiki/File:%D7%95%D7%99%D7%9C%D7%92_%D7%97%D7%93%D7%A8%D7%94_%D7%9E%D7%95%D7%9C_%D7%94%D7%97%D7%95%D7%A3.jpg"
+  },
+  "בני ברק": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/05/Sokolov_hill%2C_Bnei_Brak%2C_view_from_Har_Shalom.JPG/960px-Sokolov_hill%2C_Bnei_Brak%2C_view_from_Har_Shalom.JPG",
+    "credit": "Avi1111 dr. avishai teicher, CC BY 3.0",
+    "page": "https://commons.wikimedia.org/wiki/File:Sokolov_hill,_Bnei_Brak,_view_from_Har_Shalom.JPG"
+  },
+  "הרצלייה": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/41/Hotel_southwesternview.jpg/960px-Hotel_southwesternview.jpg",
+    "credit": "No machine-readable author provided. יום-טוב assumed (based on copyright claims)., CC BY-SA 3.0",
+    "page": "https://commons.wikimedia.org/wiki/File:Hotel_southwesternview.jpg"
+  },
+  "מודיעין מכבים רעות": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d5/Dam_aMakabim_promenade_Modiin.jpg/960px-Dam_aMakabim_promenade_Modiin.jpg",
+    "credit": "McKaby, CC BY-SA 4.0",
+    "page": "https://commons.wikimedia.org/wiki/File:Dam_aMakabim_promenade_Modiin.jpg"
+  },
+  "עפולה": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/04/%D7%A4%D7%90%D7%A8%D7%A7_%D7%94%D7%A8%D7%9B%D7%91%D7%AA_%D7%A2%D7%A4%D7%95%D7%9C%D7%94.jpg/960px-%D7%A4%D7%90%D7%A8%D7%A7_%D7%94%D7%A8%D7%9B%D7%91%D7%AA_%D7%A2%D7%A4%D7%95%D7%9C%D7%94.jpg",
+    "credit": "ניר ודל, CC BY-SA 4.0",
+    "page": "https://commons.wikimedia.org/wiki/File:%D7%A4%D7%90%D7%A8%D7%A7_%D7%94%D7%A8%D7%9B%D7%91%D7%AA_%D7%A2%D7%A4%D7%95%D7%9C%D7%94.jpg"
+  },
+  "נהרייה": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b5/Areal_view_of_Nahariya.jpg/960px-Areal_view_of_Nahariya.jpg",
+    "credit": "אסף.צ, Public domain",
+    "page": "https://commons.wikimedia.org/wiki/File:Areal_view_of_Nahariya.jpg"
+  },
+  "קריית גת": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/86/Kiryat_Gat_Aerial_View.jpg/960px-Kiryat_Gat_Aerial_View.jpg",
+    "credit": "Amos Meron, CC BY-SA 3.0",
+    "page": "https://commons.wikimedia.org/wiki/File:Kiryat_Gat_Aerial_View.jpg"
+  },
+  "הוד השרון": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/16/Panorama_Hod_HaSharon.jpg/960px-Panorama_Hod_HaSharon.jpg",
+    "credit": "H20, CC BY-SA 4.0",
+    "page": "https://commons.wikimedia.org/wiki/File:Panorama_Hod_HaSharon.jpg"
+  },
+  "קריית אתא": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/72/Givat_Alonim_Kiryat_Ata.jpg/960px-Givat_Alonim_Kiryat_Ata.jpg",
+    "credit": "Eldar Eldadi (אלדר אלדדי), CC BY-SA 4.0",
+    "page": "https://commons.wikimedia.org/wiki/File:Givat_Alonim_Kiryat_Ata.jpg"
+  },
+  "גבעתיים": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/97/Giv%27atayim_Panorama.jpg/960px-Giv%27atayim_Panorama.jpg",
+    "credit": "Eli Shany ‏(אלי שני) שנילי at he.wikipedia, CC BY-SA 3.0",
+    "page": "https://commons.wikimedia.org/wiki/File:Giv%27atayim_Panorama.jpg"
+  },
+  "קריית מוצקין": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/fa/Kiryat_Motzkin_Aerial_View.jpg/960px-Kiryat_Motzkin_Aerial_View.jpg",
+    "credit": "Omer berner, CC BY-SA 4.0",
+    "page": "https://commons.wikimedia.org/wiki/File:Kiryat_Motzkin_Aerial_View.jpg"
+  },
+  "קריית ביאליק": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/df/%D7%9B%D7%99%D7%9B%D7%A8_%D7%91%D7%A1%D7%91%D7%99%D7%A0%D7%99%D7%94_%D7%A4%D7%99%D7%A0%D7%AA_%D7%A7%D7%A8%D7%9F_%D7%94%D7%99%D7%A1%D7%95%D7%93_%D7%95%D7%A8%D7%97%D7%95%D7%91_%D7%A0%D7%99%D7%A6%D7%A0%D7%99%D7%9D.jpg/960px-%D7%9B%D7%99%D7%9B%D7%A8_%D7%91%D7%A1%D7%91%D7%99%D7%A0%D7%99%D7%94_%D7%A4%D7%99%D7%A0%D7%AA_%D7%A7%D7%A8%D7%9F_%D7%94%D7%99%D7%A1%D7%95%D7%93_%D7%95%D7%A8%D7%97%D7%95%D7%91_%D7%A0%D7%99%D7%A6%D7%A0%D7%99%D7%9D.jpg",
+    "credit": "Hanay, CC BY-SA 4.0",
+    "page": "https://commons.wikimedia.org/wiki/File:%D7%9B%D7%99%D7%9B%D7%A8_%D7%91%D7%A1%D7%91%D7%99%D7%A0%D7%99%D7%94_%D7%A4%D7%99%D7%A0%D7%AA_%D7%A7%D7%A8%D7%9F_%D7%94%D7%99%D7%A1%D7%95%D7%93_%D7%95%D7%A8%D7%97%D7%95%D7%91_%D7%A0%D7%99%D7%A6%D7%A0%D7%99%D7%9D.jpg"
+  },
+  "טבריה": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/2c/Greek_catholic_church_tiberias.jpg/960px-Greek_catholic_church_tiberias.jpg",
+    "credit": "Almog, CC BY-SA 3.0",
+    "page": "https://commons.wikimedia.org/wiki/File:Greek_catholic_church_tiberias.jpg"
+  },
+  "נתיבות": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/a5/%D7%A4%D7%90%D7%A8%D7%A7_%D7%90%D7%92%D7%9D_%D7%A0%D7%AA%D7%99%D7%91%D7%95%D7%AA.jpg/960px-%D7%A4%D7%90%D7%A8%D7%A7_%D7%90%D7%92%D7%9D_%D7%A0%D7%AA%D7%99%D7%91%D7%95%D7%AA.jpg",
+    "credit": "Eyal Tagar (איל תגר), CC BY-SA 3.0",
+    "page": "https://commons.wikimedia.org/wiki/File:%D7%A4%D7%90%D7%A8%D7%A7_%D7%90%D7%92%D7%9D_%D7%A0%D7%AA%D7%99%D7%91%D7%95%D7%AA.jpg"
+  },
+  "עכו": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/61/Panorama-Akko001.jpg/960px-Panorama-Akko001.jpg",
+    "credit": "MathKnight and Zachi Evenor, CC BY 3.0",
+    "page": "https://commons.wikimedia.org/wiki/File:Panorama-Akko001.jpg"
+  },
+  "פרדס חנה כרכור": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/99/The_great_synagogue_Pardes_Hanna_Israel_01.jpg/960px-The_great_synagogue_Pardes_Hanna_Israel_01.jpg",
+    "credit": "RickP 18:37, 24 September 2006 (UTC), CC BY 2.5",
+    "page": "https://commons.wikimedia.org/wiki/File:The_great_synagogue_Pardes_Hanna_Israel_01.jpg"
+  },
+  "נס ציונה": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/bc/Ness_Ziona_Aerial_View.jpg/960px-Ness_Ziona_Aerial_View.jpg",
+    "credit": "Amos Meron, CC BY-SA 3.0",
+    "page": "https://commons.wikimedia.org/wiki/File:Ness_Ziona_Aerial_View.jpg"
+  },
+  "יבנה": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/9d/Yavne_panoramic_view2.JPG/960px-Yavne_panoramic_view2.JPG",
+    "credit": "Municipality of Yavne, CC BY 3.0",
+    "page": "https://commons.wikimedia.org/wiki/File:Yavne_panoramic_view2.JPG"
+  },
+  "נוף הגליל": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/f7/%D7%A9%D7%99%D7%A0%D7%95%D7%99_%D7%A9%D7%9D_%D7%A0%D7%A6%D7%A8%D7%AA_%D7%A2%D7%99%D7%9C%D7%99%D7%AA_%D7%9C%D7%A0%D7%95%D7%A3_%D7%94%D7%92%D7%9C%D7%99%D7%9C_8.jpg/960px-%D7%A9%D7%99%D7%A0%D7%95%D7%99_%D7%A9%D7%9D_%D7%A0%D7%A6%D7%A8%D7%AA_%D7%A2%D7%99%D7%9C%D7%99%D7%AA_%D7%9C%D7%A0%D7%95%D7%A3_%D7%94%D7%92%D7%9C%D7%99%D7%9C_8.jpg",
+    "credit": "DMY, CC BY-SA 4.0",
+    "page": "https://commons.wikimedia.org/wiki/File:%D7%A9%D7%99%D7%A0%D7%95%D7%99_%D7%A9%D7%9D_%D7%A0%D7%A6%D7%A8%D7%AA_%D7%A2%D7%99%D7%9C%D7%99%D7%AA_%D7%9C%D7%A0%D7%95%D7%A3_%D7%94%D7%92%D7%9C%D7%99%D7%9C_8.jpg"
+  },
+  "קריית אונו": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/f9/Kiryat_Ono_country_club.JPG/960px-Kiryat_Ono_country_club.JPG",
+    "credit": "Avi1111 dr. avishai teicher, CC BY-SA 4.0",
+    "page": "https://commons.wikimedia.org/wiki/File:Kiryat_Ono_country_club.JPG"
+  },
+  "אופקים": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e9/OfakimM03.jpg/960px-OfakimM03.jpg",
+    "credit": "מיכאלי, CC BY-SA 4.0",
+    "page": "https://commons.wikimedia.org/wiki/File:OfakimM03.jpg"
+  },
+  "באר יעקב": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/48/Saxophone_square_in_Be%27er_Ya%27akov.jpg/960px-Saxophone_square_in_Be%27er_Ya%27akov.jpg",
+    "credit": "Avi1111 dr. avishai teicher, CC BY 4.0",
+    "page": "https://commons.wikimedia.org/wiki/File:Saxophone_square_in_Be%27er_Ya%27akov.jpg"
+  },
+  "אור יהודה": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d7/%D7%A4%D7%90%D7%A8%D7%A7_%D7%A0%D7%95%D7%95%D7%94_%D7%A1%D7%91%D7%99%D7%95%D7%9F_-_%D7%90%D7%95%D7%A8_%D7%99%D7%94%D7%95%D7%93%D7%94.jpg/960px-%D7%A4%D7%90%D7%A8%D7%A7_%D7%A0%D7%95%D7%95%D7%94_%D7%A1%D7%91%D7%99%D7%95%D7%9F_-_%D7%90%D7%95%D7%A8_%D7%99%D7%94%D7%95%D7%93%D7%94.jpg",
+    "credit": "Asaf1212, CC BY-SA 4.0",
+    "page": "https://commons.wikimedia.org/wiki/File:%D7%A4%D7%90%D7%A8%D7%A7_%D7%A0%D7%95%D7%95%D7%94_%D7%A1%D7%91%D7%99%D7%95%D7%9F_-_%D7%90%D7%95%D7%A8_%D7%99%D7%94%D7%95%D7%93%D7%94.jpg"
+  },
+  "ערד": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b1/Arad_shaked_synagogue.jpg/960px-Arad_shaked_synagogue.jpg",
+    "credit": "Ynhockey, CC BY-SA 3.0",
+    "page": "https://commons.wikimedia.org/wiki/File:Arad_shaked_synagogue.jpg"
+  },
+  "אלעד": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/36/Israel_National_TrailDSCN4392.JPG/960px-Israel_National_TrailDSCN4392.JPG",
+    "credit": "Yoav Dothan, Public domain",
+    "page": "https://commons.wikimedia.org/wiki/File:Israel_National_TrailDSCN4392.JPG"
+  },
+  "צפת": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/06/Panorama_Safed_and_Mount_Meron.jpg/960px-Panorama_Safed_and_Mount_Meron.jpg",
+    "credit": "M.t.lifshits, CC BY-SA 4.0",
+    "page": "https://commons.wikimedia.org/wiki/File:Panorama_Safed_and_Mount_Meron.jpg"
+  },
+  "טירת כרמל": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/53/Caucasus_Synagogue_in_Tirat_Carmel_%283%29.jpg/960px-Caucasus_Synagogue_in_Tirat_Carmel_%283%29.jpg",
+    "credit": "Avi1111 dr. avishai teicher, CC BY-SA 4.0",
+    "page": "https://commons.wikimedia.org/wiki/File:Caucasus_Synagogue_in_Tirat_Carmel_(3).jpg"
+  },
+  "זכרון יעקב": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/1f/Mol_Zichron_shopping_center_5309.jpg/960px-Mol_Zichron_shopping_center_5309.jpg",
+    "credit": "יעקב, CC0",
+    "page": "https://commons.wikimedia.org/wiki/File:Mol_Zichron_shopping_center_5309.jpg"
+  },
+  "קריית מלאכי": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/8d/Kiryat_Malakhi_Aerial_View.jpg/960px-Kiryat_Malakhi_Aerial_View.jpg",
+    "credit": "Amos Meron, CC BY-SA 3.0",
+    "page": "https://commons.wikimedia.org/wiki/File:Kiryat_Malakhi_Aerial_View.jpg"
+  },
+  "אור עקיבא": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/be/Or_Akiva_Music_Center.jpg/960px-Or_Akiva_Music_Center.jpg",
+    "credit": "Avi1111 dr. avishai teicher, CC BY-SA 4.0",
+    "page": "https://commons.wikimedia.org/wiki/File:Or_Akiva_Music_Center.jpg"
+  },
+  "מגדל העמק": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/3c/Kikar_hasfarim.jpg/960px-Kikar_hasfarim.jpg",
+    "credit": "Almog, Public domain",
+    "page": "https://commons.wikimedia.org/wiki/File:Kikar_hasfarim.jpg"
+  },
+  "כפר יונה": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/74/%D7%A9%D7%9B%D7%95%D7%A0%D7%AA_%D7%99%D7%A4%D7%94_%D7%A0%D7%95%D7%A3.jpg/960px-%D7%A9%D7%9B%D7%95%D7%A0%D7%AA_%D7%99%D7%A4%D7%94_%D7%A0%D7%95%D7%A3.jpg",
+    "credit": "Eyalasaf, CC BY-SA 4.0",
+    "page": "https://commons.wikimedia.org/wiki/File:%D7%A9%D7%9B%D7%95%D7%A0%D7%AA_%D7%99%D7%A4%D7%94_%D7%A0%D7%95%D7%A3.jpg"
+  },
+  "גן יבנה": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/ec/Pearl_house_in_Gan_Yavne%2C_Israel_%282013%29_%D7%A4%D7%A0%D7%99%D7%A0%D7%AA_%D7%92%D7%9F_%D7%99%D7%91%D7%A0%D7%94%2C_%D7%99%D7%A9%D7%A8%D7%90%D7%9C.jpg/960px-Pearl_house_in_Gan_Yavne%2C_Israel_%282013%29_%D7%A4%D7%A0%D7%99%D7%A0%D7%AA_%D7%92%D7%9F_%D7%99%D7%91%D7%A0%D7%94%2C_%D7%99%D7%A9%D7%A8%D7%90%D7%9C.jpg",
+    "credit": "Nodability, CC BY-SA 4.0",
+    "page": "https://commons.wikimedia.org/wiki/File:Pearl_house_in_Gan_Yavne,_Israel_(2013)_%D7%A4%D7%A0%D7%99%D7%A0%D7%AA_%D7%92%D7%9F_%D7%99%D7%91%D7%A0%D7%94,_%D7%99%D7%A9%D7%A8%D7%90%D7%9C.jpg"
+  },
+  "יקנעם עילית": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/94/Nvidia_Yokneam_Office.jpg/960px-Nvidia_Yokneam_Office.jpg",
+    "credit": "Amir Shtanger (אמיר שטנגר), CC BY-SA 4.0",
+    "page": "https://commons.wikimedia.org/wiki/File:Nvidia_Yokneam_Office.jpg"
+  },
+  "נצרת": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/53/NAZARETHS_VIEW_FROM_PRECIPICE_MNT._%D7%A0%D7%A6%D7%A8%D7%AA_%D7%9E%D7%94%D7%A8_%D7%94%D7%A7%D7%A4%D7%99%D7%A6%D7%94.jpg/960px-NAZARETHS_VIEW_FROM_PRECIPICE_MNT._%D7%A0%D7%A6%D7%A8%D7%AA_%D7%9E%D7%94%D7%A8_%D7%94%D7%A7%D7%A4%D7%99%D7%A6%D7%94.jpg",
+    "credit": "Avisadehh, CC BY-SA 4.0",
+    "page": "https://commons.wikimedia.org/wiki/File:NAZARETHS_VIEW_FROM_PRECIPICE_MNT._%D7%A0%D7%A6%D7%A8%D7%AA_%D7%9E%D7%94%D7%A8_%D7%94%D7%A7%D7%A4%D7%99%D7%A6%D7%94.jpg"
+  },
+  "קריית שמונה": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/ef/View_from_Mitzpe_Liran.jpg/960px-View_from_Mitzpe_Liran.jpg",
+    "credit": "אבישי טייכרמשתמש:Avi1111, CC BY-SA 2.5",
+    "page": "https://commons.wikimedia.org/wiki/File:View_from_Mitzpe_Liran.jpg"
+  },
+  "קריית טבעון": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/60/Kiryat_Tiv%27on_-_Alexander_Zayid_view.jpg/960px-Kiryat_Tiv%27on_-_Alexander_Zayid_view.jpg",
+    "credit": "De Roaster, CC BY-SA 4.0",
+    "page": "https://commons.wikimedia.org/wiki/File:Kiryat_Tiv%27on_-_Alexander_Zayid_view.jpg"
+  },
+  "קדימה צורן": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/0d/%D7%A6%D7%95%D7%A8%D7%9F0_3569.JPG/960px-%D7%A6%D7%95%D7%A8%D7%9F0_3569.JPG",
+    "credit": "מיכאלי at Hebrew Wikipedia, Attribution",
+    "page": "https://commons.wikimedia.org/wiki/File:%D7%A6%D7%95%D7%A8%D7%9F0_3569.JPG"
+  },
+  "מעלות תרשיחא": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/0e/Tarshicha_from_Mi%27ilya.jpg/960px-Tarshicha_from_Mi%27ilya.jpg",
+    "credit": "Kippi70, CC BY-SA 3.0",
+    "page": "https://commons.wikimedia.org/wiki/File:Tarshicha_from_Mi%27ilya.jpg"
+  },
+  "אום אל פחם": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/41/Umm_Al-Fahm_004.JPG/960px-Umm_Al-Fahm_004.JPG",
+    "credit": "Moataz1997, CC BY-SA 3.0",
+    "page": "https://commons.wikimedia.org/wiki/File:Umm_Al-Fahm_004.JPG"
+  },
+  "גני תקווה": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/22/%D7%A8%D7%95%D7%AA%D7%9D_%D7%A9%D7%A0%D7%99_%D7%92%D7%A0%D7%99_%D7%AA%D7%A7%D7%95%D7%95%D7%94.jpg/960px-%D7%A8%D7%95%D7%AA%D7%9D_%D7%A9%D7%A0%D7%99_%D7%92%D7%A0%D7%99_%D7%AA%D7%A7%D7%95%D7%95%D7%94.jpg",
+    "credit": "high view צילומי אוויר, CC BY-SA 4.0",
+    "page": "https://commons.wikimedia.org/wiki/File:%D7%A8%D7%95%D7%AA%D7%9D_%D7%A9%D7%A0%D7%99_%D7%92%D7%A0%D7%99_%D7%AA%D7%A7%D7%95%D7%95%D7%94.jpg"
+  },
+  "דאלית אל כרמל": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/c1/OR56274_%D7%9E%D7%A7%D7%90%D7%9D_%D7%90%D7%91%D7%95_%D7%90%D7%91%D7%A8%D7%90%D7%94%D7%99%D7%9D-%D7%93%D7%90%D7%9C%D7%99%D7%AA_%D7%90%D7%9C_%D7%9B%D7%A8%D7%9E%D7%9C_0825-01.jpg/960px-OR56274_%D7%9E%D7%A7%D7%90%D7%9D_%D7%90%D7%91%D7%95_%D7%90%D7%91%D7%A8%D7%90%D7%94%D7%99%D7%9D-%D7%93%D7%90%D7%9C%D7%99%D7%AA_%D7%90%D7%9C_%D7%9B%D7%A8%D7%9E%D7%9C_0825-01.jpg",
+    "credit": "Ben Shoshana, CC BY-SA 4.0",
+    "page": "https://commons.wikimedia.org/wiki/File:OR56274_%D7%9E%D7%A7%D7%90%D7%9D_%D7%90%D7%91%D7%95_%D7%90%D7%91%D7%A8%D7%90%D7%94%D7%99%D7%9D-%D7%93%D7%90%D7%9C%D7%99%D7%AA_%D7%90%D7%9C_%D7%9B%D7%A8%D7%9E%D7%9C_0825-01.jpg"
+  },
+  "אזור": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/a3/Entrance_to_Azor.jpg/960px-Entrance_to_Azor.jpg",
+    "credit": "Avi1111 dr. avishai teicher, CC BY-SA 4.0",
+    "page": "https://commons.wikimedia.org/wiki/File:Entrance_to_Azor.jpg"
+  },
+  "שפרעם": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e1/View_of_Shefa_Amr.jpg/960px-View_of_Shefa_Amr.jpg",
+    "credit": "The original uploader was קימזון at Hebrew Wikipedia., CC BY-SA 3.0",
+    "page": "https://commons.wikimedia.org/wiki/File:View_of_Shefa_Amr.jpg"
+  },
+  "מזכרת בתיה": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/be/The_Baron%27s_Garden_Gate_in_Mazkeret_Batya%2C_Israel.jpg/960px-The_Baron%27s_Garden_Gate_in_Mazkeret_Batya%2C_Israel.jpg",
+    "credit": "avishai teicher User:Avi1111, Public domain",
+    "page": "https://commons.wikimedia.org/wiki/File:The_Baron%27s_Garden_Gate_in_Mazkeret_Batya,_Israel.jpg"
+  },
+  "עתלית": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d2/Atlit_aerial.jpg/960px-Atlit_aerial.jpg",
+    "credit": "Nizzan Cohen, CC BY 4.0",
+    "page": "https://commons.wikimedia.org/wiki/File:Atlit_aerial.jpg"
+  },
+  "רכסים": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/a1/%D7%A8%D7%9B%D7%A1%D7%99%D7%9D1.jpg/960px-%D7%A8%D7%9B%D7%A1%D7%99%D7%9D1.jpg",
+    "credit": "ישראל פלד. The original uploader was ישראל פלד at Hebrew Wikipedia., Public domain",
+    "page": "https://commons.wikimedia.org/wiki/File:%D7%A8%D7%9B%D7%A1%D7%99%D7%9D1.jpg"
+  },
+  "טמרה": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/53/Tamra2.jpg/960px-Tamra2.jpg",
+    "credit": "Almog, Public domain",
+    "page": "https://commons.wikimedia.org/wiki/File:Tamra2.jpg"
+  },
+  "קצרין": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/81/Katzrin-center.JPG/960px-Katzrin-center.JPG",
+    "credit": "Mboesch, CC BY-SA 4.0",
+    "page": "https://commons.wikimedia.org/wiki/File:Katzrin-center.JPG"
+  },
+  "ריינה": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/5d/Reineh.jpg/960px-Reineh.jpg",
+    "credit": "Almog, Public domain",
+    "page": "https://commons.wikimedia.org/wiki/File:Reineh.jpg"
+  },
+  "עספיא": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/16/IsfiyaView2.jpg/960px-IsfiyaView2.jpg",
+    "credit": "כובש המלפפונים, CC BY-SA 4.0",
+    "page": "https://commons.wikimedia.org/wiki/File:IsfiyaView2.jpg"
+  },
+  "כפר מנדא": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/9d/Kafr_Manda_1.JPG/960px-Kafr_Manda_1.JPG",
+    "credit": "Hanay, CC BY-SA 3.0",
+    "page": "https://commons.wikimedia.org/wiki/File:Kafr_Manda_1.JPG"
+  },
+  "מגד אל כרום": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/9f/Majdelkrum16.JPG/960px-Majdelkrum16.JPG",
+    "credit": "מיכאל יעקובסון, CC BY-SA 2.5",
+    "page": "https://commons.wikimedia.org/wiki/File:Majdelkrum16.JPG"
+  },
+  "כפר כנא": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/fd/Wedding_Church_%28Orthodox%29_Kafr_Kanna_%281%29.jpg/960px-Wedding_Church_%28Orthodox%29_Kafr_Kanna_%281%29.jpg",
+    "credit": "Chris06, CC BY-SA 4.0",
+    "page": "https://commons.wikimedia.org/wiki/File:Wedding_Church_(Orthodox)_Kafr_Kanna_(1).jpg"
+  },
+  "רמת ישי": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/a9/Yaar_Hashomrim0011.jpg/960px-Yaar_Hashomrim0011.jpg",
+    "credit": "Ori~, Attribution",
+    "page": "https://commons.wikimedia.org/wiki/File:Yaar_Hashomrim0011.jpg"
+  },
+  "צור הדסה": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d8/TzurHadassah.JPG/960px-TzurHadassah.JPG",
+    "credit": "Idont, CC BY-SA 4.0",
+    "page": "https://commons.wikimedia.org/wiki/File:TzurHadassah.JPG"
+  },
+  "שלומי": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/00/Shlomi-_Hanita_Junction.jpg/960px-Shlomi-_Hanita_Junction.jpg",
+    "credit": "Avi1111 dr. avishai teicher, CC BY-SA 4.0",
+    "page": "https://commons.wikimedia.org/wiki/File:Shlomi-_Hanita_Junction.jpg"
+  },
+  "חצור הגלילית": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d7/Hazorhaglilit.jpg/960px-Hazorhaglilit.jpg",
+    "credit": "Almog, Public domain",
+    "page": "https://commons.wikimedia.org/wiki/File:Hazorhaglilit.jpg"
+  },
+  "כפר תבור": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b9/%D7%9B%D7%99%D7%9B%D7%A8_%D7%94%D7%91%D7%A8%D7%95%D7%9F_%D7%9B%D7%A4%D7%A8_%D7%AA%D7%91%D7%95%D7%A8_1.4.2016.jpg/960px-%D7%9B%D7%99%D7%9B%D7%A8_%D7%94%D7%91%D7%A8%D7%95%D7%9F_%D7%9B%D7%A4%D7%A8_%D7%AA%D7%91%D7%95%D7%A8_1.4.2016.jpg",
+    "credit": "Zahavi, CC BY-SA 4.0",
+    "page": "https://commons.wikimedia.org/wiki/File:%D7%9B%D7%99%D7%9B%D7%A8_%D7%94%D7%91%D7%A8%D7%95%D7%9F_%D7%9B%D7%A4%D7%A8_%D7%AA%D7%91%D7%95%D7%A8_1.4.2016.jpg"
+  },
+  "טורעאן": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/91/Tur%27an_%282%29.JPG/960px-Tur%27an_%282%29.JPG",
+    "credit": "Hanay, CC BY-SA 3.0",
+    "page": "https://commons.wikimedia.org/wiki/File:Tur%27an_(2).JPG"
+  },
+  "קיסריה": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/71/CAESAREA%27_KING_HEROD%27S_SEA_PALACE_AERIAL.jpg/960px-CAESAREA%27_KING_HEROD%27S_SEA_PALACE_AERIAL.jpg",
+    "credit": "ABRAHAM GRAICER, CC BY-SA 4.0",
+    "page": "https://commons.wikimedia.org/wiki/File:CAESAREA%27_KING_HEROD%27S_SEA_PALACE_AERIAL.jpg"
+  },
+  "מצפה רמון": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/c7/View_of_the_Ramon_Crater_from_Mitzpe_Ramon_Visitors_Center.JPG/960px-View_of_the_Ramon_Crater_from_Mitzpe_Ramon_Visitors_Center.JPG",
+    "credit": "Eli.berckovitz, CC BY-SA 3.0",
+    "page": "https://commons.wikimedia.org/wiki/File:View_of_the_Ramon_Crater_from_Mitzpe_Ramon_Visitors_Center.JPG"
+  },
+  "באקה אל גרביה": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/83/Baqa_al-Gharbiyye_e_07.jpg/960px-Baqa_al-Gharbiyye_e_07.jpg",
+    "credit": "Ovedc, CC BY-SA 3.0",
+    "page": "https://commons.wikimedia.org/wiki/File:Baqa_al-Gharbiyye_e_07.jpg"
+  },
+  "כוכב יאיר": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/f0/%D7%9E%D7%91%D7%98_%D7%A2%D7%9C_%D7%9B%D7%95%D7%9B%D7%91_%D7%99%D7%90%D7%99%D7%A8_%D7%A6%D7%95%D7%A8_%D7%99%D7%92%D7%90%D7%9C_%D7%9E%D7%92%D7%91%D7%A2%D7%AA_%D7%94%D7%9E%D7%95%D7%A6%D7%91_%D7%91%D7%A6%D7%95%D7%A8_%D7%99%D7%92%D7%90%D7%9C.jpg/960px-%D7%9E%D7%91%D7%98_%D7%A2%D7%9C_%D7%9B%D7%95%D7%9B%D7%91_%D7%99%D7%90%D7%99%D7%A8_%D7%A6%D7%95%D7%A8_%D7%99%D7%92%D7%90%D7%9C_%D7%9E%D7%92%D7%91%D7%A2%D7%AA_%D7%94%D7%9E%D7%95%D7%A6%D7%91_%D7%91%D7%A6%D7%95%D7%A8_%D7%99%D7%92%D7%90%D7%9C.jpg",
+    "credit": "ארז ברד ענבים, CC0",
+    "page": "https://commons.wikimedia.org/wiki/File:%D7%9E%D7%91%D7%98_%D7%A2%D7%9C_%D7%9B%D7%95%D7%9B%D7%91_%D7%99%D7%90%D7%99%D7%A8_%D7%A6%D7%95%D7%A8_%D7%99%D7%92%D7%90%D7%9C_%D7%9E%D7%92%D7%91%D7%A2%D7%AA_%D7%94%D7%9E%D7%95%D7%A6%D7%91_%D7%91%D7%A6%D7%95%D7%A8_%D7%99%D7%92%D7%90%D7%9C.jpg"
+  },
+  "קריית עקרון": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/91/Kiryat_Ekron_Aerial_View.jpg/960px-Kiryat_Ekron_Aerial_View.jpg",
+    "credit": "Amos Meron, CC BY-SA 3.0",
+    "page": "https://commons.wikimedia.org/wiki/File:Kiryat_Ekron_Aerial_View.jpg"
+  },
+  "מעיליא": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/16/Mi%27ilya.jpg/960px-Mi%27ilya.jpg",
+    "credit": "ניר ודל, CC BY-SA 4.0",
+    "page": "https://commons.wikimedia.org/wiki/File:Mi%27ilya.jpg"
+  },
+  "בית גן": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/2b/Beit_Jann_panorama.jpg/960px-Beit_Jann_panorama.jpg",
+    "credit": "Someone35, CC BY-SA 3.0",
+    "page": "https://commons.wikimedia.org/wiki/File:Beit_Jann_panorama.jpg"
+  },
+  "נצר סרני": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/82/A431-Necer_Sereni1.jpg/960px-A431-Necer_Sereni1.jpg",
+    "credit": "Ori~, Public domain",
+    "page": "https://commons.wikimedia.org/wiki/File:A431-Necer_Sereni1.jpg"
+  },
+  "להבים": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/13/Lehavim_Aerial_View.jpg/960px-Lehavim_Aerial_View.jpg",
+    "credit": "Amos Meron, CC BY-SA 3.0",
+    "page": "https://commons.wikimedia.org/wiki/File:Lehavim_Aerial_View.jpg"
+  },
+  "בית דגן": {
+    "url": "https://upload.wikimedia.org/wikipedia/commons/8/8b/Beit_Dagan.jpg",
+    "credit": "he:משתמש:Oshapir, CC BY-SA 3.0",
+    "page": "https://commons.wikimedia.org/wiki/File:Beit_Dagan.jpg"
+  },
+  "כפר ורדים": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/08/Kfar_Vradim2.JPG/960px-Kfar_Vradim2.JPG",
+    "credit": "א-לה כפר - www.alakfar.co.il, CC BY-SA 3.0",
+    "page": "https://commons.wikimedia.org/wiki/File:Kfar_Vradim2.JPG"
+  },
+  "נחף": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/0c/%D7%A0%D7%97%D7%A32.JPG/960px-%D7%A0%D7%97%D7%A32.JPG",
+    "credit": "אריאל פלמון Ariel Palmon, CC BY 3.0",
+    "page": "https://commons.wikimedia.org/wiki/File:%D7%A0%D7%97%D7%A32.JPG"
+  },
+  "כפר קאסם": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e5/%D7%9B%D7%A4%D7%A8_%D7%A7%D7%90%D7%A1%D7%9D.jpg/960px-%D7%9B%D7%A4%D7%A8_%D7%A7%D7%90%D7%A1%D7%9D.jpg",
+    "credit": "יאיר ליברמן, CC BY-SA 4.0",
+    "page": "https://commons.wikimedia.org/wiki/File:%D7%9B%D7%A4%D7%A8_%D7%A7%D7%90%D7%A1%D7%9D.jpg"
+  },
+  "ירכא": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b2/%D7%99%D7%A8%D7%9B%D7%90.jpg/960px-%D7%99%D7%A8%D7%9B%D7%90.jpg",
+    "credit": "ניר ודל, CC BY-SA 4.0",
+    "page": "https://commons.wikimedia.org/wiki/File:%D7%99%D7%A8%D7%9B%D7%90.jpg"
   }
 };
