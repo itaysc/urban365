@@ -29,6 +29,7 @@ the sense that the feature behind them is simply off.
 | `API_URL` | **yes** | defaults to `APP_URL`, which is wrong in production where they are different origins — email links and the Google callback both derive from it |
 | `RESEND_API_KEY` | **yes** | no email is sent; verification and password reset are logged to the console instead, which in production means nobody can verify an address |
 | `B2_KEY_ID`, `B2_APPLICATION_KEY`, `B2_BUCKET`, `B2_ENDPOINT`, `B2_REGION` | **yes** | every image upload fails |
+| `SCHEDULERS_ENABLED` | optional | on unless set to exactly `false`. See § 6 — before launch, `false` is the setting that lets the database sleep |
 | `TURNSTILE_SECRET` | recommended | the captcha check is skipped, so signup has no bot protection |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | optional | the "continue with Google" button is not offered at all, on any page |
 | `OPENAI_API_KEY` | optional | **private sellers' listings publish without being read for spam** — see §5 |
@@ -259,6 +260,25 @@ Two things it depends on:
   about, but which means no customer is ever reminded.
 
 Confirmations are sent by hand from the calendar and need the same two things.
+
+### Turning the sweeps off before launch
+
+`SCHEDULERS_ENABLED=false` stops all three — reminders, matching and saved-search
+alerts. Each says so at boot rather than starting silently.
+
+It exists for one situation and is worth using in it. The five-minute tick is not
+waste: the interval *is* how late a reminder can be, which is why it is five minutes
+and not an hour. But with no customers there is nothing due, and that query is the only
+thing touching the database around the clock — so a host billing reserved memory never
+gets to scale it to zero, and an empty product pays full price to remind nobody of
+nothing. Measured on Railway, that is about $10 a month.
+
+Anything other than an exact `false` leaves them running, including `0`, `no` and
+`off`. The failure mode of this flag is mail that never goes out, which looks like a
+mail problem rather than a setting, so a typo had better fail towards working.
+
+**Turn it back on with the first real viewing**, and remember that after launch this
+stops being an option — reminders are the product.
 
 ## 7. Storage
 

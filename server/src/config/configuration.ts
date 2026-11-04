@@ -6,6 +6,21 @@ export interface AppConfig {
   port: number;
   /** Origins allowed to call the API. Comma-separated in CORS_ORIGINS. */
   corsOrigins: string[];
+  /**
+   * Whether the background sweeps run — reminders, matching, saved-search alerts.
+   *
+   * On by default, because off is the surprising state and a reminder that never
+   * arrives looks like a bug rather than a setting. `SCHEDULERS_ENABLED=false` turns
+   * all three off.
+   *
+   * It exists for the stretch before launch. The reminder sweep ticks every five
+   * minutes for a good reason — the interval is how late a reminder can be — but
+   * with no customers there is nothing due, and those queries are the only thing
+   * keeping the database awake around the clock. A host that bills reserved memory
+   * never gets to scale it to zero, so an empty product pays full price to remind
+   * nobody of nothing. Turn it back on with the first real viewing.
+   */
+  schedulersEnabled: boolean;
 }
 
 export interface DatabaseConfig {
@@ -98,6 +113,9 @@ export default (): {
       .split(',')
       .map((o) => o.trim())
       .filter(Boolean),
+    // Anything but an explicit "false" leaves them running: a typo should not silently
+    // stop the sweeps, and the failure mode of this flag is mail that never goes out.
+    schedulersEnabled: (process.env.SCHEDULERS_ENABLED ?? 'true').toLowerCase() !== 'false',
   },
   database: {
     url: process.env.DATABASE_URL ?? '',

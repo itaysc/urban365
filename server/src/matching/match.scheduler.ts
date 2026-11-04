@@ -36,6 +36,13 @@ export class MatchScheduler implements OnModuleInit, OnModuleDestroy {
   onModuleInit(): void {
     if (this.config.get<string>('app.nodeEnv') === 'test') return;
 
+    // Switched off before launch, where there is nothing due and the tick is the only
+    // thing keeping the database from sleeping. See `AppConfig.schedulersEnabled`.
+    if (this.config.get<boolean>('app.schedulersEnabled') === false) {
+      this.logger.log('Matching sweep is off — SCHEDULERS_ENABLED=false.');
+      return;
+    }
+
     this.first = setTimeout(() => void this.tick(), FIRST_RUN_MS);
     this.first.unref();
 
