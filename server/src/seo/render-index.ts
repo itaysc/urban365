@@ -14,11 +14,17 @@ export function mainSection(entry: CityEntry): Section {
   return rent >= commercial ? 'rent' : 'commercial';
 }
 
-const href = (section: Section, city: string) =>
-  `/nadlan/${section}/${encodeURIComponent(toSlug(city))}`;
-
 const totalIn = (entry: CityEntry) =>
   entry.counts.forsale + entry.counts.rent + entry.counts.commercial;
+
+/**
+ * Where a card leads. A city with nothing on offer has no page — that URL is a 404 — so
+ * its card opens the app's search for it instead, where an alert can still be saved.
+ */
+const href = (entry: CityEntry) =>
+  totalIn(entry) > 0
+    ? `/nadlan/${mainSection(entry)}/${encodeURIComponent(toSlug(entry.city))}`
+    : `/search?${new URLSearchParams({ section: 'forsale', city: entry.city })}`;
 
 /**
  * The picture on a city's card.
@@ -48,7 +54,7 @@ function offered(entry: CityEntry): string {
     entry.counts.commercial > 0 ? `${number(entry.counts.commercial)} מסחרי` : null,
   ].filter(Boolean);
 
-  return parts.join(' · ');
+  return parts.length > 0 ? parts.join(' · ') : 'אין נכסים כרגע';
 }
 
 /**
@@ -66,7 +72,7 @@ function grid(cities: CityEntry[]): string {
   return `<ul class="cities">${cities
     .map(
       (entry) => `<li>
-<a href="${esc(href(mainSection(entry), entry.city))}">
+<a href="${esc(href(entry))}">
 ${photo(entry)}
 <span class="shade" aria-hidden="true"></span>
 <span class="label">
@@ -80,7 +86,7 @@ ${photo(entry)}
 }
 
 /**
- * The index of every city with listings, grouped by district.
+ * The index of every city, grouped by district — those with listings first in each.
  *
  * This is the page that makes the others findable. A search engine reaches a city page
  * one of two ways — from a sitemap, which it is free to ignore, or from a link on a
@@ -93,7 +99,10 @@ export function renderIndexPage(
   links = '',
 ): string {
   const canonical = `${appUrl}/nadlan`;
-  const cities = groups.reduce((sum, group) => sum + group.cities.length, 0);
+  const cities = groups.reduce(
+    (sum, group) => sum + group.cities.filter((city) => totalIn(city) > 0).length,
+    0,
+  );
   const listings = groups.reduce(
     (sum, group) => sum + group.cities.reduce((n, city) => n + totalIn(city), 0),
     0,

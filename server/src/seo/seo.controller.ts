@@ -178,7 +178,7 @@ export class SeoController {
   @Header('Cache-Control', CACHE)
   @Header('Content-Security-Policy', CSP)
   async index(): Promise<string> {
-    const [groups, links] = await Promise.all([this.cities.byDistrict(), this.footer()]);
+    const [groups, links] = await Promise.all([this.cities.byDistrict({ includeEmpty: true }), this.footer()]);
     return renderIndexPage(groups, this.appUrl, links);
   }
 

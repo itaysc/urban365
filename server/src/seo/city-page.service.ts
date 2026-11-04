@@ -117,21 +117,47 @@ export class CityPageService {
    *
    * A city whose district we cannot work out still appears, under a final group, rather
    * than being dropped: an unmatched name is our spelling problem, not the city's.
+   *
+   * `includeEmpty` adds every district member we hold nothing for, with zero counts and
+   * after the cities that do have listings. Only the index page asks for it: every other
+   * caller links to a city page, and a city page with nothing in it is a 404.
    */
-  async byDistrict(): Promise<{ name: string | null; cities: CityEntry[] }[]> {
+  async byDistrict(
+    { includeEmpty = false }: { includeEmpty?: boolean } = {},
+  ): Promise<{ name: string | null; cities: CityEntry[] }[]> {
     const [districts, entries] = await Promise.all([this.districts.get(), this.cities()]);
 
     const of = new Map<string, string>();
+    const spelled = new Map<string, string>();
     for (const district of districts) {
-      for (const member of district.members) of.set(cityKey(member), district.name);
+      for (const member of district.members) {
+        of.set(cityKey(member), district.name);
+        if (!spelled.has(cityKey(member))) spelled.set(cityKey(member), member);
+      }
     }
 
     const groups = new Map<string | null, CityEntry[]>();
-    for (const entry of entries) {
-      const name = of.get(cityKey(entry.city)) ?? null;
+    const add = (name: string | null, entry: CityEntry) => {
       const group = groups.get(name);
       if (group) group.push(entry);
       else groups.set(name, [entry]);
+    };
+
+    for (const entry of entries) add(of.get(cityKey(entry.city)) ?? null, entry);
+
+    if (includeEmpty) {
+      const held = new Set(entries.map((entry) => cityKey(entry.city)));
+      const empty = [...spelled.entries()]
+        .filter(([key]) => !held.has(key))
+        .sort(([, a], [, b]) => a.localeCompare(b, 'he'));
+
+      for (const [key, city] of empty) {
+        add(of.get(key)!, {
+          city,
+          counts: { forsale: 0, rent: 0, commercial: 0 },
+          updatedAt: new Date(0),
+        });
+      }
     }
 
     return [...groups.entries()]

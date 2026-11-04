@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { HeroSearch } from '@/components/home/HeroSearch';
 import { SiteFooter } from '@/components/SiteFooter';
 import { SiteHeader } from '@/components/SiteHeader';
+import { REGIONS } from '@/data/regions';
 import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 import { qk } from '@/queries/keys';
 import { fetchCityLinks, type CityLink } from '@/services/search';
@@ -16,19 +17,6 @@ import { fetchCityLinks, type CityLink } from '@/services/search';
  */
 const COVER_URL =
   'https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e0/Tel_Aviv_Skyline_01.jpg/1920px-Tel_Aviv_Skyline_01.jpg';
-
-/** Regions in the order somebody from the centre reads them. */
-const ORDER = [
-  'מרכז והשרון',
-  'תל אביב והסביבה',
-  'ירושלים והסביבה',
-  'שפלה',
-  'חיפה והקריות',
-  'חדרה והעמקים',
-  'צפון והגליל',
-  'דרום',
-  'יהודה ושומרון',
-];
 
 /** Per region, so a column is a column and not a page. */
 const PER_REGION = 10;
@@ -48,8 +36,8 @@ function byRegion(cities: CityLink[]): { name: string; cities: CityLink[] }[] {
       cities: [...list].sort((a, b) => total(b) - total(a)).slice(0, PER_REGION),
     }))
     .sort((a, b) => {
-      const ai = ORDER.indexOf(a.name);
-      const bi = ORDER.indexOf(b.name);
+      const ai = REGIONS.indexOf(a.name);
+      const bi = REGIONS.indexOf(b.name);
       // Anything not in the list goes last, biggest first among themselves.
       if (ai === -1 && bi === -1) return b.cities.length - a.cities.length;
       if (ai === -1) return 1;

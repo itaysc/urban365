@@ -7,6 +7,7 @@ import {
   rememberPlace,
   type RecentPlace,
 } from '@/lib/recentPlaces';
+import { REGIONS } from '@/data/regions';
 import { highlight } from '@/lib/highlight';
 import { qk } from '@/queries/keys';
 import { fetchCityAt, fetchPlaceSuggestions } from '@/services/search';
@@ -125,7 +126,42 @@ export function PlaceSearchBox({ filters, update, tone = 'default', placeholder 
     return [...districts, ...cities, ...hoods];
   }, [data, filters.district, filters.city, filters.neighborhood]);
 
-  useEffect(() => setHighlighted(0), [options.length]);
+  const typing = debounced.length >= MIN_TERM;
+
+  /*
+   * What the box offers before a search starts: this person's recent places, then the
+   * regions — the widest choices, and the ones that need no idea of how a town is
+   * spelled. A region already among the recents is not offered twice, and
+   * already-chosen places drop out, as they do above.
+   */
+  const { recentStarters, regionStarters } = useMemo(() => {
+    const isChosen = (place: RecentPlace) =>
+      place.kind === 'district'
+        ? filters.district.includes(place.value)
+        : place.kind === 'city'
+          ? filters.city.includes(place.value)
+          : filters.neighborhood.includes(place.value);
+
+    const recentStarters = recent.filter((place) => !isChosen(place));
+    const regionStarters = REGIONS.filter(
+      (name) => !recentStarters.some((place) => place.kind === 'district' && place.value === name),
+    )
+      .map((name): RecentPlace => ({ kind: 'district', value: name, city: name, label: name }))
+      .filter((place) => !isChosen(place));
+
+    return { recentStarters, regionStarters };
+  }, [recent, filters.district, filters.city, filters.neighborhood]);
+
+  // One flat list behind the two groups, as with the suggestions, so the arrows cross them.
+  const starters = useMemo(
+    () => [...recentStarters, ...regionStarters],
+    [recentStarters, regionStarters],
+  );
+
+  // The arrow keys walk whichever list is on screen.
+  const navigable = typing ? options.length : starters.length;
+
+  useEffect(() => setHighlighted(0), [navigable, typing]);
 
   // Clicking anywhere else closes it. Pointerdown rather than click, so the dropdown is
   // gone by the time a click lands on whatever is underneath.
@@ -230,13 +266,17 @@ export function PlaceSearchBox({ filters, update, tone = 'default', placeholder 
       setOpen(true);
       setHighlighted((i) => {
         const next = e.key === 'ArrowDown' ? i + 1 : i - 1;
-        return options.length === 0 ? 0 : (next + options.length) % options.length;
+        return navigable === 0 ? 0 : (next + navigable) % navigable;
       });
       return;
     }
-    if (e.key === 'Enter' && open && options[highlighted]) {
+    if (e.key !== 'Enter' || !open) return;
+    if (typing && options[highlighted]) {
       e.preventDefault();
       choose(options[highlighted]);
+    } else if (!typing && starters[highlighted]) {
+      e.preventDefault();
+      if (remaining > 0) apply(starters[highlighted]);
     }
   };
 
@@ -266,6 +306,26 @@ export function PlaceSearchBox({ filters, update, tone = 'default', placeholder 
       >
         <span>{highlight(option.label, debounced)}</span>
         {option.count > 0 && <span className="shrink-0 text-xs text-slate-500">{option.count}</span>}
+      </button>
+    </li>
+  );
+
+  const starterRow = (place: RecentPlace, index: number, Icon: typeof Clock) => (
+    <li key={`${place.kind}:${place.value}:${place.city}`}>
+      <button
+        type="button"
+        onMouseDown={(e) => {
+          e.preventDefault();
+          apply(place);
+        }}
+        onMouseEnter={() => setHighlighted(index)}
+        disabled={remaining <= 0}
+        className={`flex w-full items-center gap-2 px-4 py-2.5 text-start text-sm text-slate-600 disabled:opacity-40 ${
+          index === highlighted ? 'bg-slate-50' : ''
+        }`}
+      >
+        <Icon className="h-4 w-4 shrink-0 text-slate-500" aria-hidden />
+        {place.label}
       </button>
     </li>
   );
@@ -367,9 +427,9 @@ export function PlaceSearchBox({ filters, update, tone = 'default', placeholder 
             {/*
               Nothing typed yet. Rather than an instruction to type something, offer the
               places this person has already searched — on a search page most returns
-              are to somewhere they looked at before.
+              are to somewhere they looked at before — or the regions for a first visit.
             */}
-            {debounced.length < MIN_TERM && recent.length > 0 && (
+            {!typing && recentStarters.length > 0 && (
               <>
                 <div className="flex items-center justify-between bg-slate-50 px-4 py-2">
                   <h3 className="text-sm font-semibold text-slate-900">חיפושים אחרונים</h3>
@@ -384,52 +444,40 @@ export function PlaceSearchBox({ filters, update, tone = 'default', placeholder 
                     ניקוי
                   </button>
                 </div>
+                <ul>{recentStarters.map((place, i) => starterRow(place, i, Clock))}</ul>
+              </>
+            )}
+
+            {!typing && regionStarters.length > 0 && (
+              <>
+                <h3 className="bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-900">אזורים</h3>
                 <ul>
-                  {recent.map((place) => (
-                    <li key={`${place.kind}:${place.value}:${place.city}`}>
-                      <button
-                        type="button"
-                        onMouseDown={(e) => {
-                          e.preventDefault();
-                          apply(place);
-                        }}
-                        disabled={remaining <= 0}
-                        className="flex w-full items-center gap-2 px-4 py-2.5 text-start text-sm text-slate-600 hover:bg-slate-50 disabled:opacity-40"
-                      >
-                        <Clock className="h-4 w-4 shrink-0 text-slate-500" aria-hidden />
-                        {place.label}
-                      </button>
-                    </li>
-                  ))}
+                  {regionStarters.map((place, i) =>
+                    starterRow(place, recentStarters.length + i, MapPin),
+                  )}
                 </ul>
               </>
             )}
 
-            {debounced.length < MIN_TERM && recent.length === 0 && (
-              <p className="px-4 py-6 text-center text-sm text-slate-500">
-                הקלידו שם של עיר או שכונה
-              </p>
-            )}
-
-            {debounced.length >= MIN_TERM && options.length === 0 && (
+            {typing && options.length === 0 && (
               <p className="px-4 py-6 text-center text-sm text-slate-500">לא נמצאו מיקומים מתאימים</p>
             )}
 
-            {districts.length > 0 && (
+            {typing && districts.length > 0 && (
               <>
                 <h3 className="bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-900">אזור</h3>
                 <ul>{districts.map((o, i) => row(o, i))}</ul>
               </>
             )}
 
-            {cities.length > 0 && (
+            {typing && cities.length > 0 && (
               <>
                 <h3 className="bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-900">עיר</h3>
                 <ul>{cities.map((o, i) => row(o, cityOffset + i))}</ul>
               </>
             )}
 
-            {hoods.length > 0 && (
+            {typing && hoods.length > 0 && (
               <>
                 <h3 className="bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-900">שכונה</h3>
                 <ul>{hoods.map((o, i) => row(o, hoodOffset + i))}</ul>
