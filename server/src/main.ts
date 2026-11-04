@@ -83,6 +83,7 @@ async function bootstrap() {
       'sitemap-cities.xml',
       'sitemap-listings-:index.xml',
       'nadlan',
+      'nadlan/cities',
       'nadlan/credits',
       'nadlan/property/:slug',
       'nadlan/:section/:city',

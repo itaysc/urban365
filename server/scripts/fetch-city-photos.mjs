@@ -11,7 +11,8 @@
  * municipal coat of arms. The photographs are further down the article.
  *
  * Everything here is Creative Commons or public domain, and the attribution each one
- * requires is written out beside it — see `city-photos.ts`. Run it again to refresh:
+ * requires is written out beside it — see `city-photos.ts`. Run it to add cities, or
+ * to re-pick some; the ones not named keep their photograph:
  *
  *   node scripts/fetch-city-photos.mjs cities.txt
  *
@@ -270,6 +271,24 @@ const cities = readFileSync(listFile, 'utf8')
   .map((line) => line.trim())
   .filter(Boolean);
 
+const out = resolve(dirname(fileURLToPath(import.meta.url)), '../src/seo/city-photos.ts');
+
+/*
+ * Merged into what is already there rather than replacing it: a run for a handful of
+ * new cities used to rewrite the file with only those, silently dropping every
+ * photograph picked before. A city in this run replaces its old entry; a city this run
+ * finds nothing for keeps whatever it had.
+ */
+const existing = (() => {
+  try {
+    const source = readFileSync(out, 'utf8');
+    const json = source.slice(source.indexOf('= {') + 2, source.lastIndexOf('};') + 1);
+    return JSON.parse(json);
+  } catch {
+    return {};
+  }
+})();
+
 const chosen = [];
 for (const city of cities) {
   try {
@@ -287,7 +306,6 @@ for (const city of cities) {
   await sleep(2_000);
 }
 
-const out = resolve(dirname(fileURLToPath(import.meta.url)), '../src/seo/city-photos.ts');
 writeFileSync(
   out,
   `/**
@@ -310,12 +328,15 @@ export interface CityPhoto {
 }
 
 export const CITY_PHOTOS: Record<string, CityPhoto> = ${JSON.stringify(
-    Object.fromEntries(
-      chosen.map((p) => [
-        cityKey(p.city),
-        { url: p.thumb, credit: `${p.artist}, ${p.licence}`, page: p.page },
-      ]),
-    ),
+    {
+      ...existing,
+      ...Object.fromEntries(
+        chosen.map((p) => [
+          cityKey(p.city),
+          { url: p.thumb, credit: `${p.artist}, ${p.licence}`, page: p.page },
+        ]),
+      ),
+    },
     null,
     2,
   )};
@@ -323,4 +344,8 @@ export const CITY_PHOTOS: Record<string, CityPhoto> = ${JSON.stringify(
   'utf8',
 );
 
-console.log(`\n${chosen.length}/${cities.length} cities have a photograph. Written to src/seo/city-photos.ts`);
+console.log(
+  `\n${chosen.length}/${cities.length} cities have a photograph. Merged into src/seo/city-photos.ts, which now has ${
+    Object.keys({ ...existing, ...Object.fromEntries(chosen.map((p) => [cityKey(p.city), 1])) }).length
+  }.`,
+);

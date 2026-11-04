@@ -562,5 +562,70 @@ export const CITY_PHOTOS: Record<string, CityPhoto> = {
     "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b2/%D7%99%D7%A8%D7%9B%D7%90.jpg/960px-%D7%99%D7%A8%D7%9B%D7%90.jpg",
     "credit": "ניר ודל, CC BY-SA 4.0",
     "page": "https://commons.wikimedia.org/wiki/File:%D7%99%D7%A8%D7%9B%D7%90.jpg"
+  },
+  "קרית גת": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/86/Kiryat_Gat_Aerial_View.jpg/960px-Kiryat_Gat_Aerial_View.jpg",
+    "credit": "Amos Meron, CC BY-SA 3.0",
+    "page": "https://commons.wikimedia.org/wiki/File:Kiryat_Gat_Aerial_View.jpg"
+  },
+  "קרית ביאליק": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/df/%D7%9B%D7%99%D7%9B%D7%A8_%D7%91%D7%A1%D7%91%D7%99%D7%A0%D7%99%D7%94_%D7%A4%D7%99%D7%A0%D7%AA_%D7%A7%D7%A8%D7%9F_%D7%94%D7%99%D7%A1%D7%95%D7%93_%D7%95%D7%A8%D7%97%D7%95%D7%91_%D7%A0%D7%99%D7%A6%D7%A0%D7%99%D7%9D.jpg/960px-%D7%9B%D7%99%D7%9B%D7%A8_%D7%91%D7%A1%D7%91%D7%99%D7%A0%D7%99%D7%94_%D7%A4%D7%99%D7%A0%D7%AA_%D7%A7%D7%A8%D7%9F_%D7%94%D7%99%D7%A1%D7%95%D7%93_%D7%95%D7%A8%D7%97%D7%95%D7%91_%D7%A0%D7%99%D7%A6%D7%A0%D7%99%D7%9D.jpg",
+    "credit": "Hanay, CC BY-SA 4.0",
+    "page": "https://commons.wikimedia.org/wiki/File:%D7%9B%D7%99%D7%9B%D7%A8_%D7%91%D7%A1%D7%91%D7%99%D7%A0%D7%99%D7%94_%D7%A4%D7%99%D7%A0%D7%AA_%D7%A7%D7%A8%D7%9F_%D7%94%D7%99%D7%A1%D7%95%D7%93_%D7%95%D7%A8%D7%97%D7%95%D7%91_%D7%A0%D7%99%D7%A6%D7%A0%D7%99%D7%9D.jpg"
+  },
+  "קרית אתא": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/72/Givat_Alonim_Kiryat_Ata.jpg/960px-Givat_Alonim_Kiryat_Ata.jpg",
+    "credit": "Eldar Eldadi (אלדר אלדדי), CC BY-SA 4.0",
+    "page": "https://commons.wikimedia.org/wiki/File:Givat_Alonim_Kiryat_Ata.jpg"
+  },
+  "קרית מוצקין": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/fa/Kiryat_Motzkin_Aerial_View.jpg/960px-Kiryat_Motzkin_Aerial_View.jpg",
+    "credit": "Omer berner, CC BY-SA 4.0",
+    "page": "https://commons.wikimedia.org/wiki/File:Kiryat_Motzkin_Aerial_View.jpg"
+  },
+  "קרית ים": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/18/Kiryat_Yam1949.jpg/960px-Kiryat_Yam1949.jpg",
+    "credit": "Zoltan Kluger, Public domain",
+    "page": "https://commons.wikimedia.org/wiki/File:Kiryat_Yam1949.jpg"
+  },
+  "אבו גוש": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/dc/Inscription_of_the_Roman_Legion_in_the_Crusader_Church_in_Abu_Ghosh.jpg/960px-Inscription_of_the_Roman_Legion_in_the_Crusader_Church_in_Abu_Ghosh.jpg",
+    "credit": "avishai teicher User:Avi1111, Public domain",
+    "page": "https://commons.wikimedia.org/wiki/File:Inscription_of_the_Roman_Legion_in_the_Crusader_Church_in_Abu_Ghosh.jpg"
+  },
+  "קרית יערים": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b1/KiryatYearimJan182022_04.jpg/960px-KiryatYearimJan182022_04.jpg",
+    "credit": "Hagai Agmon-Snir حچاي اچمون-سنير חגי אגמון-שניר, CC BY-SA 4.0",
+    "page": "https://commons.wikimedia.org/wiki/File:KiryatYearimJan182022_04.jpg"
+  },
+  "מועצה אזורית מטה יהודה": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/5b/Jerusalem_Vineyard.JPG/960px-Jerusalem_Vineyard.JPG",
+    "credit": "צולם על ידי עמוס מרון, CC BY-SA 3.0",
+    "page": "https://commons.wikimedia.org/wiki/File:Jerusalem_Vineyard.JPG"
+  },
+  "ביתר עילית": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/2b/%D7%A4%D7%90%D7%A8%D7%A7_%D7%A9%D7%91%D7%A2%D7%AA_%D7%94%D7%9E%D7%99%D7%A0%D7%99%D7%9D_%D7%91%D7%99%D7%AA%D7%A8.jpg/960px-%D7%A4%D7%90%D7%A8%D7%A7_%D7%A9%D7%91%D7%A2%D7%AA_%D7%94%D7%9E%D7%99%D7%A0%D7%99%D7%9D_%D7%91%D7%99%D7%AA%D7%A8.jpg",
+    "credit": "ציון הלוי, CC BY-SA 3.0",
+    "page": "https://commons.wikimedia.org/wiki/File:%D7%A4%D7%90%D7%A8%D7%A7_%D7%A9%D7%91%D7%A2%D7%AA_%D7%94%D7%9E%D7%99%D7%A0%D7%99%D7%9D_%D7%91%D7%99%D7%AA%D7%A8.jpg"
+  },
+  "חברון": {
+    "url": "https://upload.wikimedia.org/wikipedia/commons/4/47/Frith%2C_Francis_%281822-1898%29_-_Views_in_the_Holy_Land_-_n._428_-_Hebron._Northern_Half_of_the_City_-_recto.jpg",
+    "credit": "Francis Frith, Public domain",
+    "page": "https://commons.wikimedia.org/wiki/File:Frith,_Francis_(1822-1898)_-_Views_in_the_Holy_Land_-_n._428_-_Hebron._Northern_Half_of_the_City_-_recto.jpg"
+  },
+  "אלפי מנשה": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d9/Alfei-Menashe_04.jpg/960px-Alfei-Menashe_04.jpg",
+    "credit": "אבנר, CC BY-SA 4.0",
+    "page": "https://commons.wikimedia.org/wiki/File:Alfei-Menashe_04.jpg"
+  },
+  "גבעת זאב": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/fe/%D7%92%D7%91%D7%A2%D7%AA_%D7%96%D7%90%D7%91_2.JPG/960px-%D7%92%D7%91%D7%A2%D7%AA_%D7%96%D7%90%D7%91_2.JPG",
+    "credit": "Dvirraz, CC BY-SA 3.0",
+    "page": "https://commons.wikimedia.org/wiki/File:%D7%92%D7%91%D7%A2%D7%AA_%D7%96%D7%90%D7%91_2.JPG"
+  },
+  "מעלה אפרים": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/82/Bikat_HaYarden_-_Jordan_Rift_Valley._Pano.jpg/960px-Bikat_HaYarden_-_Jordan_Rift_Valley._Pano.jpg",
+    "credit": "מינוזיג - MinoZig, CC BY-SA 4.0",
+    "page": "https://commons.wikimedia.org/wiki/File:Bikat_HaYarden_-_Jordan_Rift_Valley._Pano.jpg"
   }
 };

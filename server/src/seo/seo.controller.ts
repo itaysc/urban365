@@ -13,7 +13,8 @@ import { idFromSlug, listingPath } from './listing-slug.js';
 import { renderCityPage } from './render-city.js';
 import { renderCreditsPage } from './render-credits.js';
 import { renderFooterLinks } from './footer.js';
-import { renderIndexPage } from './render-index.js';
+import { renderAllCitiesPage } from './render-all-cities.js';
+import { renderIndexPage, totalIn } from './render-index.js';
 import { renderGonePage, renderListingPage } from './render-listing.js';
 import {
   LISTINGS_PER_SITEMAP,
@@ -178,8 +179,26 @@ export class SeoController {
   @Header('Cache-Control', CACHE)
   @Header('Content-Security-Policy', CSP)
   async index(): Promise<string> {
-    const [groups, links] = await Promise.all([this.cities.byDistrict({ includeEmpty: true }), this.footer()]);
-    return renderIndexPage(groups, this.appUrl, links);
+    const [groups, held, links] = await Promise.all([
+      this.cities.featuredByDistrict(),
+      this.cities.cities(),
+      this.footer(),
+    ]);
+    const totals = {
+      cities: held.length,
+      listings: held.reduce((n, entry) => n + totalIn(entry), 0),
+    };
+    return renderIndexPage(groups, totals, this.appUrl, links);
+  }
+
+  /** Every city by district, as links — the "all cities" the index links to. */
+  @Get('nadlan/cities')
+  @Header('Content-Type', 'text/html; charset=utf-8')
+  @Header('Cache-Control', CACHE)
+  @Header('Content-Security-Policy', CSP)
+  async allCities(): Promise<string> {
+    const [groups, links] = await Promise.all([this.cities.allByDistrict(), this.footer()]);
+    return renderAllCitiesPage(groups, this.appUrl, links);
   }
 
   /**

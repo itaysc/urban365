@@ -19,6 +19,21 @@ const PUBLIC: Prisma.ListingWhereInput = { status: 'published', delistedAt: null
  */
 const DIRECTORY_TTL_MS = 10 * 60 * 1000;
 
+/**
+ * How a city's size is judged: recorded sales over the last few years.
+ *
+ * We hold no population figures, and our own listing counts measure our coverage
+ * rather than the city. The transaction registry measures the market itself — it ranks
+ * Tel Aviv, Jerusalem, Haifa and Beer Sheva first, which is the answer — and a regional
+ * council, which has no sales of its own under its name, sinks to the bottom where it
+ * belongs. Six hours, because the registry is synced daily.
+ */
+const SALES_WINDOW_YEARS = 3;
+const SALES_TTL_MS = 6 * 60 * 60 * 1000;
+
+/** How many cities each district shows on the index; the rest are on the full list. */
+export const FEATURED_PER_DISTRICT = 7;
+
 
 /** The most listings one page shows before sending the reader into the app for the rest. */
 export const LISTINGS_SHOWN = 36;
@@ -99,7 +114,56 @@ export class CityPageService {
     () => this.loadDistricts(),
   );
 
+  /** Recorded sales by city name. See `SALES_WINDOW_YEARS` and `loadSales`. */
+  private readonly sales = new Cached<(city: string) => number>(SALES_TTL_MS, () => this.loadSales());
+
   constructor(private readonly prisma: PrismaService) {}
+
+  /**
+   * The index page's shape: every district, busiest first, with only its biggest few
+   * cities — biggest by recorded sales, then by what we have on offer.
+   */
+  async featuredByDistrict(
+    limit = FEATURED_PER_DISTRICT,
+  ): Promise<{ name: string | null; cities: CityEntry[] }[]> {
+    const { groups, weight } = await this.rankedDistricts();
+
+    return groups.map((group) => ({
+      name: group.name,
+      cities: [...group.cities]
+        .sort((a, b) => weight(b) - weight(a) || total(b) - total(a))
+        .slice(0, limit),
+    }));
+  }
+
+  /** The full list's shape: every city, in the same district order, alphabetical within. */
+  async allByDistrict(): Promise<{ name: string | null; cities: CityEntry[] }[]> {
+    const { groups } = await this.rankedDistricts();
+
+    return groups.map((group) => ({
+      name: group.name,
+      cities: [...group.cities].sort((a, b) => a.city.localeCompare(b.city, 'he')),
+    }));
+  }
+
+  /** Every city by district, the districts ordered by their total sales. */
+  private async rankedDistricts() {
+    const [groups, sales] = await Promise.all([
+      this.byDistrict({ includeEmpty: true }),
+      this.sales.get(),
+    ]);
+    const weight = (entry: CityEntry) => sales(entry.city);
+    const sum = (cities: CityEntry[]) => cities.reduce((n, entry) => n + weight(entry), 0);
+
+    // The cities we could not place stay last, whatever their size, as in `byDistrict`.
+    const ordered = [...groups].sort((a, b) => {
+      if (a.name === null) return 1;
+      if (b.name === null) return -1;
+      return sum(b.cities) - sum(a.cities);
+    });
+
+    return { groups: ordered, weight };
+  }
 
   /** Every city with something to show, biggest first. */
   async cities(): Promise<CityEntry[]> {
@@ -317,6 +381,52 @@ export class CityPageService {
     }
 
     return directory;
+  }
+
+  /**
+   * A lookup from a district's spelling of a city to its recorded sales.
+   *
+   * The registry and OSM disagree on a fifth of the names, nearly always over a yod or
+   * a vav — `קריית ביאליק` and `קרית ביאליק`, `הרצלייה` and `הרצליה`, `שוהם` and `שהם` —
+   * and `cityKey` alone missed Herzliya, Nahariya and every Kiryat. So it is matched in
+   * tiers, strictest first: the comparable name, then with doubled letters folded, then
+   * with yod and vav ignored altogether — that last only where it names exactly one
+   * settlement, because without them `כרמיאל` and `כרמל` would become one place.
+   */
+  private async loadSales(): Promise<(city: string) => number> {
+    const since = new Date();
+    since.setFullYear(since.getFullYear() - SALES_WINDOW_YEARS);
+
+    const groups = await this.prisma.marketDeal.groupBy({
+      by: ['settlement'],
+      where: { dealDate: { gte: since } },
+      _count: { _all: true },
+    });
+
+    const folded = (name: string) => cityKey(name).replace(/יי/gu, 'י').replace(/וו/gu, 'ו');
+    const loose = (name: string) => folded(name).replace(/[יו]/gu, '');
+
+    const tier = (key: (name: string) => string) => {
+      const map = new Map<string, { count: number; names: Set<string> }>();
+      for (const group of groups) {
+        const k = key(group.settlement);
+        const found = map.get(k) ?? { count: 0, names: new Set<string>() };
+        found.count += group._count._all;
+        found.names.add(group.settlement);
+        map.set(k, found);
+      }
+      return map;
+    };
+    const [exact, fold, free] = [tier(cityKey), tier(folded), tier(loose)];
+
+    return (city) => {
+      const unique = free.get(loose(city));
+      return (
+        exact.get(cityKey(city))?.count ??
+        fold.get(folded(city))?.count ??
+        (unique?.names.size === 1 ? unique.count : 0)
+      );
+    };
   }
 
   private async loadDistricts(): Promise<{ name: string; members: string[] }[]> {

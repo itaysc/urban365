@@ -245,6 +245,10 @@ td.num,th.num{font-variant-numeric:tabular-nums;white-space:nowrap}
 .cta{display:inline-block;background:#1d4ed8;color:#fff;text-decoration:none;font-weight:600;
   border-radius:.625rem;padding:.625rem 1.125rem;margin-top:.5rem}
 .note{color:#64748b;font-size:.875rem}
+.citylist{list-style:none;padding:0;margin:.5rem 0 0;columns:4 9rem;column-gap:1.5rem}
+.citylist li{break-inside:avoid;padding:.1875rem 0}
+.citylist a{color:#1d4ed8;text-decoration:none;font-size:.9375rem}
+.citylist a:hover{text-decoration:underline}
 footer.site{border-top:1px solid #e2e8f0;background:#fff;padding:2rem 0 1.5rem;margin-top:2.5rem;
   color:#64748b;font-size:.875rem}
 footer.site .small{margin:1.5rem 0 0;padding-top:1rem;border-top:1px solid #f1f5f9;

@@ -99,6 +99,7 @@ export function sitemapCitiesXml(entries: CityEntry[], appUrl: string): string {
   const urls: Url[] = [
     { loc: `${appUrl}/`, changefreq: 'daily', priority: '1.0' },
     { loc: `${appUrl}/nadlan`, changefreq: 'daily', priority: '0.9' },
+    { loc: `${appUrl}/nadlan/cities`, changefreq: 'weekly', priority: '0.6' },
   ];
 
   for (const entry of entries) {

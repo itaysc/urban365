@@ -14,14 +14,14 @@ export function mainSection(entry: CityEntry): Section {
   return rent >= commercial ? 'rent' : 'commercial';
 }
 
-const totalIn = (entry: CityEntry) =>
+export const totalIn = (entry: CityEntry) =>
   entry.counts.forsale + entry.counts.rent + entry.counts.commercial;
 
 /**
- * Where a card leads. A city with nothing on offer has no page — that URL is a 404 — so
- * its card opens the app's search for it instead, where an alert can still be saved.
+ * Where a city's link leads. A city with nothing on offer has no page — that URL is a
+ * 404 — so it opens the app's search for it instead, where an alert can still be saved.
  */
-const href = (entry: CityEntry) =>
+export const cityHref = (entry: CityEntry) =>
   totalIn(entry) > 0
     ? `/nadlan/${mainSection(entry)}/${encodeURIComponent(toSlug(entry.city))}`
     : `/search?${new URLSearchParams({ section: 'forsale', city: entry.city })}`;
@@ -72,7 +72,7 @@ function grid(cities: CityEntry[]): string {
   return `<ul class="cities">${cities
     .map(
       (entry) => `<li>
-<a href="${esc(href(entry))}">
+<a href="${esc(cityHref(entry))}">
 ${photo(entry)}
 <span class="shade" aria-hidden="true"></span>
 <span class="label">
@@ -86,27 +86,24 @@ ${photo(entry)}
 }
 
 /**
- * The index of every city, grouped by district — those with listings first in each.
+ * The index: each district's biggest cities as cards, and a link to all of them.
  *
  * This is the page that makes the others findable. A search engine reaches a city page
  * one of two ways — from a sitemap, which it is free to ignore, or from a link on a
  * page it already trusts. The site's own footer links here, and everything else hangs
- * off it, so no city page is more than two clicks from the home page.
+ * off it or off the full list, so no city page is more than three clicks from home.
+ *
+ * `totals` is passed in rather than summed from `groups`, which hold only the cities
+ * shown — the headline describes everything we have, not what fits on the page.
  */
 export function renderIndexPage(
   groups: { name: string | null; cities: CityEntry[] }[],
+  totals: { cities: number; listings: number },
   appUrl: string,
   links = '',
 ): string {
   const canonical = `${appUrl}/nadlan`;
-  const cities = groups.reduce(
-    (sum, group) => sum + group.cities.filter((city) => totalIn(city) > 0).length,
-    0,
-  );
-  const listings = groups.reduce(
-    (sum, group) => sum + group.cities.reduce((n, city) => n + totalIn(city), 0),
-    0,
-  );
+  const { cities, listings } = totals;
 
   const trail = breadcrumbs([{ name: 'ערים', href: '/nadlan' }], canonical);
 
@@ -120,6 +117,8 @@ export function renderIndexPage(
     `${properties(listings)} ב-${number(cities)} ערים. לכל עיר דף עם מחיר חציוני, מחיר למ״ר, ופילוח לפי מספר חדרים, שכונה וסוג נכס — מחושב מהמודעות המתפרסמות כרגע.`,
   )}</p>
 ${sections}
+
+<p><a class="cta" href="/nadlan/cities">${esc('לרשימת כל הערים')}</a></p>
 
 <!--
   A line and a link, rather than thirty names crushed under the grid.
