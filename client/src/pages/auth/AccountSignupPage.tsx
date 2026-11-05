@@ -4,6 +4,7 @@ import { useAuth } from '@/auth/auth-context';
 import { GoogleButton, useGoogleAvailable } from '@/components/auth/GoogleButton';
 import { Button } from '@/components/ui/Button';
 import { Field, inputClass } from '@/components/ui/Field';
+import { PasswordInput } from '@/components/ui/PasswordInput';
 import { errorMessageOf } from '@/lib/apiError';
 import { signupBuyer } from '@/services/auth';
 import { TermsNotice } from '@/components/auth/TermsCheckbox';
@@ -100,9 +101,9 @@ export function AccountSignupPage() {
           </Field>
 
           <Field label="סיסמה" htmlFor="su-password" required>
-            <input id="su-password" type="password" required minLength={PASSWORD_MIN}
-                   autoComplete="new-password" className={inputClass} value={form.password}
-                   onChange={(e) => set('password', e.target.value)} />
+            <PasswordInput id="su-password" required minLength={PASSWORD_MIN}
+                           autoComplete="new-password" value={form.password}
+                           onChange={(e) => set('password', e.target.value)} />
           </Field>
           <p className="-mt-2 text-xs text-slate-500">
             לפחות {PASSWORD_MIN} תווים, עם אות גדולה, אות קטנה וספרה.

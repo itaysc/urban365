@@ -5,6 +5,7 @@ import * as Yup from 'yup';
 import { useAuth } from '@/auth/auth-context';
 import { Button } from '@/components/ui/Button';
 import { Field, inputClass } from '@/components/ui/Field';
+import { PasswordInput } from '@/components/ui/PasswordInput';
 import { errorMessageOf } from '@/lib/apiError';
 import { AgencyPicker } from '@/components/auth/AgencyPicker';
 import { GoogleButton, useGoogleAvailable } from '@/components/auth/GoogleButton';
@@ -121,7 +122,7 @@ export function SignupPage() {
         </Field>
 
         <Field label="סיסמה" htmlFor="password" required error={formik.touched.password && formik.errors.password}>
-          <input id="password" type="password" autoComplete="new-password" className={inputClass} {...formik.getFieldProps('password')} />
+          <PasswordInput id="password" autoComplete="new-password" {...formik.getFieldProps('password')} />
         </Field>
 
         <AgencyPicker

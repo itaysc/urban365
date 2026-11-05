@@ -4,6 +4,7 @@ import { useAuth } from '@/auth/auth-context';
 import { GoogleButton, useGoogleAvailable } from '@/components/auth/GoogleButton';
 import { Button } from '@/components/ui/Button';
 import { Field, inputClass } from '@/components/ui/Field';
+import { PasswordInput } from '@/components/ui/PasswordInput';
 import { errorMessageOf } from '@/lib/apiError';
 
 interface Props {
@@ -78,12 +79,10 @@ export function AccountLoginForm({ returnTo, onSuccess, idPrefix = 'account', no
         </Field>
 
         <Field label="סיסמה" htmlFor={`${idPrefix}-password`} required>
-          <input
+          <PasswordInput
             id={`${idPrefix}-password`}
-            type="password"
             required
             autoComplete="current-password"
-            className={inputClass}
             value={form.password}
             onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
           />

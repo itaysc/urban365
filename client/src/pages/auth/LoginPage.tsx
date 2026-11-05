@@ -5,6 +5,7 @@ import * as Yup from 'yup';
 import { useAuth } from '@/auth/auth-context';
 import { Button } from '@/components/ui/Button';
 import { Field, inputClass } from '@/components/ui/Field';
+import { PasswordInput } from '@/components/ui/PasswordInput';
 import { safeReturnTo } from '@/lib/returnTo';
 import { AuthLayout } from '@/pages/auth/AuthLayout';
 import { errorCodeOf, errorMessageOf } from '@/lib/apiError';
@@ -93,7 +94,7 @@ export function LoginPage() {
         </Field>
 
         <Field label="סיסמה" htmlFor="password" required error={formik.touched.password && formik.errors.password}>
-          <input id="password" type="password" autoComplete="current-password" className={inputClass} {...formik.getFieldProps('password')} />
+          <PasswordInput id="password" autoComplete="current-password" {...formik.getFieldProps('password')} />
         </Field>
 
         {formError && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">{formError}</p>}
