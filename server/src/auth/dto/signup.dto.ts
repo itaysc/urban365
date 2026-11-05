@@ -23,9 +23,9 @@ export class SignupDto {
   /**
    * Agreement to the terms and the privacy policy.
    *
-   * Required and checked here, not only in the form: a tick box is a claim the client
-   * makes, and the record that someone agreed is worth no more than the weakest place
-   * it is enforced.
+   * The signup form states it in prose and sends true with the request. Still required
+   * here, not only in the form: the record that someone agreed is worth no more than
+   * the weakest place it is enforced.
    */
   @IsBoolean()
   @Equals(true, { message: 'יש לאשר את תנאי השימוש ומדיניות הפרטיות' })

@@ -59,7 +59,7 @@ export function GoogleButton({
 }: {
   returnTo?: string;
   label?: string;
-  /** Used on signup, where the terms have to be agreed before an account can exist. */
+  /** Renders as inert text. An anchor has no disabled state a middle-click would honor. */
   disabled?: boolean;
 }) {
   const available = useGoogleAvailable();

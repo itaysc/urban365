@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/Button';
 import { Field, inputClass } from '@/components/ui/Field';
 import { errorMessageOf } from '@/lib/apiError';
 import { signupBuyer } from '@/services/auth';
-import { TermsCheckbox } from '@/components/auth/TermsCheckbox';
+import { TermsNotice } from '@/components/auth/TermsCheckbox';
 import { AuthLayout } from '@/pages/auth/AuthLayout';
 import { PhoneField } from '@/components/ui/PhoneField';
 
@@ -19,7 +19,6 @@ export function AccountSignupPage() {
   const googleAvailable = useGoogleAvailable();
 
   const [form, setForm] = useState({ firstName: '', lastName: '', email: '', password: '', phone: '' });
-  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -39,7 +38,8 @@ export function AccountSignupPage() {
         email: form.email.trim(),
         password: form.password,
         phone: form.phone.trim() || undefined,
-        acceptedTerms,
+        // The sentence above the form is the agreement; submitting is what accepts it.
+        acceptedTerms: true,
       });
       // The response already set the cookies; this pulls the user into the cache so the
       // header and guards see them without a reload.
@@ -65,11 +65,8 @@ export function AccountSignupPage() {
       }
     >
       <div className="flex flex-col gap-4">
-        {/*
-          Disabled until the box is ticked. Google leaves the page before an account
-          exists, so the agreement has to be made before the button, not after it.
-        */}
-        <GoogleButton label="הרשמה עם Google" disabled={!acceptedTerms} />
+        <TermsNotice />
+        <GoogleButton label="הרשמה עם Google" />
 
         {googleAvailable && (
           <div className="flex items-center gap-3">
@@ -111,11 +108,9 @@ export function AccountSignupPage() {
             לפחות {PASSWORD_MIN} תווים, עם אות גדולה, אות קטנה וספרה.
           </p>
 
-          <TermsCheckbox checked={acceptedTerms} onChange={setAcceptedTerms} id="su-terms" />
-
           {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">{error}</p>}
 
-          <Button type="submit" disabled={submitting || !acceptedTerms}>
+          <Button type="submit" disabled={submitting}>
             {submitting ? 'נרשם…' : 'הרשמה'}
           </Button>
         </form>

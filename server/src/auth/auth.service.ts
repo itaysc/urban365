@@ -359,10 +359,10 @@ export class AuthService {
         passwordHash: await this.passwords.hash(randomBytes(32).toString('base64url')),
         authProvider: 'google',
         authProviderId: identity.subject,
-        // Google is offered from the signup page, where ticking the agreement is
-        // what enables the button. Worth being plain about the limit: the server
-        // cannot enforce that the way it does for the form, because the tick
-        // happened before a redirect it does not control. Recorded, not proven.
+        // Google is offered from the signup page, where the agreement is a sentence
+        // ("by signing up I agree") rather than a tick the server can see. Worth
+        // being plain about the limit: the redirect happens before this request,
+        // so the server cannot prove the sentence was read. Recorded, not proven.
         termsAcceptedAt: new Date(),
         accountType: 'buyer',
         firstName: identity.firstName || email.split('@')[0],

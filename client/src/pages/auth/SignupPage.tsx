@@ -8,7 +8,7 @@ import { Field, inputClass } from '@/components/ui/Field';
 import { errorMessageOf } from '@/lib/apiError';
 import { AgencyPicker } from '@/components/auth/AgencyPicker';
 import { GoogleButton, useGoogleAvailable } from '@/components/auth/GoogleButton';
-import { TermsCheckbox } from '@/components/auth/TermsCheckbox';
+import { TermsNotice } from '@/components/auth/TermsCheckbox';
 import { AuthLayout } from '@/pages/auth/AuthLayout';
 import type { AgencyLookupResult } from '@/services/auth';
 import { PhoneField } from '@/components/ui/PhoneField';
@@ -32,7 +32,6 @@ export function SignupPage() {
       lastName: '',
       phone: '',
       agencyName: '',
-      acceptedTerms: false,
     },
     validationSchema: Yup.object({
       email: Yup.string().email('כתובת אימייל לא תקינה').required('שדה חובה'),
@@ -42,7 +41,6 @@ export function SignupPage() {
         .required('שדה חובה'),
       firstName: Yup.string().required('שדה חובה'),
       lastName: Yup.string().required('שדה חובה'),
-      acceptedTerms: Yup.boolean().oneOf([true], 'יש לאשר את תנאי השימוש ומדיניות הפרטיות'),
     }),
     onSubmit: async (values, helpers) => {
       setFormError(null);
@@ -59,7 +57,8 @@ export function SignupPage() {
           firstName: values.firstName,
           lastName: values.lastName,
           phone: values.phone || undefined,
-          acceptedTerms: values.acceptedTerms,
+          // The sentence above the form is the agreement; submitting is what accepts it.
+          acceptedTerms: true,
           ...(claimed ? { claimAgencyId: claimed.id } : { agencyName: values.agencyName }),
         });
         navigate('/app/pending', { replace: true });
@@ -82,18 +81,12 @@ export function SignupPage() {
       {/*
         Google first, because for most people it is one click against seven fields. It
         cannot carry an agency name through the redirect, so it lands on /agency/claim,
-        where that is all that is asked.
-
-        Disabled until the terms are ticked, for the same reason the submit button is:
-        the agreement has to be given before the account exists, and after the redirect
-        it is too late to ask.
+        where that is all that is asked. The agreement is the sentence above it: signing
+        up, either way, is what accepts the terms.
       */}
       <div className="flex flex-col gap-4">
-        <GoogleButton
-          returnTo="/agency/claim"
-          label="הרשמה עם Google"
-          disabled={!formik.values.acceptedTerms}
-        />
+        <TermsNotice />
+        <GoogleButton returnTo="/agency/claim" label="הרשמה עם Google" />
 
         {googleAvailable && (
           <div className="flex items-center gap-3">
@@ -103,12 +96,6 @@ export function SignupPage() {
           </div>
         )}
       </div>
-
-      {!formik.values.acceptedTerms && googleAvailable && (
-        <p className="-mt-2 text-xs text-slate-500">
-          כדי להמשיך עם Google יש לאשר קודם את תנאי השימוש בתחתית הטופס.
-        </p>
-      )}
 
       <form onSubmit={formik.handleSubmit} className="mt-4 flex flex-col gap-4">
         <div className="grid grid-cols-2 gap-3">
@@ -144,15 +131,9 @@ export function SignupPage() {
           onAgencyNameChange={(name) => void formik.setFieldValue('agencyName', name)}
         />
 
-        <TermsCheckbox
-          id="agency-terms"
-          checked={formik.values.acceptedTerms}
-          onChange={(checked) => void formik.setFieldValue('acceptedTerms', checked)}
-        />
-
         {formError && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">{formError}</p>}
 
-        <Button type="submit" disabled={formik.isSubmitting || !formik.values.acceptedTerms}>
+        <Button type="submit" disabled={formik.isSubmitting}>
           {formik.isSubmitting ? 'נרשם…' : 'הרשמה'}
         </Button>
       </form>
