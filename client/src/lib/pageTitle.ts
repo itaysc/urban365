@@ -28,6 +28,7 @@ const TITLES: Record<string, string> = {
   '/agency/signup': 'הרשמת סוכנות',
   '/agency/claim': 'חיבור הסוכנות',
   '/forgot-password': 'איפוס סיסמה',
+  '/join': 'הצטרפות',
   '/reset-password': 'איפוס סיסמה',
 
   '/app': 'סקירה',

@@ -119,6 +119,7 @@ export const qk = {
   admin: {
     all: ['admin'] as const,
     moderation: ['admin', 'moderation'] as const,
+    invites: ['admin', 'invites'] as const,
   },
 
   /** Whether agencies may see yad2. Admins ignore the answer. */

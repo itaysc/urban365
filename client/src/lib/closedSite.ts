@@ -12,6 +12,7 @@ const OPEN_WHEN_CLOSED = new Set([
   '/forgot-password',
   '/reset-password',
   '/accept-invite',
+  '/join',
   '/terms',
   '/policy',
   '/privacy',

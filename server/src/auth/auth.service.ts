@@ -81,6 +81,15 @@ export class AuthService {
     };
   }
 
+  /** A session for an account that was just created outside login — an accepted invite. */
+  async openSession(userId: string, meta: RequestMeta): Promise<AuthResult> {
+    const user = await this.prisma.user.findUniqueOrThrow({
+      where: { id: userId },
+      include: this.include,
+    });
+    return this.issue(user, meta);
+  }
+
   private async issue(user: UserWithMembership, meta: RequestMeta): Promise<AuthResult> {
     const refresh = await this.sessions.issue(user.id, meta);
     return {

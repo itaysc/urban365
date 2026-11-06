@@ -35,7 +35,7 @@ describeIfDb('row-level security coverage', () => {
    * cannot read them at all. `AgencyClaim` is here despite carrying an `agencyId` —
    * a claim is reviewed by platform staff on the owner client, never by a tenant.
    */
-  const denyAllModels = ['User', 'Session', 'AuthToken', 'AgencyClaim'];
+  const denyAllModels = ['User', 'Session', 'AuthToken', 'AgencyClaim', 'PlatformInvite'];
 
   /** Models whose rows belong to exactly one agency, derived rather than hand-listed. */
   const tenantModels = Prisma.dmmf.datamodel.models

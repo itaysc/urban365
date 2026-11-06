@@ -478,6 +478,7 @@ model User {
   reviewedAgencies  Agency[]               @relation("AgencyReviewer")
   reviewedClaims    AgencyClaim[]          @relation("ClaimReviewer")
   valuations        Valuation[]
+  platformInvitesSent PlatformInvite[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -663,6 +664,23 @@ model AgencyInvite {
   createdAt   DateTime   @default(now())
 
   @@index([agencyId, acceptedAt])
+}
+
+/// An invitation from a platform admin to use the site as a regular user.
+/// No agency: accepting creates a buyer account and nothing else.
+/// The plaintext token only ever exists in the email; this stores its sha256.
+model PlatformInvite {
+  id        String    @id @default(cuid())
+  email     String
+  invitedBy User      @relation(fields: [invitedById], references: [id], onDelete: Cascade)
+  invitedById String
+  tokenHash String    @unique
+  expiresAt DateTime
+  acceptedAt DateTime?
+  revokedAt  DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([email, acceptedAt])
 }
 
 /// One row per refresh token. A login starts a family; each rotation adds a row and

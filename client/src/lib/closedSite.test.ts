@@ -3,7 +3,7 @@ import { guestMayBrowse, isSignupPath } from './closedSite';
 
 describe('guestMayBrowse', () => {
   it('keeps the doors a guest still needs', () => {
-    for (const path of ['/', '/login', '/agency/login', '/forgot-password', '/accept-invite', '/terms']) {
+    for (const path of ['/', '/login', '/agency/login', '/forgot-password', '/accept-invite', '/join', '/terms']) {
       expect(guestMayBrowse(path), path).toBe(true);
     }
   });

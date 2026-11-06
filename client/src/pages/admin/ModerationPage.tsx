@@ -11,6 +11,7 @@ import {
   rejectAgency,
   type PendingAgency,
 } from '@/services/admin';
+import { PlatformInvites } from '@/pages/admin/PlatformInvites';
 
 /** The agency being rejected, held while the confirm dialog is open. */
 type PendingReject = { agencyId: string; name: string } | null;
@@ -85,6 +86,8 @@ export function ModerationPage() {
 
   return (
     <div className="flex flex-col gap-4">
+      <PlatformInvites />
+
       <h1 className="text-xl font-bold text-slate-900">בקשות ממתינות</h1>
 
       {error && (

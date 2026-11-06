@@ -21,6 +21,7 @@ import { VisitorModule } from '../visitor/visitor.module.js';
   providers: [AuthService, GoogleService, PasswordService, TokenService, SessionService, AuthTokenService, CaptchaService],
   // PasswordService is exported for the invite flow, which hashes a password for a
   // user created outside signup.
-  exports: [TokenService, AuthTokenService, PasswordService],
+  // AuthService is exported so accepting a platform invite can open a session.
+  exports: [AuthService, TokenService, AuthTokenService, PasswordService],
 })
 export class AuthModule {}

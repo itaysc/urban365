@@ -18,6 +18,7 @@ import { LoginPage } from '@/pages/auth/LoginPage';
 import { ResetPasswordPage } from '@/pages/auth/ResetPasswordPage';
 import { SignupPage } from '@/pages/auth/SignupPage';
 import { AcceptInvitePage } from '@/pages/auth/AcceptInvitePage';
+import { JoinPage } from '@/pages/auth/JoinPage';
 import { AccountLoginPage } from '@/pages/auth/AccountLoginPage';
 import { AccountSignupPage } from '@/pages/auth/AccountSignupPage';
 import { AgencyClaimPage } from '@/pages/auth/AgencyClaimPage';
@@ -111,6 +112,8 @@ export const router = createBrowserRouter([
   { path: '/reset-password', element: <ResetPasswordPage /> },
   // Public: whoever follows the emailed link may not have an account yet.
   { path: '/accept-invite', element: <AcceptInvitePage /> },
+  // A platform invite. Public for the same reason: the person has no account yet.
+  { path: '/join', element: <JoinPage /> },
 
   // ── signed in ───────────────────────────────────────────────────────────────
   // RequireAuth is a layout route, so the check runs once for the whole subtree
