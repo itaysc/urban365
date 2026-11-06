@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useYad2Visible } from '@/hooks/useYad2Visible';
 import { Button } from '@/components/ui/Button';
 import { Field, inputClass } from '@/components/ui/Field';
 import { lookupAgencies, type AgencyLookupResult } from '@/services/auth';
@@ -21,6 +22,7 @@ interface Props {
  * the other.
  */
 export function AgencyPicker({ claimed, onClaimedChange, agencyName, onAgencyNameChange }: Props) {
+  const yad2Visible = useYad2Visible();
   const [query, setQuery] = useState('');
   const [matches, setMatches] = useState<AgencyLookupResult[]>([]);
 
@@ -63,7 +65,7 @@ export function AgencyPicker({ claimed, onClaimedChange, agencyName, onAgencyNam
       ) : (
         <>
           <input
-            placeholder="חיפוש סוכנות קיימת ביד2…"
+            placeholder={yad2Visible ? 'חיפוש סוכנות קיימת ביד2…' : 'חיפוש סוכנות קיימת…'}
             className={`${inputClass} w-full`}
             value={query}
             onChange={(e) => setQuery(e.target.value)}

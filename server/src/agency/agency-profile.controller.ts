@@ -15,6 +15,7 @@ import {
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { FileInterceptor } from '@nestjs/platform-express';
 import type { Response } from 'express';
 import { Public } from '../auth/decorators/public.decorator.js';
@@ -42,12 +43,23 @@ export class AgencyProfileController {
     /** Linking a yad2 id has to see every agency, not just this one. */
     private readonly owner: PrismaService,
     private readonly yad2: Yad2Service,
+    private readonly config: ConfigService,
   ) {}
 
   private assertCanManage(): void {
     if (!can(this.context.getPrincipal(), 'agency:manage')) {
       throw new ForbiddenException('רק בעלים של הסוכנות יכול לערוך את עמוד הסוכנות.');
     }
+  }
+
+  /**
+   * The importer is off for agencies when YAD2_FOR_AGENCIES=false. A platform admin
+   * is exempt, which is the same rule the client uses to keep the panel on screen.
+   */
+  private assertYad2Offered(): void {
+    if (this.config.get<boolean>('yad2.forAgencies') !== false) return;
+    if (this.context.getPrincipal()?.platformRole === 'admin') return;
+    throw new ForbiddenException('הייבוא אינו זמין.');
   }
 
   @Get()
@@ -143,6 +155,7 @@ export class AgencyProfileController {
   @Post('import/yad2')
   async importFromYad2(@Body() dto: ImportYad2Dto) {
     this.assertCanManage();
+    this.assertYad2Offered();
     const agencyId = this.context.requireAgencyId();
 
     let parsed: { agencyId: string; section: 'forsale' | 'rent' | 'commercial' | null };
@@ -186,6 +199,7 @@ export class AgencyProfileController {
   @Get('import/jobs/:id')
   importJob(@Param('id') id: string) {
     this.assertCanManage();
+    this.assertYad2Offered();
     const { status, progress, error, errorCode } = this.yad2.getJob(id);
     // The scraped payload is deliberately not returned: the listings are already in the
     // database under this agency, which is where the dashboard reads them from.

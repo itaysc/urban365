@@ -35,6 +35,7 @@ the sense that the feature behind them is simply off.
 | `OPENAI_API_KEY` | optional | **private sellers' listings publish without being read for spam** — see §5 |
 | `OPENAI_BASE_URL` | optional | talks to OpenAI directly. Set it to point at a gateway |
 | `YAD2_CDP_URL`, `YAD2_DELAY_MS` | optional | only the scraper uses these |
+| `YAD2_FOR_AGENCIES` | optional | set to `false` to hide yad2 from agencies — the import and every mention of it. A platform admin still sees both. Unset, agencies see it |
 
 The client is built with `VITE_API_URL` set to the API origin. Left empty it assumes the
 Vite dev proxy, which does not exist in production.

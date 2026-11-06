@@ -1,4 +1,5 @@
 import { useAuth } from '@/auth/auth-context';
+import { useYad2Visible } from '@/hooks/useYad2Visible';
 import { EnquiryForm } from '@/components/EnquiryForm';
 import { LocationMap } from '@/components/listing/LocationMap';
 import { RevealPhone } from '@/components/RevealPhone';
@@ -25,6 +26,7 @@ const Spec = ({ label, value }: { label: string; value: string | number | null }
 export function AssetModal({ asset, onClose }: { asset: Asset; onClose: () => void }) {
   const closeRef = useRef<HTMLButtonElement>(null);
   const { user } = useAuth();
+  const yad2Visible = useYad2Visible();
 
   // `membershipStatus` matters as much as the id: someone whose claim on an agency is
   // still pending is not yet that agency.
@@ -189,7 +191,7 @@ export function AssetModal({ asset, onClose }: { asset: Asset; onClose: () => vo
             active membership, that agency is this listing's, and the listing actually
             came from yad2. A listing created here has no url to show.
           */}
-          {ownsThisListing && asset.listingUrl && (
+          {yad2Visible && ownsThisListing && asset.listingUrl && (
             <a
               href={asset.listingUrl}
               target="_blank"

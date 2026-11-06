@@ -1,4 +1,5 @@
 import { BadRequestException, Body, Controller, Get, Header, NotFoundException, Param, Post, Query, Res } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import type { Response } from 'express';
 import { Public } from '../auth/decorators/public.decorator.js';
 import { PlatformAdmin } from '../auth/decorators/roles.decorator.js';
@@ -20,7 +21,21 @@ const CSV_KINDS: CsvKind[] = ['assets', 'team', 'agency'];
 @PlatformAdmin()
 @Controller('yad2')
 export class Yad2Controller {
-  constructor(private readonly yad2: Yad2Service) {}
+  constructor(
+    private readonly yad2: Yad2Service,
+    private readonly config: ConfigService,
+  ) {}
+
+  /**
+   * Whether agencies may see yad2 at all. Public, because the signup form and the
+   * public agency page ask before anyone is signed in. A platform admin ignores this
+   * and is told so by the client from their own role.
+   */
+  @Public()
+  @Get('for-agencies')
+  forAgencies() {
+    return { enabled: this.config.get<boolean>('yad2.forAgencies') ?? true };
+  }
 
   /**
    * Resolves the input, and returns the cached result straight away when there is one.

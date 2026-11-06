@@ -1,3 +1,4 @@
+import { useYad2Visible } from '@/hooks/useYad2Visible';
 import type { AgencySummary } from '@/types/yad2';
 
 const Count = ({ label, value }: { label: string; value: number | null }) => (
@@ -8,6 +9,8 @@ const Count = ({ label, value }: { label: string; value: number | null }) => (
 );
 
 export function AgencyHeader({ agency }: { agency: AgencySummary }) {
+  const yad2Visible = useYad2Visible();
+
   return (
     <section className="rounded-xl border border-slate-200 bg-white p-6">
       <div className="flex flex-wrap items-center gap-5">
@@ -18,14 +21,16 @@ export function AgencyHeader({ agency }: { agency: AgencySummary }) {
         <div className="flex-1">
           <h1 className="text-3xl font-bold text-slate-900">{agency.name}</h1>
           <p className="text-slate-500">מס׳ רישיון {agency.licenseNumber}</p>
-          <a
-            href={agency.agencyUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="text-sm text-blue-700 hover:underline"
-          >
-            הצגה ביד2 ↗
-          </a>
+          {yad2Visible && (
+            <a
+              href={agency.agencyUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="text-sm text-blue-700 hover:underline"
+            >
+              הצגה ביד2 ↗
+            </a>
+          )}
         </div>
 
         <div className="flex gap-8">

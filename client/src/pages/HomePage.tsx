@@ -10,6 +10,7 @@ import { ScrapeProgressBar } from '@/components/ScrapeProgressBar';
 import { SearchForm } from '@/components/SearchForm';
 import { TeamStrip } from '@/components/TeamStrip';
 import { useAgency } from '@/hooks/useAgency';
+import { useYad2Visible } from '@/hooks/useYad2Visible';
 import { formatDate } from '@/lib/format';
 import { isSection, parseAgencyInput } from '@/lib/yad2Input';
 import type { Asset, Section } from '@/types/yad2';
@@ -26,6 +27,7 @@ export function HomePage() {
   const listingToken = params.get('listing');
 
   const { status, result, progress, error, errorCode, load, reset } = useAgency();
+  const yad2Visible = useYad2Visible();
   const [inputError, setInputError] = useState<string | null>(null);
 
   // Which agency the hook currently holds, so paging or opening a listing — both of
@@ -134,19 +136,21 @@ export function HomePage() {
         <header className="flex flex-wrap items-baseline justify-between gap-3">
           <div>
             <h1 className="text-2xl font-bold text-slate-900">Urban365</h1>
-            <p className="text-sm text-slate-500">ייבוא סוכנות נדל״ן מיד2</p>
+            {yad2Visible && <p className="text-sm text-slate-500">ייבוא סוכנות נדל״ן מיד2</p>}
           </div>
           <Link to="/" className="text-sm text-blue-700 hover:underline">
             חיפוש בכל הנכסים ←
           </Link>
         </header>
 
-        <SearchForm
-          onSearch={onSearch}
-          loading={status === 'loading'}
-          initialValue={agencyId ?? ''}
-          error={inputError}
-        />
+        {yad2Visible && (
+          <SearchForm
+            onSearch={onSearch}
+            loading={status === 'loading'}
+            initialValue={agencyId ?? ''}
+            error={inputError}
+          />
+        )}
 
         {status === 'loading' && <ScrapeProgressBar progress={progress} />}
 

@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { qk } from '@/queries/keys';
 import { useAuth } from '@/auth/auth-context';
 import { Yad2ImportPanel } from '@/components/agency/Yad2ImportPanel';
+import { useYad2Visible } from '@/hooks/useYad2Visible';
 import { Button } from '@/components/ui/Button';
 import { Dropzone } from '@/components/ui/Dropzone';
 import { Field, inputClass } from '@/components/ui/Field';
@@ -23,6 +24,7 @@ import { DemoDataPanel } from '@/components/agency/DemoDataPanel';
 export function AgencyProfilePage() {
   const toast = useToast();
   const { user, refresh } = useAuth();
+  const yad2Visible = useYad2Visible();
 
   // Only an owner may change the agency's own details — the name, the contact details
   // and the branches are what the public sees and what a buyer rings. The server
@@ -148,13 +150,17 @@ export function AgencyProfilePage() {
       )}
 
       {/* Importing is an agency action on the agency's own page — it used to be the
-          public home page, where anyone could point it at any yad2 id. */}
-      <Yad2ImportPanel
-        onImported={() => {
-          void queryClient.invalidateQueries({ queryKey: qk.agency.all });
-          void queryClient.invalidateQueries({ queryKey: qk.listings.all });
-        }}
-      />
+          public home page, where anyone could point it at any yad2 id. Hidden, along
+          with every other mention, when the server has turned yad2 off for agencies.
+          A platform admin still sees it. */}
+      {yad2Visible && (
+        <Yad2ImportPanel
+          onImported={() => {
+            void queryClient.invalidateQueries({ queryKey: qk.agency.all });
+            void queryClient.invalidateQueries({ queryKey: qk.listings.all });
+          }}
+        />
+      )}
 
       <section className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4">
         <h2 className="text-sm font-semibold text-slate-900">תמונת נושא</h2>

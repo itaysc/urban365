@@ -113,5 +113,8 @@ export const qk = {
     moderation: ['admin', 'moderation'] as const,
   },
 
+  /** Whether agencies may see yad2. Admins ignore the answer. */
+  yad2ForAgencies: ['yad2', 'for-agencies'] as const,
+
   invite: (token: string) => ['invite', token] as const,
 } as const;

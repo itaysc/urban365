@@ -93,6 +93,12 @@ export interface Yad2Config {
   /** Pause between requests while scraping, in ms. */
   delayMs: number;
   cacheDir: string;
+  /**
+   * Whether an agency (anyone who is not a platform admin) may see or use yad2.
+   * Anything but an explicit "false" leaves it on, so a typo does not silently
+   * take the importer away. Admins are not affected either way.
+   */
+  forAgencies: boolean;
 }
 
 export default (): {
@@ -155,5 +161,6 @@ export default (): {
     cdpUrl: process.env.YAD2_CDP_URL || undefined,
     delayMs: Number(process.env.YAD2_DELAY_MS ?? 150),
     cacheDir: process.env.YAD2_CACHE_DIR ?? path.resolve(process.cwd(), 'data/agencies'),
+    forAgencies: (process.env.YAD2_FOR_AGENCIES ?? 'true').toLowerCase() !== 'false',
   },
 });
