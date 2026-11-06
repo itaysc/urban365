@@ -112,7 +112,8 @@ export function AlertsPage() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <SiteHeader />
+      {/* Edge to edge, as on the profile page, so the bar's padding matches it. */}
+      <SiteHeader fullWidth />
 
       <main id="main" tabIndex={-1} className="mx-auto flex w-full max-w-3xl flex-col gap-5 p-4 sm:p-6">
         <SavedTabs />

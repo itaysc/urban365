@@ -19,10 +19,10 @@ interface Props {
   /** Said beside the logo — the agency name, on the pages that belong to one. */
   subtitle?: ReactNode;
   /**
-   * Edge to edge instead of capped.
-   *
-   * App chrome over a sidebar: a bar that stops short of the window leaves the sidebar
-   * floating in from it. The buyer's pages are capped to match their content.
+   * Edge to edge. On by default, so the bar lines up on every page — a capped bar on
+   * the public pages sat inboard of the one over the dashboard. Pass false only for a
+   * page whose content is deliberately narrower than the window and the bar should
+   * follow it.
    */
   fullWidth?: boolean;
 }
@@ -62,7 +62,7 @@ const ASKED_FOR: Record<LoginIntent, { because?: string; then?: string }> = {
   valuation: { because: 'הערכת שווי פתוחה למשתמשים רשומים', then: '/valuation' },
 };
 
-export function SiteHeader({ leading, subtitle, fullWidth = false }: Props) {
+export function SiteHeader({ leading, subtitle, fullWidth = true }: Props) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
