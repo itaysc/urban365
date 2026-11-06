@@ -42,10 +42,60 @@ const CLOSED = [
   '/reset-password',
 ];
 
+/**
+ * Crawlers that take what is on the site for something other than a search result:
+ * training data, answers that replace a visit, and bulk copies of the index. None of
+ * them sends a visitor here, so each is refused outright.
+ */
+const REFUSED = [
+  'GPTBot',
+  'ChatGPT-User',
+  'OAI-SearchBot',
+  'ClaudeBot',
+  'Claude-Web',
+  'anthropic-ai',
+  'PerplexityBot',
+  'CCBot',
+  'Bytespider',
+  'Amazonbot',
+  'Meta-ExternalAgent',
+  'Meta-ExternalFetcher',
+  'Diffbot',
+  'Omgilibot',
+  'ImagesiBot',
+  'cohere-ai',
+  'AhrefsBot',
+  'SemrushBot',
+  'MJ12bot',
+  'DotBot',
+  'PetalBot',
+  'DataForSeoBot',
+  'Scrapy',
+];
+
+const closedRules = CLOSED.map((path) => `Disallow: ${path}`);
+
 export function robotsTxt(appUrl: string): string {
   return [
+    '# Scraping this site is not permitted.',
+    '# The listings, agency pages and city pages belong to Urban365 and to the people who',
+    '# published them. Crawlers that ignore this file, or that copy pages in bulk, may be',
+    '# rate-limited or blocked.',
+    '',
+    '# Google Search. Public pages are open; everything behind a sign-in is closed.',
+    'User-agent: Googlebot',
+    'Allow: /',
+    ...closedRules,
+    '',
+    '# Google AI training. Opting out here does not affect Google Search rankings.',
+    'User-agent: Google-Extended',
+    'Disallow: /',
+    '',
+    '# Refused outright: AI training and answer engines, and bulk scrapers.',
+    ...REFUSED.flatMap((agent) => [`User-agent: ${agent}`, 'Disallow: /', '']),
+    '# Every other crawler: public pages are open; everything behind a sign-in is closed.',
     'User-agent: *',
-    ...CLOSED.map((path) => `Disallow: ${path}`),
+    ...closedRules,
     '',
     `Sitemap: ${appUrl}/sitemap.xml`,
     '',

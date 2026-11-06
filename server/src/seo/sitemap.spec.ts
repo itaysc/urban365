@@ -18,9 +18,20 @@ const entry = (city: string, counts: Partial<CityEntry['counts']> = {}): CityEnt
   updatedAt: new Date('2026-10-29T11:00:00Z'),
 });
 
+/** The rules that apply to one crawler: its own group, as the file is read per group. */
+function groupFor(txt: string, agent: string): string {
+  const group = txt.split('\n\n').find((g) => g.includes(`User-agent: ${agent}\n`));
+  if (!group) throw new Error(`no group for ${agent}`);
+  return group;
+}
+
 describe('robotsTxt', () => {
   it('points at the sitemap on the public site', () => {
     expect(robotsTxt(APP)).toContain(`Sitemap: ${APP}/sitemap.xml`);
+  });
+
+  it('says plainly that scraping is not permitted', () => {
+    expect(robotsTxt(APP)).toContain('Scraping this site is not permitted.');
   });
 
   it('keeps crawlers out of the parts that need an account', () => {
@@ -33,9 +44,32 @@ describe('robotsTxt', () => {
     expect(txt).toContain('Disallow: /join');
   });
 
-  it('leaves the storefront open', () => {
-    expect(robotsTxt(APP)).not.toMatch(/^Disallow: \/$/mu);
+  it('leaves the storefront open to every crawler that is not refused', () => {
+    const star = groupFor(robotsTxt(APP), '*');
+    expect(star).not.toMatch(/^Disallow: \/$/mu);
     expect(robotsTxt(APP)).not.toContain('Disallow: /nadlan');
+  });
+
+  it('gives Googlebot its own group, with the storefront open and the account pages shut', () => {
+    const google = groupFor(robotsTxt(APP), 'Googlebot');
+
+    expect(google).toContain('Allow: /');
+    expect(google).not.toMatch(/^Disallow: \/$/mu);
+    expect(google).toContain('Disallow: /app');
+    expect(google).toContain('Disallow: /account');
+  });
+
+  it('opts out of Google AI training without touching Google Search', () => {
+    expect(groupFor(robotsTxt(APP), 'Google-Extended')).toMatch(/^Disallow: \/$/mu);
+    expect(groupFor(robotsTxt(APP), 'Googlebot')).not.toContain('Google-Extended');
+  });
+
+  it('refuses AI training crawlers and bulk scrapers by name', () => {
+    const txt = robotsTxt(APP);
+
+    for (const agent of ['GPTBot', 'ClaudeBot', 'CCBot', 'Bytespider', 'AhrefsBot']) {
+      expect(groupFor(txt, agent), agent).toMatch(/^Disallow: \/$/mu);
+    }
   });
 });
 

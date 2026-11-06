@@ -92,9 +92,15 @@ async function checkRobots() {
     warn(`robots.txt points at ${sitemap}, expected it to end in /sitemap.xml`);
   }
 
-  const disallowed = all(body, /^Disallow:\s*(\S+)$/gm);
+  const groups = robotsGroups(body);
 
-  if (disallowed.includes('/')) error('robots.txt disallows the whole site');
+  // Each crawler is held to the rules in its own group. Reading the whole file would take
+  // a refusal aimed at GPTBot as a refusal of the whole site.
+  const star = groups.get('*');
+  if (!star) return error('robots.txt has no rules for every other crawler (User-agent: *)');
+  const disallowed = star.disallow;
+
+  if (disallowed.includes('/')) error('robots.txt disallows the whole site for every other crawler');
   for (const open of ['/nadlan', '/sitemap.xml']) {
     if (disallowed.some((d) => open.startsWith(d))) {
       error(`robots.txt disallows ${open}, which has to be crawlable`);
@@ -105,6 +111,69 @@ async function checkRobots() {
   for (const closed of ['/app', '/admin', '/api/']) {
     if (!disallowed.includes(closed)) warn(`robots.txt does not disallow ${closed}`);
   }
+
+  // Google Search gets its own group, so it must be open to the storefront and shut out
+  // of the same parts as everyone else.
+  const google = groups.get('Googlebot');
+  if (!google) {
+    error('robots.txt gives Googlebot no rules of its own');
+  } else {
+    if (google.disallow.includes('/')) error('robots.txt shuts Googlebot out of the whole site');
+    if (!google.allow.includes('/')) warn('robots.txt does not say Googlebot may crawl /');
+    for (const closed of ['/app', '/admin', '/api/']) {
+      if (!google.disallow.includes(closed)) warn(`robots.txt does not disallow ${closed} for Googlebot`);
+    }
+  }
+
+  if (!groups.get('Google-Extended')?.disallow.includes('/')) {
+    error('robots.txt does not opt out of Google AI training (Google-Extended)');
+  }
+
+  // Refused by name. Keep this list in step with REFUSED in server/src/seo/sitemap.ts.
+  const REFUSED = [
+    'GPTBot', 'ChatGPT-User', 'OAI-SearchBot', 'ClaudeBot', 'Claude-Web', 'anthropic-ai',
+    'PerplexityBot', 'CCBot', 'Bytespider', 'Amazonbot', 'Meta-ExternalAgent',
+    'Meta-ExternalFetcher', 'Diffbot', 'Omgilibot', 'ImagesiBot', 'cohere-ai', 'AhrefsBot',
+    'SemrushBot', 'MJ12bot', 'DotBot', 'PetalBot', 'DataForSeoBot', 'Scrapy',
+  ];
+  for (const agent of REFUSED) {
+    if (!groups.get(agent)?.disallow.includes('/')) error(`robots.txt does not refuse ${agent}`);
+  }
+}
+
+/**
+ * robots.txt split into groups: the User-agent lines a group opens with, and the Allow and
+ * Disallow rules under them. A new group starts after rules, so consecutive User-agent
+ * lines share one group.
+ */
+function robotsGroups(body) {
+  const groups = new Map();
+  let agents = [];
+  let inRules = false;
+
+  for (const raw of body.split(/\r?\n/)) {
+    const line = raw.replace(/#.*$/u, '').trim();
+    if (line === '') continue;
+
+    const colon = line.indexOf(':');
+    if (colon === -1) continue;
+    const key = line.slice(0, colon).trim().toLowerCase();
+    const value = line.slice(colon + 1).trim();
+
+    if (key === 'user-agent') {
+      if (inRules) {
+        agents = [];
+        inRules = false;
+      }
+      agents.push(value);
+      if (!groups.has(value)) groups.set(value, { allow: [], disallow: [] });
+    } else if (key === 'allow' || key === 'disallow') {
+      inRules = true;
+      for (const agent of agents) groups.get(agent)[key].push(value);
+    }
+  }
+
+  return groups;
 }
 
 // ------------------------------------------------------------------ sitemaps
