@@ -1,13 +1,26 @@
-import { Controller, Get, Header, Param, Req, Res } from '@nestjs/common';
+import {
+  CallHandler,
+  Controller,
+  ExecutionContext,
+  Get,
+  Header,
+  Injectable,
+  NestInterceptor,
+  Param,
+  Req,
+  Res,
+  UseInterceptors,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
+import type { Observable } from 'rxjs';
 import type { MailConfig } from '../config/configuration.js';
 import { Public } from '../auth/decorators/public.decorator.js';
 import { SECTIONS, type Section } from '../yad2/yad2.types.js';
 import { CityPageService } from './city-page.service.js';
 import { esc } from './html.js';
-import { page, SESSION_SCRIPT_HASH } from './layout.js';
+import { currentSessionApiOrigin, page, seoCsp, setSessionApi } from './layout.js';
 import { placeScriptHash, placeSearchScript } from './place-script.js';
 import { ListingPageService } from './listing-page.service.js';
 import { idFromSlug, listingPath } from './listing-slug.js';
@@ -37,50 +50,27 @@ import {
  */
 const CACHE = 'public, max-age=300, stale-while-revalidate=3600';
 
-/**
- * A policy of their own, because helmet's default one is written for the API.
- *
- * Its `img-src 'self' data:` would blank every listing photograph on these pages — the
- * covers are served from the feed's CDN and from our own bucket, neither of which is
- * this origin. Everything else is tightened rather than loosened in exchange: no
- * scripts at all, since the page is text and links and nothing on it runs, and no
- * frames, forms or base rewriting.
- */
-const CSP = [
-  "default-src 'none'",
-  /*
-   * `'self'` as well as https: the favicon is served from this origin, and without it
-   * the policy blocked the site's own icon on every one of these pages — invisibly,
-   * since a missing favicon looks like a browser being slow.
-   */
-  "img-src 'self' https: data:",
-  // The stylesheet is inline, which is the whole reason the page arrives in one request.
-  "style-src 'unsafe-inline'",
-  /*
-   * One script, named by its hash — the session check in `layout.ts`. Not
-   * `unsafe-inline`: the page is assembled from a scraped feed, and a policy that
-   * allowed any inline script would be trusting every street name in the country.
-   */
-  `script-src '${SESSION_SCRIPT_HASH}'`,
-  // Which is what that script talks to, and the only thing this page talks to at all.
-  "connect-src 'self'",
-  "base-uri 'none'",
-  "form-action 'none'",
-  "frame-ancestors 'none'",
-].join('; ');
-
-/**
- * The front door submits a search and asks for place suggestions, so it is the one
- * page allowed a form and a second script. The script is named by its hash, same as
- * the session check, and it may only talk to this origin and the API.
- */
-function homeCsp(scriptHash: string, apiOrigin: string): string {
-  return CSP.replace(`script-src '${SESSION_SCRIPT_HASH}'`, `script-src '${SESSION_SCRIPT_HASH}' '${scriptHash}'`)
-    .replace("connect-src 'self'", `connect-src 'self' ${apiOrigin}`)
-    .replace("form-action 'none'", "form-action 'self'");
-}
-
 const isSection = (value: string): value is Section => (SECTIONS as string[]).includes(value);
+
+/**
+ * Puts the page policy on every response from this controller.
+ *
+ * The home page replaces it with its own, which also allows the place-search script
+ * and the search form. Set before the handler, so that replacement wins.
+ */
+@Injectable()
+class SeoPolicy implements NestInterceptor {
+  intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
+    const http = context.switchToHttp();
+    const path = http.getRequest<Request>().path ?? '';
+    const origin = currentSessionApiOrigin();
+    // The front door sets its own policy, which also names the place-search script.
+    if (origin && path !== '/' && path !== '') {
+      http.getResponse<Response>().setHeader('Content-Security-Policy', seoCsp(origin));
+    }
+    return next.handle();
+  }
+}
 
 /**
  * The part of the site a search engine can read.
@@ -103,6 +93,7 @@ const isSection = (value: string): value is Section => (SECTIONS as string[]).in
 // Generous next to the global 300/min: a crawler working through a few hundred cities
 // is the traffic these pages exist for, and rate-limiting it is rate-limiting the point.
 @Throttle({ default: { limit: 1_200, ttl: 60_000 } })
+@UseInterceptors(SeoPolicy)
 @Controller()
 export class SeoController {
   private readonly appUrl: string;
@@ -124,7 +115,9 @@ export class SeoController {
     const mail = config.getOrThrow<MailConfig>('mail');
     this.appUrl = mail.appUrl.replace(/\/+$/u, '');
     this.placeScript = placeSearchScript(mail.apiUrl);
-    this.homeCsp = homeCsp(placeScriptHash(this.placeScript), new URL(mail.apiUrl).origin);
+    // The bar's session check calls this host. Recorded once, before any page renders.
+    setSessionApi(mail.apiUrl);
+    this.homeCsp = seoCsp(new URL(mail.apiUrl).origin, placeScriptHash(this.placeScript));
   }
 
   /**
@@ -219,7 +212,6 @@ export class SeoController {
   @Get('nadlan')
   @Header('Content-Type', 'text/html; charset=utf-8')
   @Header('Cache-Control', CACHE)
-  @Header('Content-Security-Policy', CSP)
   async index(): Promise<string> {
     const [groups, held, links] = await Promise.all([
       this.cities.featuredByDistrict(),
@@ -237,7 +229,6 @@ export class SeoController {
   @Get('nadlan/cities')
   @Header('Content-Type', 'text/html; charset=utf-8')
   @Header('Cache-Control', CACHE)
-  @Header('Content-Security-Policy', CSP)
   async allCities(): Promise<string> {
     const [groups, links] = await Promise.all([this.cities.allByDistrict(), this.footer()]);
     return renderAllCitiesPage(groups, this.appUrl, links);
@@ -261,7 +252,6 @@ export class SeoController {
   @Get('nadlan/credits')
   @Header('Content-Type', 'text/html; charset=utf-8')
   @Header('Cache-Control', CACHE)
-  @Header('Content-Security-Policy', CSP)
   async credits(): Promise<string> {
     return renderCreditsPage(this.appUrl, await this.footer());
   }
@@ -274,7 +264,6 @@ export class SeoController {
       res
         .status(404)
         .type('text/html; charset=utf-8')
-        .set('Content-Security-Policy', CSP)
         .send(this.missing('הנכס לא נמצא', 'הקישור לא מפנה לנכס שאנחנו מכירים.'));
       return;
     }
@@ -285,7 +274,6 @@ export class SeoController {
       res
         .status(410)
         .type('text/html; charset=utf-8')
-        .set('Content-Security-Policy', CSP)
         .send(renderGonePage(result, this.appUrl, await this.footer()));
       return;
     }
@@ -298,7 +286,6 @@ export class SeoController {
 
     res
       .type('text/html; charset=utf-8')
-      .set('Content-Security-Policy', CSP)
       .set('Cache-Control', CACHE)
       .send(renderListingPage(result.listing, result.similar, this.appUrl, await this.footer()));
   }
@@ -314,7 +301,7 @@ export class SeoController {
     @Param('city') city: string,
     @Res() res: Response,
   ): Promise<void> {
-    res.type('text/html; charset=utf-8').set('Content-Security-Policy', CSP);
+    res.type('text/html; charset=utf-8');
 
     if (!isSection(section)) {
       // A made-up section is a made-up page, and saying so with a 404 keeps it out of

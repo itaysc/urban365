@@ -1,4 +1,5 @@
-import { useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Bell, Building2, Heart, Menu, Plus, X } from 'lucide-react';
@@ -103,6 +104,15 @@ export function SiteHeader({ leading, subtitle, fullWidth = true }: Props) {
   });
 
   const sells = (myListings?.length ?? 0) > 0;
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setMenuOpen(false);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [menuOpen]);
 
   return (
     <header className="sticky top-8 z-30 border-b border-slate-200 bg-white/95 backdrop-blur">
@@ -388,36 +398,63 @@ export function SiteHeader({ leading, subtitle, fullWidth = true }: Props) {
         </div>
       </div>
 
-      {menuOpen && !subtitle && (
-        <nav id="site-menu" className="flex flex-col gap-0.5 border-t border-slate-200 px-3 py-2 sm:hidden">
-          <Link to="/agencies" className={navLink} onClick={() => setMenuOpen(false)}>
-            סוכנויות
-          </Link>
-          <a href="/nadlan" className={navLink} onClick={() => setMenuOpen(false)}>
-            מחירים לפי עיר
-          </a>
-          <Link to="/mortgage" className={navLink} onClick={() => setMenuOpen(false)}>
-            מחשבון משכנתא
-          </Link>
-          {user ? (
-            <Link to="/valuation" className={navLink} onClick={() => setMenuOpen(false)}>
-              הערכת שווי
-            </Link>
-          ) : (
+      {!subtitle &&
+        createPortal(
+          <>
             <button
               type="button"
-              className={`${navLink} text-start`}
-              onClick={() => {
-                setMenuOpen(false);
-                setLoginIntent('valuation');
-                setLoginOpen(true);
-              }}
+              aria-hidden={!menuOpen}
+              tabIndex={-1}
+              className={`fixed inset-0 z-40 bg-slate-900/40 transition-opacity sm:hidden ${
+                menuOpen ? 'opacity-100' : 'pointer-events-none opacity-0'
+              }`}
+              onClick={() => setMenuOpen(false)}
+            />
+            <nav
+              id="site-menu"
+              aria-hidden={!menuOpen}
+              className={`fixed inset-y-0 start-0 z-50 flex w-72 max-w-[85vw] flex-col gap-1 bg-white p-4 shadow-xl transition-transform duration-200 ease-out sm:hidden ${
+                menuOpen ? 'translate-x-0' : 'pointer-events-none translate-x-full'
+              }`}
             >
-              הערכת שווי
-            </button>
-          )}
-        </nav>
-      )}
+              <button
+                type="button"
+                className="mb-1 inline-flex h-9 w-9 items-center justify-center self-start rounded-lg text-slate-700 hover:bg-slate-100"
+                aria-label="סגירה"
+                onClick={() => setMenuOpen(false)}
+              >
+                <X className="h-5 w-5" aria-hidden />
+              </button>
+              <Link to="/agencies" className={navLink} onClick={() => setMenuOpen(false)}>
+                סוכנויות
+              </Link>
+              <a href="/nadlan" className={navLink} onClick={() => setMenuOpen(false)}>
+                מחירים לפי עיר
+              </a>
+              <Link to="/mortgage" className={navLink} onClick={() => setMenuOpen(false)}>
+                מחשבון משכנתא
+              </Link>
+              {user ? (
+                <Link to="/valuation" className={navLink} onClick={() => setMenuOpen(false)}>
+                  הערכת שווי
+                </Link>
+              ) : (
+                <button
+                  type="button"
+                  className={`${navLink} text-start`}
+                  onClick={() => {
+                    setMenuOpen(false);
+                    setLoginIntent('valuation');
+                    setLoginOpen(true);
+                  }}
+                >
+                  הערכת שווי
+                </button>
+              )}
+            </nav>
+          </>,
+          document.body,
+        )}
 
       <LoginDialog
         open={loginOpen}

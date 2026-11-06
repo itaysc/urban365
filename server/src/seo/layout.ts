@@ -13,6 +13,38 @@ const ICON = {
 };
 
 /**
+ * Where the session check calls.
+ *
+ * Same-origin `/api` is wrong on these pages. They are served on the public site, and
+ * `/api` there is the app itself — the request comes back as HTML, the check gives up,
+ * and a signed-in visitor is shown התחברות. The cookie lives on the API host, so the
+ * call has to go there. The address is this server's, not a visitor's, which is why it
+ * may sit in the document while a name may not.
+ */
+const SAME_ORIGIN_API = '/api/v1';
+let sessionApiBase = SAME_ORIGIN_API;
+let sessionApiOrigin: string | null = null;
+
+/** The origin the session check is allowed to call, once `setSessionApi` has run. */
+export function currentSessionApiOrigin(): string | null {
+  return sessionApiOrigin;
+}
+
+export function setSessionApi(apiUrl: string): void {
+  if (apiUrl === SAME_ORIGIN_API) {
+    sessionApiBase = SAME_ORIGIN_API;
+    sessionApiOrigin = null;
+    return;
+  }
+  const parsed = new URL(apiUrl);
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    throw new Error('API URL cannot be embedded in the session check');
+  }
+  sessionApiBase = `${parsed.origin}/api/v1`;
+  sessionApiOrigin = parsed.origin;
+}
+
+/**
  * The one piece of JavaScript on these pages: who is signed in.
  *
  * It cannot be done on the server. These pages are cached and served to every visitor
@@ -20,19 +52,25 @@ const ICON = {
  * next — so the document stays identical for everybody and the browser personalises
  * three elements of the bar after it loads.
  *
- * Everything that matters for a crawler is already in the HTML; this only swaps a
- * sign-in link for an account link. It fails silently and leaves the signed-out bar,
- * which is the correct answer for a visitor who is in fact signed out and for one
- * whose network ate the request.
+ * The address it calls is read from a meta tag, so this text does not change between
+ * deploys and the hash that allows it stays one value. It fails silently and leaves
+ * the signed-out bar, which is the correct answer for a visitor who is in fact signed
+ * out and for one whose network ate the request.
  */
-const SESSION_SCRIPT = `fetch("/api/v1/auth/me",{credentials:"same-origin"})
+const SESSION_SCRIPT = `var m=document.querySelector('meta[name="u365-api"]');
+var b=m&&m.content?m.content:"/api/v1";
+fetch(b+"/auth/me",{credentials:"include"})
 .then(function(r){return r.ok?r.json():null})
 .then(function(d){
 var u=d&&d.user;if(!u)return;
 var a=document.getElementById("u365-account");
 var i=document.getElementById("u365-signin");
 var s=document.getElementById("u365-searches");
-if(a){a.textContent=u.firstName||"החשבון שלי";a.hidden=false;}
+if(a){
+a.textContent=u.firstName||"החשבון שלי";
+if(u.accountType!=="agency"&&u.platformRole!=="admin"){a.href=a.href.replace(/\\/app\\/profile$/,"/account");}
+a.hidden=false;
+}
 if(s){s.hidden=false;}
 if(i){i.hidden=true;}
 }).catch(function(){});`;
@@ -46,6 +84,30 @@ if(i){i.hidden=true;}
  * still cannot execute.
  */
 export const SESSION_SCRIPT_HASH = `sha256-${createHash('sha256').update(SESSION_SCRIPT).digest('base64')}`;
+
+/**
+ * The policy for one of these pages.
+ *
+ * `connect-src` names the API as well as this origin: the session check calls the API
+ * host, and a policy of `'self'` alone would block it on the public site, where this
+ * origin is the app and the API is a subdomain of it.
+ */
+export function seoCsp(apiOrigin: string, extraScriptHash?: string): string {
+  const scripts = extraScriptHash
+    ? `'${SESSION_SCRIPT_HASH}' '${extraScriptHash}'`
+    : `'${SESSION_SCRIPT_HASH}'`;
+
+  return [
+    "default-src 'none'",
+    "img-src 'self' https: data:",
+    "style-src 'unsafe-inline'",
+    `script-src ${scripts}`,
+    `connect-src 'self' ${apiOrigin}`,
+    "base-uri 'none'",
+    extraScriptHash ? "form-action 'self'" : "form-action 'none'",
+    "frame-ancestors 'none'",
+  ].join('; ');
+}
 
 export interface PageOptions {
   title: string;
@@ -108,7 +170,8 @@ a{color:#1d4ed8}
  * signed-out bar, always, which is also what most of these visitors are.
  */
 header.site{position:sticky;top:0;z-index:30;background:rgb(255 255 255 / .95);
-  backdrop-filter:blur(8px);border-bottom:1px solid #e2e8f0}
+  border-bottom:1px solid #e2e8f0}
+@media (min-width:40rem){header.site{backdrop-filter:blur(8px)}}
 header.site .wrap,header.site .band{display:flex;align-items:center;justify-content:space-between;gap:.75rem;
   height:3.5rem}
 .band{padding-inline:1rem}
@@ -146,23 +209,30 @@ footer.site .band{max-width:80rem;margin-inline:auto}
  */
 .menubox{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
   clip:rect(0,0,0,0);white-space:nowrap;border:0}
-.burger{display:none}
+.burger,.shade,.drawer-x{display:none}
 .burger svg{width:1.375rem;height:1.375rem}
 .burger .shut{display:none}
 /* The words fold away on a phone and the icons stay, exactly as the app does it.
-   The links beside the logo move into the menu the button opens. */
+   The links beside the logo move into a drawer that slides in from the right. */
 @media (max-width:40rem){
   .burger{display:inline-flex;align-items:center;justify-content:center;width:2.25rem;height:2.25rem;
     margin-inline-end:.125rem;border-radius:.5rem;color:#334155;cursor:pointer}
   .burger:hover{background:#f1f5f9}
-  .navl .here{display:none;position:absolute;z-index:40;inset-inline:0;top:100%;
-    flex-direction:column;align-items:stretch;gap:.125rem;margin:0;padding:.5rem .75rem .75rem;
-    border:0;border-bottom:1px solid #e2e8f0;background:#fff;
-    box-shadow:0 8px 16px rgb(15 23 42 / .06)}
-  .menubox:checked ~ .here{display:flex}
+  .shade{display:block;position:fixed;inset:0;z-index:40;background:rgb(15 23 42 / .4);
+    opacity:0;pointer-events:none;transition:opacity .2s ease}
+  .navl .here{position:fixed;z-index:50;inset-block:0;inset-inline-start:0;width:18rem;max-width:85vw;
+    flex-direction:column;align-items:stretch;gap:.25rem;margin:0;padding:1rem;
+    border:0;background:#fff;box-shadow:0 12px 32px rgb(15 23 42 / .18);
+    transform:translateX(100%);transition:transform .2s ease;pointer-events:none}
+  .menubox:checked ~ .shade{opacity:1;pointer-events:auto}
+  .menubox:checked ~ .here{transform:translateX(0);pointer-events:auto}
   .menubox:checked ~ .burger .open{display:none}
   .menubox:checked ~ .burger .shut{display:block}
   .navl .here a{padding:.75rem .875rem}
+  .drawer-x{align-self:flex-start;display:inline-flex;align-items:center;justify-content:center;
+    width:2.25rem;height:2.25rem;margin-bottom:.25rem;border-radius:.5rem;color:#334155;cursor:pointer}
+  .drawer-x:hover{background:#f1f5f9}
+  .drawer-x svg{width:1.375rem;height:1.375rem}
   .navr .word{display:none}
 }
 nav.crumbs{font-size:.8125rem;color:#64748b;padding:.75rem 0}
@@ -446,6 +516,7 @@ export function page(options: PageOptions): string {
 <meta property="og:description" content="${esc(options.description)}">
 <meta property="og:url" content="${esc(options.canonical)}">
 <link rel="icon" type="image/svg+xml" href="${esc(options.appUrl)}/favicon.svg">
+<meta name="u365-api" content="${esc(sessionApiBase)}">
 <style>${STYLES}</style>
 ${blocks}
 </head>
@@ -455,7 +526,9 @@ ${blocks}
 <input id="u365-menu" class="menubox" type="checkbox">
 <label class="burger" for="u365-menu" aria-label="תפריט">${ICON.menu}${ICON.close}</label>
 <a class="brand" href="${esc(options.appUrl)}/">Urban<span>365</span></a>
+<label class="shade" for="u365-menu" aria-hidden="true"></label>
 <nav class="here">
+<label class="drawer-x" for="u365-menu" aria-label="סגירה">${ICON.close.replace(' class="shut"', '')}</label>
 <a href="${esc(options.appUrl)}/agencies">סוכנויות</a>
 <a href="/nadlan"${options.onCityPages ? ' aria-current="page"' : ''}>מחירים לפי עיר</a>
 <a href="${esc(options.appUrl)}/mortgage">מחשבון משכנתא</a>
