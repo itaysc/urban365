@@ -361,6 +361,20 @@ main.door{padding:0 0 3rem}
 .more a{color:#1d4ed8}
 .credit{margin-top:1.5rem;font-size:.75rem;color:#64748b}
 .credit a{color:inherit}
+/* The city page's cover: the same photograph the index card uses, full width of the
+   column, with the heading on it. These rules come last so they beat the plain h1. */
+.citycover{position:relative;display:flex;align-items:flex-end;min-height:13rem;
+  margin:.5rem -1rem 1.5rem;overflow:hidden;background:#e2e8f0}
+@media (min-width:40rem){.citycover{min-height:16rem;border-radius:1rem}}
+.citycover img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.citycover figcaption{position:relative;z-index:1;width:100%;margin:0;padding:4.5rem 1.25rem 1rem;
+  background:linear-gradient(to top,rgb(15 23 42 / .82),rgb(15 23 42 / .15) 72%,transparent);
+  font-style:normal}
+.citycover h1{margin:0;color:#fff;font-size:1.75rem;line-height:1.25;
+  text-shadow:0 1px 2px rgb(0 0 0 / .4)}
+@media (min-width:40rem){.citycover h1{font-size:2.125rem}}
+.citycover .by{display:block;margin-top:.25rem;font-size:.5rem;color:rgb(255 255 255 / .85)}
+.citycover .by a{color:inherit;text-decoration:underline;text-underline-offset:.15rem}
 `;
 
 /**

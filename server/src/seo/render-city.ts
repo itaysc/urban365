@@ -5,6 +5,8 @@ import { toSlug } from './city-slug.js';
 import { badgesFor } from './badges.js';
 import { listingPath } from './listing-slug.js';
 import { addressLine, esc, hebrewDate, number, price, priceWords, properties } from './html.js';
+import { CITY_PHOTOS } from './city-photos.js';
+import { cityKey } from '../listings/city-name.js';
 import { breadcrumbs, page } from './layout.js';
 
 /**
@@ -91,6 +93,28 @@ function searchUrl(appUrl: string, section: Section, city: string, extra: Record
 }
 
 const pageUrl = (section: Section, city: string) => `/nadlan/${section}/${encodeURIComponent(toSlug(city))}`;
+
+/**
+ * The city's own photograph, with the heading on it.
+ *
+ * The same picture the index card uses. A city we have no photograph for keeps the
+ * plain heading, rather than a grey band with words on it.
+ *
+ * The credit sits on the picture because that is where the licence asks for it. `alt`
+ * stays empty: the heading already names the city, and reading both would say it twice.
+ */
+function cover(city: string, heading: string): string {
+  const picture = CITY_PHOTOS[cityKey(city)];
+  if (!picture) return `<h1>${esc(heading)}</h1>`;
+
+  return `<figure class="citycover">
+<img src="${esc(picture.url)}" alt="" width="960" height="540" fetchpriority="high">
+<figcaption>
+<h1>${esc(heading)}</h1>
+<span class="by"><a href="${esc(picture.page)}" rel="noopener nofollow">${esc(picture.credit)}</a></span>
+</figcaption>
+</figure>`;
+}
 
 /** The opening paragraph: the whole market in two sentences, with its own caveat. */
 function lede(data: CityPage): string {
@@ -355,7 +379,7 @@ export function renderCityPage(data: CityPage, appUrl: string, links = ''): stri
     : '';
 
   const body = `${trail.html}
-<h1>${esc(heading)}</h1>
+${cover(data.city, heading)}
 <p class="lede">${esc(lede(data))}</p>
 ${figures(data)}
 ${whatTheFiguresMean(summary)}

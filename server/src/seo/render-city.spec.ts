@@ -130,6 +130,22 @@ describe('renderCityPage', () => {
     expect(description).not.toContain('לפי סוג נכס');
   });
 
+  it('puts the city photograph behind the heading', () => {
+    const html = renderCityPage(build(healthy()), APP);
+
+    expect(html).toContain('class="citycover"');
+    expect(html).toContain('Kugel_Sokolov_Junction_Holon');
+    expect(html).toContain('<h1>נדל״ן למכירה בחולון</h1>');
+    expect(html).toContain('Danbus43Maalit72');
+  });
+
+  it('keeps a plain heading when the city has no photograph', () => {
+    const html = renderCityPage(build(healthy(), { city: 'עיר בלי תמונה' }), APP);
+
+    expect(html).not.toContain('class="citycover"');
+    expect(html).toContain('<h1>נדל״ן למכירה בעיר בלי תמונה</h1>');
+  });
+
   it('escapes a city name rather than trusting the feed it came from', () => {
     const html = renderCityPage(build(healthy(), { city: '<img src=x onerror=alert(1)>' }), APP);
 
