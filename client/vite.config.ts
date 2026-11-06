@@ -35,18 +35,30 @@ export default defineConfig({
       '/api': { target: serverTarget, changeOrigin: true },
       '/health': { target: serverTarget, changeOrigin: true },
       /*
-       * The server-rendered pages, which are real paths on this origin and not routes
-       * in the client's table — so without these the router answers its own 404 and the
-       * header's "מחירים לפי עיר" leads nowhere.
+       * The server-rendered pages. They are not routes in the client's table, so if
+       * Vite answers them the router shows its own 404 — which is what a city link
+       * did while these sat below the `/` rule. Matching is first-prefix-wins, and
+       * `/` is a prefix of every path, so these have to come first.
        *
-       * The same three paths the static host has to proxy in production; see the rules
-       * in public/_redirects and PRODUCTION.md. Keeping dev and production pointed at
-       * the same set is the point: a link that works here and 404s there is the kind of
-       * difference nobody finds until it is live.
+       * The same paths the static host proxies in production; see public/_redirects
+       * and PRODUCTION.md.
        */
       '/nadlan': { target: serverTarget, changeOrigin: true },
       '/sitemap': { target: serverTarget, changeOrigin: true },
       '/robots.txt': { target: serverTarget, changeOrigin: true },
+      /*
+       * The front door, and only the front door. `bypass` returns a path to keep
+       * serving locally, and nothing to let the request through — so `/` is the HTML
+       * page and `/src` stays the app.
+       */
+      '/': {
+        target: serverTarget,
+        changeOrigin: true,
+        bypass(req) {
+          const path = (req.url ?? '').split('?')[0];
+          return path === '/' ? undefined : req.url;
+        },
+      },
     },
   },
   build: {

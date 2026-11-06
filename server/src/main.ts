@@ -1,6 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
-import { Logger, ValidationPipe, type INestApplication } from '@nestjs/common';
+import { Logger, RequestMethod, ValidationPipe, type INestApplication } from '@nestjs/common';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import { AppModule } from './app.module.js';
@@ -77,6 +77,7 @@ async function bootstrap() {
    */
   app.setGlobalPrefix('api/v1', {
     exclude: [
+      { path: '/', method: RequestMethod.GET },
       'health',
       'robots.txt',
       'sitemap.xml',

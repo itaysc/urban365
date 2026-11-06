@@ -1,19 +1,21 @@
-import { Controller, Get, Header, Param, Res } from '@nestjs/common';
+import { Controller, Get, Header, Param, Req, Res } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Throttle } from '@nestjs/throttler';
-import type { Response } from 'express';
+import type { Request, Response } from 'express';
 import type { MailConfig } from '../config/configuration.js';
 import { Public } from '../auth/decorators/public.decorator.js';
 import { SECTIONS, type Section } from '../yad2/yad2.types.js';
 import { CityPageService } from './city-page.service.js';
 import { esc } from './html.js';
 import { page, SESSION_SCRIPT_HASH } from './layout.js';
+import { placeScriptHash, placeSearchScript } from './place-script.js';
 import { ListingPageService } from './listing-page.service.js';
 import { idFromSlug, listingPath } from './listing-slug.js';
 import { renderCityPage } from './render-city.js';
 import { renderCreditsPage } from './render-credits.js';
 import { renderFooterLinks } from './footer.js';
 import { renderAllCitiesPage } from './render-all-cities.js';
+import { renderHomePage } from './render-home.js';
 import { renderIndexPage, totalIn } from './render-index.js';
 import { renderGonePage, renderListingPage } from './render-listing.js';
 import {
@@ -67,6 +69,17 @@ const CSP = [
   "frame-ancestors 'none'",
 ].join('; ');
 
+/**
+ * The front door submits a search and asks for place suggestions, so it is the one
+ * page allowed a form and a second script. The script is named by its hash, same as
+ * the session check, and it may only talk to this origin and the API.
+ */
+function homeCsp(scriptHash: string, apiOrigin: string): string {
+  return CSP.replace(`script-src '${SESSION_SCRIPT_HASH}'`, `script-src '${SESSION_SCRIPT_HASH}' '${scriptHash}'`)
+    .replace("connect-src 'self'", `connect-src 'self' ${apiOrigin}`)
+    .replace("form-action 'none'", "form-action 'self'");
+}
+
 const isSection = (value: string): value is Section => (SECTIONS as string[]).includes(value);
 
 /**
@@ -93,6 +106,8 @@ const isSection = (value: string): value is Section => (SECTIONS as string[]).in
 @Controller()
 export class SeoController {
   private readonly appUrl: string;
+  private readonly placeScript: string;
+  private readonly homeCsp: string;
 
   constructor(
     private readonly cities: CityPageService,
@@ -106,7 +121,10 @@ export class SeoController {
      * fixed here: moving it is a nine-file rename that has nothing to do with these
      * pages.
      */
-    this.appUrl = config.getOrThrow<MailConfig>('mail').appUrl.replace(/\/+$/u, '');
+    const mail = config.getOrThrow<MailConfig>('mail');
+    this.appUrl = mail.appUrl.replace(/\/+$/u, '');
+    this.placeScript = placeSearchScript(mail.apiUrl);
+    this.homeCsp = homeCsp(placeScriptHash(this.placeScript), new URL(mail.apiUrl).origin);
   }
 
   /**
@@ -172,6 +190,30 @@ export class SeoController {
       .type('application/xml; charset=utf-8')
       .set('Cache-Control', CACHE)
       .send(sitemapListingsXml(rows, this.appUrl));
+  }
+
+  /**
+   * The front door.
+   *
+   * A query string is an old search link, from when the results page lived here.
+   * Those go to `/search` rather than being ignored by a page that has no filters.
+   */
+  @Get()
+  async home(@Req() req: Request, @Res() res: Response): Promise<void> {
+    const query = req.originalUrl.includes('?') ? req.originalUrl.slice(req.originalUrl.indexOf('?')) : '';
+    if (query.length > 1) {
+      res.redirect(301, `${this.appUrl}/search${query}`);
+      return;
+    }
+
+    const [groups, links] = await Promise.all([this.cities.allByDistrict(), this.footer()]);
+    const html = renderHomePage(groups, this.appUrl, links, this.placeScript);
+
+    res
+      .type('text/html; charset=utf-8')
+      .set('Cache-Control', CACHE)
+      .set('Content-Security-Policy', this.homeCsp)
+      .send(html);
   }
 
   @Get('nadlan')

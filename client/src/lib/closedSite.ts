@@ -1,9 +1,10 @@
 /**
  * Paths a guest may still open while `SITE_CLOSED` is on.
  *
- * Signing in, recovering a password, accepting an invite, and answering a viewing
- * email all have to work or the closed site has no way in. The legal pages stay
- * because the login form links to them. Everything else goes back to the home page.
+ * The home page stays open because it is in the sitemap. Signing in, recovering a
+ * password, accepting an invite, and answering a viewing email all have to work or
+ * the closed site has no way in. The legal pages stay because the login form links
+ * to them. Everything else goes back to the home page.
  */
 const OPEN_WHEN_CLOSED = new Set([
   '/',

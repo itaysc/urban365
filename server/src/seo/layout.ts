@@ -55,6 +55,16 @@ export interface PageOptions {
   structuredData?: unknown[];
   /** Where the site proper lives, for the links that leave these pages. */
   appUrl: string;
+  /**
+   * The front door. Full width, with its own hero, rather than the column the city
+   * pages are read down.
+   */
+  door?: boolean;
+  /**
+   * A second inline script, only for the front door's place box. Hashed on its own
+   * and named in that page's policy; the city pages do not carry it.
+   */
+  extraScript?: string;
   /** Marks "מחירים לפי עיר" as the section being read. */
   onCityPages?: boolean;
   /**
@@ -96,8 +106,11 @@ a{color:#1d4ed8}
  */
 header.site{position:sticky;top:0;z-index:30;background:rgb(255 255 255 / .95);
   backdrop-filter:blur(8px);border-bottom:1px solid #e2e8f0}
-header.site .wrap{display:flex;align-items:center;justify-content:space-between;gap:.75rem;
+header.site .wrap,header.site .band{display:flex;align-items:center;justify-content:space-between;gap:.75rem;
   height:3.5rem}
+.band{padding-inline:1rem}
+footer.site .band{max-width:80rem;margin-inline:auto}
+@media (min-width:40rem){.band{padding-inline:2rem}}
 .navl,.navr{display:flex;align-items:center;gap:.75rem;min-width:0}
 .brand{font-size:1.25rem;font-weight:800;letter-spacing:-.025em;color:#1d4ed8;
   text-decoration:none}
@@ -263,6 +276,91 @@ footer.site .small{margin:1.5rem 0 0;padding-top:1rem;border-top:1px solid #f1f5
 .sitelinks a{color:#64748b;text-decoration:none;font-size:.8125rem;line-height:1.45}
 .sitelinks a:hover{color:#1d4ed8;text-decoration:underline}
 @media (max-width:30rem){h1{font-size:1.375rem}.figure dd{font-size:1.0625rem}}
+/*
+ * The front door, matched to the app's own home: a photograph, the question, then the
+ * cities as columns. These rules come last so they win over the column styles above.
+ */
+main.door{padding:0 0 3rem}
+.hero{position:relative;isolation:isolate;z-index:1}
+.hero .cover{position:absolute;inset:0;z-index:-1;width:100%;height:100%;object-fit:cover}
+.hero .veil{position:absolute;inset:0;z-index:-1;background:rgb(15 23 42 / .55)}
+.hero-inner{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;
+  gap:1.5rem;max-width:56rem;margin:0 auto;padding:4rem 1rem;text-align:center}
+@media (min-width:40rem){.hero-inner{padding:6rem 1rem}}
+.door h1{margin:0;color:#fff;font-size:1.875rem;font-weight:800;line-height:1.2;
+  text-shadow:0 1px 2px rgb(0 0 0 / .25)}
+@media (min-width:40rem){.door h1{font-size:2.25rem}}
+.hero .tag{margin:.5rem 0 0;color:rgb(255 255 255 / .9);font-size:1.125rem}
+.hero .budget{margin:0;color:rgb(255 255 255 / .9);font-size:.875rem;font-weight:500}
+.hero .budget a{color:#fff;font-weight:600;text-underline-offset:.25rem}
+.find{position:relative;width:100%;max-width:42rem}
+.suggest{position:absolute;z-index:30;inset-inline:0;top:100%;margin-top:.5rem;max-height:60vh;
+  overflow:auto;border:1px solid #e2e8f0;border-radius:.75rem;background:#fff;text-align:start;
+  color:#334155;box-shadow:0 10px 15px rgb(15 23 42 / .12)}
+.suggest[hidden]{display:none}
+.suggest .sg-note{margin:0;padding:.75rem 1rem .5rem;font-size:.875rem;color:#64748b}
+.suggest .sg-chips{display:flex;flex-wrap:wrap;gap:.5rem;padding:0 1rem .75rem}
+.suggest .sg-chip{display:flex;align-items:center;gap:.375rem;border:0;border-radius:.5rem;
+  background:#f1f5f9;padding:.375rem .625rem;font:inherit;font-size:.875rem;color:#334155;cursor:pointer}
+.suggest .sg-chip:hover{background:#e2e8f0}
+.suggest .sg-near{display:flex;width:100%;align-items:center;gap:.5rem;border:0;border-bottom:1px solid #f1f5f9;
+  background:transparent;padding:.75rem 1rem;font:inherit;font-size:.875rem;font-weight:600;color:#2563eb;
+  text-align:start;cursor:pointer}
+.suggest .sg-near:hover{background:#eff6ff}
+.suggest .sg-near:disabled{opacity:.5;cursor:default}
+.suggest .sg-err{margin:0;padding:.5rem 1rem;background:#fffbeb;color:#92400e;font-size:.75rem}
+.suggest .sg-bar{display:flex;align-items:center;justify-content:space-between;background:#f8fafc;padding:.5rem 1rem}
+.suggest h3{margin:0;padding:.5rem 1rem;background:#f8fafc;font-size:.875rem;font-weight:600;color:#0f172a}
+.suggest .sg-clear{border:0;background:transparent;padding:0;font:inherit;font-size:.75rem;color:#64748b;cursor:pointer}
+.suggest ul{list-style:none;margin:0;padding:0}
+.suggest .sg-row{display:flex;width:100%;align-items:baseline;justify-content:space-between;gap:.75rem;
+  border:0;background:transparent;padding:.625rem 1rem;font:inherit;font-size:.875rem;color:#475569;
+  text-align:start;cursor:pointer}
+.suggest .sg-row.on,.suggest .sg-row:hover{background:#f8fafc;color:#1d4ed8}
+.suggest .sg-row:disabled{opacity:.4;cursor:default}
+.suggest .sg-n{flex:none;font-size:.75rem;color:#64748b;font-variant-numeric:tabular-nums}
+.suggest strong{font-weight:600;color:#0f172a}
+.suggest .sg-empty{margin:0;padding:1.5rem 1rem;text-align:center;font-size:.875rem;color:#64748b}
+.suggest .sg-foot{display:flex;justify-content:space-between;border-top:1px solid #f1f5f9;padding:.75rem 1rem}
+.suggest .sg-foot button{border:0;background:transparent;padding:0;font:inherit;font-size:.875rem;cursor:pointer}
+.suggest .sg-reset{color:#64748b}
+.suggest .sg-reset:disabled{opacity:.4}
+.suggest .sg-ok{font-weight:600;color:#2563eb}
+.tabs{display:flex;justify-content:center;gap:.5rem;margin-bottom:1rem}
+.tab{position:relative;border-radius:9999px;padding:.5rem 1.25rem;font-size:.875rem;font-weight:600;
+  color:#fff;background:rgb(255 255 255 / .15);box-shadow:inset 0 0 0 1px rgb(255 255 255 / .4);cursor:pointer}
+.tab input{position:absolute;opacity:0;inset:0;margin:0;cursor:pointer}
+.tab:has(input:checked){background:#fff;color:#0f172a;box-shadow:0 10px 15px rgb(0 0 0 / .15)}
+.pill{display:flex;align-items:center;gap:.5rem;border-radius:9999px;background:#fff;padding:.5rem;
+  box-shadow:0 25px 50px rgb(0 0 0 / .25)}
+.pill input{flex:1;min-width:0;border:0;background:transparent;padding:.75rem 1rem;font:inherit;
+  font-size:1rem;color:#0f172a}
+.pill input:focus{outline:none}
+.pill button{display:flex;width:3rem;height:3rem;flex:none;align-items:center;justify-content:center;
+  border:0;border-radius:9999px;background:#1d4ed8;color:#fff;cursor:pointer}
+.pill button:hover{background:#1e40af}
+.pill svg{width:1.25rem;height:1.25rem}
+.door-body{max-width:80rem;margin:0 auto;padding:2.5rem 1rem}
+@media (min-width:40rem){.door-body{padding:2.5rem 2rem}}
+.door-body > h2{margin:0;font-size:1.25rem;font-weight:700;color:#0f172a}
+.door .intro{margin:.25rem 0 0;font-size:.875rem;color:#64748b}
+.regions{display:grid;gap:1rem;margin-top:1.25rem}
+@media (min-width:40rem){.regions{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (min-width:64rem){.regions{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.region{border:1px solid rgb(226 232 240 / .8);border-radius:1rem;background:#fff;padding:1.25rem}
+.region:hover{border-color:#cbd5e1;box-shadow:0 4px 6px rgb(15 23 42 / .06)}
+.region h3{display:flex;align-items:baseline;justify-content:space-between;gap:.5rem;margin:0 0 .75rem;
+  padding-bottom:.625rem;border-bottom:1px solid #f1f5f9;font-size:.875rem}
+.region h3 .count{font-weight:400;font-size:.75rem;color:#64748b}
+.region ul{list-style:none;margin:0;padding:0}
+.region a{display:flex;align-items:baseline;justify-content:space-between;gap:.75rem;
+  margin:0 -.5rem;border-radius:.5rem;padding:.375rem .5rem;color:#475569;font-size:.875rem;text-decoration:none}
+.region a:hover{background:#f8fafc;color:#1d4ed8}
+.region .n{flex:none;font-size:.75rem;font-variant-numeric:tabular-nums;color:#64748b}
+.more{display:flex;flex-wrap:wrap;gap:.25rem 1rem;margin-top:1.25rem;font-size:.875rem}
+.more a{color:#1d4ed8}
+.credit{margin-top:1.5rem;font-size:.75rem;color:#64748b}
+.credit a{color:inherit}
 `;
 
 /**
@@ -278,6 +376,8 @@ export function page(options: PageOptions): string {
   const blocks = (options.structuredData ?? [])
     .map((data) => `<script type="application/ld+json">${jsonLd(data)}</script>`)
     .join('');
+  // The front door runs edge to edge, like the app. The city pages stay a column.
+  const frame = options.door ? 'band' : 'wrap';
 
   return `<!doctype html>
 <html lang="he" dir="rtl">
@@ -299,7 +399,7 @@ export function page(options: PageOptions): string {
 ${blocks}
 </head>
 <body>
-<header class="site"><div class="wrap">
+<header class="site"><div class="${frame}">
 <div class="navl">
 <a class="brand" href="${esc(options.appUrl)}/">Urban<span>365</span></a>
 <nav class="here">
@@ -324,9 +424,10 @@ ${blocks}
 <a class="signin" id="u365-account" hidden href="${esc(options.appUrl)}/app/profile"></a>
 </div>
 </div></header>
-<main class="wrap">${options.body}</main>
+<main class="${options.door ? 'door' : 'wrap'}" id="main">${options.body}</main>
 <script>${SESSION_SCRIPT}</script>
-<footer class="site"><div class="wrap">
+${options.extraScript ? `<script>${options.extraScript}</script>` : ''}
+<footer class="site"><div class="${frame}">
 ${options.links ?? ''}
 <!--
   Two claims, deliberately separated. The listing figures above are asking prices

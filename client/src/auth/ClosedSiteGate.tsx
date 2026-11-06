@@ -1,6 +1,5 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '@/auth/auth-context';
-import { LoginDialog } from '@/components/auth/LoginDialog';
 import { useSiteClosed } from '@/hooks/useSiteClosed';
 import { canUseCrm } from '@/lib/access';
 import { guestMayBrowse, isSignupPath } from '@/lib/closedSite';
@@ -12,9 +11,14 @@ function Booting() {
 }
 
 /**
- * While the site is closed, a guest gets the home page and nothing else, with the
- * login sitting on top of it. Signing in, an invite, and a password reset stay
- * reachable — those are how someone who was asked to come in actually gets in.
+ * While the site is closed, a guest can read the pages a crawler is invited to index
+ * and nothing else.
+ *
+ * The home page is one of those, so it stays readable: blurring it would hide the
+ * only indexable page this app renders. City and listing pages never reach here —
+ * the API serves them as HTML. Search, the CRM and publishing still send a guest
+ * back home. Signing in, an invite and a password reset stay reachable, because
+ * those are how someone who was asked to come in actually gets in.
  */
 export function ClosedSiteGate() {
   const { user, loading } = useAuth();
@@ -45,24 +49,5 @@ export function ClosedSiteGate() {
     return <Navigate to="/" replace />;
   }
 
-  const showGate = locked && location.pathname === '/';
-
-  return (
-    <>
-      <div
-        className={showGate ? 'pointer-events-none select-none blur-md' : undefined}
-        aria-hidden={showGate || undefined}
-      >
-        <Outlet />
-      </div>
-      {showGate && (
-        <LoginDialog
-          open
-          locked
-          onOpenChange={() => {}}
-          description="האתר בהרצה. הכניסה למשתמשים רשומים בלבד."
-        />
-      )}
-    </>
-  );
+  return <Outlet />;
 }

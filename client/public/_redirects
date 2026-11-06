@@ -9,6 +9,10 @@
 # The dev server proxies this same set; see `server.proxy` in vite.config.ts. Change one
 # and change the other, or a link works in dev and 404s in production.
 
+# The front door is HTML from the API, like the city pages. Exact `/` only: the
+# splat below is what serves the app everywhere else.
+/              https://urban365-production.up.railway.app/                       200
+
 /nadlan        https://urban365-production.up.railway.app/nadlan                  200
 /nadlan/*      https://urban365-production.up.railway.app/nadlan/:splat           200
 /sitemap.xml   https://urban365-production.up.railway.app/sitemap.xml             200
