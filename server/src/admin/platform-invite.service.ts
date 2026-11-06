@@ -35,14 +35,14 @@ export class PlatformInviteService {
     const invites = await this.prisma.platformInvite.findMany({
       where: { acceptedAt: null, revokedAt: null },
       orderBy: { createdAt: 'desc' },
-      select: { id: true, email: true, expiresAt: true, createdAt: true },
+      select: { id: true, email: true, accountType: true, expiresAt: true, createdAt: true },
     });
 
     const now = Date.now();
     return invites.map((invite) => ({ ...invite, expired: invite.expiresAt.getTime() <= now }));
   }
 
-  async invite(emailRaw: string, invitedById: string) {
+  async invite(emailRaw: string, accountType: 'buyer' | 'agency', invitedById: string) {
     const email = normalizeEmail(emailRaw);
 
     const existing = await this.prisma.user.findUnique({ where: { email }, select: { id: true } });
@@ -59,11 +59,12 @@ export class PlatformInviteService {
     const invite = await this.prisma.platformInvite.create({
       data: {
         email,
+        accountType,
         invitedById,
         tokenHash: sha256(secret).toString('hex'),
         expiresAt: new Date(Date.now() + INVITE_TTL_MS),
       },
-      select: { id: true, email: true, expiresAt: true, createdAt: true },
+      select: { id: true, email: true, accountType: true, expiresAt: true, createdAt: true },
     });
 
     const inviter = await this.prisma.user.findUniqueOrThrow({
@@ -76,6 +77,7 @@ export class PlatformInviteService {
       ...userInviteTemplate(
         `${this.mail.appUrl}/join?token=${encodeURIComponent(secret)}`,
         `${inviter.firstName} ${inviter.lastName}`.trim() || 'Urban365',
+        accountType === 'agency' ? 'סוכנות' : 'משתמש',
       ),
     });
 
@@ -126,14 +128,16 @@ export class PlatformInviteService {
         data: {
           email: invite.email,
           passwordHash,
-          accountType: 'buyer',
+          accountType: invite.accountType,
           firstName: dto.firstName.trim(),
           lastName: dto.lastName.trim(),
           phone: dto.phone?.trim() || null,
           // The link only reached this inbox, which is the verification.
           emailVerifiedAt: new Date(),
           termsAcceptedAt: new Date(),
-          buyerProfile: { create: {} },
+          // A regular user keeps a buyer profile. An agency does not get one until
+          // they are actually searching for a home of their own.
+          ...(invite.accountType === 'buyer' ? { buyerProfile: { create: {} } } : {}),
         },
         select: { id: true },
       });

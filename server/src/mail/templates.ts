@@ -96,12 +96,12 @@ export const agencyInviteTemplate = (
 });
 
 /** A platform admin inviting someone to use the site, with no agency attached. */
-export const userInviteTemplate = (link: string, inviterName: string) => ({
+export const userInviteTemplate = (link: string, inviterName: string, roleLabel: string) => ({
   subject: 'הוזמנת ל-Urban365',
   html: shell(
     'הוזמנת להשתמש באתר',
     `<p style="color:#334155;line-height:1.6">
-       ${inviterName} הזמין אותך להשתמש ב-Urban365.
+       ${inviterName} הזמין אותך להשתמש ב-Urban365 בתור ${roleLabel}.
      </p>
      ${button(link, 'יצירת חשבון')}
      <p style="font-size:12px;color:#64748b">הקישור חד-פעמי ותקף ל‑3 ימים.</p>`,

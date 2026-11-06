@@ -43,7 +43,7 @@ export class SellerListingsService {
 
   list(userId: string) {
     return this.prisma.listing.findMany({
-      where: { ownerUserId: userId },
+      where: { ownerUserId: userId, status: { not: 'removed' } },
       orderBy: { createdAt: 'desc' },
       ...DETAIL,
     });
@@ -125,38 +125,20 @@ export class SellerListingsService {
   }
 
   /**
-   * Gone for good, at the seller's word.
+   * Hidden, not deleted. The row, the photographs and the enquiries stay, and the
+   * reason is what we keep so a sold flat is not the same record as a change of mind.
    *
-   * Archiving keeps a listing out of sight; this is for the person who wants their flat
-   * and their photographs off our machines, which is theirs to ask and not ours to
-   * talk them out of. Everything attached to the listing goes with it — images, the
-   * engagement counts, saves — by the cascades in the schema.
-   *
-   * What survives is the enquiries: a `Lead` belongs to the seller rather than to the
-   * listing, so it keeps the name and number of somebody who rang and simply stops
-   * saying which property it was about. Deleting a stranger's contact details because
-   * a flat was sold would be the wrong call to make on the seller's behalf.
-   *
-   * The row goes before the files, like `removeImage`: a stray object costs storage and
-   * a stray row shows a broken picture. The bucket deletions are best-effort for the
-   * same reason — a storage outage must not leave the seller unable to delete.
+   * `status: 'removed'` is what keeps it out of search, the city pages and the seller's
+   * own list — those already ask for published rows, or exclude this status.
    */
-  async remove(userId: string, id: string) {
+  async remove(userId: string, id: string, reason: 'sold' | 'rented' | 'regret' | 'other') {
     await this.requireOwn(userId, id);
-
-    // Read while the rows still exist; the cascade takes them with the listing.
-    const images = await this.prisma.listingImage.findMany({
-      where: { listingId: id },
-      select: { storageKey: true },
+    const now = new Date();
+    await this.prisma.listing.update({
+      where: { id },
+      data: { status: 'removed', removedAt: now, removalReason: reason, delistedAt: now },
     });
-
-    await this.prisma.listing.delete({ where: { id } });
-
-    await Promise.all(
-      images.map((image) => this.storage.deleteObject(image.storageKey).catch(() => undefined)),
-    );
-
-    return { deleted: true };
+    return { removed: true };
   }
 
   /**
@@ -279,7 +261,7 @@ export class SellerListingsService {
 
   private async requireOwn(userId: string, id: string) {
     const listing = await this.prisma.listing.findFirst({
-      where: { id, ownerUserId: userId },
+      where: { id, ownerUserId: userId, status: { not: 'removed' } },
       ...DETAIL,
     });
     // A listing belonging to somebody else is not found, rather than forbidden: the

@@ -7,6 +7,7 @@ import { LoginDialog } from '@/components/auth/LoginDialog';
 import { Avatar } from '@/components/ui/Avatar';
 import { qk } from '@/queries/keys';
 import { fetchSavedCount } from '@/services/saved';
+import { canUseCrm } from '@/lib/access';
 import { fetchMyListings } from '@/services/seller';
 
 /** Shared by the link and the button, which are the same control in two states. */
@@ -330,7 +331,7 @@ export function SiteHeader({ leading, subtitle, fullWidth = true }: Props) {
           {user ? (
             <div className="flex items-center gap-2">
               <Link
-                to="/app/profile"
+                to={canUseCrm(user) ? '/app/profile' : '/account'}
                 className="flex items-center gap-2 rounded-lg px-2 py-1 transition hover:bg-slate-100"
                 title={`${user.firstName} ${user.lastName}`.trim()}
               >

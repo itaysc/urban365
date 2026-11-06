@@ -5,7 +5,7 @@ import { ViewingPage } from '@/pages/ViewingPage';
 import { AccessibilityPage, PrivacyPage, TermsPage } from '@/pages/LegalPage';
 import { Navigate, Outlet, createBrowserRouter } from 'react-router-dom';
 import { ClosedSiteGate } from '@/auth/ClosedSiteGate';
-import { RequireAdmin, RequireAuth } from '@/auth/RequireAuth';
+import { RequireAdmin, RequireAuth, RequireCrm } from '@/auth/RequireAuth';
 import { AgenciesPage } from '@/pages/AgenciesPage';
 import { AgencyPublicPage } from '@/pages/AgencyPublicPage';
 import { HomePage } from '@/pages/HomePage';
@@ -37,6 +37,7 @@ import { RadarPage } from '@/pages/app/RadarPage';
 import { CoBrokeragePage } from '@/pages/app/CoBrokeragePage';
 import { ListingEditorPage } from '@/pages/app/ListingEditorPage';
 import { ModerationPage } from '@/pages/admin/ModerationPage';
+import { AccountPage } from '@/pages/account/AccountPage';
 import { MySalePage } from '@/pages/sell/MySalePage';
 import { PublishPage } from '@/pages/sell/PublishPage';
 import { PageTitle } from '@/components/PageTitle';
@@ -122,6 +123,9 @@ export const router = createBrowserRouter([
     element: <RequireAuth />,
     children: [
       {
+        element: <RequireCrm />,
+        children: [
+      {
         element: <AppLayout />,
         children: [
           // Both reachable while the agency claim is still pending: waiting for
@@ -148,6 +152,8 @@ export const router = createBrowserRouter([
           },
         ],
       },
+        ],
+      },
     ],
   },
 
@@ -166,6 +172,7 @@ export const router = createBrowserRouter([
   {
     element: <RequireAuth loginPath="/login" />,
     children: [
+      { path: '/account', element: <AccountPage /> },
       { path: '/sell', element: <MySalePage /> },
       // `new` before `:listingId`, so the literal wins over the parameter.
       { path: '/sell/new', element: <PublishPage /> },

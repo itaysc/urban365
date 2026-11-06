@@ -5,6 +5,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/auth/auth-context';
 import { Button } from '@/components/ui/Button';
 import { Field, inputClass } from '@/components/ui/Field';
+import { PasswordInput } from '@/components/ui/PasswordInput';
 import { AuthLayout } from '@/pages/auth/AuthLayout';
 import { errorCodeOf, errorMessageOf } from '@/lib/apiError';
 import { acceptInvite, fetchInvite } from '@/services/agency';
@@ -136,9 +137,8 @@ export function AcceptInvitePage() {
               </Field>
 
               <Field label="סיסמה" htmlFor="invite-password" required>
-                <input id="invite-password" type="password" required minLength={10}
-                       className={inputClass} value={form.password}
-                       onChange={(e) => set('password', e.target.value)} />
+                <PasswordInput id="invite-password" required minLength={10} autoComplete="new-password"
+                       value={form.password} onChange={(e) => set('password', e.target.value)} />
               </Field>
             </>
           )}

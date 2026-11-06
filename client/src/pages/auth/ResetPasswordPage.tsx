@@ -3,7 +3,8 @@ import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import * as Yup from 'yup';
 import { Button } from '@/components/ui/Button';
-import { Field, inputClass } from '@/components/ui/Field';
+import { Field } from '@/components/ui/Field';
+import { PasswordInput } from '@/components/ui/PasswordInput';
 import { errorMessageOf } from '@/lib/apiError';
 import { AuthLayout } from '@/pages/auth/AuthLayout';
 import { resetPassword } from '@/services/auth';
@@ -51,10 +52,10 @@ export function ResetPasswordPage() {
     <AuthLayout title="בחירת סיסמה חדשה">
       <form onSubmit={formik.handleSubmit} className="flex flex-col gap-4">
         <Field label="סיסמה חדשה" htmlFor="password" required error={formik.touched.password && formik.errors.password}>
-          <input id="password" type="password" autoComplete="new-password" className={inputClass} {...formik.getFieldProps('password')} />
+          <PasswordInput id="password" autoComplete="new-password" {...formik.getFieldProps('password')} />
         </Field>
         <Field label="אימות סיסמה" htmlFor="confirm" required error={formik.touched.confirm && formik.errors.confirm}>
-          <input id="confirm" type="password" autoComplete="new-password" className={inputClass} {...formik.getFieldProps('confirm')} />
+          <PasswordInput id="confirm" autoComplete="new-password" {...formik.getFieldProps('confirm')} />
         </Field>
         {formError && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">{formError}</p>}
         <Button type="submit" disabled={formik.isSubmitting}>

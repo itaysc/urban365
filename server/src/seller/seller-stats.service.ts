@@ -26,7 +26,7 @@ export class SellerStatsService {
 
   async forSeller(userId: string): Promise<ListingStats[]> {
     const listings = await this.prisma.listing.findMany({
-      where: { ownerUserId: userId },
+      where: { ownerUserId: userId, status: { not: 'removed' } },
       select: { id: true, viewCount: true, phoneRevealCount: true, savedCount: true },
     });
 

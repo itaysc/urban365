@@ -11,7 +11,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Throttle } from '@nestjs/throttler';
-import { IsEmail, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import { IsEmail, IsIn, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
 import type { Request, Response } from 'express';
 import { AuthService } from '../auth/auth.service.js';
 import { setAuthCookies } from '../auth/cookies.js';
@@ -25,6 +25,10 @@ class CreatePlatformInviteDto {
   @IsEmail({}, { message: 'כתובת אימייל לא תקינה.' })
   @MaxLength(200)
   email!: string;
+
+  /** `buyer` is a regular user. `agency` may use the CRM. */
+  @IsIn(['buyer', 'agency'])
+  accountType!: 'buyer' | 'agency';
 }
 
 class AcceptPlatformInviteDto {
@@ -50,7 +54,7 @@ export class PlatformInviteController {
 
   @Post()
   create(@Body() dto: CreatePlatformInviteDto, @CurrentUser() admin: Principal) {
-    return this.invites.invite(dto.email, admin.userId);
+    return this.invites.invite(dto.email, dto.accountType, admin.userId);
   }
 
   @Delete(':id')

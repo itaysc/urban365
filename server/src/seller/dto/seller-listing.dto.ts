@@ -60,6 +60,14 @@ export class SellerListingDto {
  * the client makes, and the record that somebody agreed is worth no more than the
  * weakest place it is enforced.
  */
+export const REMOVAL_REASONS = ['sold', 'rented', 'regret', 'other'] as const;
+
+/** Why the owner is taking the listing down. Required, and stored with the row. */
+export class RemoveListingDto {
+  @IsIn(REMOVAL_REASONS)
+  reason!: (typeof REMOVAL_REASONS)[number];
+}
+
 export class CreateSellerListingDto extends SellerListingDto {
   @IsBoolean()
   @Equals(true, { message: 'יש לאשר את תנאי השימוש ומדיניות הפרטיות' })

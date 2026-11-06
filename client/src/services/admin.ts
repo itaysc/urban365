@@ -37,6 +37,7 @@ export const rejectAgency = (agencyId: string, reason?: string) =>
 export interface PlatformInvite {
   id: string;
   email: string;
+  accountType: 'buyer' | 'agency';
   expiresAt: string;
   createdAt: string;
   expired: boolean;
@@ -47,8 +48,11 @@ export async function fetchPlatformInvites(): Promise<PlatformInvite[]> {
   return data;
 }
 
-export async function createPlatformInvite(email: string): Promise<PlatformInvite> {
-  const { data } = await api.post<PlatformInvite>('/admin/invites', { email });
+export async function createPlatformInvite(
+  email: string,
+  accountType: 'buyer' | 'agency',
+): Promise<PlatformInvite> {
+  const { data } = await api.post<PlatformInvite>('/admin/invites', { email, accountType });
   return data;
 }
 

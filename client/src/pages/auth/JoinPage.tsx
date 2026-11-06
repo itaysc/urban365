@@ -4,6 +4,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/auth/auth-context';
 import { Button } from '@/components/ui/Button';
 import { Field, inputClass } from '@/components/ui/Field';
+import { PasswordInput } from '@/components/ui/PasswordInput';
 import { PhoneField } from '@/components/ui/PhoneField';
 import { errorMessageOf } from '@/lib/apiError';
 import { qk } from '@/queries/keys';
@@ -40,7 +41,7 @@ export function JoinPage() {
     try {
       const next = await acceptJoinInvite(token, form);
       queryClient.setQueryData<AuthUser | null>(qk.me, next);
-      navigate('/', { replace: true });
+      navigate(next.accountType === 'agency' ? '/agency/claim' : '/account', { replace: true });
     } catch (e) {
       setError(errorMessageOf(e, 'ההצטרפות נכשלה.'));
       setSubmitting(false);
@@ -115,12 +116,11 @@ export function JoinPage() {
             <PhoneField id="join-phone" value={form.phone} onChange={(value) => set('phone', value)} />
           </Field>
           <Field label="סיסמה" htmlFor="join-password" required>
-            <input
+            <PasswordInput
               id="join-password"
-              type="password"
               required
               minLength={10}
-              className={inputClass}
+              autoComplete="new-password"
               value={form.password}
               onChange={(e) => set('password', e.target.value)}
             />

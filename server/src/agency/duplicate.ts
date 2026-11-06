@@ -53,8 +53,8 @@ export function hasEnoughSignal(candidate: DuplicateCandidate): boolean {
  * candidate *has* must match; fields it lacks are not constrained, so a sparse listing
  * matches more broadly rather than less.
  *
- * Archived listings are excluded: re-listing a property that was archived is a normal
- * thing to do, not a duplicate.
+ * Archived and removed listings are excluded: putting a property back up after it
+ * was taken down is a normal thing to do, not a duplicate.
  */
 export function duplicateWhere(
   candidate: DuplicateCandidate,
@@ -63,7 +63,7 @@ export function duplicateWhere(
 ): Prisma.ListingWhereInput {
   const where: Prisma.ListingWhereInput = {
     agencyId,
-    status: { not: 'archived' },
+    status: { notIn: ['archived', 'removed'] },
     ...(excludeId ? { id: { not: excludeId } } : {}),
     ...(candidate.section ? { section: candidate.section as 'forsale' | 'rent' | 'commercial' } : {}),
   };

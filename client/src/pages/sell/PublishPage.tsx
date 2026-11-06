@@ -19,6 +19,7 @@ import { Field, inputClass, selectClass } from '@/components/ui/Field';
 import { useLeaveGuard } from '@/hooks/useLeaveGuard';
 import { snapshot } from '@/pages/sell/formSnapshot';
 import { errorMessageOf } from '@/lib/apiError';
+import { canUseCrm } from '@/lib/access';
 import { PROPERTY_TYPES } from '@/lib/propertyTypes';
 import { qk } from '@/queries/keys';
 import {
@@ -256,7 +257,7 @@ export function PublishPage() {
         {!user?.phone && (
           <p className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
             לא הוספתם מספר טלפון לחשבון, ולכן לא תהיה דרך ליצור איתכם קשר טלפוני.{' '}
-            <Link to="/app/profile" className="font-medium underline">
+            <Link to={canUseCrm(user) ? '/app/profile' : '/account'} className="font-medium underline">
               הוספת טלפון
             </Link>
           </p>

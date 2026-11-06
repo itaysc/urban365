@@ -6,7 +6,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { Throttle } from '@nestjs/throttler';
 import { CurrentUser } from '../auth/decorators/current-user.decorator.js';
 import type { Principal } from '../auth/types/principal.js';
-import { CreateSellerListingDto, SellerListingDto } from './dto/seller-listing.dto.js';
+import { CreateSellerListingDto, RemoveListingDto, SellerListingDto } from './dto/seller-listing.dto.js';
 import { SellerListingsService } from './seller-listings.service.js';
 import { SellerStatsService } from './seller-stats.service.js';
 
@@ -64,10 +64,10 @@ export class SellerListingsController {
     return this.listings.archive(me.userId, id);
   }
 
-  /** Gone for good, with its photographs. The seller's to ask for. */
-  @Delete(':id')
-  remove(@CurrentUser() me: Principal, @Param('id') id: string) {
-    return this.listings.remove(me.userId, id);
+  /** Hidden from every listing. The row stays, with the reason they gave. */
+  @Post(':id/remove')
+  remove(@CurrentUser() me: Principal, @Param('id') id: string, @Body() dto: RemoveListingDto) {
+    return this.listings.remove(me.userId, id, dto.reason);
   }
 
   @Post(':id/publish')

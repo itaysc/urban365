@@ -197,8 +197,10 @@ export class AuthService {
    * exactly as on the signup form.
    */
   async attachAgency(userId: string, dto: AttachAgencyDto): Promise<PublicUser> {
-    this.assertSignupsOpen();
     const user = await this.prisma.user.findUnique({ where: { id: userId }, include: this.include });
+    // A platform invite already made this an agency account. Closing self-serve
+    // signup must not stop them finishing the agency the invite was for.
+    if (user?.accountType !== 'agency') this.assertSignupsOpen();
     if (!user) throw new UnauthorizedException(INVALID_CREDENTIALS);
 
     // Any membership at all, not only an active one: a second claim from an account

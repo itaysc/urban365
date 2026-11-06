@@ -45,6 +45,7 @@ const TITLES: Record<string, string> = {
   '/app/profile': 'הפרופיל שלי',
   '/app/pending': 'ממתין לאישור',
 
+  '/account': 'החשבון שלי',
   '/sell': 'פרסום נכס',
   '/my-sale': 'הנכסים שלי',
   '/admin/moderation': 'ניהול פלטפורמה',

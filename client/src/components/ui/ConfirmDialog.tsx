@@ -10,6 +10,9 @@ interface Props {
   confirmLabel?: string;
   onConfirm: () => void;
   busy?: boolean;
+  /** Extra controls, such as a required choice, between the text and the buttons. */
+  children?: ReactNode;
+  confirmDisabled?: boolean;
 }
 
 /**
@@ -24,6 +27,8 @@ export function ConfirmDialog({
   confirmLabel = 'מחיקה',
   onConfirm,
   busy,
+  children,
+  confirmDisabled,
 }: Props) {
   return (
     <AlertDialog.Root open={open} onOpenChange={onOpenChange}>
@@ -39,8 +44,9 @@ export function ConfirmDialog({
               {description}
             </AlertDialog.Description>
           )}
+          {children}
           <div className="mt-6 flex justify-start gap-2">
-            <Button variant="danger" onClick={onConfirm} disabled={busy}>
+            <Button variant="danger" onClick={onConfirm} disabled={busy || confirmDisabled}>
               {busy ? 'רגע…' : confirmLabel}
             </Button>
             <AlertDialog.Cancel asChild>

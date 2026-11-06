@@ -2,6 +2,7 @@ import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '@/auth/auth-context';
 import { LoginDialog } from '@/components/auth/LoginDialog';
 import { useSiteClosed } from '@/hooks/useSiteClosed';
+import { canUseCrm } from '@/lib/access';
 import { guestMayBrowse, isSignupPath } from '@/lib/closedSite';
 
 function Booting() {
@@ -24,8 +25,12 @@ export function ClosedSiteGate() {
   // Someone already signed in does not wait: the flag changes nothing for them.
   if (loading || (!user && pending)) return <Booting />;
 
-  if (closed && isSignupPath(location.pathname)) {
-    return <Navigate to={user ? '/app' : '/'} replace />;
+  // Self-serve signup stays shut. An agency that was invited still has to name the
+  // office, and sending them to the CRM from here only bounces them back.
+  const finishingAgencyInvite =
+    user?.accountType === 'agency' && location.pathname.startsWith('/agency/claim');
+  if (closed && isSignupPath(location.pathname) && !finishingAgencyInvite) {
+    return <Navigate to={user ? (canUseCrm(user) ? '/app' : '/account') : '/'} replace />;
   }
 
   const locked = closed && !user;

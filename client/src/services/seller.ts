@@ -104,15 +104,23 @@ export async function archiveMyListing(id: string): Promise<void> {
   await api.post(`/me/listings/${id}/archive`);
 }
 
+export const REMOVAL_REASONS = [
+  { value: 'sold', label: 'הנכס נמכר' },
+  { value: 'rented', label: 'הנכס הושכר' },
+  { value: 'regret', label: 'התחרטתי' },
+  { value: 'other', label: 'סיבה אחרת' },
+] as const;
+
+export type RemovalReason = (typeof REMOVAL_REASONS)[number]['value'];
+
 /**
- * Gone for good, with its photographs.
+ * Hidden from every listing. The row stays, with the reason they gave.
  *
- * A separate call from `archiveMyListing` on purpose: one is reversible from the same
- * screen and the other is not reversible at all, and an API where the difference is a
- * verb on the same path is one where they eventually get confused.
+ * A separate call from `archiveMyListing` on purpose: one can come back to the market
+ * from the same screen, and the other is left out of the lists for good.
  */
-export async function deleteMyListing(id: string): Promise<void> {
-  await api.delete(`/me/listings/${id}`);
+export async function removeMyListing(id: string, reason: RemovalReason): Promise<void> {
+  await api.post(`/me/listings/${id}/remove`, { reason });
 }
 
 /**

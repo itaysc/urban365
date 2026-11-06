@@ -289,14 +289,41 @@ async function checkPage(path, { indexable }) {
   }
 }
 
-/** Follow the links off a page and make sure they land somewhere. */
+/** A path the API renders. Everything else is the React app, on the public origin. */
+const servedByApi = (path) =>
+  path === '/robots.txt' || path.startsWith('/sitemap') || path.startsWith('/nadlan');
+
+/**
+ * Follow the links off a page and make sure they land somewhere.
+ *
+ * The attribute is what the markup holds, so `&amp;` is still an entity there. A
+ * browser decodes it before asking; checking the raw attribute asks for a different
+ * URL. And a link into the app, such as a search for a city with no page of its own,
+ * is served by the site, not by this API — asking the API is how a live link is
+ * reported as a 404.
+ */
 async function checkLinksOn(path) {
   const { body } = await get(path);
-  const links = [...new Set(all(body, /href="(\/[^"#]*)"/g))];
+  const links = [...new Set(all(body, /href="(\/[^"#]*)"/g).map(decode))];
 
   for (const link of links) {
-    const { status } = await get(link);
-    if (status >= 400) error(`${path} links to ${link}, which answers ${status}`);
+    if (servedByApi(link)) {
+      const { status } = await get(link);
+      if (status >= 400) error(`${path} links to ${link}, which answers ${status}`);
+      continue;
+    }
+
+    if (!siteUrl) {
+      warn(`${path} links to ${link}, and robots.txt named no site to check it on`);
+      continue;
+    }
+
+    try {
+      const res = await fetch(`${siteUrl}${link}`, { redirect: 'follow' });
+      if (!res.ok) error(`${path} links to ${siteUrl}${link}, which answers ${res.status}`);
+    } catch (e) {
+      warn(`could not reach ${siteUrl}${link} linked from ${path}: ${e.message}`);
+    }
   }
 }
 

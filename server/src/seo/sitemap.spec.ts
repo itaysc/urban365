@@ -29,6 +29,8 @@ describe('robotsTxt', () => {
     expect(txt).toContain('Disallow: /app');
     expect(txt).toContain('Disallow: /admin');
     expect(txt).toContain('Disallow: /api/');
+    expect(txt).toContain('Disallow: /account');
+    expect(txt).toContain('Disallow: /join');
   });
 
   it('leaves the storefront open', () => {

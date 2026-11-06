@@ -1,5 +1,6 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '@/auth/auth-context';
+import { canUseCrm } from '@/lib/access';
 
 /** Full-page spinner while the session is still being established. */
 function Booting() {
@@ -35,8 +36,12 @@ export function RequireAuth({
     return <Navigate to={loginPath} replace state={{ from: `${location.pathname}${location.search}` }} />;
   }
 
-  // Signed in, but the agency claim has not been approved yet.
+  // An invited agency still has to name the office. A membership that exists but is
+  // not active is waiting for approval, which is a different page.
   if (requireAgency && user.agency?.membershipStatus !== 'active') {
+    if (!user.agency && user.accountType === 'agency') {
+      return <Navigate to="/agency/claim" replace />;
+    }
     return <Navigate to="/app/pending" replace />;
   }
 
@@ -52,7 +57,23 @@ export function RequireAdmin() {
   if (!user) {
     return <Navigate to="/agency/login" replace state={{ from: `${location.pathname}${location.search}` }} />;
   }
-  if (user.platformRole !== 'admin') return <Navigate to="/app" replace />;
+  if (user.platformRole !== 'admin') {
+    return <Navigate to={canUseCrm(user) ? '/app' : '/account'} replace />;
+  }
+
+  return <Outlet />;
+}
+
+/** The CRM. A regular user has `/account` instead. */
+export function RequireCrm() {
+  const { user, loading } = useAuth();
+  const location = useLocation();
+
+  if (loading) return <Booting />;
+  if (!user) {
+    return <Navigate to="/agency/login" replace state={{ from: `${location.pathname}${location.search}` }} />;
+  }
+  if (!canUseCrm(user)) return <Navigate to="/account" replace />;
 
   return <Outlet />;
 }

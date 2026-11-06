@@ -68,6 +68,16 @@ enum ListingStatus {
   draft
   published
   archived
+  /// Hidden at the owner's request. The row stays; nothing public lists it.
+  removed
+}
+
+/// Why a listing was taken down for good. Kept so we know whether it sold.
+enum ListingRemovalReason {
+  sold
+  rented
+  regret
+  other
 }
 
 /// What an automated read of a listing concluded about it.
@@ -344,6 +354,11 @@ model Listing {
   lastSeenAt      DateTime  @default(now())
   /// Set when a listing stops appearing in the feed, instead of deleting history.
   delistedAt      DateTime?
+
+  /// Set when the owner removes the listing. The row is kept; it is left out of
+  /// every listing they and the public see.
+  removedAt      DateTime?
+  removalReason  ListingRemovalReason?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -666,12 +681,15 @@ model AgencyInvite {
   @@index([agencyId, acceptedAt])
 }
 
-/// An invitation from a platform admin to use the site as a regular user.
-/// No agency: accepting creates a buyer account and nothing else.
+/// An invitation from a platform admin. Accepting creates the account named by
+/// `accountType`: a buyer uses the site, an agency may open the CRM.
 /// The plaintext token only ever exists in the email; this stores its sha256.
 model PlatformInvite {
   id        String    @id @default(cuid())
   email     String
+  /// What the account will be when the link is accepted. A buyer uses the site;
+  /// an agency may open the CRM.
+  accountType AccountType @default(buyer)
   invitedBy User      @relation(fields: [invitedById], references: [id], onDelete: Cascade)
   invitedById String
   tokenHash String    @unique
