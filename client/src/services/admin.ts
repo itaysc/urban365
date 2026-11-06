@@ -34,6 +34,43 @@ export const approveAgency = (agencyId: string, userId: string) =>
 export const rejectAgency = (agencyId: string, reason?: string) =>
   api.post(`/admin/moderation/agencies/${agencyId}/reject`, { reason });
 
+export interface PendingListing {
+  id: string;
+  city: string | null;
+  street: string | null;
+  houseNumber: number | null;
+  price: number | null;
+  rooms: number | null;
+  squareMeter: number | null;
+  propertyType: string | null;
+  section: string;
+  description: string | null;
+  coverImageUrl: string | null;
+  createdAt: string;
+  reviewStatus: 'unchecked' | 'clean' | 'flagged';
+  reviewReason: string | null;
+  owner: { email: string; firstName: string; lastName: string };
+}
+
+/** Suggested reasons. The admin can send one as-is or edit it first. */
+export const LISTING_REJECTION_PRESETS = [
+  'הפרטים חסרים או לא ברורים',
+  'התמונות לא מתאימות לנכס',
+  'הפרסום נראה כפול',
+  'המחיר או הכתובת לא תקינים',
+  'התוכן לא עומד בתנאי השימוש',
+] as const;
+
+export async function fetchPendingListings(): Promise<PendingListing[]> {
+  const { data } = await api.get<PendingListing[]>('/admin/moderation/listings');
+  return data;
+}
+
+export const approveListing = (id: string) => api.post(`/admin/moderation/listings/${id}/approve`);
+
+export const rejectListing = (id: string, note: string) =>
+  api.post(`/admin/moderation/listings/${id}/reject`, { note });
+
 export interface PlatformInvite {
   id: string;
   email: string;

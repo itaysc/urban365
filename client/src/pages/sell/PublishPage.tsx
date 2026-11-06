@@ -174,8 +174,8 @@ export function PublishPage() {
 
       // Last, so the listing never appears in search without its photos.
       setStep('מפרסם…');
-      const { published } = await publishMyListing(listing.id);
-      return { ...listing, published };
+      const { published, pendingReview } = await publishMyListing(listing.id);
+      return { ...listing, published, pendingReview };
     },
     onSuccess: (result) => {
       void queryClient.invalidateQueries({ queryKey: qk.mySale.all });
@@ -184,6 +184,10 @@ export function PublishPage() {
         // What is on screen is now what is stored, so leaving costs nothing.
         saved.current = snapshot(form, amenities);
         toast.success('הנכס עודכן.');
+      } else if (result && 'pendingReview' in result && result.pendingReview) {
+        toast('הנכס נשלח לבדיקה. נעדכן אתכם בקרוב.', { duration: 8000 });
+        leaving.current = true;
+        navigate('/sell');
       } else if (result && 'published' in result && result.published === false) {
         // Saved, not live. Said plainly, and without the reason: whoever is actually
         // sending spam should not be handed the rule they tripped.

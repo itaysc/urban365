@@ -70,13 +70,14 @@ export function SellerListings() {
     mutationFn: async ({ id, publish }: { id: string; publish: boolean }) => {
       if (!publish) {
         await archiveMyListing(id);
-        return { published: false, archived: true };
+        return { published: false, pendingReview: false, archived: true as const };
       }
-      return { ...(await publishMyListing(id)), archived: false };
+      return { ...(await publishMyListing(id)), archived: false as const };
     },
     onSuccess: (result) => {
       void queryClient.invalidateQueries({ queryKey: qk.mySale.all });
       if (result.archived) toast.success('הנכס הוסר מהפרסום.');
+      else if (result.pendingReview) toast('הנכס נשלח לבדיקה. נעדכן אתכם בקרוב.', { duration: 8000 });
       else if (result.published) toast.success('הנכס חזר לפרסום.');
       else toast('הנכס נשלח לבדיקה. נעדכן אתכם לאחר שתאושר.', { duration: 8000 });
     },
@@ -143,17 +144,31 @@ export function SellerListings() {
                     {!published && (
                       <span
                         className={`rounded px-2 py-0.5 text-xs ${
-                          listing.reviewStatus === 'flagged'
+                          listing.approval === 'pending' || listing.reviewStatus === 'flagged'
                             ? 'bg-amber-100 text-amber-800'
-                            : 'bg-slate-100 text-slate-600'
+                            : listing.approval === 'rejected'
+                              ? 'bg-red-100 text-red-800'
+                              : 'bg-slate-100 text-slate-600'
                         }`}
                       >
-                        {listing.reviewStatus === 'flagged' ? 'ממתין לבדיקה' : 'לא מפורסם'}
+                        {listing.approval === 'pending'
+                          ? 'בבדיקה'
+                          : listing.approval === 'rejected'
+                            ? 'לא אושר'
+                            : listing.reviewStatus === 'flagged'
+                              ? 'ממתין לבדיקה'
+                              : 'לא מפורסם'}
                       </span>
                     )}
                   </div>
 
                   <p className="truncate text-sm text-slate-600">{address(listing)}</p>
+                  {listing.approval === 'pending' && (
+                    <p className="text-sm text-amber-800">הנכס בבדיקה. נעדכן אתכם בקרוב.</p>
+                  )}
+                  {listing.approval === 'rejected' && listing.rejectionNote && (
+                    <p className="text-sm text-red-800">{listing.rejectionNote}</p>
+                  )}
                   <p className="truncate text-sm text-slate-500">
                     {[listing.propertyType, listing.rooms && `${listing.rooms} חדרים`,
                       listing.squareMeter && `${listing.squareMeter} מ״ר`]

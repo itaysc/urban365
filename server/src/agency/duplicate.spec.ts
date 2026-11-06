@@ -45,11 +45,11 @@ describe('duplicate listing detection', () => {
   describe('duplicateWhere', () => {
     const agencyId = 'agency-1';
 
-    it('scopes to the agency and ignores archived listings', () => {
+    it('scopes to the agency and ignores archived and removed listings', () => {
       const where = duplicateWhere({ city: 'חיפה', rooms: 3 }, agencyId);
       expect(where.agencyId).toBe(agencyId);
-      // Re-listing something that was archived is normal, not a duplicate.
-      expect(where.status).toEqual({ not: 'archived' });
+      // Re-listing something that was archived or removed is normal, not a duplicate.
+      expect(where.status).toEqual({ notIn: ['archived', 'removed'] });
     });
 
     it('excludes the row being edited, so a listing cannot duplicate itself', () => {

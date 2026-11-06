@@ -28,6 +28,12 @@ export interface AppConfig {
    * lock the front door.
    */
   siteClosed: boolean;
+  /**
+   * Private listings wait for an admin before they go on the site. Agencies publish
+   * as they do today. Anything but an explicit "true" leaves publishing immediate —
+   * a typo must not hold every flat in a queue.
+   */
+  listingReview: boolean;
 }
 
 export interface DatabaseConfig {
@@ -131,6 +137,8 @@ export default (): {
     schedulersEnabled: (process.env.SCHEDULERS_ENABLED ?? 'true').toLowerCase() !== 'false',
     // Only an explicit "true" closes the site. Unset, "false", and typos stay open.
     siteClosed: (process.env.SITE_CLOSED ?? 'false').toLowerCase() === 'true',
+    // Only an explicit "true" holds private listings for review.
+    listingReview: (process.env.LISTING_REVIEW ?? 'false').toLowerCase() === 'true',
   },
   database: {
     url: process.env.DATABASE_URL ?? '',

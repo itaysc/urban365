@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { GeocodeService } from '../geocode/geocode.service.js';
 import { StorageService } from '../storage/storage.service.js';
@@ -39,6 +40,7 @@ export class SellerListingsService {
     private readonly geocode: GeocodeService,
     private readonly storage: StorageService,
     private readonly review: ListingReviewService,
+    private readonly config: ConfigService,
   ) {}
 
   list(userId: string) {
@@ -154,7 +156,10 @@ export class SellerListingsService {
    * which is what the age of a listing means to a buyer — relisting next month does not
    * make it new.
    */
-  async publish(userId: string, id: string): Promise<{ published: boolean }> {
+  async publish(
+    userId: string,
+    id: string,
+  ): Promise<{ published: boolean; pendingReview: boolean }> {
     const listing = await this.requireOwn(userId, id);
 
     const verdict = await this.review.review(listing);
@@ -163,21 +168,38 @@ export class SellerListingsService {
     // — publishes, because refusing a real seller is the worse mistake and a person can
     // still take a listing down afterwards.
     const flagged = verdict !== null && !verdict.legit && verdict.confidence >= FLAG_CONFIDENCE;
+    const opinion = verdict
+      ? {
+          reviewStatus: flagged ? ('flagged' as const) : ('clean' as const),
+          reviewReason: verdict.reason || null,
+          reviewConfidence: verdict.confidence,
+          reviewedAt: new Date(),
+        }
+      : {};
+
+    // Review mode holds every private listing for a person. The spam check still runs,
+    // so the queue can show what the model objected to, but it does not decide.
+    if (this.config.get<boolean>('app.listingReview') === true) {
+      await this.prisma.listing.update({
+        where: { id },
+        data: { status: 'draft', approval: 'pending', rejectionNote: null, decidedAt: null, ...opinion },
+      });
+      return { published: false, pendingReview: true };
+    }
 
     await this.prisma.listing.update({
       where: { id },
       data: {
         ...(flagged
-          ? {}
-          : { status: 'published', delistedAt: null, publishedAt: listing.publishedAt ?? new Date() }),
-        ...(verdict
-          ? {
-              reviewStatus: flagged ? ('flagged' as const) : ('clean' as const),
-              reviewReason: verdict.reason || null,
-              reviewConfidence: verdict.confidence,
-              reviewedAt: new Date(),
-            }
-          : {}),
+          ? { approval: 'none' as const }
+          : {
+              status: 'published' as const,
+              delistedAt: null,
+              publishedAt: listing.publishedAt ?? new Date(),
+              approval: 'none' as const,
+              rejectionNote: null,
+            }),
+        ...opinion,
       },
     });
 
@@ -185,7 +207,7 @@ export class SellerListingsService {
       this.logger.warn(`Listing ${id} flagged (${verdict.confidence}): ${verdict.reason}`);
     }
 
-    return { published: !flagged };
+    return { published: !flagged, pendingReview: false };
   }
 
   // ── images ──────────────────────────────────────────────────────────────────

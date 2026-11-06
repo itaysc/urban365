@@ -90,6 +90,16 @@ enum ListingReviewStatus {
   flagged
 }
 
+/// A person's decision about a private listing, used only while review mode is on.
+/// Agencies never enter this queue.
+enum ListingApproval {
+  /// Review mode was off when it was published, or nobody has asked yet.
+  none
+  pending
+  approved
+  rejected
+}
+
 enum LeadSource {
   web
   manual
@@ -247,6 +257,13 @@ model Listing {
   reviewConfidence Int?
   reviewedAt       DateTime?
 
+  /// Set when review mode holds a private listing for a person. `none` means the
+  /// listing was not waiting: review mode was off, or it belongs to an agency.
+  approval      ListingApproval @default(none)
+  /// What the admin wrote when they declined it. This is the text of the email.
+  rejectionNote String?
+  decidedAt     DateTime?
+
   adNumber   BigInt?
   listingUrl String?
 
@@ -374,6 +391,7 @@ model Listing {
   coBrokerage  CoBrokerageRequest[]
 
   @@index([ownerUserId])
+  @@index([approval])
   @@index([sellerCustomerId])
   @@index([agencyId, section])
   @@index([agencyId, status])

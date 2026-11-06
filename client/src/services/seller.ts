@@ -28,6 +28,9 @@ export interface SellerListing {
    */
   reviewStatus: 'unchecked' | 'clean' | 'flagged';
   reviewReason: string | null;
+  /** Set while review mode holds the listing for an admin. */
+  approval: 'none' | 'pending' | 'approved' | 'rejected';
+  rejectionNote: string | null;
   latitude: number | null;
   images: ListingImage[];
 }
@@ -131,8 +134,12 @@ export async function removeMyListing(id: string, reason: RemovalReason): Promis
  * look like a real property stays a draft — which is what `published: false` means. It
  * is not an error: the listing was saved, it is simply waiting for a person.
  */
-export async function publishMyListing(id: string): Promise<{ published: boolean }> {
-  const { data } = await api.post<{ published: boolean }>(`/me/listings/${id}/publish`);
+export async function publishMyListing(
+  id: string,
+): Promise<{ published: boolean; pendingReview: boolean }> {
+  const { data } = await api.post<{ published: boolean; pendingReview: boolean }>(
+    `/me/listings/${id}/publish`,
+  );
   return data;
 }
 

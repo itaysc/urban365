@@ -108,6 +108,37 @@ export const userInviteTemplate = (link: string, inviterName: string, roleLabel:
   ),
 });
 
+/**
+ * The note is the admin's own words, so it is escaped: a rejection is not a place
+ * for markup to land in somebody's inbox.
+ */
+export const listingDecisionTemplate = (params: {
+  approved: boolean;
+  firstName: string;
+  address: string;
+  link?: string;
+  note?: string;
+}) => {
+  const hello = params.firstName.trim()
+    ? `<p style="color:#334155;line-height:1.6">שלום ${escape(params.firstName.trim())},</p>`
+    : '';
+  const where = escape(params.address);
+
+  return {
+    subject: params.approved ? 'הנכס שלך אושר ופורסם' : 'הנכס שלך לא אושר',
+    html: shell(
+      params.approved ? 'הנכס אושר' : 'הנכס לא אושר',
+      params.approved
+        ? `${hello}
+           <p style="color:#334155;line-height:1.6">הנכס ב${where} אושר ועלה לאוויר.</p>
+           ${params.link ? button(params.link, 'לצפייה בנכס') : ''}`
+        : `${hello}
+           <p style="color:#334155;line-height:1.6">הנכס ב${where} לא אושר.</p>
+           <p style="color:#334155;line-height:1.6">${escape(params.note ?? '').replaceAll('\n', '<br>')}</p>`,
+    ),
+  };
+};
+
 export const removedFromAgencyTemplate = (agencyName: string) => ({
   subject: `הוסרת מ${agencyName}`,
   html: shell(

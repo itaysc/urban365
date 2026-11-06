@@ -119,6 +119,7 @@ export const qk = {
   admin: {
     all: ['admin'] as const,
     moderation: ['admin', 'moderation'] as const,
+    listings: ['admin', 'listings'] as const,
     invites: ['admin', 'invites'] as const,
   },
 

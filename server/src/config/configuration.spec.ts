@@ -80,3 +80,34 @@ describe('siteClosed', () => {
     }
   });
 });
+
+describe('listingReview', () => {
+  const before = process.env.LISTING_REVIEW;
+
+  beforeEach(() => {
+    delete process.env.LISTING_REVIEW;
+  });
+
+  afterEach(() => {
+    if (before === undefined) delete process.env.LISTING_REVIEW;
+    else process.env.LISTING_REVIEW = before;
+  });
+
+  it('publishes immediately when nothing is set', () => {
+    expect(configuration().app.listingReview).toBe(false);
+  });
+
+  it('holds listings on an explicit true, whatever the case', () => {
+    for (const value of ['true', 'TRUE', 'True']) {
+      process.env.LISTING_REVIEW = value;
+      expect(configuration().app.listingReview, value).toBe(true);
+    }
+  });
+
+  it('stays off for false and for near-misses', () => {
+    for (const value of ['false', 'FALSE', '1', 'yes', 'on', '', 'ture']) {
+      process.env.LISTING_REVIEW = value;
+      expect(configuration().app.listingReview, JSON.stringify(value)).toBe(false);
+    }
+  });
+});
