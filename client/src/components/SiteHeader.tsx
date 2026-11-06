@@ -365,19 +365,21 @@ export function SiteHeader({ leading, subtitle, fullWidth = true }: Props) {
             <div className="flex items-center gap-2">
               <Link
                 to={canUseCrm(user) ? '/app/profile' : '/account'}
-                className="flex items-center gap-2 rounded-lg px-2 py-1 transition hover:bg-slate-100"
+                className="flex items-center rounded-full transition hover:opacity-80"
+                aria-label={`${user.firstName} ${user.lastName}`.trim() || 'החשבון שלי'}
                 title={`${user.firstName} ${user.lastName}`.trim()}
               >
                 <Avatar size="sm" src={user.avatarUrl} firstName={user.firstName} lastName={user.lastName} />
-                <span className="hidden text-sm text-slate-700 sm:inline">{user.firstName}</span>
               </Link>
               <button
                 type="button"
                 // Home rather than wherever they were: half the pages behind this bar
                 // need a session, and staying on one only to be bounced to a sign-in
                 // reads as the sign-out having failed.
+                // On a phone this lives in the drawer. The dashboard has no such drawer
+                // (it brings its own), so there the word stays in the bar.
                 onClick={() => void logout().then(() => navigate('/', { replace: true }))}
-                className="text-sm text-slate-500 transition hover:text-slate-900"
+                className={`text-sm text-slate-500 transition hover:text-slate-900 ${subtitle ? '' : 'hidden sm:inline'}`}
               >
                 יציאה
               </button>
@@ -449,6 +451,18 @@ export function SiteHeader({ leading, subtitle, fullWidth = true }: Props) {
                   }}
                 >
                   הערכת שווי
+                </button>
+              )}
+              {user && (
+                <button
+                  type="button"
+                  className={`${navLink} mt-auto text-start text-slate-500`}
+                  onClick={() => {
+                    setMenuOpen(false);
+                    void logout().then(() => navigate('/', { replace: true }));
+                  }}
+                >
+                  יציאה
                 </button>
               )}
             </nav>

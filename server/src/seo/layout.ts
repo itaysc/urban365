@@ -66,11 +66,29 @@ var u=d&&d.user;if(!u)return;
 var a=document.getElementById("u365-account");
 var i=document.getElementById("u365-signin");
 var s=document.getElementById("u365-searches");
+function letter(name){var t=(name||"").trim();return t?Array.from(t)[0]:"";}
+function mark(){return (letter(u.firstName)+letter(u.lastName))||"?";}
 if(a){
-a.textContent=u.firstName||"החשבון שלי";
+var name=((u.firstName||"")+" "+(u.lastName||"")).trim()||"החשבון שלי";
+a.textContent="";
+a.setAttribute("aria-label",name);
+a.title=name;
+if(u.avatarUrl){
+var img=document.createElement("img");
+img.alt="";
+img.referrerPolicy="no-referrer";
+var src=String(u.avatarUrl);
+if(src.charAt(0)==="/"){src=b.replace(/\\/api\\/v1$/,"")+src;}
+img.src=src;
+img.onerror=function(){a.textContent=mark();};
+a.appendChild(img);
+}else{a.textContent=mark();}
 if(u.accountType!=="agency"&&u.platformRole!=="admin"){a.href=a.href.replace(/\\/app\\/profile$/,"/account");}
 a.hidden=false;
 }
+var leave=function(){fetch(b+"/auth/logout",{method:"POST",credentials:"include"}).finally(function(){location.href="/";});};
+var outs=document.querySelectorAll("[data-leave]");
+for(var n=0;n<outs.length;n++){outs[n].hidden=false;outs[n].addEventListener("click",leave);}
 if(s){s.hidden=false;}
 if(i){i.hidden=true;}
 }).catch(function(){});`;
@@ -201,6 +219,16 @@ footer.site .band{max-width:80rem;margin-inline:auto}
 .navr a.publish:hover{border-color:#94a3b8;color:#0f172a}
 .navr a.signin{color:#1d4ed8}
 .navr a.signin:hover{text-decoration:underline}
+/* The account is the picture, or the initials when there is none. Never the name:
+   the app's bar is the picture, and this one has to match it. */
+.navr a.who{width:2rem;height:2rem;justify-content:center;overflow:hidden;border-radius:9999px;
+  background:#e2e8f0;color:#334155;font-size:.75rem;font-weight:600;text-decoration:none}
+.navr a.who:hover{color:#334155}
+.navr a.who img{width:100%;height:100%;object-fit:cover}
+.navr button.leave,.navl .here button.leave{border:0;background:none;font:inherit;cursor:pointer;color:#64748b}
+.navr button.leave{font-size:.875rem;padding:0}
+.navr button.leave:hover{color:#0f172a}
+.navl .here button.leave{display:none}
 .navr svg{width:1.25rem;height:1.25rem;flex:none}
 .navr a.publish svg{width:1rem;height:1rem}
 /*
@@ -228,7 +256,10 @@ footer.site .band{max-width:80rem;margin-inline:auto}
   .menubox:checked ~ .here{transform:translateX(0);pointer-events:auto}
   .menubox:checked ~ .burger .open{display:none}
   .menubox:checked ~ .burger .shut{display:block}
-  .navl .here a{padding:.75rem .875rem}
+  .navl .here a,.navl .here button.leave{padding:.75rem .875rem}
+  .navr button.leave{display:none}
+  .navl .here button.leave{display:block;margin-top:auto;width:100%;text-align:start;font-size:1rem}
+  .navl .here button.leave[hidden]{display:none}
   .drawer-x{align-self:flex-start;display:inline-flex;align-items:center;justify-content:center;
     width:2.25rem;height:2.25rem;margin-bottom:.25rem;border-radius:.5rem;color:#334155;cursor:pointer}
   .drawer-x:hover{background:#f1f5f9}
@@ -533,6 +564,7 @@ ${blocks}
 <a href="/nadlan"${options.onCityPages ? ' aria-current="page"' : ''}>מחירים לפי עיר</a>
 <a href="${esc(options.appUrl)}/mortgage">מחשבון משכנתא</a>
 <a href="${esc(options.appUrl)}/valuation">הערכת שווי</a>
+<button type="button" class="leave" data-leave hidden>יציאה</button>
 </nav>
 </div>
 <div class="navr">
@@ -548,7 +580,8 @@ ${blocks}
   than created in JavaScript so the bar does not jump as it appears.
 -->
 <a id="u365-searches" hidden href="${esc(options.appUrl)}/alerts">${ICON.bell}<span class="word">חיפושים</span></a>
-<a class="signin" id="u365-account" hidden href="${esc(options.appUrl)}/app/profile"></a>
+<a class="who" id="u365-account" hidden href="${esc(options.appUrl)}/app/profile"></a>
+<button type="button" class="leave" data-leave hidden>יציאה</button>
 </div>
 </div></header>
 <main class="${options.door ? 'door' : 'wrap'}" id="main">${options.body}</main>

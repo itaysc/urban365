@@ -22,6 +22,9 @@ describe('session check', () => {
     expect(pageHtml).toContain('credentials:"include"');
     expect(pageHtml).not.toContain('fetch("/api/v1/auth/me"');
     expect(pageHtml).toContain('replace(/\\/app\\/profile$/,"/account")');
+    expect(pageHtml).toContain('u.avatarUrl');
+    expect(pageHtml).toContain('data-leave');
+    expect(pageHtml).toContain('"/auth/logout"');
   });
 
   it('refuses to embed an address that is not an http URL', () => {

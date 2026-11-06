@@ -176,13 +176,18 @@ export function SearchPage() {
     // one column, nothing to keep beside anything.
     /*
       The search itself still fills the window on a wide screen and still scrolls its
-      results column inside itself — that is `lg:h-screen` on the section below, not on
-      the page. The page scrolls, so there is somewhere for the footer to be: scrolling
-      past the search reveals it, the way a full-height hero works anywhere else.
+      results column inside itself. The page scrolls, so there is somewhere for the
+      footer to be: scrolling past the search reveals it.
     */
     <div className="bg-slate-50">
-      <div className="lg:flex lg:h-screen lg:flex-col lg:overflow-hidden">
-        <SiteHeader />
+      <SiteHeader />
+      {/*
+        The yellow banner and this bar already occupy the top of the window (2rem +
+        3.5rem). The column below fills what is left. It used to be a full `100vh`
+        with the bar inside it, and the bar sticks `2rem` down to clear the banner —
+        which, inside this box, opened a white gap between the two.
+      */}
+      <div className="lg:flex lg:h-[calc(100vh-5.5rem)] lg:flex-col lg:overflow-hidden">
 
       <main id="main" tabIndex={-1} className="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 sm:p-8 lg:min-h-0 lg:flex-1">
         <header className="flex flex-wrap items-baseline justify-between gap-3">
