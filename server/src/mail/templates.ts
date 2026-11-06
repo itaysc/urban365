@@ -50,7 +50,7 @@ export const passwordResetTemplate = (link: string, firstName: string) => ({
     `שלום ${firstName},`,
     `<p style="color:#334155;line-height:1.6">התקבלה בקשה לאיפוס הסיסמה בחשבון שלך.</p>
      ${button(link, 'איפוס הסיסמה')}
-     <p style="font-size:12px;color:#64748b">הקישור תקף לשעה אחת.</p>`,
+     <p style="font-size:12px;color:#64748b">הקישור תקף לשעתיים.</p>`,
   ),
 });
 

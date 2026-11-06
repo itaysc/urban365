@@ -7,6 +7,9 @@ const ICON = {
   bell: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg>',
   heart:
     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>',
+  menu: '<svg class="open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/></svg>',
+  close:
+    '<svg class="shut" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>',
 };
 
 /**
@@ -137,8 +140,31 @@ footer.site .band{max-width:80rem;margin-inline:auto}
 .navr a.signin:hover{text-decoration:underline}
 .navr svg{width:1.25rem;height:1.25rem;flex:none}
 .navr a.publish svg{width:1rem;height:1rem}
-/* The words fold away on a phone and the icons stay, exactly as the app does it. */
-@media (max-width:40rem){.navl .here,.navr .word{display:none}}
+/*
+ * A checkbox, so a phone can open the links without a script. These pages allow one
+ * script, the session check, and a menu does not need a second one.
+ */
+.menubox{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
+  clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.burger{display:none}
+.burger svg{width:1.375rem;height:1.375rem}
+.burger .shut{display:none}
+/* The words fold away on a phone and the icons stay, exactly as the app does it.
+   The links beside the logo move into the menu the button opens. */
+@media (max-width:40rem){
+  .burger{display:inline-flex;align-items:center;justify-content:center;width:2.25rem;height:2.25rem;
+    margin-inline-end:.125rem;border-radius:.5rem;color:#334155;cursor:pointer}
+  .burger:hover{background:#f1f5f9}
+  .navl .here{display:none;position:absolute;z-index:40;inset-inline:0;top:100%;
+    flex-direction:column;align-items:stretch;gap:.125rem;margin:0;padding:.5rem .75rem .75rem;
+    border:0;border-bottom:1px solid #e2e8f0;background:#fff;
+    box-shadow:0 8px 16px rgb(15 23 42 / .06)}
+  .menubox:checked ~ .here{display:flex}
+  .menubox:checked ~ .burger .open{display:none}
+  .menubox:checked ~ .burger .shut{display:block}
+  .navl .here a{padding:.75rem .875rem}
+  .navr .word{display:none}
+}
 nav.crumbs{font-size:.8125rem;color:#64748b;padding:.75rem 0}
 nav.crumbs a{color:#64748b}
 nav.crumbs span{margin:0 .375rem;color:#cbd5e1}
@@ -416,8 +442,11 @@ ${blocks}
 <body>
 <header class="site"><div class="band">
 <div class="navl">
+<input id="u365-menu" class="menubox" type="checkbox">
+<label class="burger" for="u365-menu" aria-label="תפריט">${ICON.menu}${ICON.close}</label>
 <a class="brand" href="${esc(options.appUrl)}/">Urban<span>365</span></a>
 <nav class="here">
+<a href="${esc(options.appUrl)}/agencies">סוכנויות</a>
 <a href="/nadlan"${options.onCityPages ? ' aria-current="page"' : ''}>מחירים לפי עיר</a>
 <a href="${esc(options.appUrl)}/mortgage">מחשבון משכנתא</a>
 <a href="${esc(options.appUrl)}/valuation">הערכת שווי</a>

@@ -1,7 +1,7 @@
 import { useRef, useState, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Bell, Building2, Heart, Plus } from 'lucide-react';
+import { Bell, Building2, Heart, Menu, Plus, X } from 'lucide-react';
 import { useAuth } from '@/auth/auth-context';
 import { LoginDialog } from '@/components/auth/LoginDialog';
 import { Avatar } from '@/components/ui/Avatar';
@@ -72,6 +72,7 @@ export function SiteHeader({ leading, subtitle, fullWidth = true }: Props) {
   const navigate = useNavigate();
 
   const [loginOpen, setLoginOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   // What the sign-in is *for*, which decides what the dialog says and where it goes
   // afterwards. 'account' is somebody signing in for its own sake.
   const [loginIntent, setLoginIntent] = useState<LoginIntent>('account');
@@ -132,6 +133,24 @@ export function SiteHeader({ leading, subtitle, fullWidth = true }: Props) {
         }`}
       >
         <div className="flex items-center gap-3">
+          {/*
+            On a phone the links beside the logo do not fit, so they live in a menu.
+            The button sits at the right, which is the start in this layout. The
+            dashboard already has its own drawer trigger, and does not show these links.
+          */}
+          {!subtitle && (
+            <button
+              type="button"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-700 transition hover:bg-slate-100 sm:hidden"
+              aria-label="תפריט"
+              aria-expanded={menuOpen}
+              aria-controls="site-menu"
+              onClick={() => setMenuOpen((open) => !open)}
+            >
+              {menuOpen ? <X className="h-5 w-5" aria-hidden /> : <Menu className="h-5 w-5" aria-hidden />}
+            </button>
+          )}
+
           {leading}
 
           {/* Home from anywhere. The one thing on this bar that is always in the same
@@ -368,6 +387,37 @@ export function SiteHeader({ leading, subtitle, fullWidth = true }: Props) {
           )}
         </div>
       </div>
+
+      {menuOpen && !subtitle && (
+        <nav id="site-menu" className="flex flex-col gap-0.5 border-t border-slate-200 px-3 py-2 sm:hidden">
+          <Link to="/agencies" className={navLink} onClick={() => setMenuOpen(false)}>
+            סוכנויות
+          </Link>
+          <a href="/nadlan" className={navLink} onClick={() => setMenuOpen(false)}>
+            מחירים לפי עיר
+          </a>
+          <Link to="/mortgage" className={navLink} onClick={() => setMenuOpen(false)}>
+            מחשבון משכנתא
+          </Link>
+          {user ? (
+            <Link to="/valuation" className={navLink} onClick={() => setMenuOpen(false)}>
+              הערכת שווי
+            </Link>
+          ) : (
+            <button
+              type="button"
+              className={`${navLink} text-start`}
+              onClick={() => {
+                setMenuOpen(false);
+                setLoginIntent('valuation');
+                setLoginOpen(true);
+              }}
+            >
+              הערכת שווי
+            </button>
+          )}
+        </nav>
+      )}
 
       <LoginDialog
         open={loginOpen}

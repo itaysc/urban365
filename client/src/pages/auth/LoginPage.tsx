@@ -66,6 +66,11 @@ export function LoginPage() {
           קישור האימות אינו תקף או שפג תוקפו.
         </p>
       )}
+      {params.get('reset') === '1' && (
+        <p className="mb-4 rounded-lg bg-green-50 px-3 py-2 text-sm text-green-800">
+          הסיסמה עודכנה. אפשר להתחבר עם הסיסמה החדשה.
+        </p>
+      )}
 
       {googleError && (
         <p className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">{googleError}</p>

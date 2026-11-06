@@ -37,7 +37,7 @@ interface Props {
   placeholder?: string;
 }
 
-/** A chosen place, flattened so the chip row does not care which list it came from. */
+/** A chosen place, flattened so a badge does not care which list it came from. */
 interface Chosen {
   kind: 'city' | 'neighborhood' | 'district';
   value: string;
@@ -49,6 +49,7 @@ export function PlaceSearchBox({ filters, update, tone = 'default', placeholder 
   const [open, setOpen] = useState(false);
   const [highlighted, setHighlighted] = useState(0);
   const box = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // Read once on mount, then kept in step by `remember` below — reading storage on
   // every render would re-parse the same JSON on every keystroke.
@@ -257,6 +258,13 @@ export function PlaceSearchBox({ filters, update, tone = 'default', placeholder 
   const clear = () => update({ city: [], neighborhood: [], district: [] });
 
   const onKeyDown = (e: React.KeyboardEvent) => {
+    // The badge nearest the caret is the last one. Backspace removes it once the
+    // field itself is empty, which is how a row of badges is edited.
+    if (e.key === 'Backspace' && term === '' && chosen.length > 0) {
+      e.preventDefault();
+      remove(chosen[chosen.length - 1]);
+      return;
+    }
     if (e.key === 'Escape') {
       setOpen(false);
       return;
@@ -335,33 +343,71 @@ export function PlaceSearchBox({ filters, update, tone = 'default', placeholder 
       <div
         className={
           tone === 'hero'
-            ? 'flex items-center gap-2 bg-transparent px-3'
-            : 'flex items-center gap-2 rounded-full border border-slate-300 bg-white px-4 py-2.5 focus-within:border-slate-400'
+            ? `flex items-center gap-2 bg-transparent px-3 ${chosen.length > 0 ? 'py-1.5' : ''}`
+            : `flex items-center gap-2 rounded-full border border-slate-300 bg-white px-4 focus-within:border-slate-400 ${
+                chosen.length > 0 ? 'py-1.5' : 'py-2.5'
+              }`
         }
+        onMouseDown={(e) => {
+          if ((e.target as HTMLElement).closest('button, input')) return;
+          e.preventDefault();
+          inputRef.current?.focus();
+        }}
       >
         <MapPin
           className={`shrink-0 text-slate-500 ${tone === 'hero' ? 'h-5 w-5' : 'h-4 w-4'}`}
           aria-hidden
         />
-        <input
-          value={term}
-          onChange={(e) => {
-            setTerm(e.target.value);
-            setOpen(true);
-          }}
-          onFocus={() => setOpen(true)}
-          onKeyDown={onKeyDown}
-          placeholder={
-            chosen.length > 0 ? `${chosen.length} מיקומים נבחרו` : (placeholder ?? 'עיר או שכונה')
-          }
-          aria-label="חיפוש לפי מיקום"
-          role="combobox"
-          aria-expanded={open}
-          aria-controls="place-suggestions"
-          className={`w-full bg-transparent text-slate-900 outline-none placeholder:text-slate-500 ${
-            tone === 'hero' ? 'py-3 text-base' : 'text-sm'
-          }`}
-        />
+        {/*
+          The chosen places sit in the field. A count ("3 מיקומים נבחרו") says that
+          something was picked and not what, which is the thing you came back to check.
+          They wrap with the input so a handful of towns stays readable inside the pill.
+        */}
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
+          {chosen.map((item) => (
+            <span
+              key={`${item.kind}:${item.value}`}
+              className="inline-flex max-w-full items-center gap-1 rounded-full bg-slate-100 py-1 pe-1 ps-2.5 text-sm text-slate-800"
+            >
+              <span className="truncate">{item.label}</span>
+              <button
+                type="button"
+                aria-label={`הסרת ${item.label}`}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  remove(item);
+                }}
+                className="shrink-0 rounded-full p-0.5 text-slate-500 hover:bg-slate-200 hover:text-slate-800"
+              >
+                <X className="h-3.5 w-3.5" aria-hidden />
+              </button>
+            </span>
+          ))}
+          <input
+            ref={inputRef}
+            value={term}
+            onChange={(e) => {
+              setTerm(e.target.value);
+              setOpen(true);
+            }}
+            onFocus={() => setOpen(true)}
+            onKeyDown={onKeyDown}
+            placeholder={
+              chosen.length === 0
+                ? (placeholder ?? 'עיר או שכונה')
+                : remaining > 0
+                  ? 'עוד מיקום'
+                  : ''
+            }
+            aria-label="חיפוש לפי מיקום"
+            role="combobox"
+            aria-expanded={open}
+            aria-controls="place-suggestions"
+            className={`min-w-[6rem] flex-1 bg-transparent text-slate-900 outline-none placeholder:text-slate-400 ${
+              tone === 'hero' ? `text-base ${chosen.length > 0 ? 'py-1.5' : 'py-3'}` : 'text-sm'
+            }`}
+          />
+        </div>
       </div>
 
       {open && (
@@ -376,27 +422,6 @@ export function PlaceSearchBox({ filters, update, tone = 'default', placeholder 
               {remaining === 1 && 'נשאר עוד מיקום אחד לבחירה'}
               {remaining > 1 && `נשארו עוד ${remaining} מיקומים לבחירה`}
             </p>
-
-            {chosen.length > 0 && (
-              <ul className="mt-2 flex flex-wrap gap-2">
-                {chosen.map((item) => (
-                  <li key={`${item.kind}:${item.value}`}>
-                    <button
-                      type="button"
-                      onMouseDown={(e) => {
-                        e.preventDefault();
-                        remove(item);
-                      }}
-                      className="flex items-center gap-1.5 rounded-lg bg-slate-100 px-2.5 py-1.5 text-sm text-slate-700 hover:bg-slate-200"
-                    >
-                      <X className="h-3.5 w-3.5 text-slate-500" aria-hidden />
-                      {item.label}
-                      <span className="sr-only">הסרה</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
           </div>
 
           {/*
