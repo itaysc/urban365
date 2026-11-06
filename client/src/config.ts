@@ -7,9 +7,11 @@ export const config = {
   apiUrl: import.meta.env.VITE_API_URL ?? '',
   /**
    * OpenFreeMap by default: OpenStreetMap vector tiles with no account and no API key,
-   * which is why it is the default rather than Mapbox. Point this at a Mapbox or
-   * MapTiler style URL (with the key in it) to switch providers — nothing else changes.
+   * which is why it is the default rather than Mapbox. Bright is the warmer of their
+   * skins — paper-colored land and quiet buildings, rather than Liberty's gray blocks.
+   * Point this at a Mapbox or MapTiler style URL (with the key in it) to switch
+   * providers — nothing else changes.
    */
-  mapStyleUrl: import.meta.env.VITE_MAP_STYLE_URL ?? 'https://tiles.openfreemap.org/styles/liberty',
+  mapStyleUrl: import.meta.env.VITE_MAP_STYLE_URL ?? 'https://tiles.openfreemap.org/styles/bright',
   isDev: import.meta.env.DEV,
 } as const;
