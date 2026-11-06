@@ -413,7 +413,7 @@ export function page(options: PageOptions): string {
 ${blocks}
 </head>
 <body>
-<header class="site"><div class="${frame}">
+<header class="site"><div class="band">
 <div class="navl">
 <a class="brand" href="${esc(options.appUrl)}/">Urban<span>365</span></a>
 <nav class="here">
