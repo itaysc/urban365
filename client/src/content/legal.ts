@@ -38,25 +38,16 @@ export interface LegalDocument {
 }
 
 const COMPANY = 'Urban365';
-/**
- * Still blank, and these two are the ones that cannot stay blank.
- *
- * The Privacy Protection Law requires a privacy policy to identify who controls the
- * database, and a terms document that does not name a legal entity leaves nothing for a
- * user to contract with or to sue. Both become available on incorporation.
- */
-const COMPANY_ID = '[[ח.פ. — יושלם עם רישום החברה]]';
-const ADDRESS = '[[כתובת רשומה — תושלם עם רישום החברה]]';
-const CONTACT = 'info@urban365.com';
-const PRIVACY_CONTACT = 'legal@urban365.com';
+const CONTACT = 'support@urban365.co.il';
+const PRIVACY_CONTACT = 'legal@urban365.co.il';
 const SITE = 'urban365.co.il';
 
 export const TERMS: LegalDocument = {
   title: 'תנאי שימוש',
-  updated: '30 באוקטובר 2026',
+  updated: '6 בנובמבר 2026',
   intro:
-    `ברוכים הבאים. האתר ${SITE} ("האתר" או "השירות") מופעל על ידי ${COMPANY}, ${COMPANY_ID}, ` +
-    `מכתובת ${ADDRESS} ("אנחנו", "החברה"). תנאים אלה מהווים הסכם מחייב בינך לבין החברה. ` +
+    `ברוכים הבאים. האתר ${SITE} ("האתר" או "השירות") מופעל על ידי ${COMPANY} ("אנחנו", "החברה"). ` +
+    'תנאים אלה מהווים הסכם מחייב בינך לבין החברה. ' +
     'השימוש באתר, לרבות עיון בו, מהווה הסכמה לתנאים. אם אינך מסכים — אל תעשה שימוש באתר. ' +
     'התנאים מנוסחים בלשון זכר מטעמי נוחות בלבד ומופנים לכל המגדרים.',
   sections: [
@@ -307,9 +298,9 @@ export const TERMS: LegalDocument = {
 
 export const PRIVACY: LegalDocument = {
   title: 'מדיניות פרטיות',
-  updated: '30 באוקטובר 2026',
+  updated: '6 בנובמבר 2026',
   intro:
-    `${COMPANY}, ${COMPANY_ID} ("אנחנו") מכבדת את פרטיותך. מדיניות זו מסבירה איזה מידע אישי ` +
+    `${COMPANY} ("אנחנו") מכבדת את פרטיותך. מדיניות זו מסבירה איזה מידע אישי ` +
     `נאסף בעת השימוש באתר ${SITE}, מה נעשה בו, למי הוא מועבר ואילו זכויות עומדות לך. ` +
     'המדיניות נכתבה בהתאם לחוק הגנת הפרטיות, התשמ״א-1981 ולתקנותיו.',
   sections: [
@@ -319,7 +310,7 @@ export const PRIVACY: LegalDocument = {
         {
           type: 'p',
           text:
-            `בעלת השליטה במאגר המידע היא ${COMPANY}, ${ADDRESS}. לפניות בנושא פרטיות: ${PRIVACY_CONTACT}.`,
+            `בעלת השליטה במאגר המידע היא ${COMPANY}. לפניות בנושא פרטיות: ${PRIVACY_CONTACT}.`,
         },
       ],
     },
@@ -665,9 +656,9 @@ export const ACCESSIBILITY: LegalDocument = {
         {
           type: 'list',
           items: [
-            `שם רכז הנגישות: [[שם רכז הנגישות]]`,
+            `שם רכז הנגישות: איתי שמידט`,
             `דואר אלקטרוני: ${ACCESS_CONTACT}`,
-            `טלפון: [[טלפון רכז הנגישות]]`,
+            `טלפון: 0506310538`,
           ],
         },
         {
@@ -685,7 +676,7 @@ export const ACCESSIBILITY: LegalDocument = {
         {
           type: 'p',
           text:
-            `השירות ניתן באופן מקוון בלבד. אין במשרדי החברה בכתובת ${ADDRESS} קבלת קהל, ` +
+            'השירות ניתן באופן מקוון בלבד. אין במשרדי החברה קבלת קהל, ' +
             'וכל פנייה נעשית בטלפון או בדואר אלקטרוני. אם יתקיימו בעתיד מפגשים פיזיים, ' +
             'יעודכנו כאן הסדרי הנגישות במקום.',
         },
