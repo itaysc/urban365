@@ -49,6 +49,10 @@ const NavBar = () => (
   </span>
 );
 
+/** Same treatment as Yad2: a light wash behind the word, the word itself staying dark. */
+const navLink =
+  'rounded-lg px-2.5 py-1.5 text-base text-slate-600 transition hover:bg-slate-100 hover:text-slate-900';
+
 type LoginIntent = 'account' | 'sell' | 'valuation';
 
 /**
@@ -154,7 +158,7 @@ export function SiteHeader({ leading, subtitle, fullWidth = true }: Props) {
               agency dashboard the space beside the logo already says which agency you
               are in, and a third item there reads as a breadcrumb that goes nowhere.
             */
-            <nav className="hidden items-center gap-2.5 border-s border-slate-200 ps-3 sm:flex">
+            <nav className="hidden items-center gap-0.5 border-s border-slate-200 ps-2 sm:flex">
               {/*
                 A plain anchor, unlike its neighbour: the city pages are rendered by the
                 API and are not in this bundle's route table, so a <Link> would try to
@@ -162,21 +166,21 @@ export function SiteHeader({ leading, subtitle, fullWidth = true }: Props) {
               */}
               <Link
                 to="/agencies"
-                className="text-sm text-slate-600 transition hover:text-slate-900"
+                className={navLink}
               >
                 סוכנויות
               </Link>
               <NavBar />
               <a
                 href="/nadlan"
-                className="text-sm text-slate-600 transition hover:text-slate-900"
+                className={navLink}
               >
                 מחירים לפי עיר
               </a>
               <NavBar />
               <Link
                 to="/mortgage"
-                className="text-sm text-slate-600 transition hover:text-slate-900"
+                className={navLink}
               >
                 מחשבון משכנתא
               </Link>
@@ -190,7 +194,7 @@ export function SiteHeader({ leading, subtitle, fullWidth = true }: Props) {
               {user ? (
                 <Link
                   to="/valuation"
-                  className="text-sm text-slate-600 transition hover:text-slate-900"
+                  className={navLink}
                 >
                   הערכת שווי
                 </Link>
@@ -202,7 +206,7 @@ export function SiteHeader({ leading, subtitle, fullWidth = true }: Props) {
                     setLoginIntent('valuation');
                     setLoginOpen(true);
                   }}
-                  className="text-sm text-slate-600 transition hover:text-slate-900"
+                  className={navLink}
                 >
                   הערכת שווי
                 </button>

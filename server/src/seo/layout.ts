@@ -117,11 +117,12 @@ footer.site .band{max-width:80rem;margin-inline:auto}
 .brand span{color:#3b82f6}
 /* The divider and the links beside the wordmark, as the app has them. The divider
    belongs to the group rather than to each link, or two links would draw two. */
-.navl .here{border-inline-start:1px solid #e2e8f0;padding-inline-start:.75rem;
-  display:flex;align-items:center;gap:.75rem;font-size:.875rem;color:#475569}
-.navl .here a{color:inherit;text-decoration:none;white-space:nowrap}
-.navl .here a:hover{color:#0f172a}
+.navl .here{border-inline-start:1px solid #e2e8f0;padding-inline-start:.5rem;
+  display:flex;align-items:center;gap:.125rem;font-size:1rem;color:#475569}
+.navl .here a{color:inherit;text-decoration:none;white-space:nowrap;padding:.375rem .625rem;
+  border-radius:.5rem;transition:background-color .15s ease,color .15s ease}
 .navl .here a[aria-current]{color:#0f172a;font-weight:600}
+.navl .here a:hover{background:#f1f5f9;color:#0f172a}
 .navr a{display:flex;align-items:center;gap:.375rem;font-size:.875rem;color:#475569;
   text-decoration:none}
 /* display:flex above beats the browser's own rule for [hidden], so the sign-in link
