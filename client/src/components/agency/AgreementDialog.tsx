@@ -2,7 +2,7 @@ import { useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { X } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
-import { Field, inputClass, selectClass } from '@/components/ui/Field';
+import { Field, inputClass } from '@/components/ui/Field';
 import { useToast } from '@/components/ui/Toast';
 import { asDateInput } from '@/lib/agreement';
 import { errorMessageOf } from '@/lib/apiError';

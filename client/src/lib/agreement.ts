@@ -1,4 +1,3 @@
-import { formatShekel } from '@/lib/format';
 import type { CustomerAgreement } from '@/services/crm';
 
 /**

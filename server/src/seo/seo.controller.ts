@@ -1,11 +1,10 @@
-import { Controller, Get, Header, Param, Res, UseInterceptors } from '@nestjs/common';
+import { Controller, Get, Header, Param, Res } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Throttle } from '@nestjs/throttler';
 import type { Response } from 'express';
 import type { MailConfig } from '../config/configuration.js';
 import { Public } from '../auth/decorators/public.decorator.js';
 import { SECTIONS, type Section } from '../yad2/yad2.types.js';
-import { ClosedSitePages } from './closed-site-pages.js';
 import { CityPageService } from './city-page.service.js';
 import { esc } from './html.js';
 import { page, SESSION_SCRIPT_HASH } from './layout.js';
@@ -88,7 +87,6 @@ const isSection = (value: string): value is Section => (SECTIONS as string[]).in
  * origin served the bytes, the page says it lives on the public site. See PRODUCTION.md.
  */
 @Public()
-@UseInterceptors(ClosedSitePages)
 // Generous next to the global 300/min: a crawler working through a few hundred cities
 // is the traffic these pages exist for, and rate-limiting it is rate-limiting the point.
 @Throttle({ default: { limit: 1_200, ttl: 60_000 } })
