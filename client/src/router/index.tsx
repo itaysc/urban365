@@ -36,6 +36,7 @@ import { ModerationPage } from '@/pages/admin/ModerationPage';
 import { MySalePage } from '@/pages/sell/MySalePage';
 import { PublishPage } from '@/pages/sell/PublishPage';
 import { PageTitle } from '@/components/PageTitle';
+import { PreviewBanner } from '@/components/PreviewBanner';
 
 export const router = createBrowserRouter([
   {
@@ -47,6 +48,7 @@ export const router = createBrowserRouter([
     */
     element: (
       <>
+        <PreviewBanner />
         <PageTitle />
         <Outlet />
       </>
