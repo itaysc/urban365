@@ -26,6 +26,11 @@ interface Props {
   returnTo?: string;
   /** Run once there is a session, for a sign-in that was asked for in order to do something. */
   onSignedIn?: () => void;
+  /**
+   * The site is closed. The dialog is the only way in, so it cannot be dismissed,
+   * and there is no signup to offer.
+   */
+  locked?: boolean;
 }
 
 /**
@@ -46,6 +51,7 @@ export function LoginDialog({
   description,
   returnTo,
   onSignedIn,
+  locked = false,
 }: Props) {
   const location = useLocation();
 
@@ -55,11 +61,32 @@ export function LoginDialog({
   const googleReturnTo = returnTo ?? `${location.pathname}${location.search}`;
 
   return (
-    <Dialog.Root open={open} onOpenChange={onOpenChange}>
+    <Dialog.Root
+      open={open}
+      onOpenChange={(next) => {
+        if (locked && !next) return;
+        onOpenChange(next);
+      }}
+    >
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm" />
+        <Dialog.Overlay
+          className={
+            locked
+              ? 'fixed inset-0 z-50 bg-slate-900/20'
+              : 'fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm'
+          }
+        />
 
         <Dialog.Content
+          onEscapeKeyDown={(e) => {
+            if (locked) e.preventDefault();
+          }}
+          onPointerDownOutside={(e) => {
+            if (locked) e.preventDefault();
+          }}
+          onInteractOutside={(e) => {
+            if (locked) e.preventDefault();
+          }}
           onCloseAutoFocus={(e) => {
             if (!returnFocusTo?.current) return;
             e.preventDefault();
@@ -77,12 +104,14 @@ export function LoginDialog({
               </Dialog.Description>
             </div>
 
-            <Dialog.Close
-              aria-label="סגירה"
-              className="rounded-lg p-1.5 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
-            >
-              <X className="h-5 w-5" />
-            </Dialog.Close>
+            {!locked && (
+              <Dialog.Close
+                aria-label="סגירה"
+                className="rounded-lg p-1.5 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
+              >
+                <X className="h-5 w-5" />
+              </Dialog.Close>
+            )}
           </div>
 
           <AccountLoginForm
@@ -94,12 +123,14 @@ export function LoginDialog({
             }}
           />
 
-          <p className="mt-4 text-center text-sm text-slate-500">
-            אין לך חשבון?{' '}
-            <Link to="/signup" className="text-blue-700 hover:underline">
-              הרשמה
-            </Link>
-          </p>
+          {!locked && (
+            <p className="mt-4 text-center text-sm text-slate-500">
+              אין לך חשבון?{' '}
+              <Link to="/signup" className="text-blue-700 hover:underline">
+                הרשמה
+              </Link>
+            </p>
+          )}
 
           {/*
             The crossing to the other side of the product. A buyer never needs it; an

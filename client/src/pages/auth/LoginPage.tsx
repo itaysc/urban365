@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import * as Yup from 'yup';
 import { useAuth } from '@/auth/auth-context';
+import { useSiteClosed } from '@/hooks/useSiteClosed';
 import { Button } from '@/components/ui/Button';
 import { Field, inputClass } from '@/components/ui/Field';
 import { PasswordInput } from '@/components/ui/PasswordInput';
@@ -18,6 +19,7 @@ export function LoginPage() {
   const [params] = useSearchParams();
   const [formError, setFormError] = useState<string | null>(null);
   const googleAvailable = useGoogleAvailable();
+  const { closed } = useSiteClosed();
 
   const verified = params.get('verified');
   // Set by the OAuth callback when it bounced somebody back rather than signing them in.
@@ -109,19 +111,24 @@ export function LoginPage() {
 
         {/* Signing up is the other half of this screen, not a footnote: a new agency
             arrives here first. It used to sit only under the card, below the fold on a
-            short window, where it was easy to miss entirely. */}
-        <div className="flex items-center gap-3 pt-2">
-          <span className="h-px flex-1 bg-slate-200" />
-          <span className="text-xs text-slate-500">או</span>
-          <span className="h-px flex-1 bg-slate-200" />
-        </div>
+            short window, where it was easy to miss entirely. While the site is closed
+            the only way in is an invite, so the link is gone. */}
+        {!closed && (
+          <>
+            <div className="flex items-center gap-3 pt-2">
+              <span className="h-px flex-1 bg-slate-200" />
+              <span className="text-xs text-slate-500">או</span>
+              <span className="h-px flex-1 bg-slate-200" />
+            </div>
 
-        <Link
-          to="/agency/signup"
-          className="rounded-lg border border-slate-300 px-4 py-2 text-center text-sm font-medium text-slate-800 transition hover:border-slate-900"
-        >
-          רישום סוכנות חדשה
-        </Link>
+            <Link
+              to="/agency/signup"
+              className="rounded-lg border border-slate-300 px-4 py-2 text-center text-sm font-medium text-slate-800 transition hover:border-slate-900"
+            >
+              רישום סוכנות חדשה
+            </Link>
+          </>
+        )}
       </form>
     </AuthLayout>
   );

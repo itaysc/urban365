@@ -124,5 +124,8 @@ export const qk = {
   /** Whether agencies may see yad2. Admins ignore the answer. */
   yad2ForAgencies: ['yad2', 'for-agencies'] as const,
 
+  /** Whether the public site is closed to guests. */
+  site: ['site'] as const,
+
   invite: (token: string) => ['invite', token] as const,
 } as const;

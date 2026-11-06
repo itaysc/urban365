@@ -4,6 +4,7 @@ import { SellerViewingPage } from '@/pages/SellerViewingPage';
 import { ViewingPage } from '@/pages/ViewingPage';
 import { AccessibilityPage, PrivacyPage, TermsPage } from '@/pages/LegalPage';
 import { Navigate, Outlet, createBrowserRouter } from 'react-router-dom';
+import { ClosedSiteGate } from '@/auth/ClosedSiteGate';
 import { RequireAdmin, RequireAuth } from '@/auth/RequireAuth';
 import { AgenciesPage } from '@/pages/AgenciesPage';
 import { AgencyPublicPage } from '@/pages/AgencyPublicPage';
@@ -56,6 +57,9 @@ export const router = createBrowserRouter([
       </>
     ),
     children: [
+      {
+        element: <ClosedSiteGate />,
+        children: [
   // ── public ──────────────────────────────────────────────────────────────────
   /*
    * The front door is a front door now. It used to be the results page, so the site
@@ -176,6 +180,8 @@ export const router = createBrowserRouter([
       },
     ],
   },
+        ],
+      },
     ],
   },
 ]);

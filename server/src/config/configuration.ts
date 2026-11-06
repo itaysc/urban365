@@ -21,6 +21,13 @@ export interface AppConfig {
    * nobody of nothing. Turn it back on with the first real viewing.
    */
   schedulersEnabled: boolean;
+  /**
+   * The site during הרצה: guests see the home page blurred under a login, and nobody
+   * can open an account on their own. An admin invite still works, and so does signing
+   * in. Anything but an explicit "true" leaves the site as it is — a typo must not
+   * lock the front door.
+   */
+  siteClosed: boolean;
 }
 
 export interface DatabaseConfig {
@@ -122,6 +129,8 @@ export default (): {
     // Anything but an explicit "false" leaves them running: a typo should not silently
     // stop the sweeps, and the failure mode of this flag is mail that never goes out.
     schedulersEnabled: (process.env.SCHEDULERS_ENABLED ?? 'true').toLowerCase() !== 'false',
+    // Only an explicit "true" closes the site. Unset, "false", and typos stay open.
+    siteClosed: (process.env.SITE_CLOSED ?? 'false').toLowerCase() === 'true',
   },
   database: {
     url: process.env.DATABASE_URL ?? '',

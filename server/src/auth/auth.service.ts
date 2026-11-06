@@ -5,6 +5,7 @@ import {
   Logger,
   UnauthorizedException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import type { Agency, AgencyMembership, User } from '@prisma/client';
 import { MailService } from '../mail/mail.service.js';
 import {
@@ -29,6 +30,9 @@ import type { AccessTokenClaims } from './types/principal.js';
 
 type UserWithMembership = User & { memberships: (AgencyMembership & { agency: Agency })[] };
 
+/** One sentence, so every closed door says the same thing. */
+const SIGNUPS_CLOSED = 'האתר בהרצה ופתוח למשתמשים מוזמנים בלבד.';
+
 export interface AuthResult {
   user: PublicUser;
   accessToken: string;
@@ -51,7 +55,15 @@ export class AuthService {
     private readonly sessions: SessionService,
     private readonly authTokens: AuthTokenService,
     private readonly mail: MailService,
+    private readonly config: ConfigService,
   ) {}
+
+  /** Self-serve accounts are off while the site is closed. Invites do not pass through here. */
+  private assertSignupsOpen(): void {
+    if (this.config.get<boolean>('app.siteClosed') === true) {
+      throw new ForbiddenException(SIGNUPS_CLOSED);
+    }
+  }
 
   private include = { memberships: { include: { agency: true } }, } as const;
 
@@ -84,6 +96,7 @@ export class AuthService {
    * nothing is merged and no listing is ever re-parented.
    */
   async signup(dto: SignupDto, meta: RequestMeta): Promise<AuthResult> {
+    this.assertSignupsOpen();
     const email = normalizeEmail(dto.email);
 
     const existing = await this.prisma.user.findUnique({ where: { email } });
@@ -175,6 +188,7 @@ export class AuthService {
    * exactly as on the signup form.
    */
   async attachAgency(userId: string, dto: AttachAgencyDto): Promise<PublicUser> {
+    this.assertSignupsOpen();
     const user = await this.prisma.user.findUnique({ where: { id: userId }, include: this.include });
     if (!user) throw new UnauthorizedException(INVALID_CREDENTIALS);
 
@@ -247,6 +261,7 @@ export class AuthService {
     dto: { email: string; password: string; firstName: string; lastName: string; phone?: string },
     meta: RequestMeta,
   ): Promise<AuthResult> {
+    this.assertSignupsOpen();
     const email = normalizeEmail(dto.email);
 
     const existing = await this.prisma.user.findUnique({ where: { email } });
@@ -346,6 +361,10 @@ export class AuthService {
       this.logger.log(`Linked Google to existing account ${email}`);
       return this.issue(linked, meta);
     }
+
+    // An existing account may sign in with Google. A new one may not, while the site
+    // is closed — that would be a signup with no invite.
+    this.assertSignupsOpen();
 
     if (!identity.emailVerified) {
       throw new BadRequestException('כתובת האימייל אינה מאומתת אצל Google.');

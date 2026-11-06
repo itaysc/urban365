@@ -5,6 +5,7 @@ import { SiteFooter } from '@/components/SiteFooter';
 import { SiteHeader } from '@/components/SiteHeader';
 import { REGIONS } from '@/data/regions';
 import { useDocumentTitle } from '@/hooks/useDocumentTitle';
+import { useSiteClosed } from '@/hooks/useSiteClosed';
 import { qk } from '@/queries/keys';
 import { fetchCityLinks, type CityLink } from '@/services/search';
 
@@ -60,6 +61,7 @@ function byRegion(cities: CityLink[]): { name: string; cities: CityLink[] }[] {
  */
 export function LandingPage() {
   const [params] = useSearchParams();
+  const { closed } = useSiteClosed();
   useDocumentTitle('נדל״ן למכירה ולהשכרה בישראל');
 
   const { data: cities } = useQuery({ queryKey: qk.cities, queryFn: fetchCityLinks });
@@ -167,7 +169,11 @@ export function LandingPage() {
                         */}
                         <a
                           className="flex items-baseline justify-between gap-3 rounded-lg px-2 py-1.5 text-sm text-slate-600 transition hover:bg-slate-50 hover:text-blue-700"
-                          href={`/nadlan/forsale/${encodeURIComponent(city.slug)}`}
+                          href={
+                            closed
+                              ? `/search?section=forsale&city=${encodeURIComponent(city.city)}`
+                              : `/nadlan/forsale/${encodeURIComponent(city.slug)}`
+                          }
                         >
                           <span className="truncate">{city.city}</span>
                           <span className="shrink-0 text-xs tabular-nums text-slate-500">
@@ -182,7 +188,7 @@ export function LandingPage() {
           </div>
 
           <p className="mt-5 flex flex-wrap gap-x-4 gap-y-1 text-sm">
-            <a className="text-blue-700 hover:underline" href="/nadlan">
+            <a className="text-blue-700 hover:underline" href={closed ? '/search' : '/nadlan'}>
               כל הערים ומחירי הנדל״ן בהן ←
             </a>
             <Link className="text-blue-700 hover:underline" to="/agencies">

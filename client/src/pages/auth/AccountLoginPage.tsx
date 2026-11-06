@@ -1,5 +1,6 @@
 import { Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/auth/auth-context';
+import { useSiteClosed } from '@/hooks/useSiteClosed';
 import { AccountLoginForm } from '@/components/auth/AccountLoginForm';
 import { safeReturnTo } from '@/lib/returnTo';
 import { AuthLayout } from '@/pages/auth/AuthLayout';
@@ -14,6 +15,7 @@ export function AccountLoginPage() {
   const location = useLocation();
   const [params] = useSearchParams();
 
+  const { closed } = useSiteClosed();
   const returnTo = safeReturnTo((location.state as { from?: string } | null)?.from, '/');
   // Set by the OAuth callback when it bounced someone back rather than signing them in.
   const googleError = params.get('googleError');
@@ -25,12 +27,16 @@ export function AccountLoginPage() {
       title="כניסה"
       subtitle="כדי לשמור נכסים ולקבל עדכונים"
       footer={
-        <>
-          אין לך חשבון?{' '}
-          <Link to="/signup" className="text-blue-700 hover:underline">
-            הרשמה
-          </Link>
-        </>
+        closed ? (
+          <>ההרשמה סגורה. כניסה בהזמנה בלבד.</>
+        ) : (
+          <>
+            אין לך חשבון?{' '}
+            <Link to="/signup" className="text-blue-700 hover:underline">
+              הרשמה
+            </Link>
+          </>
+        )
       }
     >
       <AccountLoginForm

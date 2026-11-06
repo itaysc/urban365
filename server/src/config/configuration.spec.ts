@@ -45,3 +45,38 @@ describe('schedulersEnabled', () => {
     }
   });
 });
+
+/**
+ * The opposite failure mode from the sweeps. Closing the site by accident is worse
+ * than leaving it open, so nothing but an explicit "true" engages it.
+ */
+describe('siteClosed', () => {
+  const before = process.env.SITE_CLOSED;
+
+  beforeEach(() => {
+    delete process.env.SITE_CLOSED;
+  });
+
+  afterEach(() => {
+    if (before === undefined) delete process.env.SITE_CLOSED;
+    else process.env.SITE_CLOSED = before;
+  });
+
+  it('stays open when nothing is set', () => {
+    expect(configuration().app.siteClosed).toBe(false);
+  });
+
+  it('closes on an explicit true, whatever the case', () => {
+    for (const value of ['true', 'TRUE', 'True']) {
+      process.env.SITE_CLOSED = value;
+      expect(configuration().app.siteClosed, value).toBe(true);
+    }
+  });
+
+  it('stays open for false and for near-misses', () => {
+    for (const value of ['false', 'FALSE', '1', 'yes', 'on', '', 'ture']) {
+      process.env.SITE_CLOSED = value;
+      expect(configuration().app.siteClosed, JSON.stringify(value)).toBe(false);
+    }
+  });
+});
