@@ -2,7 +2,8 @@ import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/commo
 import type { Prisma } from '@prisma/client';
 import { RequestContextService } from '../tenancy/request-context.service.js';
 import { TenantPrismaService } from '../tenancy/tenant-prisma.service.js';
-import { can } from '../auth/permissions.js';
+import { assertActiveMember } from '../tenancy/assert-ours.js';
+import { assigneeScope, can, mayAssign } from '../auth/permissions.js';
 import { agreementFields } from './agreement-fields.js';
 import type {
   CreateCustomerDto,
@@ -63,12 +64,22 @@ export class CustomersService {
     }
   }
 
+  private scope(): Prisma.CustomerWhereInput {
+    return assigneeScope(this.context.getPrincipal(), 'assignedToId');
+  }
+
+  private assertMayAssign(userId: string | undefined): void {
+    if (!mayAssign(this.context.getPrincipal(), userId)) {
+      throw new ForbiddenException('אפשר לשייך לקוח רק לעצמך.');
+    }
+  }
+
   async list(query: ListCustomersQuery) {
     const agencyId = this.context.requireAgencyId();
     const page = query.page ?? 1;
     const pageSize = query.pageSize ?? DEFAULT_PAGE_SIZE;
 
-    const where: Prisma.CustomerWhereInput = { agencyId };
+    const where: Prisma.CustomerWhereInput = { agencyId, AND: [this.scope()] };
     if (query.kind) where.kind = query.kind;
     // Unsigned is the useful half of this filter and the reason it exists: the list of
     // people the agency is working for without anything in writing.
@@ -107,9 +118,16 @@ export class CustomersService {
   async create(dto: CreateCustomerDto) {
     this.assertCanWrite();
     const agencyId = this.context.requireAgencyId();
+    this.assertMayAssign(dto.assignedToId);
+    await assertActiveMember(this.prisma.client, agencyId, dto.assignedToId);
+
+    // An agent's new customer is theirs unless they said otherwise.
+    const principal = this.context.getPrincipal();
+    const mine =
+      dto.assignedToId === undefined && !can(principal, 'lead:read-all') ? { assignedToId: principal?.userId } : {};
 
     return this.prisma.client.customer.create({
-      data: { ...this.fields(dto), name: dto.name.trim(), agencyId },
+      data: { ...this.fields(dto), ...mine, name: dto.name.trim(), agencyId },
       select: LIST_SELECT,
     });
   }
@@ -117,6 +135,8 @@ export class CustomersService {
   async update(id: string, dto: UpdateCustomerDto) {
     this.assertCanWrite();
     await this.require(id);
+    this.assertMayAssign(dto.assignedToId);
+    await assertActiveMember(this.prisma.client, this.context.requireAgencyId(), dto.assignedToId);
 
     return this.prisma.client.customer.update({
       where: { id },
@@ -139,7 +159,10 @@ export class CustomersService {
    * concerned, and saying "forbidden" would confirm that it does.
    */
   private async require(id: string) {
-    const customer = await this.prisma.client.customer.findUnique({ where: { id }, select: { id: true } });
+    const customer = await this.prisma.client.customer.findFirst({
+      where: { id, ...this.scope() },
+      select: { id: true },
+    });
     if (!customer) throw new NotFoundException('הלקוח לא נמצא.');
     return customer;
   }

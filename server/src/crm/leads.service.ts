@@ -3,7 +3,8 @@ import type { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { RequestContextService } from '../tenancy/request-context.service.js';
 import { TenantPrismaService } from '../tenancy/tenant-prisma.service.js';
-import { can } from '../auth/permissions.js';
+import { assertActiveMember } from '../tenancy/assert-ours.js';
+import { assigneeScope, can, mayAssign } from '../auth/permissions.js';
 import { mapLeadRows, parseCsv } from './csv.js';
 import type { CreateLeadDto, ListLeadsQuery, UpdateLeadDto } from './dto/lead.dto.js';
 
@@ -42,12 +43,26 @@ export class LeadsService {
     }
   }
 
+  private scope(): Prisma.LeadWhereInput {
+    return assigneeScope(this.context.getPrincipal(), 'assignedToId');
+  }
+
+  /** An agent's new lead is theirs unless they said otherwise; nobody else may be named. */
+  private assignee(requested: string | undefined, fallbackToMe: boolean): string | undefined {
+    const principal = this.context.getPrincipal();
+    if (!mayAssign(principal, requested)) {
+      throw new ForbiddenException('אפשר לשייך פנייה רק לעצמך.');
+    }
+    if (requested !== undefined || !fallbackToMe || can(principal, 'lead:read-all')) return requested;
+    return principal?.userId;
+  }
+
   async list(query: ListLeadsQuery) {
     const agencyId = this.context.requireAgencyId();
     const page = query.page ?? 1;
     const pageSize = query.pageSize ?? DEFAULT_PAGE_SIZE;
 
-    const where: Prisma.LeadWhereInput = { agencyId };
+    const where: Prisma.LeadWhereInput = { agencyId, AND: [this.scope()] };
     if (query.status) where.status = query.status;
     if (query.listingId) where.listingId = query.listingId;
     if (query.q?.trim()) {
@@ -82,7 +97,7 @@ export class LeadsService {
     const agencyId = this.context.requireAgencyId();
     const rows = await this.prisma.client.lead.groupBy({
       by: ['status'],
-      where: { agencyId },
+      where: { agencyId, ...this.scope() },
       _count: { _all: true },
     });
 
@@ -92,6 +107,8 @@ export class LeadsService {
   async create(dto: CreateLeadDto) {
     this.assertCanWrite();
     await this.assertListingIsOurs(dto.listingId);
+    const assignedToId = this.assignee(dto.assignedToId, true);
+    await assertActiveMember(this.prisma.client, this.context.requireAgencyId(), assignedToId);
 
     return this.prisma.client.lead.create({
       data: {
@@ -102,7 +119,7 @@ export class LeadsService {
         message: dto.message,
         notes: dto.notes,
         listingId: dto.listingId,
-        assignedToId: dto.assignedToId,
+        assignedToId,
         status: dto.status ?? 'new',
         source: 'manual',
       },
@@ -114,6 +131,8 @@ export class LeadsService {
     this.assertCanWrite();
     const existing = await this.requireOwn(id);
     await this.assertListingIsOurs(dto.listingId);
+    this.assignee(dto.assignedToId, false);
+    await assertActiveMember(this.prisma.client, this.context.requireAgencyId(), dto.assignedToId);
 
     return this.prisma.client.lead.update({
       where: { id: existing.id },
@@ -147,8 +166,15 @@ export class LeadsService {
 
     if (rows.length === 0) return { imported: 0, skipped };
 
+    const assignedToId = this.assignee(undefined, true) ?? null;
     const created = await this.prisma.client.lead.createMany({
-      data: rows.map((row) => ({ ...row, agencyId, source: 'import' as const, status: 'new' as const })),
+      data: rows.map((row) => ({
+        ...row,
+        agencyId,
+        assignedToId,
+        source: 'import' as const,
+        status: 'new' as const,
+      })),
     });
 
     return { imported: created.count, skipped };
@@ -190,7 +216,7 @@ export class LeadsService {
 
   private async requireOwn(id: string) {
     const agencyId = this.context.requireAgencyId();
-    const lead = await this.prisma.client.lead.findFirst({ where: { id, agencyId } });
+    const lead = await this.prisma.client.lead.findFirst({ where: { id, agencyId, ...this.scope() } });
     if (!lead) throw new NotFoundException('הפנייה לא נמצאה.');
     return lead;
   }

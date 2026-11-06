@@ -2,7 +2,8 @@ import { BadRequestException, ForbiddenException, Injectable, NotFoundException 
 import type { Prisma } from '@prisma/client';
 import { RequestContextService } from '../tenancy/request-context.service.js';
 import { TenantPrismaService } from '../tenancy/tenant-prisma.service.js';
-import { can } from '../auth/permissions.js';
+import { assertActiveMember, assertCustomerIsOurs, assertListingIsOurs } from '../tenancy/assert-ours.js';
+import { assigneeScope, can } from '../auth/permissions.js';
 import { GoogleCalendarService } from './google-calendar.service.js';
 import type {
   CreateMeetingDto,
@@ -163,6 +164,13 @@ export class MeetingsService {
   async forCustomer(customerId: string) {
     const agencyId = this.context.requireAgencyId();
 
+    // The history is the agency's, but the customer is not everybody's to look up.
+    const visible = await this.prisma.client.customer.findFirst({
+      where: { id: customerId, agencyId, ...assigneeScope(this.context.getPrincipal(), 'assignedToId') },
+      select: { id: true },
+    });
+    if (!visible) throw new NotFoundException('הלקוח לא נמצא.');
+
     return this.prisma.client.meeting.findMany({
       where: { agencyId, customerId },
       orderBy: [{ startsAt: 'desc' }, { id: 'asc' }],
@@ -272,6 +280,7 @@ export class MeetingsService {
     this.assertCanWrite();
     const agencyId = this.context.requireAgencyId();
     const { startsAt, endsAt } = this.window(dto.startsAt, dto.endsAt);
+    await this.assertRelationsAreOurs(agencyId, dto);
 
     const meeting = await this.prisma.client.meeting.create({
       data: {
@@ -297,6 +306,7 @@ export class MeetingsService {
   async update(id: string, dto: UpdateMeetingDto) {
     this.assertCanWrite();
     const existing = await this.require(id);
+    await this.assertRelationsAreOurs(this.context.requireAgencyId(), dto);
 
     const { startsAt, endsAt } = this.window(
       dto.startsAt ?? existing.startsAt.toISOString(),
@@ -387,6 +397,16 @@ export class MeetingsService {
     });
     if (!meeting) throw new NotFoundException('הפגישה לא נמצאה.');
     return meeting;
+  }
+
+  private async assertRelationsAreOurs(
+    agencyId: string,
+    dto: { ownerId?: string; customerId?: string; listingId?: string },
+  ): Promise<void> {
+    const client = this.prisma.client;
+    await assertActiveMember(client, agencyId, dto.ownerId);
+    await assertCustomerIsOurs(client, agencyId, dto.customerId);
+    await assertListingIsOurs(client, agencyId, dto.listingId);
   }
 
   private userId(): string {

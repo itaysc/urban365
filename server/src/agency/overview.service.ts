@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { assigneeScope } from '../auth/permissions.js';
 import { isoWeek } from '../matching/period.js';
 import { RequestContextService } from '../tenancy/request-context.service.js';
 import { TenantPrismaService } from '../tenancy/tenant-prisma.service.js';
@@ -30,7 +31,12 @@ export class OverviewService {
 
   async get(now = new Date()) {
     const agencyId = this.context.requireAgencyId();
-    const userId = this.context.getPrincipal()?.userId ?? '';
+    const principal = this.context.getPrincipal();
+    const userId = principal?.userId ?? '';
+    // The lead and deal figures are the agent's own book, the same rows their inbox and
+    // board show; the owner sees the agency's.
+    const leadScope = assigneeScope(principal, 'assignedToId');
+    const dealScope = assigneeScope(principal, 'ownerId');
 
     const startOfToday = new Date(now);
     startOfToday.setHours(0, 0, 0, 0);
@@ -69,7 +75,7 @@ export class OverviewService {
       }),
 
       this.prisma.client.lead.count({
-        where: { agencyId, status: { in: ['new', 'contacted'] } },
+        where: { agencyId, status: { in: ['new', 'contacted'] }, ...leadScope },
       }),
 
       // Mine and the agency's unclaimed, which is what the radar itself shows.
@@ -83,18 +89,18 @@ export class OverviewService {
 
       this.prisma.client.deal.groupBy({
         by: ['stage'],
-        where: { agencyId },
+        where: { agencyId, ...dealScope },
         _count: { _all: true },
         _sum: { price: true, commission: true },
       }),
 
       this.prisma.client.lead.findMany({
-        where: { agencyId, createdAt: { gte: weeksBack } },
+        where: { agencyId, createdAt: { gte: weeksBack }, ...leadScope },
         select: { createdAt: true },
       }),
 
       this.prisma.client.deal.findMany({
-        where: { agencyId, closedAt: { gte: monthsBack } },
+        where: { agencyId, closedAt: { gte: monthsBack }, ...dealScope },
         select: { closedAt: true, stage: true, commission: true },
       }),
     ]);

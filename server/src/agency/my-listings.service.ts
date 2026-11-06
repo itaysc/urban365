@@ -10,7 +10,7 @@ import { RequestContextService } from '../tenancy/request-context.service.js';
 import { TenantPrismaService } from '../tenancy/tenant-prisma.service.js';
 import { GeocodeService } from '../geocode/geocode.service.js';
 import { StorageService } from '../storage/storage.service.js';
-import { can } from '../auth/permissions.js';
+import { can, mayEditListing } from '../auth/permissions.js';
 import { dropColumns, priceChange } from '../listings/price-history.js';
 import { EXCLUSIVE_AMENITY } from '../yad2/yad2.transform.js';
 import { duplicateWhere, hasEnoughSignal, type DuplicateCandidate } from './duplicate.js';
@@ -59,6 +59,15 @@ export class MyListingsService {
     return listing;
   }
 
+  /** The whole agency reads every listing; changing one is for whoever created it, or the owner. */
+  private async requireEditable(id: string) {
+    const listing = await this.requireOwn(id);
+    if (!mayEditListing(this.context.getPrincipal(), listing)) {
+      throw new ForbiddenException('אפשר לערוך רק נכסים שיצרת.');
+    }
+    return listing;
+  }
+
   findOne(id: string) {
     return this.requireOwn(id);
   }
@@ -92,7 +101,7 @@ export class MyListingsService {
 
   async update(id: string, dto: UpdateListingDto) {
     this.assertCanWrite();
-    const existing = await this.requireOwn(id);
+    const existing = await this.requireEditable(id);
     // Checked against the merged result, not the patch: moving one listing onto
     // another's address is the same collision as creating it there.
     await this.assertNotDuplicate({ ...existing, ...dto }, existing.id);
@@ -158,7 +167,7 @@ export class MyListingsService {
    */
   async archive(id: string) {
     this.assertCanWrite();
-    const existing = await this.requireOwn(id);
+    const existing = await this.requireEditable(id);
 
     return this.prisma.client.listing.update({
       where: { id: existing.id },
@@ -176,7 +185,7 @@ export class MyListingsService {
    */
   async addImage(listingId: string, file: { buffer: Buffer; mimetype: string }) {
     this.assertCanWrite();
-    const listing = await this.requireOwn(listingId);
+    const listing = await this.requireEditable(listingId);
 
     if (listing.images.length >= MAX_IMAGES) {
       throw new BadRequestException(`אפשר להעלות עד ${MAX_IMAGES} תמונות לנכס.`);
@@ -228,7 +237,7 @@ export class MyListingsService {
 
   async removeImage(listingId: string, imageId: string) {
     this.assertCanWrite();
-    const listing = await this.requireOwn(listingId);
+    const listing = await this.requireEditable(listingId);
 
     const image = listing.images.find((i) => i.id === imageId);
     if (!image) throw new NotFoundException('התמונה לא נמצאה.');
@@ -244,7 +253,7 @@ export class MyListingsService {
 
   async reorderImages(listingId: string, imageIds: string[]) {
     this.assertCanWrite();
-    const listing = await this.requireOwn(listingId);
+    const listing = await this.requireEditable(listingId);
 
     const known = new Set(listing.images.map((i) => i.id));
     if (imageIds.length !== known.size || imageIds.some((id) => !known.has(id))) {

@@ -2,7 +2,7 @@ import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/commo
 import type { Prisma } from '@prisma/client';
 import { RequestContextService } from '../tenancy/request-context.service.js';
 import { TenantPrismaService } from '../tenancy/tenant-prisma.service.js';
-import { can } from '../auth/permissions.js';
+import { assigneeScope, can, mayAssign } from '../auth/permissions.js';
 import { DEAL_STAGES, type CreateDealDto, type DealStageValue, type UpdateDealDto } from './dto/deal.dto.js';
 
 const SELECT = {
@@ -44,6 +44,16 @@ export class DealsService {
     }
   }
 
+  private scope(): Prisma.DealWhereInput {
+    return assigneeScope(this.context.getPrincipal(), 'ownerId');
+  }
+
+  private assertMayAssign(userId: string | undefined): void {
+    if (!mayAssign(this.context.getPrincipal(), userId)) {
+      throw new ForbiddenException('אפשר לשייך עסקה רק לעצמך.');
+    }
+  }
+
   /**
    * The whole board in one call, grouped by stage. A pipeline is read as columns, and an
    * agency's open deals are a small set — paging it would cost a round trip per column
@@ -54,7 +64,7 @@ export class DealsService {
     const agencyId = this.context.requireAgencyId();
 
     return this.prisma.client.deal.findMany({
-      where: { agencyId, customerId },
+      where: { agencyId, customerId, ...this.scope() },
       orderBy: [{ updatedAt: 'desc' }, { id: 'asc' }],
       select: SELECT,
     });
@@ -63,7 +73,7 @@ export class DealsService {
   async board() {
     const agencyId = this.context.requireAgencyId();
     const deals = await this.prisma.client.deal.findMany({
-      where: { agencyId },
+      where: { agencyId, ...this.scope() },
       orderBy: [{ updatedAt: 'desc' }, { id: 'asc' }],
       select: SELECT,
     });
@@ -90,7 +100,12 @@ export class DealsService {
 
   async create(dto: CreateDealDto) {
     this.assertCanWrite();
+    this.assertMayAssign(dto.ownerId);
     await this.assertRelationsAreOurs(dto);
+
+    // An agent's new deal is theirs unless they said otherwise.
+    const principal = this.context.getPrincipal();
+    const ownerId = dto.ownerId ?? (can(principal, 'lead:read-all') ? undefined : principal?.userId);
 
     const stage = dto.stage ?? 'qualified';
     const commission =
@@ -111,7 +126,7 @@ export class DealsService {
         leadId: dto.leadId,
         listingId: dto.listingId,
         customerId: dto.customerId,
-        ownerId: dto.ownerId,
+        ownerId,
         notes: dto.notes,
         closedAt: TERMINAL.includes(stage) ? new Date() : null,
       },
@@ -122,6 +137,7 @@ export class DealsService {
   async update(id: string, dto: UpdateDealDto) {
     this.assertCanWrite();
     const existing = await this.requireOwn(id);
+    this.assertMayAssign(dto.ownerId);
     await this.assertRelationsAreOurs(dto);
 
     const movingToTerminal = dto.stage ? TERMINAL.includes(dto.stage) : false;
@@ -161,7 +177,7 @@ export class DealsService {
 
   private async requireOwn(id: string) {
     const agencyId = this.context.requireAgencyId();
-    const deal = await this.prisma.client.deal.findFirst({ where: { id, agencyId } });
+    const deal = await this.prisma.client.deal.findFirst({ where: { id, agencyId, ...this.scope() } });
     if (!deal) throw new NotFoundException('העסקה לא נמצאה.');
     return deal;
   }
