@@ -85,7 +85,9 @@ export function renderHomePage(
 <label class="tab"><input type="radio" name="section" value="commercial"> מסחרי</label>
 </div>
 <div class="pill">
+<div class="pill-field">
 <input id="u365-q" name="city" placeholder="עיר, שכונה או רחוב" aria-label="עיר, שכונה או רחוב" role="combobox" aria-expanded="false" aria-controls="u365-list" aria-autocomplete="list" autocomplete="off">
+</div>
 <button type="submit" aria-label="חיפוש">${SEARCH}</button>
 </div>
 <div class="suggest" id="u365-list" hidden></div>

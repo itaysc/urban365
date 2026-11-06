@@ -361,13 +361,14 @@ export function PlaceSearchBox({ filters, update, tone = 'default', placeholder 
         {/*
           The chosen places sit in the field. A count ("3 מיקומים נבחרו") says that
           something was picked and not what, which is the thing you came back to check.
-          They wrap with the input so a handful of towns stays readable inside the pill.
+          They share the line with the caret, and only wrap once the names no longer
+          fit — a hidden name would be a place you picked and can no longer see.
         */}
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
           {chosen.map((item) => (
             <span
               key={`${item.kind}:${item.value}`}
-              className="inline-flex max-w-full items-center gap-1 rounded-full bg-slate-100 py-1 pe-1 ps-2.5 text-sm text-slate-800"
+              className="inline-flex max-w-full shrink-0 items-center gap-1 rounded-full bg-slate-100 py-1 pe-1 ps-2.5 text-sm text-slate-800"
             >
               <span className="truncate">{item.label}</span>
               <button
@@ -403,9 +404,9 @@ export function PlaceSearchBox({ filters, update, tone = 'default', placeholder 
             role="combobox"
             aria-expanded={open}
             aria-controls="place-suggestions"
-            className={`min-w-[6rem] flex-1 bg-transparent text-slate-900 outline-none placeholder:text-slate-400 ${
-              tone === 'hero' ? `text-base ${chosen.length > 0 ? 'py-1.5' : 'py-3'}` : 'text-sm'
-            }`}
+            className={`flex-1 bg-transparent text-slate-900 outline-none placeholder:text-slate-400 ${
+              chosen.length > 0 ? 'min-w-[4.75rem]' : 'min-w-0'
+            } ${tone === 'hero' ? `text-base ${chosen.length > 0 ? 'py-1.5' : 'py-3'}` : 'text-sm'}`}
           />
         </div>
       </div>

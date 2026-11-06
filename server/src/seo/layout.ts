@@ -325,11 +325,7 @@ main.door{padding:0 0 3rem}
   overflow:auto;border:1px solid #e2e8f0;border-radius:.75rem;background:#fff;text-align:start;
   color:#334155;box-shadow:0 10px 15px rgb(15 23 42 / .12)}
 .suggest[hidden]{display:none}
-.suggest .sg-note{margin:0;padding:.75rem 1rem .5rem;font-size:.875rem;color:#64748b}
-.suggest .sg-chips{display:flex;flex-wrap:wrap;gap:.5rem;padding:0 1rem .75rem}
-.suggest .sg-chip{display:flex;align-items:center;gap:.375rem;border:0;border-radius:.5rem;
-  background:#f1f5f9;padding:.375rem .625rem;font:inherit;font-size:.875rem;color:#334155;cursor:pointer}
-.suggest .sg-chip:hover{background:#e2e8f0}
+.suggest .sg-note{margin:0;padding:.75rem 1rem;font-size:.875rem;color:#64748b}
 .suggest .sg-near{display:flex;width:100%;align-items:center;gap:.5rem;border:0;border-bottom:1px solid #f1f5f9;
   background:transparent;padding:.75rem 1rem;font:inherit;font-size:.875rem;font-weight:600;color:#2563eb;
   text-align:start;cursor:pointer}
@@ -360,12 +356,26 @@ main.door{padding:0 0 3rem}
 .tab:has(input:checked){background:#fff;color:#0f172a;box-shadow:0 10px 15px rgb(0 0 0 / .15)}
 .pill{display:flex;align-items:center;gap:.5rem;border-radius:9999px;background:#fff;padding:.5rem;
   box-shadow:0 25px 50px rgb(0 0 0 / .25)}
-.pill input{flex:1;min-width:0;border:0;background:transparent;padding:.75rem 1rem;font:inherit;
+/* The names sit in the field, beside the caret. A direct-child button is the search
+   control; the remove buttons live inside a badge and must not inherit it. */
+.pill-field{display:flex;flex:1;flex-wrap:wrap;align-items:center;gap:.375rem;min-width:0;
+  padding-inline:1rem}
+.pill-badges{display:flex;flex-wrap:wrap;align-items:center;gap:.375rem;min-width:0;max-width:100%}
+.pill-badges[hidden]{display:none}
+.pill-badge{display:inline-flex;max-width:100%;align-items:center;gap:.25rem;border-radius:9999px;
+  background:#f1f5f9;padding-block:.25rem;padding-inline:.625rem .25rem;font-size:.875rem;
+  line-height:1.25;color:#1e293b}
+.pill-badge span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pill-x{display:inline-flex;width:1.25rem;height:1.25rem;flex:none;align-items:center;
+  justify-content:center;border:0;border-radius:9999px;background:transparent;padding:0;
+  color:#64748b;font:inherit;line-height:1;cursor:pointer}
+.pill-x:hover{background:#e2e8f0;color:#1e293b}
+.pill input{flex:1;min-width:4.75rem;border:0;background:transparent;padding:.75rem 0;font:inherit;
   font-size:1rem;color:#0f172a}
 .pill input:focus{outline:none}
-.pill button{display:flex;width:3rem;height:3rem;flex:none;align-items:center;justify-content:center;
+.pill > button{display:flex;width:3rem;height:3rem;flex:none;align-items:center;justify-content:center;
   border:0;border-radius:9999px;background:#1d4ed8;color:#fff;cursor:pointer}
-.pill button:hover{background:#1e40af}
+.pill > button:hover{background:#1e40af}
 .pill svg{width:1.25rem;height:1.25rem}
 .door-body{max-width:80rem;margin:0 auto;padding:2.5rem 1rem}
 @media (min-width:40rem){.door-body{padding:2.5rem 2rem}}

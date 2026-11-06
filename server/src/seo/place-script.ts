@@ -163,17 +163,21 @@ function draw(){
   var note=el("p","sg-note");
   note.textContent=left===0?"הגעתם למספר המיקומים המרבי":left===1?"נשאר עוד מיקום אחד לבחירה":"נשארו עוד "+left+" מיקומים לבחירה";
   list.appendChild(note);
-  if(chosen.length){
-    var chips=el("div","sg-chips");
-    chosen.forEach(function(place){
-      var chip=el("button","sg-chip");
-      chip.type="button";
-      chip.textContent="× "+place.label;
-      chip.addEventListener("mousedown",function(e){e.preventDefault();removeAt(place);});
-      chips.appendChild(chip);
-    });
-    list.appendChild(chips);
-  }
+  badges.textContent="";
+  chosen.forEach(function(place){
+    var badge=el("span","pill-badge");
+    var name=el("span");
+    name.textContent=place.label;
+    var x=el("button","pill-x");
+    x.type="button";
+    x.setAttribute("aria-label","הסרת "+place.label);
+    x.textContent="×";
+    x.addEventListener("mousedown",function(e){e.preventDefault();removeAt(place);});
+    badge.appendChild(name);
+    badge.appendChild(x);
+    badges.appendChild(badge);
+  });
+  badges.hidden=!chosen.length;
   var near=el("button","sg-near");
   near.type="button";
   near.disabled=locating||left===0;
@@ -223,7 +227,7 @@ function draw(){
   list.appendChild(foot);
   list.hidden=!open;
   input.setAttribute("aria-expanded",open?"true":"false");
-  input.placeholder=chosen.length?chosen.length+" מיקומים נבחרו":"עיר, שכונה או רחוב";
+  input.placeholder=chosen.length?(left?"עוד מיקום":""):"עיר, שכונה או רחוב";
 }
 function close(){open=false;list.hidden=true;input.setAttribute("aria-expanded","false");}
 function fetchSuggest(q){
@@ -260,9 +264,18 @@ function locate(){
     draw();
   },{timeout:10000,maximumAge:300000});
 }
+var badges=el("div","pill-badges");
+badges.hidden=true;
+input.parentNode.insertBefore(badges,input);
+input.parentNode.addEventListener("mousedown",function(e){
+  if(e.target.closest&&e.target.closest("button, input"))return;
+  e.preventDefault();
+  input.focus();
+});
 input.addEventListener("input",schedule);
 input.addEventListener("focus",function(){open=true;draw();});
 input.addEventListener("keydown",function(e){
+  if(e.key==="Backspace"&&!input.value&&chosen.length){e.preventDefault();chosen.pop();draw();return;}
   if(e.key==="Escape"){close();return;}
   if(e.key==="ArrowDown"||e.key==="ArrowUp"){
     e.preventDefault();
