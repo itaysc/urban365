@@ -208,6 +208,10 @@ export class DemoService {
           stage: deal.stage,
           price: deal.price || null,
           commission: deal.commission || null,
+          commissionPercent:
+            deal.price && deal.commission
+              ? Math.round(((deal.commission * 100) / deal.price) * 10) / 10
+              : null,
           customerId: customerIds[deal.customerIndex] ?? null,
           listingId:
             deal.listingIndex !== undefined ? (listingIds[deal.listingIndex] ?? null) : null,

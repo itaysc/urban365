@@ -14,9 +14,6 @@ interface Props {
   onSaved: () => void;
 }
 
-/** Which way round the fee is written. An agreement says one or the other, never both. */
-type FeeKind = 'percent' | 'amount';
-
 const todayInput = () => new Date().toISOString().slice(0, 10);
 
 /**
@@ -36,7 +33,6 @@ export function AgreementDialog({ customer, onClose, onSaved }: Props) {
 
   const [signed, setSigned] = useState(false);
   const [date, setDate] = useState('');
-  const [feeKind, setFeeKind] = useState<FeeKind>('percent');
   const [fee, setFee] = useState('');
   const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
@@ -53,13 +49,10 @@ export function AgreementDialog({ customer, onClose, onSaved }: Props) {
     setLoadedFor(customer.id);
     setSigned(customer.agreementSignedAt !== null);
     setDate(asDateInput(customer.agreementSignedAt) || todayInput());
-    setFeeKind(customer.agreementCommissionAmount !== null ? 'amount' : 'percent');
     setFee(
-      customer.agreementCommissionAmount !== null
-        ? String(customer.agreementCommissionAmount)
-        : customer.agreementCommissionPercent !== null
-          ? String(customer.agreementCommissionPercent)
-          : '',
+      customer.agreementCommissionPercent !== null
+        ? String(customer.agreementCommissionPercent)
+        : '',
     );
     setNote(customer.agreementNote ?? '');
     setError(null);
@@ -71,16 +64,14 @@ export function AgreementDialog({ customer, onClose, onSaved }: Props) {
     setSaving(true);
     setError(null);
     try {
-      const amount = fee.trim() === '' ? null : Number(fee);
+      const percent = fee.trim() === '' ? null : Number(fee);
 
       await updateCustomer(customer.id, {
         // Unticking clears the date rather than keeping a stale one: an agreement that
         // was withdrawn is not an agreement signed on some remembered day.
         agreementSignedAt: signed ? new Date(date).toISOString() : null,
-        // Only the one that was chosen holds a value; the other is cleared, so the two
-        // can never disagree about what the fee is.
-        agreementCommissionPercent: feeKind === 'percent' ? amount : null,
-        agreementCommissionAmount: feeKind === 'amount' ? amount : null,
+        agreementCommissionPercent: percent,
+        agreementCommissionAmount: null,
         agreementNote: note.trim(),
       });
 
@@ -148,29 +139,21 @@ export function AgreementDialog({ customer, onClose, onSaved }: Props) {
               </Field>
             )}
 
-            <Field label="העמלה שסוכמה" htmlFor="agreement-fee">
-              <div className="flex gap-2">
+            <Field label="אחוז העמלה שסוכם (%)" htmlFor="agreement-fee">
+              <div className="flex items-center gap-2">
                 <input
                   id="agreement-fee"
                   type="number"
                   inputMode="decimal"
                   min="0"
-                  step={feeKind === 'percent' ? '0.01' : '1'}
-                  max={feeKind === 'percent' ? '100' : undefined}
-                  placeholder={feeKind === 'percent' ? '2' : '15000'}
+                  step="0.1"
+                  max="100"
+                  placeholder="2"
                   className={`${inputClass} flex-1`}
                   value={fee}
                   onChange={(e) => setFee(e.target.value)}
                 />
-                <select
-                  aria-label="אופן חישוב העמלה"
-                  className={`${selectClass} w-28`}
-                  value={feeKind}
-                  onChange={(e) => setFeeKind(e.target.value as FeeKind)}
-                >
-                  <option value="percent">אחוזים</option>
-                  <option value="amount">₪</option>
-                </select>
+                <span className="text-sm font-medium text-slate-500">%</span>
               </div>
             </Field>
             <p className="-mt-1 text-xs text-slate-500">לפני מע״מ, כפי שההסכם מנוסח.</p>

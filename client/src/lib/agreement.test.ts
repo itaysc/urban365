@@ -29,16 +29,6 @@ describe('commissionText', () => {
     expect(commissionText(agreement({ agreementCommissionPercent: 1.5 }))).toBe('1.5% + מע״מ');
   });
 
-  it('says a fixed fee in shekels', () => {
-    expect(commissionText(agreement({ agreementCommissionAmount: 15000 }))).toContain('15,000');
-  });
-
-  it('prefers the percentage when somebody has filled in both', () => {
-    const both = agreement({ agreementCommissionPercent: 2, agreementCommissionAmount: 15000 });
-
-    expect(commissionText(both)).toBe('2% + מע״מ');
-  });
-
   it('prints a zero rather than hiding it', () => {
     // A fee waived on purpose is a term of the agreement, not a missing value.
     expect(commissionText(agreement({ agreementCommissionPercent: 0 }))).toBe('0% + מע״מ');

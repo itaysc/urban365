@@ -181,10 +181,13 @@ export function LandingPage() {
               ))}
           </div>
 
-          <p className="mt-5 text-sm">
+          <p className="mt-5 flex flex-wrap gap-x-4 gap-y-1 text-sm">
             <a className="text-blue-700 hover:underline" href="/nadlan">
               כל הערים ומחירי הנדל״ן בהן ←
             </a>
+            <Link className="text-blue-700 hover:underline" to="/agencies">
+              סוכנויות נדל״ן ←
+            </Link>
           </p>
 
           <p className="mt-6 text-xs text-slate-500">

@@ -9,6 +9,7 @@
   "scripts": {
     "db": "bash ../scripts/start-db.sh",
     "dev": "npm run db && nest start --watch",
+    "dev:prod": "node scripts/dev-prod.mjs",
     "build": "tsc -p tsconfig.build.json",
     "start": "node dist/main.js",
     "db:migrate": "prisma migrate dev",

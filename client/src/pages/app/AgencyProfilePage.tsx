@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { qk } from '@/queries/keys';
 import { useAuth } from '@/auth/auth-context';
@@ -17,6 +18,7 @@ import {
   type AgencyProfile,
 } from '@/services/agency';
 import { OfficesPanel } from '@/components/agency/OfficesPanel';
+import { agencyPublicPath } from '@/services/publicAgencies';
 import { PhoneField } from '@/components/ui/PhoneField';
 import { DemoDataPanel } from '@/components/agency/DemoDataPanel';
 
@@ -142,7 +144,19 @@ export function AgencyProfilePage() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-xl font-bold text-slate-900">עמוד הסוכנות</h1>
-        {saved && <span className="text-xs text-green-700">נשמר</span>}
+        <span className="flex items-center gap-3">
+          {profile.status === 'active' && (
+            <Link
+              to={agencyPublicPath(profile)}
+              className="text-sm text-blue-700 hover:underline"
+              target="_blank"
+              rel="noreferrer"
+            >
+              צפייה בעמוד הציבורי
+            </Link>
+          )}
+          {saved && <span className="text-xs text-green-700">נשמר</span>}
+        </span>
       </div>
 
       {error && (

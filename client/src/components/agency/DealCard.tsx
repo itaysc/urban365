@@ -67,8 +67,13 @@ export function DealCard({
       {deal.price !== null && (
         <p className="mt-0.5 text-xs text-slate-600">{formatShekel(deal.price)}</p>
       )}
-      {deal.commission !== null && (
-        <p className="text-xs text-slate-500">עמלה {formatShekel(deal.commission)}</p>
+      {(deal.commissionPercent !== null || deal.commission !== null) && (
+        <p className="text-xs text-slate-500">
+          עמלה{' '}
+          {deal.commissionPercent !== null
+            ? `${deal.commissionPercent}%${deal.commission !== null ? ` (${formatShekel(deal.commission)})` : ''}`
+            : formatShekel(deal.commission)}
+        </p>
       )}
       {who && <p className="mt-1 truncate text-xs text-slate-500">{who}</p>}
 

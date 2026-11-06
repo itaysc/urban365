@@ -3,11 +3,13 @@ import { AuthModule } from '../auth/auth.module.js';
 import { GeocodeModule } from '../geocode/geocode.module.js';
 import { Yad2Module } from '../yad2/yad2.module.js';
 import { AgencyController } from './agency.controller.js';
+import { PublicAgenciesController } from './public-agencies.controller.js';
 import { AgencyProfileController } from './agency-profile.controller.js';
 import { ImagesController } from './images.controller.js';
 import { OfficesController } from './offices.controller.js';
 import { OfficesService } from './offices.service.js';
 import { AgencyService } from './agency.service.js';
+import { PublicAgenciesService } from './public-agencies.service.js';
 import { OverviewController } from './overview.controller.js';
 import { OverviewService } from './overview.service.js';
 import { MyListingsController } from './my-listings.controller.js';
@@ -20,6 +22,7 @@ import { TeamService } from './team.service.js';
   controllers: [
     OverviewController,
     AgencyController,
+    PublicAgenciesController,
     AgencyProfileController,
     ImagesController,
     OfficesController,
@@ -31,6 +34,7 @@ import { TeamService } from './team.service.js';
   providers: [
     OverviewService,
     AgencyService,
+    PublicAgenciesService,
     MyListingsService,
     TeamService,
     OfficesService,

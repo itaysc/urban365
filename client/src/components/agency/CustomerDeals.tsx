@@ -57,6 +57,9 @@ export function CustomerDeals({ customer }: { customer: Customer }) {
         title: `עסקה — ${customer.name}`,
         customerId: customer.id,
         ...(customer.maxPrice ? { price: customer.maxPrice } : {}),
+        ...(customer.agreementCommissionPercent !== null && customer.agreementCommissionPercent !== undefined
+          ? { commissionPercent: customer.agreementCommissionPercent }
+          : {}),
       }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: qk.deals.all });
@@ -101,6 +104,9 @@ export function CustomerDeals({ customer }: { customer: Customer }) {
             <span className="text-slate-800">{deal.title}</span>
             {deal.price !== null && (
               <span className="text-slate-500">{formatPrice(deal.price)}</span>
+            )}
+            {deal.commissionPercent !== null && (
+              <span className="text-xs text-slate-400">({deal.commissionPercent}%)</span>
             )}
             {/* The property, when the deal is about one. A deal opened from a brief is
                 not yet, and saying "נכס: —" would be noise. */}

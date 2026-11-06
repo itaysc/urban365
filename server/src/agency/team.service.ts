@@ -20,7 +20,7 @@ import { can } from '../auth/permissions.js';
 import type { AcceptInviteDto, AgencyRoleValue, UpdateMyProfileDto } from './dto/team.dto.js';
 
 const sha256 = (v: string): Buffer => createHash('sha256').update(v).digest();
-const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const INVITE_TTL_MS = 3 * 24 * 60 * 60 * 1000;
 
 const ROLE_LABEL: Record<AgencyRole, string> = { owner: 'בעלים', agent: 'סוכן' };
 

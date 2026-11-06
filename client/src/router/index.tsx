@@ -5,6 +5,8 @@ import { ViewingPage } from '@/pages/ViewingPage';
 import { AccessibilityPage, PrivacyPage, TermsPage } from '@/pages/LegalPage';
 import { Navigate, Outlet, createBrowserRouter } from 'react-router-dom';
 import { RequireAdmin, RequireAuth } from '@/auth/RequireAuth';
+import { AgenciesPage } from '@/pages/AgenciesPage';
+import { AgencyPublicPage } from '@/pages/AgencyPublicPage';
 import { HomePage } from '@/pages/HomePage';
 import { LandingPage } from '@/pages/LandingPage';
 import { MortgagePage } from '@/pages/MortgagePage';
@@ -66,6 +68,8 @@ export const router = createBrowserRouter([
   { path: '/', element: <LandingPage /> },
   // Filters live in the query string, so a filtered search is still shareable.
   { path: '/search', element: <SearchPage /> },
+  { path: '/agencies', element: <AgenciesPage /> },
+  { path: '/agencies/:agencyKey', element: <AgencyPublicPage /> },
   // Takes `?price=` from a listing, so arriving from one opens on that flat's figures.
   { path: '/mortgage', element: <MortgagePage /> },
   { path: '/valuation', element: <ValuationPage /> },

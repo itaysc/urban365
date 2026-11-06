@@ -1,4 +1,5 @@
 import { useYad2Visible } from '@/hooks/useYad2Visible';
+import { formatDay } from '@/lib/format';
 import type { AgencySummary } from '@/types/yad2';
 
 const Count = ({ label, value }: { label: string; value: number | null }) => (
@@ -48,7 +49,7 @@ export function AgencyHeader({ agency }: { agency: AgencySummary }) {
 
       {agency.openingHours.length > 0 && (
         <p className="mt-3 text-xs text-slate-500">
-          {agency.openingHours.map((h) => `${h.day} ${h.open}–${h.close}`).join(' · ')}
+          {agency.openingHours.map((h) => `${formatDay(h.day)} ${h.open}–${h.close}`).join(' · ')}
         </p>
       )}
     </section>

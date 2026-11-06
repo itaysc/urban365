@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { IsDateString, IsIn, IsInt, IsOptional, IsString, MaxLength, Min } from 'class-validator';
+import { IsDateString, IsIn, IsInt, IsNumber, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
 
 export const DEAL_STAGES = [
   'qualified',
@@ -15,6 +15,7 @@ export class CreateDealDto {
   @IsOptional() @IsIn(DEAL_STAGES) stage?: DealStageValue;
   @IsOptional() @Type(() => Number) @IsInt() @Min(0) price?: number;
   @IsOptional() @Type(() => Number) @IsInt() @Min(0) commission?: number;
+  @IsOptional() @Type(() => Number) @IsNumber() @Min(0) @Max(100) commissionPercent?: number;
   @IsOptional() @IsDateString() expectedCloseAt?: string;
   @IsOptional() @IsString() leadId?: string;
   /** Who it is with. `''` unlinks, the way the other optional relations do. */

@@ -14,6 +14,7 @@ export const BRAND = 'Urban365';
  */
 const TITLES: Record<string, string> = {
   '/': 'נדל״ן למכירה ולהשכרה בישראל',
+  '/agencies': 'סוכנויות נדל״ן',
   '/saved': 'נכסים שמורים',
   '/mortgage': 'מחשבון משכנתא',
   '/valuation': 'הערכת שווי',
@@ -64,7 +65,7 @@ export function titleForPath(pathname: string): string | null {
    * the query string rather than the path. The home page is an ordinary entry in the
    * table below, which it was not while it was the results page.
    */
-  if (path === '/search') return null;
+  if (path === '/search' || path.startsWith('/agencies/')) return null;
   if (TITLES[path]) return TITLES[path];
 
   for (const [prefix, title] of PREFIXES) {

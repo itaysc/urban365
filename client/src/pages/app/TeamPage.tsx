@@ -115,6 +115,9 @@ export function TeamPage() {
           <Button type="submit" disabled={inviting || !email.trim()}>
             {inviting ? 'שולח…' : 'שלח הזמנה'}
           </Button>
+          <p className="text-xs text-slate-500 sm:col-span-3">
+            נשלח קישור חד-פעמי באימייל, תקף ל־3 ימים.
+          </p>
         </form>
       )}
 

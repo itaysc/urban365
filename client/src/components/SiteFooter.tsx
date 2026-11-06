@@ -103,6 +103,11 @@ export function SiteFooter() {
               </Link>
             </li>
             <li>
+              <Link className={linkClass} to="/agencies">
+                סוכנויות נדל״ן
+              </Link>
+            </li>
+            <li>
               <a className={linkClass} href="/nadlan">
                 מחירים לפי עיר
               </a>

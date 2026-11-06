@@ -91,7 +91,7 @@ export const agencyInviteTemplate = (
        ${inviterName} הזמין אותך להצטרף ל<strong>${agencyName}</strong> בתור ${roleLabel}.
      </p>
      ${button(link, 'הצטרפות לצוות')}
-     <p style="font-size:12px;color:#64748b">הקישור תקף ל‑7 ימים.</p>`,
+     <p style="font-size:12px;color:#64748b">הקישור חד-פעמי ותקף ל‑3 ימים.</p>`,
   ),
 });
 

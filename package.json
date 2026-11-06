@@ -11,6 +11,8 @@
     "dev": "node server/scripts/check-node.mjs && npm run db && npm-run-all --parallel dev:server dev:client",
     "dev:client": "node scripts/wait-for-server.mjs && cd client && npm run dev",
     "dev:server": "cd server && npm run dev",
+    "dev:prod": "node server/scripts/check-node.mjs && npm-run-all --parallel dev:server:prod dev:client",
+    "dev:server:prod": "cd server && npm run dev:prod",
     "chrome:debug": "bash scripts/chrome-debug.sh",
     "build": "npm run build:server && npm run build:client",
     "build:client": "cd client && npm run build",

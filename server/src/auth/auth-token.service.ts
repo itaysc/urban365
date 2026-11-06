@@ -8,7 +8,7 @@ const sha256 = (v: string): Buffer => createHash('sha256').update(v).digest();
 export const TOKEN_TTL_SEC: Record<AuthTokenPurpose, number> = {
   email_verify: 24 * 60 * 60,
   password_reset: 60 * 60,
-  agency_invite: 7 * 24 * 60 * 60,
+  agency_invite: 3 * 24 * 60 * 60,
   email_change: 24 * 60 * 60,
 };
 

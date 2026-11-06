@@ -14,6 +14,39 @@ export const formatShekel = (value: number | null): string =>
 export const formatDate = (iso: string): string =>
   iso ? new Date(iso).toLocaleDateString('he-IL', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
 
+const HEBREW_DAYS: Record<string, string> = {
+  sunday: 'ראשון',
+  sun: 'ראשון',
+  monday: 'שני',
+  mon: 'שני',
+  tuesday: 'שלישי',
+  tue: 'שלישי',
+  wednesday: 'רביעי',
+  wed: 'רביעי',
+  thursday: 'חמישי',
+  thu: 'חמישי',
+  friday: 'שישי',
+  fri: 'שישי',
+  saturday: 'שבת',
+  sat: 'שבת',
+};
+
+/**
+ * Translates days (e.g. from Yad2 raw English keys like 'sunday') to Hebrew ('ראשון'),
+ * or keeps already Hebrew text intact.
+ */
+export function formatDay(rawDay: string): string {
+  const clean = rawDay.trim();
+  const lower = clean.toLowerCase();
+  if (HEBREW_DAYS[lower]) {
+    return `יום ${HEBREW_DAYS[lower]}`;
+  }
+  if (!clean.startsWith('יום ') && Object.values(HEBREW_DAYS).includes(clean)) {
+    return `יום ${clean}`;
+  }
+  return clean;
+}
+
 /** "שדרות גלוסקין 12, ב' / צפון מערב העיר, רחובות" — skipping whatever yad2 left out. */
 export function formatAddress(parts: {
   street: string;

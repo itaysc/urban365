@@ -9,6 +9,7 @@ const deal = (id: string, stage: DealStage, price: number | null = 1_000_000): D
     stage,
     price,
     commission: price === null ? null : price * 0.02,
+    commissionPercent: price === null ? null : 2,
     expectedCloseAt: null,
     closedAt: null,
     lostReason: null,

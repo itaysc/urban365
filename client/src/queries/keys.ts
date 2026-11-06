@@ -60,6 +60,8 @@ export const qk = {
       ['customers', 'list', q, kind ?? 'any', agreement ?? 'any', page] as const,
     /** One page of everybody, for the pickers that need names rather than a search. */
     picker: ['customers', 'picker'] as const,
+    /** The deal dialog's search, keyed on what has been typed. */
+    search: (q: string) => ['customers', 'search', q] as const,
   },
 
   cobrokerage: {
@@ -106,6 +108,12 @@ export const qk = {
   agency: {
     all: ['agency'] as const,
     profile: ['agency', 'profile'] as const,
+  },
+
+  publicAgencies: {
+    all: ['public-agencies'] as const,
+    directory: ['public-agencies', 'directory'] as const,
+    page: (key: string) => ['public-agencies', 'page', key] as const,
   },
 
   admin: {

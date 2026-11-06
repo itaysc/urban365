@@ -159,6 +159,13 @@ export function SiteHeader({ leading, subtitle, fullWidth = false }: Props) {
                 API and are not in this bundle's route table, so a <Link> would try to
                 resolve /nadlan here and find nothing.
               */}
+              <Link
+                to="/agencies"
+                className="text-sm text-slate-600 transition hover:text-slate-900"
+              >
+                סוכנויות
+              </Link>
+              <NavBar />
               <a
                 href="/nadlan"
                 className="text-sm text-slate-600 transition hover:text-slate-900"

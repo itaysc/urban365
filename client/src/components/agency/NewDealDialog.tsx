@@ -4,6 +4,7 @@ import { X } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Field, inputClass, selectClass } from '@/components/ui/Field';
 import { errorMessageOf } from '@/lib/apiError';
+import { CustomerSelect, type PickedCustomer } from '@/components/agency/CustomerSelect';
 import { createDeal, DEAL_STAGES, type DealStage } from '@/services/crm';
 
 interface Props {
@@ -14,7 +15,7 @@ interface Props {
   initialStage?: DealStage;
 }
 
-const EMPTY = { title: '', price: '', commission: '', expectedCloseAt: '' };
+const EMPTY = { title: '', price: '', commissionPercent: '', expectedCloseAt: '' };
 
 /**
  * Opening a deal, in a dialog on every screen.
@@ -26,6 +27,7 @@ const EMPTY = { title: '', price: '', commission: '', expectedCloseAt: '' };
  */
 export function NewDealDialog({ open, onOpenChange, onCreated, initialStage }: Props) {
   const [form, setForm] = useState(EMPTY);
+  const [customer, setCustomer] = useState<PickedCustomer | null>(null);
   const [stage, setStage] = useState<DealStage>(initialStage ?? 'qualified');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -37,6 +39,7 @@ export function NewDealDialog({ open, onOpenChange, onCreated, initialStage }: P
   const reset = (next: boolean) => {
     if (!next) {
       setForm(EMPTY);
+      setCustomer(null);
       setError(null);
       setStage(initialStage ?? 'qualified');
     }
@@ -51,10 +54,12 @@ export function NewDealDialog({ open, onOpenChange, onCreated, initialStage }: P
         title: form.title.trim(),
         stage,
         price: form.price ? Number(form.price) : undefined,
-        commission: form.commission ? Number(form.commission) : undefined,
+        commissionPercent: form.commissionPercent ? Number(form.commissionPercent) : undefined,
         expectedCloseAt: form.expectedCloseAt || undefined,
+        customerId: customer?.id,
       });
       setForm(EMPTY);
+      setCustomer(null);
       onCreated();
     } catch (e) {
       // Shown in the dialog rather than behind it, where somebody looking at the form
@@ -110,6 +115,12 @@ export function NewDealDialog({ open, onOpenChange, onCreated, initialStage }: P
               </Field>
             </div>
 
+            <div className="sm:col-span-2">
+              <Field label="לקוח" htmlFor="deal-customer">
+                <CustomerSelect id="deal-customer" value={customer} onChange={setCustomer} />
+              </Field>
+            </div>
+
             <Field label="שלב" htmlFor="deal-stage">
               <select
                 id="deal-stage"
@@ -147,15 +158,18 @@ export function NewDealDialog({ open, onOpenChange, onCreated, initialStage }: P
               />
             </Field>
 
-            <Field label="עמלה (₪)" htmlFor="deal-commission">
+            <Field label="עמלה (%)" htmlFor="deal-commission">
               <input
                 id="deal-commission"
                 type="number"
-                inputMode="numeric"
+                inputMode="decimal"
                 min="0"
+                max="100"
+                step="0.1"
+                placeholder="2"
                 className={inputClass}
-                value={form.commission}
-                onChange={(e) => set('commission', e.target.value)}
+                value={form.commissionPercent}
+                onChange={(e) => set('commissionPercent', e.target.value)}
               />
             </Field>
 

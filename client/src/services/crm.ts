@@ -99,6 +99,7 @@ export interface Deal {
   stage: DealStage;
   price: number | null;
   commission: number | null;
+  commissionPercent: number | null;
   expectedCloseAt: string | null;
   closedAt: string | null;
   lostReason: string | null;
@@ -127,6 +128,7 @@ export interface DealInput {
   stage?: DealStage;
   price?: number;
   commission?: number;
+  commissionPercent?: number;
   expectedCloseAt?: string;
   leadId?: string;
   listingId?: string;

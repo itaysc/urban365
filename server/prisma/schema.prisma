@@ -1078,9 +1078,12 @@ model Deal {
   stage DealStage @default(qualified)
   title String
 
-  /// Agreed price, and the agency's commission, both in whole shekels.
-  price      Int?
-  commission Int?
+  /// Agreed price in whole shekels, and the agency's commission.
+  /// `commissionPercent` is the percentage agreed (e.g. 2 for 2%), while
+  /// `commission` holds the total shekel amount if fixed or already calculated.
+  price             Int?
+  commission        Int?
+  commissionPercent Float?
 
   expectedCloseAt DateTime?
   closedAt        DateTime?

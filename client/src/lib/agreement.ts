@@ -27,9 +27,6 @@ export function commissionText(c: CustomerAgreement): string | null {
   if (c.agreementCommissionPercent !== null) {
     return `${c.agreementCommissionPercent}% + מע״מ`;
   }
-  if (c.agreementCommissionAmount !== null) {
-    return `${formatShekel(c.agreementCommissionAmount)} + מע״מ`;
-  }
   return null;
 }
 

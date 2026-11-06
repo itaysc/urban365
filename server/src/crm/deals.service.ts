@@ -11,6 +11,7 @@ const SELECT = {
   stage: true,
   price: true,
   commission: true,
+  commissionPercent: true,
   expectedCloseAt: true,
   closedAt: true,
   lostReason: true,
@@ -92,13 +93,20 @@ export class DealsService {
     await this.assertRelationsAreOurs(dto);
 
     const stage = dto.stage ?? 'qualified';
+    const commission =
+      dto.commission ??
+      (dto.commissionPercent !== undefined && dto.price !== undefined
+        ? Math.round((dto.price * dto.commissionPercent) / 100)
+        : null);
+
     return this.prisma.client.deal.create({
       data: {
         agencyId: this.context.requireAgencyId(),
         title: dto.title,
         stage,
         price: dto.price,
-        commission: dto.commission,
+        commission,
+        commissionPercent: dto.commissionPercent,
         expectedCloseAt: dto.expectedCloseAt ? new Date(dto.expectedCloseAt) : null,
         leadId: dto.leadId,
         listingId: dto.listingId,
@@ -118,10 +126,21 @@ export class DealsService {
 
     const movingToTerminal = dto.stage ? TERMINAL.includes(dto.stage) : false;
 
+    const nextPrice = dto.price !== undefined ? dto.price : existing.price;
+    const nextPercent =
+      dto.commissionPercent !== undefined ? dto.commissionPercent : existing.commissionPercent;
+    let nextCommission = dto.commission;
+    if (nextCommission === undefined && (dto.commissionPercent !== undefined || dto.price !== undefined)) {
+      if (nextPercent !== null && nextPercent !== undefined && nextPrice !== null && nextPrice !== undefined) {
+        nextCommission = Math.round((nextPrice * nextPercent) / 100);
+      }
+    }
+
     return this.prisma.client.deal.update({
       where: { id: existing.id },
       data: {
         ...dto,
+        ...(nextCommission !== undefined ? { commission: nextCommission } : {}),
         ...(dto.expectedCloseAt !== undefined
           ? { expectedCloseAt: dto.expectedCloseAt ? new Date(dto.expectedCloseAt) : null }
           : {}),
