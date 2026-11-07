@@ -19,6 +19,7 @@ export const qk = {
   listings: {
     all: ['listings'] as const,
     mine: (status: ListingStatus, page: number) => ['listings', 'mine', status, page] as const,
+    packages: ['listings', 'packages'] as const,
     detail: (id: string) => ['listings', 'detail', id] as const,
     search: (filters: SearchFilters) => ['listings', 'search', filters] as const,
     suggest: (term: string, section: string | undefined) =>
@@ -119,6 +120,7 @@ export const qk = {
   admin: {
     all: ['admin'] as const,
     moderation: ['admin', 'moderation'] as const,
+    directory: (q: string) => ['admin', 'directory', q] as const,
     listings: ['admin', 'listings'] as const,
     invites: ['admin', 'invites'] as const,
   },

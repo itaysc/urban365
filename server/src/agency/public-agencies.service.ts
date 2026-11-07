@@ -14,7 +14,7 @@ import { primaryRegion, regionIndex, regionSort } from './public-region.js';
  * a shop front.
  */
 const VISIBLE: Prisma.AgencyWhereInput = {
-  status: { notIn: ['suspended', 'rejected'] },
+  status: { notIn: ['suspended', 'rejected', 'deleted'] },
   OR: [
     { status: 'active' },
     { listings: { some: { status: 'published', delistedAt: null } } },

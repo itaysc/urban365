@@ -34,6 +34,30 @@ export const approveAgency = (agencyId: string, userId: string) =>
 export const rejectAgency = (agencyId: string, reason?: string) =>
   api.post(`/admin/moderation/agencies/${agencyId}/reject`, { reason });
 
+export interface ManagedAgency {
+  id: string;
+  name: string;
+  status: 'active' | 'unclaimed' | 'suspended';
+  yad2Id: string | null;
+  publishedCount: number;
+}
+
+export async function fetchAgencyDirectory(q: string): Promise<ManagedAgency[]> {
+  const { data } = await api.get<ManagedAgency[]>('/admin/moderation/agencies/directory', {
+    params: q.trim() ? { q: q.trim() } : {},
+  });
+  return data;
+}
+
+export const suspendAgency = (agencyId: string) =>
+  api.post(`/admin/moderation/agencies/${agencyId}/suspend`);
+
+export const restoreAgency = (agencyId: string) =>
+  api.post(`/admin/moderation/agencies/${agencyId}/restore`);
+
+export const deleteAgency = (agencyId: string) =>
+  api.post(`/admin/moderation/agencies/${agencyId}/delete`);
+
 export interface PendingListing {
   id: string;
   city: string | null;

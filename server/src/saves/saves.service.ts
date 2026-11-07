@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { FROM_A_VISIBLE_AGENCY } from '../listings/on-the-market.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 
 /** Who a save belongs to: an account, or a browser that has not made one. */
@@ -39,7 +40,7 @@ export class SavesService {
     const listing = await this.prisma.listing.findFirst({
       // Only a published listing can be saved; an id guessed from elsewhere is not a
       // shortcut to confirming that a draft exists.
-      where: { id: listingId, status: 'published', delistedAt: null },
+      where: { id: listingId, status: 'published', delistedAt: null, AND: [FROM_A_VISIBLE_AGENCY] },
       select: { id: true },
     });
     if (!listing) throw new NotFoundException('הנכס לא נמצא.');

@@ -109,6 +109,31 @@ export async function updateListing(id: string, input: Partial<ListingInput>): P
 
 export const archiveListing = (id: string) => api.delete(`/my/listings/${id}`);
 
+// ── listing credits ───────────────────────────────────────────────────────────
+
+export interface ListingPackage {
+  size: number;
+  unitAgorot: number;
+  totalAgorot: number;
+}
+
+export interface ListingPackages {
+  enabled: boolean;
+  balance: number;
+  canPurchase: boolean;
+  packages: ListingPackage[];
+}
+
+export async function fetchListingPackages(): Promise<ListingPackages> {
+  const { data } = await api.get<ListingPackages>('/my/listing-packages');
+  return data;
+}
+
+export async function buyListingPackage(size: number): Promise<{ balance: number }> {
+  const { data } = await api.post<{ balance: number }>('/my/listing-packages', { size });
+  return data;
+}
+
 // ── images ────────────────────────────────────────────────────────────────────
 
 /**

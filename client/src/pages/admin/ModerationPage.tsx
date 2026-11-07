@@ -11,6 +11,7 @@ import {
   rejectAgency,
   type PendingAgency,
 } from '@/services/admin';
+import { AgencyDirectory } from '@/pages/admin/AgencyDirectory';
 import { ListingReviewQueue } from '@/pages/admin/ListingReviewQueue';
 import { PlatformInvites } from '@/pages/admin/PlatformInvites';
 
@@ -90,6 +91,8 @@ export function ModerationPage() {
       <PlatformInvites />
 
       <ListingReviewQueue />
+
+      <AgencyDirectory />
 
       <h1 className="text-xl font-bold text-slate-900">בקשות ממתינות</h1>
 

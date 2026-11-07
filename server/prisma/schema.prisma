@@ -31,6 +31,8 @@ enum AgencyStatus {
   active
   rejected
   suspended
+  /// Gone from the site. The row stays; its listings are marked removed.
+  deleted
 }
 
 enum AgencyRole {
@@ -181,11 +183,38 @@ model Agency {
   coBrokeSeeking  CoBrokerageRequest[] @relation("CoBrokeSeeking")
   coBrokeMessages CoBrokerageMessage[]
 
+  /// Credits left for publishing a listing typed into the app. A draft does not
+  /// spend one, and neither does a scraped or imported row.
+  listingCredits  Int                   @default(0)
+  listingPackages ListingPackageOrder[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([name])
   @@index([status])
+}
+
+/// A pack of listing credits an agency bought. The price is the one in force at
+/// purchase, kept on the row so a later change does not rewrite what was sold.
+model ListingPackageOrder {
+  id     String @id @default(cuid())
+  agency Agency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  agencyId String
+
+  /// How many listings the pack covers: 1, 10, 50 or 100.
+  size        Int
+  /// Price of one listing, in agorot, so the shekel amount never becomes a float.
+  unitAgorot  Int
+  /// size × unitAgorot, stored so a receipt does not recompute a price that moved.
+  totalAgorot Int
+
+  purchasedBy   User?   @relation("ListingPackageBuyer", fields: [purchasedById], references: [id], onDelete: SetNull)
+  purchasedById String?
+
+  createdAt DateTime @default(now())
+
+  @@index([agencyId, createdAt])
 }
 
 model Broker {
@@ -224,6 +253,9 @@ model Listing {
   createdBy       User?     @relation("ListingCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
   createdByUserId String?
   publishedAt     DateTime?
+  /// Set the first time a credit was spent to put this listing on the site.
+  /// Taking it down and publishing it again does not spend another.
+  creditChargedAt DateTime?
 
   /// Null for a listing published by a private seller, who has no agency at all.
   /// Exactly one of `agencyId` and `ownerUserId` is set, enforced by a check constraint.
@@ -495,6 +527,7 @@ model User {
   authTokens        AuthToken[]
   claims            AgencyClaim[]
   createdListings   Listing[]              @relation("ListingCreator")
+  listingPackages   ListingPackageOrder[]  @relation("ListingPackageBuyer")
   ownedListings     Listing[]              @relation("ListingOwner")
   ownedLeads        Lead[]                 @relation("LeadOwner")
   assignedLeads     Lead[]                 @relation("LeadAssignee")

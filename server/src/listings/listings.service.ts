@@ -5,6 +5,7 @@ import { TenantPrismaService } from '../tenancy/tenant-prisma.service.js';
 import { listingRowToAsset } from '../yad2/listing-row.js';
 import { type Section } from '../yad2/yad2.types.js';
 import { cityKey } from './city-name.js';
+import { FROM_A_VISIBLE_AGENCY } from './on-the-market.js';
 import { pointInGeometry } from './point-in-polygon.js';
 import { GeocodeService } from '../geocode/geocode.service.js';
 import type { SearchListingsDto, Sort } from './dto/search-listings.dto.js';
@@ -154,7 +155,7 @@ export class ListingsService {
     // Published only, and stated explicitly rather than left to RLS alone: results must
     // not change depending on whether the visitor happens to be logged in to an agency
     // whose drafts the tenant policy would also match.
-    const where: Prisma.ListingWhereInput = { status: 'published' };
+    const where: Prisma.ListingWhereInput = { status: 'published', AND: [FROM_A_VISIBLE_AGENCY] };
 
     if (!dto.includeDelisted) where.delistedAt = null;
     if (dto.section) where.section = dto.section as DbSection;
@@ -257,7 +258,7 @@ export class ListingsService {
     if (ids.length === 0) return [];
 
     const rows = await this.prisma.client.listing.findMany({
-      where: { id: { in: ids }, status: 'published' },
+      where: { id: { in: ids }, status: 'published', AND: [FROM_A_VISIBLE_AGENCY] },
       include: { agency: { select: { id: true, name: true } } },
     });
 
@@ -383,6 +384,7 @@ export class ListingsService {
       where: {
         status: 'published',
         delistedAt: null,
+        AND: [FROM_A_VISIBLE_AGENCY],
         city: { equals: trimmed, mode },
         neighborhood: { not: null, ...(q ? { contains: q, mode } : {}) },
       },
@@ -406,6 +408,7 @@ export class ListingsService {
     const published: Prisma.ListingWhereInput = {
       status: 'published',
       delistedAt: null,
+      AND: [FROM_A_VISIBLE_AGENCY],
       ...(section && { section: section as DbSection }),
     };
 
@@ -500,7 +503,12 @@ export class ListingsService {
     // Links minted before listings had their own public id used the yad2 token, so a
     // miss falls back to a token lookup for one release.
     const row = await this.prisma.client.listing.findFirst({
-      where: { status: 'published', delistedAt: null, OR: [{ id }, { token: id }] },
+      where: {
+        status: 'published',
+        delistedAt: null,
+        AND: [FROM_A_VISIBLE_AGENCY],
+        OR: [{ id }, { token: id }],
+      },
       include: { agency: { select: { id: true, name: true, licenseNumber: true, phone: true } } },
     });
     if (!row) return null;
@@ -618,7 +626,12 @@ export class ListingsService {
     // The published filter is what keeps this safe without RLS: stated explicitly, and
     // the same condition `listing_public_read` enforces.
     const row = await this.owner.listing.findFirst({
-      where: { status: 'published', delistedAt: null, OR: [{ id }, { token: id }] },
+      where: {
+        status: 'published',
+        delistedAt: null,
+        AND: [FROM_A_VISIBLE_AGENCY],
+        OR: [{ id }, { token: id }],
+      },
       select: {
         agency: { select: { phone: true } },
         createdBy: { select: { phone: true } },

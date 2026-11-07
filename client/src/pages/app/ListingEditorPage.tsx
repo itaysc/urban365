@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { qk } from '@/queries/keys';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ImageManager } from '@/components/listing/ImageManager';
 import { Button } from '@/components/ui/Button';
 import { ViewingHistory } from '@/components/agency/ViewingHistory';
@@ -140,6 +140,7 @@ export function ListingEditorPage() {
   const [isNewFromDeveloper, setIsNewFromDeveloper] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [outOfCredits, setOutOfCredits] = useState(false);
   const [saved, setSaved] = useState(false);
   const [confirmArchive, setConfirmArchive] = useState(false);
   /** Held while the duplicate prompt is open, so "add anyway" can retry the same save. */
@@ -213,6 +214,7 @@ export function ListingEditorPage() {
   const save = async (status?: 'draft' | 'published', allowDuplicate = false) => {
     setSaving(true);
     setError(null);
+    setOutOfCredits(false);
 
     try {
       const input = {
@@ -255,6 +257,7 @@ export function ListingEditorPage() {
       }
 
       setError(message);
+      setOutOfCredits(errorCodeOf(e) === 'listing_credits');
       toast.error(message);
     } finally {
       setSaving(false);
@@ -299,7 +302,14 @@ export function ListingEditorPage() {
       </div>
 
       {error && (
-        <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>
+        <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+          {error}{' '}
+          {outOfCredits && (
+            <Link to="/app/listings" className="font-medium underline">
+              לקניית חבילה
+            </Link>
+          )}
+        </p>
       )}
 
       <section className="grid gap-4 rounded-xl border border-slate-200 bg-white p-4 sm:grid-cols-2">

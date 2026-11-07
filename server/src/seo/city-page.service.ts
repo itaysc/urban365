@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 import { cityKey } from '../listings/city-name.js';
+import { FROM_A_VISIBLE_AGENCY } from '../listings/on-the-market.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import type { Section } from '../yad2/yad2.types.js';
 import { Cached } from './cached.js';
@@ -8,7 +9,11 @@ import { slugKey } from './city-slug.js';
 import { byNeighborhood, byPropertyType, byRooms, summarise, type Band, type StatRow, type Summary } from './stats.js';
 
 /** Listings anybody can see: published, and still on the market. */
-const PUBLIC: Prisma.ListingWhereInput = { status: 'published', delistedAt: null };
+const PUBLIC: Prisma.ListingWhereInput = {
+  status: 'published',
+  delistedAt: null,
+  AND: [FROM_A_VISIBLE_AGENCY],
+};
 
 /**
  * How long the city list and the district outlines are allowed to be stale.

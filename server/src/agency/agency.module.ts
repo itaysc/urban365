@@ -14,6 +14,8 @@ import { OverviewController } from './overview.controller.js';
 import { OverviewService } from './overview.service.js';
 import { MyListingsController } from './my-listings.controller.js';
 import { MyListingsService } from './my-listings.service.js';
+import { ListingPackagesController } from './listing-packages.controller.js';
+import { ListingBillingService } from './listing-billing.service.js';
 import { InviteController, MyProfileController, TeamController } from './team.controller.js';
 import { TeamService } from './team.service.js';
 
@@ -27,6 +29,7 @@ import { TeamService } from './team.service.js';
     ImagesController,
     OfficesController,
     MyListingsController,
+    ListingPackagesController,
     TeamController,
     MyProfileController,
     InviteController,
@@ -36,6 +39,7 @@ import { TeamService } from './team.service.js';
     AgencyService,
     PublicAgenciesService,
     MyListingsService,
+    ListingBillingService,
     TeamService,
     OfficesService,
   ],

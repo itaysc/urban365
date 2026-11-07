@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
+import { FROM_A_VISIBLE_AGENCY } from '../listings/on-the-market.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import type { Section } from '../yad2/yad2.types.js';
 
@@ -15,6 +16,7 @@ const PUBLIC: Prisma.ListingWhereInput = {
   status: 'published',
   delistedAt: null,
   reviewStatus: { not: 'flagged' },
+  AND: [FROM_A_VISIBLE_AGENCY],
 };
 
 /** What the page shows. Deliberately no phone number — see the note on `agency`. */

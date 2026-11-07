@@ -1,7 +1,7 @@
 export type AgencyRole = 'owner' | 'agent';
 export type PlatformRole = 'admin' | 'support';
 export type MembershipStatus = 'pending' | 'active' | 'suspended';
-export type AgencyStatus = 'unclaimed' | 'pending' | 'active' | 'rejected' | 'suspended';
+export type AgencyStatus = 'unclaimed' | 'pending' | 'active' | 'rejected' | 'suspended' | 'deleted';
 
 export type AccountType = 'buyer' | 'agency';
 

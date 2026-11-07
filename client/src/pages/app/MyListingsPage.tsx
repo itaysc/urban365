@@ -1,6 +1,7 @@
 import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { qk } from '@/queries/keys';
+import { ListingPackages } from '@/components/agency/ListingPackages';
 import { Pagination } from '@/components/Pagination';
 import { formatPrice } from '@/lib/format';
 import { fetchMyListings, type ListingStatus } from '@/services/agency';
@@ -60,6 +61,8 @@ export function MyListingsPage() {
           נכס חדש
         </Link>
       </div>
+
+      <ListingPackages />
 
       <div className="flex gap-2">
         {TABS.map((tab) => (

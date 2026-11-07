@@ -6,6 +6,7 @@ import { savedSearchAlertTemplate, type AlertListing } from '../mail/templates.j
 import { israeliHour } from '../matching/briefing-time.js';
 import { israeliDate } from '../matching/briefing-time.js';
 import { matchBrief, type Brief, type Candidate } from '../matching/match.js';
+import { FROM_A_VISIBLE_AGENCY } from '../listings/on-the-market.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 
 /** How many go in one email. More than this and nobody reads any of them. */
@@ -149,6 +150,7 @@ export class AlertsService {
       where: {
         status: 'published',
         delistedAt: null,
+        AND: [FROM_A_VISIBLE_AGENCY],
         publishedAt: { gt: search.notifiedUpTo },
       },
       select: {

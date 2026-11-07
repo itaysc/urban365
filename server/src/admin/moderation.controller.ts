@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Param, Post, Query } from '@nestjs/common';
 import { IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator.js';
 import { PlatformAdmin } from '../auth/decorators/roles.decorator.js';
@@ -50,6 +50,30 @@ export class ModerationController {
   @Get('agencies')
   pending() {
     return this.moderation.pending();
+  }
+
+  /** Active, suspended, and — when a name is given — unclaimed agencies. */
+  @Get('agencies/directory')
+  directory(@Query('q') q?: string) {
+    return this.moderation.directory(q);
+  }
+
+  @HttpCode(204)
+  @Post('agencies/:id/suspend')
+  async suspend(@Param('id') id: string, @CurrentUser() admin: Principal) {
+    await this.moderation.suspend(id, admin.userId);
+  }
+
+  @HttpCode(204)
+  @Post('agencies/:id/restore')
+  async restore(@Param('id') id: string, @CurrentUser() admin: Principal) {
+    await this.moderation.restore(id, admin.userId);
+  }
+
+  @HttpCode(204)
+  @Post('agencies/:id/delete')
+  async remove(@Param('id') id: string, @CurrentUser() admin: Principal) {
+    await this.moderation.remove(id, admin.userId);
   }
 
   @HttpCode(204)

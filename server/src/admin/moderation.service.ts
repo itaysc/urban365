@@ -3,6 +3,14 @@ import { MailService } from '../mail/mail.service.js';
 import { claimDecisionTemplate } from '../mail/templates.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 
+export interface ManagedAgency {
+  id: string;
+  name: string;
+  status: string;
+  yad2Id: string | null;
+  publishedCount: number;
+}
+
 export interface PendingAgency {
   id: string;
   name: string;
@@ -167,5 +175,113 @@ export class ModerationService {
     }
 
     this.logger.log(`Agency ${agencyId} rejected by ${adminId}: ${reason}`);
+  }
+
+  /**
+   * Agencies an admin can suspend or remove.
+   *
+   * Pending ones are the queue above this list. With no search, only the ones that
+   * already have an account or a suspension — an unclaimed scrape is found by name,
+   * or the list would be every office in the country.
+   */
+  async directory(q?: string): Promise<ManagedAgency[]> {
+    const term = q?.trim();
+    const agencies = await this.prisma.agency.findMany({
+      where: {
+        status: { in: term ? ['active', 'unclaimed', 'suspended'] : ['active', 'suspended'] },
+        ...(term ? { name: { contains: term, mode: 'insensitive' } } : {}),
+      },
+      orderBy: { name: 'asc' },
+      take: 50,
+      include: { _count: { select: { listings: { where: { status: 'published' } } } } },
+    });
+
+    return agencies.map((agency) => ({
+      id: agency.id,
+      name: agency.name,
+      status: agency.status,
+      yad2Id: agency.yad2Id,
+      publishedCount: agency._count.listings,
+    }));
+  }
+
+  async suspend(agencyId: string, adminId: string): Promise<void> {
+    const agency = await this.requireManageable(agencyId);
+    if (agency.status === 'suspended') throw new BadRequestException('הסוכנות כבר מושעית.');
+
+    await this.prisma.agency.update({
+      where: { id: agencyId },
+      data: { status: 'suspended', reviewedAt: new Date(), reviewedById: adminId },
+    });
+    this.logger.log(`Agency ${agencyId} suspended by ${adminId}`);
+  }
+
+  /**
+   * Back to what it was. An office that has a working member becomes active again;
+   * a scrape nobody claimed goes back to unclaimed.
+   */
+  async restore(agencyId: string, adminId: string): Promise<void> {
+    const agency = await this.requireManageable(agencyId);
+    if (agency.status !== 'suspended') throw new BadRequestException('הסוכנות אינה מושעית.');
+
+    const member = await this.prisma.agencyMembership.findFirst({
+      where: { agencyId, status: 'active' },
+      select: { id: true },
+    });
+
+    await this.prisma.agency.update({
+      where: { id: agencyId },
+      data: {
+        status: member ? 'active' : 'unclaimed',
+        reviewedAt: new Date(),
+        reviewedById: adminId,
+      },
+    });
+    this.logger.log(`Agency ${agencyId} restored by ${adminId}`);
+  }
+
+  /**
+   * The agency leaves the site. Its listings are marked removed rather than deleted,
+   * which is what keeps them out of search, and the people in it lose the agency on
+   * their next sign-in.
+   */
+  async remove(agencyId: string, adminId: string): Promise<void> {
+    await this.requireManageable(agencyId);
+    const now = new Date();
+    const members = await this.prisma.agencyMembership.findMany({
+      where: { agencyId },
+      select: { userId: true },
+    });
+
+    await this.prisma.$transaction([
+      this.prisma.listing.updateMany({
+        where: { agencyId, status: { not: 'removed' } },
+        data: { status: 'removed', removedAt: now, removalReason: 'other', delistedAt: now },
+      }),
+      this.prisma.agencyMembership.updateMany({
+        where: { agencyId, status: { not: 'suspended' } },
+        data: { status: 'suspended' },
+      }),
+      this.prisma.agency.update({
+        where: { id: agencyId },
+        data: { status: 'deleted', reviewedAt: now, reviewedById: adminId },
+      }),
+      ...(members.length > 0
+        ? [
+            this.prisma.user.updateMany({
+              where: { id: { in: members.map((member) => member.userId) } },
+              data: { sessionEpoch: { increment: 1 } },
+            }),
+          ]
+        : []),
+    ]);
+
+    this.logger.log(`Agency ${agencyId} deleted by ${adminId}`);
+  }
+
+  private async requireManageable(agencyId: string) {
+    const agency = await this.prisma.agency.findUnique({ where: { id: agencyId } });
+    if (!agency || agency.status === 'deleted') throw new NotFoundException('הסוכנות לא נמצאה.');
+    return agency;
   }
 }

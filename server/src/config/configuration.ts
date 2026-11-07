@@ -34,6 +34,13 @@ export interface AppConfig {
    * a typo must not hold every flat in a queue.
    */
   listingReview: boolean;
+  /**
+   * Agencies spend a credit for each listing they publish from the app. A single
+   * credit is 25 ILS; packs of 10, 50 and 100 are 20, 17 and 15 ILS each. Scraped
+   * listings and private sellers stay free either way. Anything but an explicit
+   * "true" leaves publishing free — a typo must not start charging.
+   */
+  listingBilling: boolean;
 }
 
 export interface DatabaseConfig {
@@ -139,6 +146,8 @@ export default (): {
     siteClosed: (process.env.SITE_CLOSED ?? 'false').toLowerCase() === 'true',
     // Only an explicit "true" holds private listings for review.
     listingReview: (process.env.LISTING_REVIEW ?? 'false').toLowerCase() === 'true',
+    // Only an explicit "true" charges an agency for a listing it publishes.
+    listingBilling: (process.env.LISTING_BILLING ?? 'false').toLowerCase() === 'true',
   },
   database: {
     url: process.env.DATABASE_URL ?? '',

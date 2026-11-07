@@ -15,6 +15,7 @@ import { dropColumns, priceChange } from '../listings/price-history.js';
 import { EXCLUSIVE_AMENITY } from '../yad2/yad2.transform.js';
 import { duplicateWhere, hasEnoughSignal, type DuplicateCandidate } from './duplicate.js';
 import { listingImageUrl } from './image-url.js';
+import { ListingBillingService } from './listing-billing.service.js';
 import type { UpdateListingDto, UpsertListingDto } from './dto/listing.dto.js';
 
 /** Returned to the editor; includes drafts and every image. */
@@ -33,7 +34,8 @@ export class MyListingsService {
     private readonly prisma: TenantPrismaService,
     private readonly context: RequestContextService,
     private readonly storage: StorageService,
-      private readonly geocode: GeocodeService,
+    private readonly geocode: GeocodeService,
+    private readonly billing: ListingBillingService,
   ) {}
 
   private assertCanWrite(): void {
@@ -77,6 +79,12 @@ export class MyListingsService {
     await this.assertNotDuplicate(dto);
     await this.assertSellerIsOurs(dto.sellerCustomerId);
     const principal = this.context.getPrincipal();
+    const publishing = dto.status === 'published';
+    const charged = await this.billing.chargeForPublication({
+      source: 'manual',
+      alreadyPublished: false,
+      publishing,
+    });
 
     // The extension fills `agencyId` in anyway; it is stated here because Prisma's
     // generated create type requires it. `source: 'manual'` and a null token are what
@@ -91,7 +99,8 @@ export class MyListingsService {
         section: dto.section,
         source: 'manual',
         status: dto.status ?? 'draft',
-        publishedAt: dto.status === 'published' ? new Date() : null,
+        publishedAt: publishing ? new Date() : null,
+        ...(charged ? { creditChargedAt: new Date() } : {}),
         createdByUserId: principal?.userId ?? null,
         hasFullDetails: true,
       },
@@ -118,6 +127,12 @@ export class MyListingsService {
       await this.prisma.client.listingPriceChange.create({ data: { ...change, changedAt: at } });
     }
 
+    const charged = await this.billing.chargeForPublication({
+      source: existing.source,
+      alreadyPublished: existing.publishedAt !== null,
+      publishing: dto.status === 'published',
+    });
+
     return this.prisma.client.listing.update({
       where: { id: existing.id },
       data: {
@@ -129,6 +144,7 @@ export class MyListingsService {
         // Stamped the first time it goes public, and never moved afterwards — it is the
         // listing's age, which unpublishing and republishing should not reset.
         ...(dto.status === 'published' && !existing.publishedAt ? { publishedAt: new Date() } : {}),
+        ...(charged ? { creditChargedAt: new Date() } : {}),
       },
       include: DETAIL_INCLUDE,
     });
