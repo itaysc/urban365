@@ -37,8 +37,10 @@ the sense that the feature behind them is simply off.
 | `YAD2_CDP_URL`, `YAD2_DELAY_MS` | optional | only the scraper uses these |
 | `YAD2_FOR_AGENCIES` | optional | set to `false` to hide yad2 from agencies — the import and every mention of it. A platform admin still sees both. Unset, agencies see it |
 
-The client is built with `VITE_API_URL` set to the API origin. Left empty it assumes the
-Vite dev proxy, which does not exist in production.
+The client is built with `VITE_API_URL` set to the API origin, and `VITE_APP_URL` set to
+its own public origin. Left empty, the first assumes the Vite dev proxy, which does not
+exist in production, and the second leaves the share image of every page at a relative
+URL, which the social networks ignore — see "Icons and the share image".
 
 ---
 
@@ -528,24 +530,45 @@ returns null for `/` so the two never fight over it.
 Multi-value filters in a search URL are comma-separated (`?city=חולון,בת ים`); the
 parser reads the first value of a repeated key and ignores the rest.
 
-## The tab icon
+## Icons and the share image
 
-`client/public/favicon.svg` is the source: a blue tile with `U365` in white, drawn as
-SVG so it is sharp at whatever size a browser asks for and there is one file to change
-rather than a set of sizes to regenerate. `textLength` is set explicitly, because an
-SVG favicon renders with system fonts and without it the width differs between a Mac,
-a PC and a phone — on one of them the last character leaves the tile.
+Two source drawings, one family, and a script that makes everything else from them:
 
-`apple-touch-icon.png` exists because Safari ignores an SVG icon when somebody adds the
-site to their home screen. It is the same artwork with square corners, since iOS rounds
-the icon itself and paints anything transparent black. To regenerate it after changing
-the SVG:
+| source | what it is | serves |
+|---|---|---|
+| `client/public/favicon.svg` | a roofline over a lone `U` | the browser tab, as-is; also the `.ico` and the 48 px PNG |
+| `client/brand/lockup.svg` | the same roof over `U365` | every icon from 180 px up, and the tile on the share image |
+| `client/brand/og-image.svg` | the lockup beside the name and tagline, 1200×630 | the picture a shared link shows |
+
+The split is deliberate. At tab size four characters are noise, so the small cut keeps
+only the `U`; from a home-screen icon up there is room for the name. Both are drawn
+with paths where they can be, and where text is unavoidable `textLength` pins its
+width, because a renderer sets it in whatever system font it has and without that the
+last character leaves the tile on one platform or another.
+
+The SVG favicon is the only one served as a vector. Everything else is a committed PNG
+in `client/public/`, and all of them come from one command:
 
 ```
-sed 's/ rx="14"//' client/public/favicon.svg > /tmp/touch.svg
-qlmanage -t -s 180 -o /tmp /tmp/touch.svg
-cp /tmp/touch.svg.png client/public/apple-touch-icon.png
+node scripts/make-icons.mjs
 ```
+
+It writes `favicon.ico` (16/32/48, for the tools that still fetch `/favicon.ico` without
+reading the HTML), `favicon-48.png` (Google's result icon wants a multiple of 48),
+`apple-touch-icon.png` (180, square corners — iOS rounds the icon itself and paints
+anything transparent black), `icon-192.png` and `icon-512.png` (Android and the install
+prompt, listed in `client/public/manifest.webmanifest`), `icon-512-maskable.png`
+(Android's own crop, square and with the mark in the safe centre) and `og-image.png`.
+It renders with QuickLook, which every Mac has, and needs nothing installed. Change a
+source, run it, commit `client/public`; never edit a PNG by hand.
+
+`og:image` has to be an absolute URL, and the static client cannot know its own origin,
+so `client/index.html` carries `%VITE_APP_URL%/og-image.png` and Vite fills it in at
+build time from `VITE_APP_URL` — the site's public origin, no trailing slash, set
+wherever the client is built. The server-rendered pages take the same picture from
+`appUrl`, and `PageOptions.image` lets a page pass its own instead; the city pages do
+not yet, which is the obvious next step once their photographs are served from somewhere
+with a stable URL.
 
 The tab, the mark and the header now agree: `Urban365`. The word `נדל״ן` elsewhere —
 `נדל״ן למכירה`, `סוכנויות נדל״ן` — is the ordinary noun for real estate and is left

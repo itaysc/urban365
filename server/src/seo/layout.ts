@@ -151,6 +151,11 @@ export interface PageOptions {
   /** Marks "מחירים לפי עיר" as the section being read. */
   onCityPages?: boolean;
   /**
+   * The picture a share of this page carries, absolute. Left out, the site's own
+   * branded image is used; a city page can pass its photograph instead.
+   */
+  image?: string;
+  /**
    * The link columns across the bottom, from `renderFooterLinks`.
    *
    * Passed in rather than built here: the layout knows nothing about cities, and the
@@ -546,7 +551,14 @@ export function page(options: PageOptions): string {
 <meta property="og:title" content="${esc(options.title)}">
 <meta property="og:description" content="${esc(options.description)}">
 <meta property="og:url" content="${esc(options.canonical)}">
-<link rel="icon" type="image/svg+xml" href="${esc(options.appUrl)}/favicon.svg">
+<meta property="og:image" content="${esc(options.image ?? `${options.appUrl}/og-image.png`)}">${
+    options.image ? '' : '\n<meta property="og:image:width" content="1200">\n<meta property="og:image:height" content="630">'
+  }
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#1d4ed8">
+<link rel="icon" type="image/svg+xml" href="${esc(options.appUrl)}/favicon.svg?v=2">
+<link rel="icon" href="${esc(options.appUrl)}/favicon.ico?v=2" sizes="48x48">
+<link rel="apple-touch-icon" href="${esc(options.appUrl)}/apple-touch-icon.png?v=2">
 <meta name="u365-api" content="${esc(sessionApiBase)}">
 <style>${STYLES}</style>
 ${blocks}

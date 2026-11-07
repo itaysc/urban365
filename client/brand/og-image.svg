@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1200" width="1200" height="1200" role="img" aria-label="Urban365">
+  <title>Urban365</title>
+
+  <!--
+    The picture a shared link carries — WhatsApp, Facebook, LinkedIn, X all read the
+    same og:image. 1200×630 is the one size every one of them accepts without
+    cropping the sides. Rasterised by scripts/make-icons.mjs; never served as SVG.
+
+    The canvas here is square on purpose. The renderer makes square thumbnails, and
+    given a wide SVG it scales and crops unpredictably; given a square one it draws it
+    1:1. So the 1200×630 composition sits in the middle band of a 1200×1200 canvas,
+    and the script cuts that band out afterwards. Everything outside the band is
+    thrown away.
+
+    Inside the band, the mark sits left of centre with the name beside it, so the
+    composition survives the square crop WhatsApp applies to small previews: the tile
+    is what stays.
+  -->
+  <rect width="1200" height="1200" fill="#1d4ed8" />
+
+  <g transform="translate(0 285)">
+    <!-- The lockup, as a tile, at 300 px. -->
+    <g transform="translate(150 165) scale(4.6875)">
+      <rect width="64" height="64" rx="14" fill="#1e40af" />
+      <path d="M13 23 32 9l19 14" fill="none" stroke="#ffffff" stroke-width="7" stroke-linejoin="round" stroke-linecap="round" />
+      <text x="32" y="48" font-family="Arial, Helvetica, sans-serif" font-weight="bold" font-size="21" fill="#ffffff" text-anchor="middle" textLength="44" lengthAdjust="spacingAndGlyphs">U365</text>
+    </g>
+
+    <text x="520" y="300" font-family="Arial, Helvetica, sans-serif" font-weight="bold" font-size="112" fill="#ffffff">Urban365</text>
+    <!-- A single Hebrew run: the bidi algorithm lays it right-to-left on its own, starting at x. -->
+    <text x="520" y="382" font-family="Arial, Helvetica, sans-serif" font-size="40" fill="#bfdbfe">נדל״ן לפי עסקאות שנרשמו בפועל</text>
+  </g>
+</svg>

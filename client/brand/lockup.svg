@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Urban365">
+  <title>Urban365</title>
+
+  <!--
+    The large cut of the mark: the roofline over the full "U365". This is the source
+    for every raster icon 180 px and up — iOS home screen, Android, the share image —
+    where the digits have room to be read. The tab's favicon.svg is the same roof over
+    a lone U, because at 16 px four characters cannot be resolved.
+
+    Not served as SVG, only rasterised by scripts/make-icons.mjs, so the text here is
+    allowed: the font only has to exist on the machine that renders the PNGs, never on
+    a visitor's. Arial Bold is named because it is on every Mac and Windows machine;
+    textLength pins the width so the word fills the same span whatever font answers.
+
+    rx is 14 here and stripped by the script where a platform rounds the corners
+    itself (iOS) or masks them (Android maskable): a rounded tile inside a rounded
+    mask leaves a dark sliver at each corner.
+  -->
+  <rect width="64" height="64" rx="14" fill="#1d4ed8" />
+  <path d="M13 23 32 9l19 14" fill="none" stroke="#ffffff" stroke-width="7" stroke-linejoin="round" stroke-linecap="round" />
+  <text x="32" y="48" font-family="Arial, Helvetica, sans-serif" font-weight="bold" font-size="21" fill="#ffffff" text-anchor="middle" textLength="44" lengthAdjust="spacingAndGlyphs">U365</text>
+</svg>

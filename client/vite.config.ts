@@ -7,6 +7,12 @@ import path from 'node:path';
 const SERVER_PORT = process.env.VITE_SERVER_PORT ?? '5555';
 const serverTarget = `http://127.0.0.1:${SERVER_PORT}`;
 
+// index.html carries `%VITE_APP_URL%` in its og:image URL. Vite replaces a `%VAR%` only
+// when the variable exists and otherwise leaves the literal text in the page, so an
+// unset variable — every dev build — must still read as empty. The share image is then
+// a relative URL, which the social networks ignore and nothing else minds.
+process.env.VITE_APP_URL ??= '';
+
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],

@@ -2,34 +2,21 @@
   <title>Urban365</title>
 
   <!--
-    A solid tile rather than a transparent mark: a favicon sits on whatever colour the
-    browser's tab strip happens to be, light or dark, and letters alone disappear
-    against one of them. The blue is the brand's own (blue-700), so the tab matches the
-    wordmark in the header.
+    The small cut of the mark: a roofline over a U. The full lockup — the same roof
+    over "U365" — is what the home-screen icons and the share image carry; see
+    client/brand/lockup.svg. At 16 and 32 px four characters are noise, so the tab
+    gets the one letter the eye can resolve, and the roof is what makes the two cuts
+    read as the same thing.
+
+    A solid tile rather than a transparent mark: a favicon sits on whatever colour
+    the tab strip happens to be, light or dark, and a mark alone disappears against
+    one of them. The blue is the brand's own (blue-700), so the tab matches the header.
+
+    Paths, not text. The previous version set "U365" in the machine's system font,
+    which is a different font on a Mac, a PC and a phone — this looks the same
+    everywhere, and it needs no font to exist.
   -->
   <rect width="64" height="64" rx="14" fill="#1d4ed8" />
-
-  <!--
-    One line, filling the tile. Four characters is a lot for sixteen pixels and the
-    honest answer is that at that size this reads as a blue tile with a mark on it —
-    which is what most text favicons are. It sharpens up at 32px and above, where tabs
-    on a retina screen and every bookmark list actually draw it.
-
-    `textLength` with `spacingAndGlyphs` is what makes it independent of the font the
-    machine happens to have: an SVG favicon is rendered with system fonts, so without
-    it the width would vary between a Mac, a PC and a phone, and on one of them the
-    last character would sit outside the tile.
-  -->
-  <text
-    x="32"
-    y="33"
-    textLength="46"
-    lengthAdjust="spacingAndGlyphs"
-    fill="#ffffff"
-    font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif"
-    font-size="26"
-    font-weight="700"
-    text-anchor="middle"
-    dominant-baseline="central"
-  >U365</text>
+  <path d="M15 25 32 11l17 14" fill="none" stroke="#ffffff" stroke-width="8" stroke-linejoin="round" stroke-linecap="round" />
+  <path d="M22 28v12a10 10 0 0 0 20 0V28" fill="none" stroke="#ffffff" stroke-width="8" />
 </svg>
