@@ -121,6 +121,7 @@ export const qk = {
     all: ['admin'] as const,
     moderation: ['admin', 'moderation'] as const,
     directory: (q: string) => ['admin', 'directory', q] as const,
+    users: (q: string) => ['admin', 'users', q] as const,
     listings: ['admin', 'listings'] as const,
     invites: ['admin', 'invites'] as const,
   },

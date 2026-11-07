@@ -35,6 +35,8 @@ const TITLES: Record<string, string> = {
   '/app/radar': 'הזדמנויות',
   '/app/cobrokerage': 'שיתופי פעולה',
   '/app/listings': 'הנכסים שלי',
+  '/app/billing': 'פרסומים',
+  '/app/billing/checkout': 'רכישת פרסומים',
   '/app/listings/new': 'נכס חדש',
   '/app/leads': 'פניות',
   '/app/customers': 'לקוחות',
@@ -49,6 +51,7 @@ const TITLES: Record<string, string> = {
   '/sell': 'פרסום נכס',
   '/my-sale': 'הנכסים שלי',
   '/admin/moderation': 'ניהול פלטפורמה',
+  '/admin/users': 'משתמשים',
 };
 
 /** Paths with a parameter on the end, matched by their stem. */

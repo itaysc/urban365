@@ -47,6 +47,24 @@ export class ModerationController {
     await this.listings.reject(id, dto.note);
   }
 
+  /** Ordinary accounts: people searching or selling their own home, not agency staff. */
+  @Get('users')
+  users(@Query('q') q?: string) {
+    return this.moderation.users(q);
+  }
+
+  @HttpCode(204)
+  @Post('users/:id/disable')
+  async disableUser(@Param('id') id: string, @CurrentUser() admin: Principal) {
+    await this.moderation.disableUser(id, admin.userId);
+  }
+
+  @HttpCode(204)
+  @Post('users/:id/enable')
+  async enableUser(@Param('id') id: string, @CurrentUser() admin: Principal) {
+    await this.moderation.enableUser(id, admin.userId);
+  }
+
   @Get('agencies')
   pending() {
     return this.moderation.pending();

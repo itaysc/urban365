@@ -9,7 +9,9 @@ import {
   ShieldCheck,
   Sparkles,
   Store,
+  UserRound,
   Users,
+  Wallet,
 } from 'lucide-react';
 
 /**
@@ -26,9 +28,11 @@ export const NAV_ITEMS = [
   { path: '/app/deals', label: 'עסקאות', icon: Handshake, group: 'work' },
   { path: '/app/cobrokerage', label: 'שיתופי פעולה', icon: HandHeart, group: 'work' },
   { path: '/app/calendar', label: 'יומן', icon: CalendarDays, group: 'work' },
+  { path: '/app/billing', label: 'פרסומים', icon: Wallet, group: 'setup', billing: true },
   { path: '/app/agency', label: 'עמוד הסוכנות', icon: Store, group: 'setup' },
   { path: '/app/team', label: 'צוות', icon: Users, group: 'setup' },
   { path: '/admin/moderation', label: 'ניהול פלטפורמה', icon: ShieldCheck, group: 'admin', adminOnly: true },
+  { path: '/admin/users', label: 'משתמשים', icon: UserRound, group: 'admin', adminOnly: true },
 ] as const;
 
 export type NavItem = (typeof NAV_ITEMS)[number];

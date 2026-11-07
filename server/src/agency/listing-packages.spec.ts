@@ -41,7 +41,7 @@ describe('listing billing', () => {
       update: vi.fn(),
       findUnique: vi.fn(),
     };
-    const orders = { create: vi.fn() };
+    const orders = { create: vi.fn(), findMany: vi.fn() };
     const config = { get: (key: string) => (key === 'app.listingBilling' ? enabled : undefined) };
     const context = {
       requireAgencyId: () => 'agency-1',
@@ -144,14 +144,34 @@ describe('listing billing', () => {
   });
 
   it('hides the packs and reports nothing to buy while billing is off', async () => {
-    const { service, agency } = setup(false);
+    const { service, agency, orders } = setup(false);
 
     await expect(service.summary()).resolves.toEqual({
       enabled: false,
       balance: 0,
       canPurchase: false,
       packages: [],
+      orders: [],
     });
     expect(agency.findUnique).not.toHaveBeenCalled();
+    expect(orders.findMany).not.toHaveBeenCalled();
+  });
+
+  it('returns the balance together with the packs already bought', async () => {
+    const { service, agency, orders } = setup(true);
+    const boughtAt = new Date('2026-11-07T12:00:00Z');
+    agency.findUnique.mockResolvedValue({ listingCredits: 3 });
+    orders.findMany.mockResolvedValue([
+      { id: 'order-1', size: 10, unitAgorot: 2_000, totalAgorot: 20_000, createdAt: boughtAt },
+    ]);
+
+    const summary = await service.summary();
+
+    expect(summary.balance).toBe(3);
+    expect(summary.canPurchase).toBe(true);
+    expect(summary.packages.map((pack) => pack.size)).toEqual([1, 10, 50, 100]);
+    expect(summary.orders).toEqual([
+      { id: 'order-1', size: 10, unitAgorot: 2_000, totalAgorot: 20_000, createdAt: boughtAt },
+    ]);
   });
 });

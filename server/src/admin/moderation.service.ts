@@ -11,6 +11,19 @@ export interface ManagedAgency {
   publishedCount: number;
 }
 
+export interface ManagedUser {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string | null;
+  createdAt: Date;
+  lastLoginAt: Date | null;
+  emailVerified: boolean;
+  disabled: boolean;
+  publishedCount: number;
+}
+
 export interface PendingAgency {
   id: string;
   name: string;
@@ -188,7 +201,7 @@ export class ModerationService {
     const term = q?.trim();
     const agencies = await this.prisma.agency.findMany({
       where: {
-        status: { in: term ? ['active', 'unclaimed', 'suspended'] : ['active', 'suspended'] },
+        status: { in: term ? ['active', 'unclaimed', 'suspended', 'deleted'] : ['active', 'suspended', 'deleted'] },
         ...(term ? { name: { contains: term, mode: 'insensitive' } } : {}),
       },
       orderBy: { name: 'asc' },
@@ -221,7 +234,12 @@ export class ModerationService {
    * a scrape nobody claimed goes back to unclaimed.
    */
   async restore(agencyId: string, adminId: string): Promise<void> {
-    const agency = await this.requireManageable(agencyId);
+    const agency = await this.prisma.agency.findUnique({ where: { id: agencyId } });
+    if (!agency) throw new NotFoundException('הסוכנות לא נמצאה.');
+    if (agency.status === 'deleted') {
+      await this.restoreDeleted(agencyId, adminId);
+      return;
+    }
     if (agency.status !== 'suspended') throw new BadRequestException('הסוכנות אינה מושעית.');
 
     const member = await this.prisma.agencyMembership.findFirst({
@@ -255,8 +273,8 @@ export class ModerationService {
 
     await this.prisma.$transaction([
       this.prisma.listing.updateMany({
-        where: { agencyId, status: { not: 'removed' } },
-        data: { status: 'removed', removedAt: now, removalReason: 'other', delistedAt: now },
+        where: { agencyId, status: 'published' },
+        data: { status: 'removed', removedAt: now, removalReason: 'agency', delistedAt: now },
       }),
       this.prisma.agencyMembership.updateMany({
         where: { agencyId, status: { not: 'suspended' } },
@@ -277,6 +295,121 @@ export class ModerationService {
     ]);
 
     this.logger.log(`Agency ${agencyId} deleted by ${adminId}`);
+  }
+
+  /**
+   * Puts back a deleted agency and the listings that were taken down with it.
+   *
+   * A listing the agency removed itself — sold, rented, a change of mind — keeps
+   * its own reason and stays hidden. Only rows marked `agency` were ours to hide.
+   */
+  private async restoreDeleted(agencyId: string, adminId: string): Promise<void> {
+    const member = await this.prisma.agencyMembership.findFirst({
+      where: { agencyId },
+      select: { id: true },
+    });
+
+    await this.prisma.$transaction([
+      this.prisma.listing.updateMany({
+        where: { agencyId, status: 'removed', removalReason: 'agency' },
+        data: { status: 'published', removedAt: null, removalReason: null, delistedAt: null },
+      }),
+      this.prisma.agencyMembership.updateMany({
+        where: { agencyId, status: 'suspended' },
+        data: { status: 'active' },
+      }),
+      this.prisma.agency.update({
+        where: { id: agencyId },
+        data: {
+          status: member ? 'active' : 'unclaimed',
+          reviewedAt: new Date(),
+          reviewedById: adminId,
+        },
+      }),
+    ]);
+
+    this.logger.log(`Agency ${agencyId} restored after deletion by ${adminId}`);
+  }
+
+  /**
+   * People with an ordinary account — not agency staff, and not platform staff.
+   *
+   * No search returns the newest ones. A term matches the email or either name, so an
+   * admin can find someone without scrolling.
+   */
+  async users(q?: string): Promise<ManagedUser[]> {
+    const term = q?.trim();
+    const people = await this.prisma.user.findMany({
+      where: {
+        accountType: 'buyer',
+        platformRole: null,
+        ...(term
+          ? {
+              OR: [
+                { email: { contains: term, mode: 'insensitive' } },
+                { firstName: { contains: term, mode: 'insensitive' } },
+                { lastName: { contains: term, mode: 'insensitive' } },
+              ],
+            }
+          : {}),
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+      include: {
+        _count: {
+          select: { createdListings: { where: { status: 'published', agencyId: null } } },
+        },
+      },
+    });
+
+    return people.map((person) => ({
+      id: person.id,
+      firstName: person.firstName,
+      lastName: person.lastName,
+      email: person.email,
+      phone: person.phone,
+      createdAt: person.createdAt,
+      lastLoginAt: person.lastLoginAt,
+      emailVerified: person.emailVerifiedAt !== null,
+      disabled: person.disabledAt !== null,
+      publishedCount: person._count.createdListings,
+    }));
+  }
+
+  /** Blocks sign-in and hides the listings this person published. */
+  async disableUser(userId: string, adminId: string): Promise<void> {
+    if (userId === adminId) throw new BadRequestException('אי אפשר להשבית את החשבון שלך.');
+    const person = await this.requireBuyer(userId);
+    if (person.disabledAt) throw new BadRequestException('החשבון כבר מושבת.');
+
+    const now = new Date();
+    await this.prisma.$transaction([
+      this.prisma.user.update({
+        where: { id: userId },
+        data: { disabledAt: now, sessionEpoch: { increment: 1 } },
+      }),
+      this.prisma.session.updateMany({
+        where: { userId, revokedAt: null },
+        data: { revokedAt: now },
+      }),
+    ]);
+    this.logger.log(`User ${userId} disabled by ${adminId}`);
+  }
+
+  async enableUser(userId: string, adminId: string): Promise<void> {
+    const person = await this.requireBuyer(userId);
+    if (!person.disabledAt) throw new BadRequestException('החשבון אינו מושבת.');
+
+    await this.prisma.user.update({ where: { id: userId }, data: { disabledAt: null } });
+    this.logger.log(`User ${userId} enabled by ${adminId}`);
+  }
+
+  private async requireBuyer(userId: string) {
+    const person = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!person || person.accountType !== 'buyer' || person.platformRole) {
+      throw new NotFoundException('המשתמש לא נמצא.');
+    }
+    return person;
   }
 
   private async requireManageable(agencyId: string) {

@@ -12,6 +12,7 @@ import { StreetBox } from '@/components/listing/StreetBox';
 import { Field, inputClass, selectClass } from '@/components/ui/Field';
 import { AmenityPicker } from '@/components/listing/AmenityPicker';
 import { useToast } from '@/components/ui/Toast';
+import { useListingCredits } from '@/hooks/useListingCredits';
 import { errorCodeOf, errorMessageOf, statusOf } from '@/lib/apiError';
 import { EXCLUSIVE_LABEL } from '@/lib/exclusivity';
 import { fetchCustomers } from '@/services/crm';
@@ -140,11 +141,12 @@ export function ListingEditorPage() {
   const [isNewFromDeveloper, setIsNewFromDeveloper] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [outOfCredits, setOutOfCredits] = useState(false);
   const [saved, setSaved] = useState(false);
   const [confirmArchive, setConfirmArchive] = useState(false);
   /** Held while the duplicate prompt is open, so "add anyway" can retry the same save. */
   const [duplicate, setDuplicate] = useState<{ message: string; status?: 'draft' | 'published' } | null>(null);
+
+  const { data: credits, isPending: creditsPending } = useListingCredits();
 
   const { data: fetched, isPending, isError, error: fetchError } = useQuery({
     queryKey: qk.listings.detail(listingId ?? ''),
@@ -211,10 +213,47 @@ export function ListingEditorPage() {
     setSaved(false);
   };
 
+  const checkoutFor = (path: string) =>
+    navigate(`/app/billing/checkout?returnTo=${encodeURIComponent(path)}`);
+
+  // A new listing with nothing to spend starts at checkout, before the form.
+  useEffect(() => {
+    if (isNew && credits?.enabled && credits.balance < 1) {
+      checkoutFor('/app/listings/new');
+    }
+  }, [isNew, credits?.enabled, credits?.balance]);
+
   const save = async (status?: 'draft' | 'published', allowDuplicate = false) => {
+    // A first publication spends a credit. With none left, the checkout is the
+    // next step — the form stays put until the credits are in the account.
+    const firstPublish =
+      status === 'published' &&
+      (isNew || (!listing?.publishedAt && listing?.source !== 'yad2' && listing?.source !== 'import'));
+    if (firstPublish && credits?.enabled && credits.balance < 1) {
+      const back = isNew ? '/app/listings/new' : `/app/listings/${listingId}`;
+      if (isNew) {
+        checkoutFor(back);
+        return;
+      }
+      // Keep what they already typed. Publishing waits for a credit.
+      setSaving(true);
+      setError(null);
+      try {
+        const updated = await updateListing(listingId!, toInput(form, amenities, isExclusive, isNewFromDeveloper));
+        queryClient.setQueryData(qk.listings.detail(listingId!), updated);
+        await queryClient.invalidateQueries({ queryKey: qk.listings.all });
+        checkoutFor(back);
+      } catch (e) {
+        const message = errorMessageOf(e, 'השמירה נכשלה.');
+        setError(message);
+        toast.error(message);
+        setSaving(false);
+      }
+      return;
+    }
+
     setSaving(true);
     setError(null);
-    setOutOfCredits(false);
 
     try {
       const input = {
@@ -256,8 +295,12 @@ export function ListingEditorPage() {
         return;
       }
 
+      if (errorCodeOf(e) === 'listing_credits') {
+        checkoutFor(isNew ? '/app/listings/new' : `/app/listings/${listingId}`);
+        return;
+      }
+
       setError(message);
-      setOutOfCredits(errorCodeOf(e) === 'listing_credits');
       toast.error(message);
     } finally {
       setSaving(false);
@@ -278,7 +321,9 @@ export function ListingEditorPage() {
     }
   };
 
-  if (loading) return <p className="text-sm text-slate-500">טוען…</p>;
+  if (loading || (isNew && (creditsPending || (credits?.enabled && credits.balance < 1)))) {
+    return <p className="text-sm text-slate-500">טוען…</p>;
+  }
 
   const published = listing?.status === 'published';
 
@@ -288,6 +333,13 @@ export function ListingEditorPage() {
         <h1 className="text-xl font-bold text-slate-900">{isNew ? 'נכס חדש' : 'עריכת נכס'}</h1>
 
         <div className="flex items-center gap-2">
+          {credits?.enabled && (
+            <Link to="/app/billing" className="text-sm text-slate-600 hover:text-slate-900">
+              {credits.balance === 0
+                ? 'אין פרסומים בחשבון'
+                : `נותרו ${credits.balance.toLocaleString('he-IL')} פרסומים`}
+            </Link>
+          )}
           {saved && <span className="text-xs text-green-700">נשמר</span>}
           {listing && (
             <span
@@ -302,14 +354,7 @@ export function ListingEditorPage() {
       </div>
 
       {error && (
-        <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-          {error}{' '}
-          {outOfCredits && (
-            <Link to="/app/listings" className="font-medium underline">
-              לקניית חבילה
-            </Link>
-          )}
-        </p>
+        <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>
       )}
 
       <section className="grid gap-4 rounded-xl border border-slate-200 bg-white p-4 sm:grid-cols-2">

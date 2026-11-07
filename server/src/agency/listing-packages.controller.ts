@@ -4,7 +4,7 @@ import { BuyListingPackageDto } from './dto/listing-package.dto.js';
 import { ListingBillingService } from './listing-billing.service.js';
 
 /**
- * The packs an agency can buy, and how many listings it can still publish.
+ * The packs an agency can buy, and how many listings it can still publish from the app.
  *
  * Separate from `my/listings/:id` so "packages" is never read as a listing id.
  */
@@ -23,3 +23,4 @@ export class ListingPackagesController {
     return this.billing.purchase(dto.size);
   }
 }
+

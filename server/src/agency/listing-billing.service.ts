@@ -14,8 +14,7 @@ import { listingPackage, listingPackageCatalog } from './listing-packages.js';
 
 const OUT_OF_CREDITS = {
   code: 'listing_credits',
-  message:
-    'אין יתרת פרסומים. פרסום בודד עולה 25 ₪, וחבילה מוזילה את המחיר לנכס. הקנייה נמצאת בעמוד הנכסים.',
+    message: 'אין יתרת פרסומים. אפשר לקנות חבילה בעמוד הרכישה.',
 };
 
 /**
@@ -40,20 +39,29 @@ export class ListingBillingService {
 
   async summary() {
     if (!this.enabled) {
-      return { enabled: false, balance: 0, canPurchase: false, packages: [] };
+      return { enabled: false, balance: 0, canPurchase: false, packages: [], orders: [] };
     }
 
     const agencyId = this.context.requireAgencyId();
-    const agency = await this.prisma.client.agency.findUnique({
-      where: { id: agencyId },
-      select: { listingCredits: true },
-    });
+    const [agency, orders] = await Promise.all([
+      this.prisma.client.agency.findUnique({
+        where: { id: agencyId },
+        select: { listingCredits: true },
+      }),
+      this.prisma.client.listingPackageOrder.findMany({
+        where: { agencyId },
+        orderBy: { createdAt: 'desc' },
+        take: 20,
+        select: { id: true, size: true, unitAgorot: true, totalAgorot: true, createdAt: true },
+      }),
+    ]);
 
     return {
       enabled: true,
       balance: agency?.listingCredits ?? 0,
       canPurchase: can(this.context.getPrincipal(), 'agency:manage'),
       packages: listingPackageCatalog(),
+      orders,
     };
   }
 

@@ -15,17 +15,19 @@ const STATUS_LABEL: Record<ManagedAgency['status'], string> = {
   active: 'פעילה',
   unclaimed: 'לא שויכה',
   suspended: 'מושעית',
+  deleted: 'נמחקה',
 };
 
 type Pending =
-  | { kind: 'suspend' | 'delete'; agency: ManagedAgency }
+  | { kind: 'suspend' | 'delete' | 'restore'; agency: ManagedAgency }
   | null;
 
 /**
- * Agencies a platform admin can take off the site.
+ * Agencies a platform admin can take off the site, and put back.
  *
  * Suspension hides the listings and leaves them published, so lifting it brings them
- * back. Deletion marks every listing removed, which is permanent.
+ * back. Deletion marks the published ones removed; restoring the agency publishes
+ * those again. A listing the agency removed itself stays removed.
  */
 export function AgencyDirectory() {
   const queryClient = useQueryClient();
@@ -58,7 +60,7 @@ export function AgencyDirectory() {
       <div>
         <h1 className="text-xl font-bold text-slate-900">סוכנויות</h1>
         <p className="mt-1 text-sm text-slate-500">
-          השעיה מסתירה את הנכסים מהאתר. מחיקה מסמנת אותם כנמחקים והם לא יוצגו שוב.
+          השעיה מסתירה את הנכסים מהאתר. מחיקה מסמנת אותם כנמחקים. אפשר להחזיר סוכנות שנמחקה.
         </p>
       </div>
 
@@ -106,44 +108,64 @@ export function AgencyDirectory() {
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            {agency.status === 'suspended' ? (
-              <Button
-                variant="secondary"
-                disabled={busy !== null}
-                onClick={() => void run(agency.id, () => restoreAgency(agency.id))}
-              >
-                {busy === agency.id ? 'מעדכן…' : 'ביטול השעיה'}
+            {agency.status === 'deleted' ? (
+              <Button variant="secondary" disabled={busy !== null} onClick={() => setPending({ kind: 'restore', agency })}>
+                החזרה
               </Button>
             ) : (
-              <Button variant="secondary" disabled={busy !== null} onClick={() => setPending({ kind: 'suspend', agency })}>
-                השעיה
-              </Button>
+              <>
+                {agency.status === 'suspended' ? (
+                  <Button
+                    variant="secondary"
+                    disabled={busy !== null}
+                    onClick={() => void run(agency.id, () => restoreAgency(agency.id))}
+                  >
+                    {busy === agency.id ? 'מעדכן…' : 'ביטול השעיה'}
+                  </Button>
+                ) : (
+                  <Button variant="secondary" disabled={busy !== null} onClick={() => setPending({ kind: 'suspend', agency })}>
+                    השעיה
+                  </Button>
+                )}
+                <Button variant="danger" disabled={busy !== null} onClick={() => setPending({ kind: 'delete', agency })}>
+                  מחיקה
+                </Button>
+              </>
             )}
-            <Button variant="danger" disabled={busy !== null} onClick={() => setPending({ kind: 'delete', agency })}>
-              מחיקה
-            </Button>
           </div>
         </article>
       ))}
 
       <ConfirmDialog
         open={pending !== null}
-        title={pending?.kind === 'delete' ? 'למחוק את הסוכנות?' : 'להשעות את הסוכנות?'}
+        title={
+          pending?.kind === 'delete'
+            ? 'למחוק את הסוכנות?'
+            : pending?.kind === 'restore'
+              ? 'להחזיר את הסוכנות?'
+              : 'להשעות את הסוכנות?'
+        }
         description={
           pending?.kind === 'delete'
-            ? `הנכסים של ${pending.agency.name} יסומנו כנמחקים ולא יוצגו באתר. אי אפשר לבטל את זה.`
-            : pending
-              ? `הנכסים של ${pending.agency.name} לא יוצגו באתר כל עוד ההשעיה בתוקף.`
-              : ''
+            ? `הנכסים של ${pending.agency.name} יסומנו כנמחקים ולא יוצגו באתר. אפשר להחזיר אותה אחר כך.`
+            : pending?.kind === 'restore'
+              ? `הנכסים של ${pending.agency.name} שירדו עם המחיקה יחזרו לאתר. נכס שהסוכנות הסירה בעצמה יישאר מוסתר.`
+              : pending
+                ? `הנכסים של ${pending.agency.name} לא יוצגו באתר כל עוד ההשעיה בתוקף.`
+                : ''
         }
-        confirmLabel={pending?.kind === 'delete' ? 'מחיקה' : 'השעיה'}
+        confirmLabel={pending?.kind === 'delete' ? 'מחיקה' : pending?.kind === 'restore' ? 'החזרה' : 'השעיה'}
         busy={busy !== null}
         onConfirm={() => {
           const target = pending;
           setPending(null);
           if (!target) return;
           void run(target.agency.id, () =>
-            target.kind === 'delete' ? deleteAgency(target.agency.id) : suspendAgency(target.agency.id),
+            target.kind === 'delete'
+              ? deleteAgency(target.agency.id)
+              : target.kind === 'restore'
+                ? restoreAgency(target.agency.id)
+                : suspendAgency(target.agency.id),
           );
         }}
         onOpenChange={(open) => !open && setPending(null)}

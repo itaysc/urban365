@@ -478,7 +478,7 @@ export class AuthService {
       include: this.include,
     });
 
-    if (!user) throw new UnauthorizedException('ההתחברות פגה. יש להתחבר מחדש.');
+    if (!user || user.disabledAt) throw new UnauthorizedException('ההתחברות פגה. יש להתחבר מחדש.');
 
     return {
       user: sanitizeUser(user),

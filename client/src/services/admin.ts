@@ -37,7 +37,7 @@ export const rejectAgency = (agencyId: string, reason?: string) =>
 export interface ManagedAgency {
   id: string;
   name: string;
-  status: 'active' | 'unclaimed' | 'suspended';
+  status: 'active' | 'unclaimed' | 'suspended' | 'deleted';
   yad2Id: string | null;
   publishedCount: number;
 }
@@ -57,6 +57,30 @@ export const restoreAgency = (agencyId: string) =>
 
 export const deleteAgency = (agencyId: string) =>
   api.post(`/admin/moderation/agencies/${agencyId}/delete`);
+
+export interface ManagedUser {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string | null;
+  createdAt: string;
+  lastLoginAt: string | null;
+  emailVerified: boolean;
+  disabled: boolean;
+  publishedCount: number;
+}
+
+export async function fetchUsers(q: string): Promise<ManagedUser[]> {
+  const { data } = await api.get<ManagedUser[]>('/admin/moderation/users', {
+    params: q.trim() ? { q: q.trim() } : {},
+  });
+  return data;
+}
+
+export const disableUser = (userId: string) => api.post(`/admin/moderation/users/${userId}/disable`);
+
+export const enableUser = (userId: string) => api.post(`/admin/moderation/users/${userId}/enable`);
 
 export interface PendingListing {
   id: string;

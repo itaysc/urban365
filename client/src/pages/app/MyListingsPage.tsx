@@ -1,8 +1,8 @@
 import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { qk } from '@/queries/keys';
-import { ListingPackages } from '@/components/agency/ListingPackages';
 import { Pagination } from '@/components/Pagination';
+import { useListingCredits } from '@/hooks/useListingCredits';
 import { formatPrice } from '@/lib/format';
 import { fetchMyListings, type ListingStatus } from '@/services/agency';
 
@@ -40,6 +40,12 @@ export function MyListingsPage() {
     queryFn: () => fetchMyListings({ status, page }),
   });
 
+  const { data: credits } = useListingCredits();
+  const needsCredits = Boolean(credits?.enabled && credits.balance < 1);
+  const newListingTo = needsCredits
+    ? '/app/billing/checkout?returnTo=/app/listings/new'
+    : '/app/listings/new';
+
   const loading = isPending;
   const error = isError ? 'לא הצלחנו לטעון את הנכסים.' : null;
 
@@ -55,14 +61,12 @@ export function MyListingsPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-xl font-bold text-slate-900">הנכסים שלי</h1>
         <Link
-          to="/app/listings/new"
+          to={newListingTo}
           className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
         >
           נכס חדש
         </Link>
       </div>
-
-      <ListingPackages />
 
       <div className="flex gap-2">
         {TABS.map((tab) => (

@@ -63,6 +63,8 @@ export interface ListingDetail extends MyListing {
   /** The CRM record for whoever owns the property, when somebody has said who. */
   sellerCustomerId: string | null;
   publishedAt: string | null;
+  /** Where the row came from. A new listing typed here is `manual`. */
+  source?: 'manual' | 'yad2' | 'import';
   images: ListingImage[];
 }
 
@@ -117,11 +119,20 @@ export interface ListingPackage {
   totalAgorot: number;
 }
 
+export interface ListingPackageOrder {
+  id: string;
+  size: number;
+  unitAgorot: number;
+  totalAgorot: number;
+  createdAt: string;
+}
+
 export interface ListingPackages {
   enabled: boolean;
   balance: number;
   canPurchase: boolean;
   packages: ListingPackage[];
+  orders: ListingPackageOrder[];
 }
 
 export async function fetchListingPackages(): Promise<ListingPackages> {

@@ -80,6 +80,8 @@ enum ListingRemovalReason {
   rented
   regret
   other
+  /// Taken down because the agency itself was removed. Restoring the agency puts these back.
+  agency
 }
 
 /// What an automated read of a listing concluded about it.

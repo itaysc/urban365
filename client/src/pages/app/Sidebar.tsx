@@ -1,5 +1,6 @@
 import { NavLink } from 'react-router-dom';
 import { PanelRightClose, PanelRightOpen } from 'lucide-react';
+import { useListingCredits } from '@/hooks/useListingCredits';
 import { NAV_ITEMS, type NavItem } from './navItems';
 
 interface Props {
@@ -30,7 +31,12 @@ const itemClass = (isActive: boolean, collapsed: boolean) =>
   ].join(' ');
 
 export function SidebarNav({ collapsed, onToggle, isAdmin, onNavigate, showToggle = true }: Props) {
-  const items = NAV_ITEMS.filter((item) => !('adminOnly' in item && item.adminOnly) || isAdmin);
+  const { data: credits } = useListingCredits();
+  const items = NAV_ITEMS.filter((item) => {
+    if ('adminOnly' in item && item.adminOnly && !isAdmin) return false;
+    if ('billing' in item && item.billing && !credits?.enabled) return false;
+    return true;
+  });
 
   return (
     <div className="flex h-full flex-col gap-1">
