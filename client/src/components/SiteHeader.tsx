@@ -167,8 +167,24 @@ export function SiteHeader({ leading, subtitle, fullWidth = true }: Props) {
               place is the way back. */}
           <Link
             to="/"
-            className="text-xl font-extrabold tracking-tight text-blue-700 transition hover:text-blue-800"
+            className="relative inline-block text-xl font-extrabold tracking-tight text-blue-700 transition hover:text-blue-800"
           >
+            {/* The roof from the icon, over the U. The wordmark is text so it stays
+                crisp, selectable and in the page's own font; only the roof is drawn.
+                `left`, not `inset-inline-start`: the page is RTL but the Latin run is
+                laid out left to right, so the U is always at the left. */}
+            <svg
+              viewBox="0 0 18 8"
+              aria-hidden
+              className="absolute -top-1.5 left-[-1px] h-2 w-[18px]"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M1.5 6.5 9 1.5l7.5 5" />
+            </svg>
             Urban<span className="text-blue-500">365</span>
           </Link>
 
@@ -205,6 +221,14 @@ export function SiteHeader({ leading, subtitle, fullWidth = true }: Props) {
                 className={navLink}
               >
                 מחירים לפי עיר
+              </a>
+              <NavBar />
+              {/*
+                Plain anchor, like the city pages: /blog is HTML from the API, not a
+                route in this bundle.
+              */}
+              <a href="/blog" className={navLink}>
+                בלוג
               </a>
               <NavBar />
               <Link
@@ -432,6 +456,9 @@ export function SiteHeader({ leading, subtitle, fullWidth = true }: Props) {
               </Link>
               <a href="/nadlan" className={navLink} onClick={() => setMenuOpen(false)}>
                 מחירים לפי עיר
+              </a>
+              <a href="/blog" className={navLink} onClick={() => setMenuOpen(false)}>
+                בלוג
               </a>
               <Link to="/mortgage" className={navLink} onClick={() => setMenuOpen(false)}>
                 מחשבון משכנתא
