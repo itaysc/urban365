@@ -31,6 +31,33 @@ class CreatePlatformInviteDto {
   accountType!: 'buyer' | 'agency';
 }
 
+class CreatePlatformUserDto {
+  @IsEmail({}, { message: 'כתובת אימייל לא תקינה.' })
+  @MaxLength(200)
+  email!: string;
+
+  @IsString()
+  @MinLength(1, { message: 'יש למלא שם פרטי.' })
+  @MaxLength(80)
+  firstName!: string;
+
+  @IsString()
+  @MinLength(1, { message: 'יש למלא שם משפחה.' })
+  @MaxLength(80)
+  lastName!: string;
+
+  @IsString()
+  @MinLength(10, { message: 'הסיסמה צריכה להיות באורך 10 תווים לפחות.' })
+  @MaxLength(200)
+  password!: string;
+
+  /** `buyer` is a regular user. `agency` may use the CRM once an office is connected. */
+  @IsIn(['buyer', 'agency'])
+  accountType!: 'buyer' | 'agency';
+
+  @IsOptional() @IsString() @MaxLength(40) phone?: string;
+}
+
 class AcceptPlatformInviteDto {
   @IsString() @MaxLength(80) firstName!: string;
   @IsString() @MaxLength(80) lastName!: string;
@@ -60,6 +87,18 @@ export class PlatformInviteController {
   @Delete(':id')
   revoke(@Param('id') id: string) {
     return this.invites.revoke(id);
+  }
+}
+
+/** An account opened by an admin, with a password, and no invite email. */
+@PlatformAdmin()
+@Controller('admin/users')
+export class AdminUsersController {
+  constructor(private readonly invites: PlatformInviteService) {}
+
+  @Post()
+  create(@Body() dto: CreatePlatformUserDto) {
+    return this.invites.createUser(dto);
   }
 }
 

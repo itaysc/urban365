@@ -150,6 +150,18 @@ export async function createPlatformInvite(
 
 export const revokePlatformInvite = (id: string) => api.delete(`/admin/invites/${id}`);
 
+export async function createPlatformUser(input: {
+  email: string;
+  firstName: string;
+  lastName: string;
+  password: string;
+  accountType: 'buyer' | 'agency';
+  phone?: string;
+}): Promise<{ id: string; email: string }> {
+  const { data } = await api.post<{ id: string; email: string }>('/admin/users', input);
+  return data;
+}
+
 export interface JoinPreview {
   email: string;
   hasAccount: boolean;

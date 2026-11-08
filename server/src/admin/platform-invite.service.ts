@@ -85,6 +85,59 @@ export class PlatformInviteService {
     return { ...invite, expired: false };
   }
 
+  /**
+   * Opens an account on the spot. No email goes out: the admin has the password and
+   * hands it over themselves. A live invite for the same address is closed, because
+   * the account it would have created now exists.
+   */
+  async createUser(input: {
+    email: string;
+    firstName: string;
+    lastName: string;
+    password: string;
+    accountType: 'buyer' | 'agency';
+    phone?: string;
+  }) {
+    const email = normalizeEmail(input.email);
+    const firstName = input.firstName.trim();
+    const lastName = input.lastName.trim();
+    if (!firstName || !lastName) {
+      throw new BadRequestException('יש למלא שם פרטי ושם משפחה.');
+    }
+
+    const existing = await this.prisma.user.findUnique({ where: { email }, select: { id: true } });
+    if (existing) throw new BadRequestException('כבר קיים חשבון עם הכתובת הזו.');
+
+    const passwordHash = await this.passwords.hash(input.password);
+
+    const user = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.user.create({
+        data: {
+          email,
+          passwordHash,
+          accountType: input.accountType,
+          firstName,
+          lastName,
+          phone: input.phone?.trim() || null,
+          // The admin is vouching for the address. There is no verification mail.
+          emailVerifiedAt: new Date(),
+          ...(input.accountType === 'buyer' ? { buyerProfile: { create: {} } } : {}),
+        },
+        select: { id: true, email: true, firstName: true, lastName: true, accountType: true },
+      });
+
+      await tx.platformInvite.updateMany({
+        where: { email, acceptedAt: null, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+
+      return created;
+    });
+
+    this.logger.log(`Admin created account ${email}`);
+    return user;
+  }
+
   async revoke(id: string) {
     const { count } = await this.prisma.platformInvite.updateMany({
       where: { id, acceptedAt: null, revokedAt: null },
