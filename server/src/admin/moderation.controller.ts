@@ -1,5 +1,6 @@
 import { Body, Controller, Get, HttpCode, Param, Post, Query } from '@nestjs/common';
-import { IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import { IsIn, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import type { ManagedUserRole } from './moderation.service.js';
 import { CurrentUser } from '../auth/decorators/current-user.decorator.js';
 import { PlatformAdmin } from '../auth/decorators/roles.decorator.js';
 import type { Principal } from '../auth/types/principal.js';
@@ -12,6 +13,11 @@ class ApproveDto {
 
 class RejectDto {
   @IsOptional() @IsString() @MaxLength(500) reason?: string;
+}
+
+class SetRoleDto {
+  @IsIn(['buyer', 'agency', 'admin'])
+  role!: ManagedUserRole;
 }
 
 class RejectListingDto {
@@ -47,10 +53,16 @@ export class ModerationController {
     await this.listings.reject(id, dto.note);
   }
 
-  /** Ordinary accounts: people searching or selling their own home, not agency staff. */
+  /** Every account, so a role can be changed and not only a private seller disabled. */
   @Get('users')
   users(@Query('q') q?: string) {
     return this.moderation.users(q);
+  }
+
+  @HttpCode(204)
+  @Post('users/:id/role')
+  async setRole(@Param('id') id: string, @Body() dto: SetRoleDto, @CurrentUser() admin: Principal) {
+    await this.moderation.setRole(id, admin.userId, dto.role);
   }
 
   @HttpCode(204)

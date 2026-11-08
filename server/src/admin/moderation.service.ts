@@ -11,6 +11,9 @@ export interface ManagedAgency {
   publishedCount: number;
 }
 
+/** What an admin can set an account to. Admin wins over the account type when both are set. */
+export type ManagedUserRole = 'buyer' | 'agency' | 'admin';
+
 export interface ManagedUser {
   id: string;
   firstName: string;
@@ -22,6 +25,9 @@ export interface ManagedUser {
   emailVerified: boolean;
   disabled: boolean;
   publishedCount: number;
+  role: ManagedUserRole;
+  /** The office they currently belong to, when they have one. */
+  agencyName: string | null;
 }
 
 export interface PendingAgency {
@@ -41,6 +47,11 @@ export interface PendingAgency {
   }[];
   /** Set for a self-signup agency, which has a pending owner but no claim row. */
   pendingOwner: { userId: string; email: string; name: string } | null;
+}
+
+function roleOf(person: { platformRole: string | null; accountType: string }): ManagedUserRole {
+  if (person.platformRole === 'admin') return 'admin';
+  return person.accountType === 'agency' ? 'agency' : 'buyer';
 }
 
 /**
@@ -332,30 +343,31 @@ export class ModerationService {
   }
 
   /**
-   * People with an ordinary account — not agency staff, and not platform staff.
+   * Every account, newest first.
    *
-   * No search returns the newest ones. A term matches the email or either name, so an
-   * admin can find someone without scrolling.
+   * A term matches the email or either name. The role is what the admin can change:
+   * a platform admin is shown as an admin even when the account also belongs to an agency.
    */
   async users(q?: string): Promise<ManagedUser[]> {
     const term = q?.trim();
     const people = await this.prisma.user.findMany({
-      where: {
-        accountType: 'buyer',
-        platformRole: null,
-        ...(term
-          ? {
-              OR: [
-                { email: { contains: term, mode: 'insensitive' } },
-                { firstName: { contains: term, mode: 'insensitive' } },
-                { lastName: { contains: term, mode: 'insensitive' } },
-              ],
-            }
-          : {}),
-      },
+      where: term
+        ? {
+            OR: [
+              { email: { contains: term, mode: 'insensitive' } },
+              { firstName: { contains: term, mode: 'insensitive' } },
+              { lastName: { contains: term, mode: 'insensitive' } },
+            ],
+          }
+        : {},
       orderBy: { createdAt: 'desc' },
       take: 50,
       include: {
+        memberships: {
+          where: { status: 'active' },
+          take: 1,
+          select: { agency: { select: { name: true } } },
+        },
         _count: {
           select: { createdListings: { where: { status: 'published', agencyId: null } } },
         },
@@ -373,13 +385,58 @@ export class ModerationService {
       emailVerified: person.emailVerifiedAt !== null,
       disabled: person.disabledAt !== null,
       publishedCount: person._count.createdListings,
+      role: roleOf(person),
+      agencyName: person.memberships[0]?.agency.name ?? null,
     }));
+  }
+
+  /**
+   * Changes what the account is for, and signs them out so the next login carries it.
+   *
+   * An admin cannot take the admin role off their own account: that is the only door
+   * into this page. Becoming an agency does not invent an office — without one, the
+   * next sign-in asks them to connect one.
+   */
+  async setRole(userId: string, adminId: string, role: ManagedUserRole): Promise<void> {
+    const person = await this.requireUser(userId);
+    if (userId === adminId && role !== 'admin') {
+      throw new BadRequestException('אי אפשר להסיר את הרשאת המנהל מהחשבון שלך.');
+    }
+    if (roleOf(person) === role) return;
+
+    const now = new Date();
+    await this.prisma.$transaction([
+      this.prisma.user.update({
+        where: { id: userId },
+        data: {
+          ...(role === 'admin'
+            ? { platformRole: 'admin' }
+            : { accountType: role, platformRole: null }),
+          sessionEpoch: { increment: 1 },
+        },
+      }),
+      this.prisma.session.updateMany({
+        where: { userId, revokedAt: null },
+        data: { revokedAt: now },
+      }),
+      ...(role === 'buyer'
+        ? [
+            this.prisma.buyerProfile.upsert({
+              where: { userId },
+              create: { userId },
+              update: {},
+            }),
+          ]
+        : []),
+    ]);
+
+    this.logger.log(`User ${userId} set to ${role} by ${adminId}`);
   }
 
   /** Blocks sign-in and hides the listings this person published. */
   async disableUser(userId: string, adminId: string): Promise<void> {
     if (userId === adminId) throw new BadRequestException('אי אפשר להשבית את החשבון שלך.');
-    const person = await this.requireBuyer(userId);
+    const person = await this.requireUser(userId);
     if (person.disabledAt) throw new BadRequestException('החשבון כבר מושבת.');
 
     const now = new Date();
@@ -397,18 +454,16 @@ export class ModerationService {
   }
 
   async enableUser(userId: string, adminId: string): Promise<void> {
-    const person = await this.requireBuyer(userId);
+    const person = await this.requireUser(userId);
     if (!person.disabledAt) throw new BadRequestException('החשבון אינו מושבת.');
 
     await this.prisma.user.update({ where: { id: userId }, data: { disabledAt: null } });
     this.logger.log(`User ${userId} enabled by ${adminId}`);
   }
 
-  private async requireBuyer(userId: string) {
+  private async requireUser(userId: string) {
     const person = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!person || person.accountType !== 'buyer' || person.platformRole) {
-      throw new NotFoundException('המשתמש לא נמצא.');
-    }
+    if (!person) throw new NotFoundException('המשתמש לא נמצא.');
     return person;
   }
 

@@ -39,7 +39,6 @@ import { ListingEditorPage } from '@/pages/app/ListingEditorPage';
 import { ListingBalancePage } from '@/pages/app/ListingBalancePage';
 import { ListingCheckoutPage } from '@/pages/app/ListingCheckoutPage';
 import { ModerationPage } from '@/pages/admin/ModerationPage';
-import { UsersPage } from '@/pages/admin/UsersPage';
 import { AccountPage } from '@/pages/account/AccountPage';
 import { MySalePage } from '@/pages/sell/MySalePage';
 import { PublishPage } from '@/pages/sell/PublishPage';
@@ -194,7 +193,7 @@ export const router = createBrowserRouter([
         element: <AppLayout />,
         children: [
           { path: '/admin/moderation', element: <ModerationPage /> },
-          { path: '/admin/users', element: <UsersPage /> },
+          { path: '/admin/users', element: <Navigate to="/admin/moderation?tab=users" replace /> },
         ],
       },
     ],

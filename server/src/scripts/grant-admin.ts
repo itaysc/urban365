@@ -1,8 +1,8 @@
 /**
  * Grants or revokes platform-admin on a user.
  *
- * `platformRole` is deliberately not writable through any API — it is the one role that
- * can reach the yad2 scraper and the moderation queue, so it is set out of band only.
+ * The same switch lives on ניהול משתמשים. This remains for the case where no admin
+ * can sign in yet — the role that reaches the scraper and the moderation queue.
  *
  *   npm run grant:admin -- someone@example.com
  *   npm run grant:admin -- someone@example.com --revoke

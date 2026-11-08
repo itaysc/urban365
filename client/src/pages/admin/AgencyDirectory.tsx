@@ -58,7 +58,7 @@ export function AgencyDirectory() {
   return (
     <section className="flex flex-col gap-3">
       <div>
-        <h1 className="text-xl font-bold text-slate-900">סוכנויות</h1>
+        <h2 className="text-xl font-bold text-slate-900">סוכנויות</h2>
         <p className="mt-1 text-sm text-slate-500">
           השעיה מסתירה את הנכסים מהאתר. מחיקה מסמנת אותם כנמחקים. אפשר להחזיר סוכנות שנמחקה.
         </p>

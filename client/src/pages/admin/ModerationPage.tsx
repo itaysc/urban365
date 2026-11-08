@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { qk } from '@/queries/keys';
 import { useAuth } from '@/auth/auth-context';
@@ -14,6 +15,21 @@ import {
 import { AgencyDirectory } from '@/pages/admin/AgencyDirectory';
 import { ListingReviewQueue } from '@/pages/admin/ListingReviewQueue';
 import { PlatformInvites } from '@/pages/admin/PlatformInvites';
+import { UsersPage } from '@/pages/admin/UsersPage';
+
+const TABS = [
+  { id: 'requests', label: 'בקשות' },
+  { id: 'listings', label: 'נכסים' },
+  { id: 'agencies', label: 'סוכנויות' },
+  { id: 'users', label: 'משתמשים' },
+  { id: 'invites', label: 'הזמנות' },
+] as const;
+
+type TabId = (typeof TABS)[number]['id'];
+
+function tabFrom(value: string | null): TabId {
+  return TABS.some((tab) => tab.id === value) ? (value as TabId) : 'requests';
+}
 
 /** The agency being rejected, held while the confirm dialog is open. */
 type PendingReject = { agencyId: string; name: string } | null;
@@ -53,9 +69,12 @@ function applicantsOf(agency: PendingAgency): Applicant[] {
 export function ModerationPage() {
   const { user, recheck } = useAuth();
   const queryClient = useQueryClient();
+  const [params, setParams] = useSearchParams();
+  const tab = tabFrom(params.get('tab'));
   const { data: agencies = null } = useQuery({
     queryKey: qk.admin.moderation,
     queryFn: fetchPendingAgencies,
+    enabled: tab === 'requests',
   });
 
   const [busy, setBusy] = useState<string | null>(null);
@@ -86,29 +105,56 @@ export function ModerationPage() {
     }
   };
 
+  const selectTab = (id: TabId) => {
+    setParams(id === 'requests' ? {} : { tab: id }, { replace: true });
+  };
+
   return (
     <div className="flex flex-col gap-4">
-      <PlatformInvites />
+      <div>
+        <h1 className="text-xl font-bold text-slate-900">ניהול פלטפורמה</h1>
+      </div>
 
-      <ListingReviewQueue />
+      <div role="tablist" aria-label="ניהול פלטפורמה" className="flex flex-wrap gap-1 rounded-xl bg-slate-100 p-1">
+        {TABS.map((item) => {
+          const selected = tab === item.id;
+          return (
+            <button
+              key={item.id}
+              type="button"
+              role="tab"
+              aria-selected={selected}
+              onClick={() => selectTab(item.id)}
+              className={`rounded-lg px-3 py-1.5 text-sm font-medium transition ${
+                selected ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              {item.label}
+            </button>
+          );
+        })}
+      </div>
 
-      <AgencyDirectory />
+      {tab === 'invites' && <PlatformInvites />}
+      {tab === 'listings' && <ListingReviewQueue />}
+      {tab === 'agencies' && <AgencyDirectory />}
+      {tab === 'users' && <UsersPage />}
 
-      <h1 className="text-xl font-bold text-slate-900">בקשות ממתינות</h1>
+      {tab === 'requests' && <h2 className="text-xl font-bold text-slate-900">בקשות ממתינות</h2>}
 
-      {error && (
+      {tab === 'requests' && error && (
         <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>
       )}
 
-      {agencies === null && <p className="text-sm text-slate-500">טוען…</p>}
+      {tab === 'requests' && agencies === null && <p className="text-sm text-slate-500">טוען…</p>}
 
-      {agencies?.length === 0 && (
+      {tab === 'requests' && agencies?.length === 0 && (
         <p className="rounded-xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500">
           אין בקשות ממתינות.
         </p>
       )}
 
-      {agencies?.map((agency) => {
+      {tab === 'requests' && agencies?.map((agency) => {
         const applicants = applicantsOf(agency);
 
         return (

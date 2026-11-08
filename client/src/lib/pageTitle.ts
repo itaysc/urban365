@@ -51,7 +51,7 @@ const TITLES: Record<string, string> = {
   '/sell': 'פרסום נכס',
   '/my-sale': 'הנכסים שלי',
   '/admin/moderation': 'ניהול פלטפורמה',
-  '/admin/users': 'משתמשים',
+  '/admin/users': 'ניהול משתמשים',
 };
 
 /** Paths with a parameter on the end, matched by their stem. */

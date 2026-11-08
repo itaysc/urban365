@@ -58,6 +58,8 @@ export const restoreAgency = (agencyId: string) =>
 export const deleteAgency = (agencyId: string) =>
   api.post(`/admin/moderation/agencies/${agencyId}/delete`);
 
+export type ManagedUserRole = 'buyer' | 'agency' | 'admin';
+
 export interface ManagedUser {
   id: string;
   firstName: string;
@@ -69,6 +71,8 @@ export interface ManagedUser {
   emailVerified: boolean;
   disabled: boolean;
   publishedCount: number;
+  role: ManagedUserRole;
+  agencyName: string | null;
 }
 
 export async function fetchUsers(q: string): Promise<ManagedUser[]> {
@@ -77,6 +81,9 @@ export async function fetchUsers(q: string): Promise<ManagedUser[]> {
   });
   return data;
 }
+
+export const setUserRole = (userId: string, role: ManagedUserRole) =>
+  api.post(`/admin/moderation/users/${userId}/role`, { role });
 
 export const disableUser = (userId: string) => api.post(`/admin/moderation/users/${userId}/disable`);
 

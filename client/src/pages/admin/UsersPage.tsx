@@ -1,24 +1,63 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '@/auth/auth-context';
 import { Button } from '@/components/ui/Button';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { selectClass } from '@/components/ui/Field';
+import { errorMessageOf } from '@/lib/apiError';
 import { formatDate } from '@/lib/format';
 import { qk } from '@/queries/keys';
-import { disableUser, enableUser, fetchUsers, type ManagedUser } from '@/services/admin';
+import {
+  disableUser,
+  enableUser,
+  fetchUsers,
+  setUserRole,
+  type ManagedUser,
+  type ManagedUserRole,
+} from '@/services/admin';
+
+const ROLE_LABEL: Record<ManagedUserRole, string> = {
+  buyer: 'משתמש רגיל',
+  agency: 'סוכנות',
+  admin: 'מנהל',
+};
+
+type Pending =
+  | { kind: 'disable'; person: ManagedUser }
+  | { kind: 'role'; person: ManagedUser; role: ManagedUserRole }
+  | null;
+
+function describe(pending: Exclude<Pending, null>): string {
+  const name = `${pending.person.firstName} ${pending.person.lastName}`.trim();
+  if (pending.kind === 'disable') {
+    return `${name} לא יוכל להיכנס, ונכסים שפרסם בעצמו לא יוצגו באתר. אפשר להפעיל את החשבון אחר כך.`;
+  }
+
+  const next = ROLE_LABEL[pending.role];
+  if (pending.role === 'agency' && !pending.person.agencyName) {
+    return `${name} יסומן כ${next}. אין לו משרד משויך, אז בכניסה הבאה יתבקש לחבר אחד.`;
+  }
+  if (pending.role === 'agency' && pending.person.agencyName) {
+    return `${name} יסומן כ${next} של ${pending.person.agencyName}, ויתנתק כדי שהשינוי ייכנס לתוקף.`;
+  }
+  return `${name} יסומן כ${next}, ויתנתק כדי שהשינוי ייכנס לתוקף.`;
+}
 
 /**
- * Ordinary accounts: people searching for a home or selling their own.
+ * Every account, and what it is allowed to be.
  *
- * Disabling blocks the next sign-in and hides the listings they published. Turning the
- * account back on shows those listings again. Agency staff are managed with their agency.
+ * Disabling blocks the next sign-in and hides listings this person published themselves.
+ * Changing the role signs them out, so the next login is the one that carries it. An
+ * agency with no office is asked to connect one; this page does not invent the office.
  */
 export function UsersPage() {
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   const [term, setTerm] = useState('');
   const [submitted, setSubmitted] = useState('');
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState<ManagedUser | null>(null);
+  const [pending, setPending] = useState<Pending>(null);
 
   const { data: users = null } = useQuery({
     queryKey: qk.admin.users(submitted),
@@ -31,8 +70,8 @@ export function UsersPage() {
     try {
       await action();
       await queryClient.invalidateQueries({ queryKey: qk.admin.all });
-    } catch {
-      setError('הפעולה נכשלה.');
+    } catch (caught) {
+      setError(errorMessageOf(caught, 'הפעולה נכשלה.'));
     } finally {
       setBusy(null);
     }
@@ -41,9 +80,9 @@ export function UsersPage() {
   return (
     <section className="flex flex-col gap-3">
       <div>
-        <h1 className="text-xl font-bold text-slate-900">משתמשים</h1>
+        <h2 className="text-xl font-bold text-slate-900">משתמשים</h2>
         <p className="mt-1 text-sm text-slate-500">
-          חשבונות של אנשים פרטיים. השבתה מונעת כניסה ומסתירה את הנכסים שהם פרסמו.
+          אפשר לשנות חשבון למשתמש רגיל, לסוכנות או למנהל. השבתה מונעת כניסה ומסתירה נכסים שהאדם פרסם בעצמו.
         </p>
       </div>
 
@@ -92,14 +131,32 @@ export function UsersPage() {
                 {person.phone ? ` · ${person.phone}` : ''}
               </p>
               <p className="text-xs text-slate-500">
-                {person.disabled ? 'מושבת' : 'פעיל'}
+                {ROLE_LABEL[person.role]}
+                {person.agencyName ? ` · ${person.agencyName}` : ''}
+                {person.disabled ? ' · מושבת' : ''}
                 {!person.emailVerified ? ' · אימייל לא אומת' : ''}
                 {` · הצטרף ${formatDate(person.createdAt)}`}
                 {person.lastLoginAt ? ` · כניסה אחרונה ${formatDate(person.lastLoginAt)}` : ''}
                 {` · ${person.publishedCount} נכסים בפרסום`}
               </p>
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <select
+                aria-label={`תפקיד של ${name}`}
+                className={selectClass}
+                value={person.role}
+                disabled={busy !== null || person.id === user?.id}
+                onChange={(event) => {
+                  const role = event.target.value as ManagedUserRole;
+                  if (role !== person.role) setPending({ kind: 'role', person, role });
+                }}
+              >
+                {(Object.keys(ROLE_LABEL) as ManagedUserRole[]).map((role) => (
+                  <option key={role} value={role}>
+                    {ROLE_LABEL[role]}
+                  </option>
+                ))}
+              </select>
               {person.disabled ? (
                 <Button
                   variant="secondary"
@@ -109,7 +166,7 @@ export function UsersPage() {
                   {busy === person.id ? 'מעדכן…' : 'הפעלה'}
                 </Button>
               ) : (
-                <Button variant="danger" disabled={busy !== null} onClick={() => setPending(person)}>
+                <Button variant="danger" disabled={busy !== null} onClick={() => setPending({ kind: 'disable', person })}>
                   השבתה
                 </Button>
               )}
@@ -120,18 +177,16 @@ export function UsersPage() {
 
       <ConfirmDialog
         open={pending !== null}
-        title="להשבית את החשבון?"
-        description={
-          pending
-            ? `${pending.firstName} ${pending.lastName} לא יוכל להיכנס, והנכסים שפרסם לא יוצגו באתר. אפשר להפעיל את החשבון אחר כך.`
-            : ''
-        }
-        confirmLabel="השבתה"
+        title={pending?.kind === 'role' ? 'לשנות את התפקיד?' : 'להשבית את החשבון?'}
+        description={pending ? describe(pending) : ''}
+        confirmLabel={pending?.kind === 'role' ? 'שינוי' : 'השבתה'}
         busy={busy !== null}
         onConfirm={() => {
           const target = pending;
           setPending(null);
-          if (target) void run(target.id, () => disableUser(target.id));
+          if (!target) return;
+          if (target.kind === 'disable') void run(target.person.id, () => disableUser(target.person.id));
+          else void run(target.person.id, () => setUserRole(target.person.id, target.role));
         }}
         onOpenChange={(open) => !open && setPending(null)}
       />
