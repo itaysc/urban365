@@ -578,6 +578,8 @@ export function page(options: PageOptions): string {
 <title>${esc(options.title)}</title>
 <meta name="description" content="${esc(options.description)}">
 <link rel="canonical" href="${esc(options.canonical)}">
+<link rel="alternate" hreflang="he" href="${esc(options.canonical)}">
+<link rel="alternate" hreflang="x-default" href="${esc(options.canonical)}">
 ${options.preload ?? ''}
 <meta name="robots" content="${options.indexable ? 'index,follow' : 'noindex,follow'}">
 <meta property="og:type" content="website">
@@ -590,6 +592,9 @@ ${options.preload ?? ''}
     options.image ? '' : '\n<meta property="og:image:width" content="1200">\n<meta property="og:image:height" content="630">'
   }
 <meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="${esc(options.title)}">
+<meta name="twitter:description" content="${esc(options.description)}">
+<meta name="twitter:image" content="${esc(options.image ?? `${options.appUrl}/og-image.png`)}">
 <meta name="theme-color" content="#1d4ed8">
 <link rel="icon" type="image/svg+xml" href="${esc(options.appUrl)}/favicon.svg?v=2">
 <link rel="icon" href="${esc(options.appUrl)}/favicon.ico?v=2" sizes="48x48">

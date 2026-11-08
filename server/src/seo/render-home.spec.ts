@@ -21,6 +21,8 @@ describe('renderHomePage', () => {
     expect(html).toContain('<h1>דירות למכירה ולהשכרה בישראל</h1>');
     expect(html.match(/<h1/g)).toHaveLength(1);
     expect(html).toContain(`<link rel="canonical" href="${APP}/">`);
+    expect(html).toContain(`<link rel="alternate" hreflang="he" href="${APP}/">`);
+    expect(html).toContain(`<link rel="alternate" hreflang="x-default" href="${APP}/">`);
     expect(html).toContain('content="index,follow"');
     expect(html).toContain('class="hero"');
     expect(html).toContain('/home/cover-1600.webp');

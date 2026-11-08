@@ -11,7 +11,11 @@
 
 # The front door is HTML from the API, like the city pages. Exact `/` only: the
 # splat below is what serves the app everywhere else.
-/              https://urban365-production.up.railway.app/                       200
+#
+# The bang is required. `/` also matches the published index.html, and without it
+# Netlify serves that file and a crawler reads an empty canonical and the title
+# "Urban365".
+/              https://urban365-production.up.railway.app/                       200!
 
 /nadlan        https://urban365-production.up.railway.app/nadlan                  200
 /nadlan/*      https://urban365-production.up.railway.app/nadlan/:splat           200

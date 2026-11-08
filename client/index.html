@@ -19,13 +19,16 @@
       })();
     </script>
     <!--
-      One HTML file serves every route, so the canonical has to be filled in from the
-      address that was actually requested. This runs before the app, and the app sets
-      the same tag again on each navigation (client/src/lib/canonical.ts). The two
-      have to agree: a search keeps the filters that define it, and drops tracking
-      parameters, the open listing, and a trailing slash.
+      The homepage values are written here on purpose. A crawler that only saves the
+      file does not run the script, so an empty href was an empty canonical and the
+      title was the one word Urban365. The script rewrites the links when this file
+      is serving some other address, and the app sets them again on each navigation
+      (client/src/lib/canonical.ts). A search keeps the filters that define it, and
+      drops tracking parameters, the open listing, and a trailing slash.
     -->
-    <link rel="canonical" href="" />
+    <link rel="canonical" href="https://urban365.co.il/" />
+    <link rel="alternate" hreflang="he" href="https://urban365.co.il/" />
+    <link rel="alternate" hreflang="x-default" href="https://urban365.co.il/" />
     <script>
       (function () {
         var configured = '%VITE_APP_URL%';
@@ -50,6 +53,9 @@
         }
         var link = document.querySelector('link[rel="canonical"]');
         if (link) link.setAttribute('href', href);
+        document.querySelectorAll('link[rel="alternate"][hreflang]').forEach(function (node) {
+          node.setAttribute('href', href);
+        });
       })();
     </script>
     <!--
@@ -66,23 +72,35 @@
     <link rel="manifest" href="/manifest.webmanifest" />
     <meta name="theme-color" content="#1d4ed8" />
     <!--
-      What a shared link shows. WhatsApp, Facebook, LinkedIn and X all read og:image,
-      and without one a share is a bare URL. It has to be absolute, and the client
-      cannot know its own origin at build time, so Vite fills VITE_APP_URL in from the
-      build's environment — set it to the site's public origin, no trailing slash.
+      What a shared link shows. The image has to be an absolute URL; a path like
+      /og-image.png is what the structured-data check calls a broken image.
     -->
     <meta property="og:type" content="website" />
     <meta property="og:locale" content="he_IL" />
     <meta property="og:site_name" content="Urban365" />
-    <meta property="og:title" content="Urban365" />
+    <meta property="og:title" content="נדל״ן למכירה ולהשכרה בישראל — דירות לפי עיר · Urban365" />
+    <meta property="og:url" content="https://urban365.co.il/" />
     <meta name="description" content="דירות למכירה ולהשכרה בישראל לפי עיר. ראו מה נמכר באמת, את הנכסים שמוצעים עכשיו, הערכת שווי ומחשבון משכנתא — מסוכנויות ומבעלי בתים, לפני הפנייה." />
     <meta property="og:description" content="דירות למכירה ולהשכרה בישראל לפי עיר. ראו מה נמכר באמת, את הנכסים שמוצעים עכשיו, הערכת שווי ומחשבון משכנתא — מסוכנויות ומבעלי בתים, לפני הפנייה." />
-    <meta property="og:image" content="%VITE_APP_URL%/og-image.png" />
+    <meta property="og:image" content="https://urban365.co.il/og-image.png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="נדל״ן למכירה ולהשכרה בישראל — דירות לפי עיר · Urban365" />
+    <meta name="twitter:description" content="דירות למכירה ולהשכרה בישראל לפי עיר. ראו מה נמכר באמת, את הנכסים שמוצעים עכשיו, הערכת שווי ומחשבון משכנתא — מסוכנויות ומבעלי בתים, לפני הפנייה." />
+    <meta name="twitter:image" content="https://urban365.co.il/og-image.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Urban365</title>
+    <title>נדל״ן למכירה ולהשכרה בישראל — דירות לפי עיר · Urban365</title>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "Urban365",
+        "url": "https://urban365.co.il/",
+        "inLanguage": "he-IL",
+        "description": "דירות ונכסים מסחריים למכירה ולהשכרה בישראל, מהסוכנויות ומבעלי הבתים."
+      }
+    </script>
     <!-- Google tag (gtag.js) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-XJZ5EMCP2H"></script>
     <script>
