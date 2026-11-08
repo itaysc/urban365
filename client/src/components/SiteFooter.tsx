@@ -88,48 +88,48 @@ export function SiteFooter() {
 
           <Column title="חיפוש">
             <li>
-              <Link className={linkClass} to="/search?section=forsale">
+              <Link className={linkClass} to="/forsale">
                 דירות למכירה בכל הארץ
               </Link>
             </li>
             <li>
-              <Link className={linkClass} to="/search?section=rent">
+              <Link className={linkClass} to="/rent">
                 דירות להשכרה בכל הארץ
               </Link>
             </li>
             <li>
-              <Link className={linkClass} to="/search?section=commercial">
+              <Link className={linkClass} to="/commercial">
                 נדל״ן מסחרי בכל הארץ
               </Link>
             </li>
             <li>
               <Link className={linkClass} to="/agencies">
-                סוכנויות נדל״ן
+                משרדי התיווך שמפרסמים נכסים
               </Link>
             </li>
             <li>
               <a className={linkClass} href="/nadlan">
-                מחירים לפי עיר
+                כל ערי ישראל ומחיריהן
               </a>
             </li>
             <li>
               <a className={linkClass} href="/blog">
-                בלוג הנדל״ן
+                מאמרים על מחיר, משכנתא ושוק
               </a>
             </li>
             <li>
               <Link className={linkClass} to="/mortgage">
-                מחשבון משכנתא
+                כמה החזר חודשי אפשר לעמוד בו
               </Link>
             </li>
             <li>
               <Link className={linkClass} to="/valuation">
-                הערכת שווי
+                שווי דירה לפני שפונים לסוכנות
               </Link>
             </li>
             <li>
               <Link className={linkClass} to="/sell/new">
-                פרסום נכס
+                פרסום דירה על ידי הבעלים
               </Link>
             </li>
           </Column>

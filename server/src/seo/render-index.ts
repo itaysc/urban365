@@ -24,7 +24,7 @@ export const totalIn = (entry: CityEntry) =>
 export const cityHref = (entry: CityEntry) =>
   totalIn(entry) > 0
     ? `/nadlan/${mainSection(entry)}/${encodeURIComponent(toSlug(entry.city))}`
-    : `/search?${new URLSearchParams({ section: 'forsale', city: entry.city })}`;
+    : `/forsale/${encodeURIComponent(entry.city)}`;
 
 /**
  * The picture on a city's card.

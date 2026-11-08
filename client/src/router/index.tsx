@@ -3,7 +3,7 @@ import { AlertsPage } from '@/pages/AlertsPage';
 import { SellerViewingPage } from '@/pages/SellerViewingPage';
 import { ViewingPage } from '@/pages/ViewingPage';
 import { AccessibilityPage, PrivacyPage, TermsPage } from '@/pages/LegalPage';
-import { Navigate, Outlet, createBrowserRouter } from 'react-router-dom';
+import { Navigate, Outlet, createBrowserRouter, useParams } from 'react-router-dom';
 import { ClosedSiteGate } from '@/auth/ClosedSiteGate';
 import { RequireAdmin, RequireAuth, RequireCrm } from '@/auth/RequireAuth';
 import { AgenciesPage } from '@/pages/AgenciesPage';
@@ -46,6 +46,14 @@ import { NotFoundPage } from '@/pages/NotFoundPage';
 import { PageTitle } from '@/components/PageTitle';
 import { PreviewBanner } from '@/components/PreviewBanner';
 
+/** A city with nothing listed yet still opens the sale search, without a query on the link. */
+function ForSaleCity() {
+  const { city } = useParams();
+  const next = new URLSearchParams({ section: 'forsale' });
+  if (city) next.set('city', city);
+  return <Navigate to={`/search?${next.toString()}`} replace />;
+}
+
 export const router = createBrowserRouter([
   {
     /*
@@ -77,6 +85,12 @@ export const router = createBrowserRouter([
   { path: '/', element: <LandingPage /> },
   // Filters live in the query string, so a filtered search is still shareable.
   { path: '/search', element: <SearchPage /> },
+  // The same searches, at a path with no query string, so a link to them is a plain
+  // internal URL. Arriving there opens the search the bar already understands.
+  { path: '/forsale', element: <Navigate to="/search?section=forsale" replace /> },
+  { path: '/forsale/:city', element: <ForSaleCity /> },
+  { path: '/rent', element: <Navigate to="/search?section=rent" replace /> },
+  { path: '/commercial', element: <Navigate to="/search?section=commercial" replace /> },
   { path: '/agencies', element: <AgenciesPage /> },
   { path: '/agencies/:agencyKey', element: <AgencyPublicPage /> },
   // Takes `?price=` from a listing, so arriving from one opens on that flat's figures.

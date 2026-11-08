@@ -44,7 +44,10 @@ describe('renderHomePage', () => {
 
   it('links a city with listings to its page, and an empty one to the search', () => {
     expect(html).toContain(`href="/nadlan/forsale/${encodeURIComponent(toSlug('חולון'))}"`);
-    expect(html).toContain('href="/search?section=forsale&amp;city=%D7%90%D7%96%D7%95%D7%A8"');
+    expect(html).toContain(`href="/forsale/${encodeURIComponent('אזור')}"`);
+    expect(html).not.toMatch(/<a [^>]*href="[^"]*\?/);
+    expect(html).toContain('alt="קו הרקיע של תל אביב מעל חוף הים"');
+    expect(html).toContain('<p class="tag">דירות למכירה ולהשכרה בישראל, מהסוכנויות ומבעלי הבתים, במקום אחד.</p>');
     expect(html).toContain('>12<');
   });
 

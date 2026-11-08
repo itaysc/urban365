@@ -596,9 +596,9 @@ ${options.preload ?? ''}
 <meta name="twitter:description" content="${esc(options.description)}">
 <meta name="twitter:image" content="${esc(options.image ?? `${options.appUrl}/og-image.png`)}">
 <meta name="theme-color" content="#1d4ed8">
-<link rel="icon" type="image/svg+xml" href="${esc(options.appUrl)}/favicon.svg?v=2">
-<link rel="icon" href="${esc(options.appUrl)}/favicon.ico?v=2" sizes="48x48">
-<link rel="apple-touch-icon" href="${esc(options.appUrl)}/apple-touch-icon.png?v=2">
+<link rel="icon" type="image/svg+xml" href="${esc(options.appUrl)}/favicon.svg">
+<link rel="icon" href="${esc(options.appUrl)}/favicon.ico" sizes="48x48">
+<link rel="apple-touch-icon" href="${esc(options.appUrl)}/apple-touch-icon.png">
 <meta name="u365-api" content="${esc(sessionApiBase)}">
 <style>${STYLES}</style>
 ${blocks}

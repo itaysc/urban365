@@ -90,7 +90,7 @@ export function LandingPage() {
             src="/home/cover-1600.webp"
             srcSet={COVER_SET}
             sizes="100vw"
-            alt=""
+            alt="קו הרקיע של תל אביב מעל חוף הים"
             width={1600}
             height={359}
             className="absolute inset-0 -z-10 h-full w-full object-cover"
@@ -105,7 +105,7 @@ export function LandingPage() {
                 דירות למכירה ולהשכרה בישראל
               </h1>
               <p className="mt-2 text-base text-white/90 sm:text-lg">
-                כל הנכסים מהסוכנויות ומבעלי הבתים, במקום אחד.
+                דירות למכירה ולהשכרה בישראל, מהסוכנויות ומבעלי הבתים, במקום אחד.
               </p>
             </div>
 

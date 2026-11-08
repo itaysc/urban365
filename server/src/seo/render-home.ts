@@ -103,12 +103,12 @@ export function renderHomePage(
     .join('');
 
   const body = `<section class="hero">
-<img class="cover" src="${COVER_1600}" srcset="${COVER_SET}" sizes="100vw" alt="" width="1600" height="359" fetchpriority="high">
+<img class="cover" src="${COVER_1600}" srcset="${COVER_SET}" sizes="100vw" alt="קו הרקיע של תל אביב מעל חוף הים" width="1600" height="359" fetchpriority="high">
 <div class="veil" aria-hidden="true"></div>
 <div class="hero-inner">
 <div>
 <h1>דירות למכירה ולהשכרה בישראל</h1>
-<p class="tag">כל הנכסים מהסוכנויות ומבעלי הבתים, במקום אחד.</p>
+<p class="tag">דירות למכירה ולהשכרה בישראל, מהסוכנויות ומבעלי הבתים, במקום אחד.</p>
 </div>
 <form class="find" id="u365-find" action="/search" method="get">
 <div class="tabs">

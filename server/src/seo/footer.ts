@@ -62,19 +62,19 @@ export function renderFooterLinks(entries: CityEntry[], appUrl: string): string 
   columns.push({
     title: 'חיפוש',
     links: [
-      { href: `${appUrl}/search?section=forsale`, text: 'דירות למכירה בכל הארץ' },
-      { href: `${appUrl}/search?section=rent`, text: 'דירות להשכרה בכל הארץ' },
-      { href: `${appUrl}/search?section=commercial`, text: 'נדל״ן מסחרי בכל הארץ' },
-      { href: '/nadlan', text: 'מחירים לפי עיר' },
-      { href: `${appUrl}/mortgage`, text: 'מחשבון משכנתא' },
-      { href: `${appUrl}/sell/new`, text: 'פרסום נכס' },
+      { href: `${appUrl}/forsale`, text: 'דירות למכירה בכל הארץ' },
+      { href: `${appUrl}/rent`, text: 'דירות להשכרה בכל הארץ' },
+      { href: `${appUrl}/commercial`, text: 'נדל״ן מסחרי בכל הארץ' },
+      { href: '/nadlan', text: 'כל ערי ישראל ומחיריהן' },
+      { href: `${appUrl}/mortgage`, text: 'כמה החזר חודשי אפשר לעמוד בו' },
+      { href: `${appUrl}/sell/new`, text: 'פרסום דירה על ידי הבעלים' },
     ],
   });
 
   columns.push({
     title: 'מידע',
     links: [
-      { href: '/blog', text: 'בלוג הנדל״ן' },
+      { href: '/blog', text: 'מאמרים על מחיר, משכנתא ושוק' },
       { href: `${appUrl}/terms`, text: 'תנאי שימוש' },
       { href: `${appUrl}/policy`, text: 'מדיניות פרטיות' },
       { href: `${appUrl}/accessibility`, text: 'הצהרת נגישות' },
