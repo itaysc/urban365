@@ -64,11 +64,24 @@ describe('robotsTxt', () => {
     expect(groupFor(robotsTxt(APP), 'Googlebot')).not.toContain('Google-Extended');
   });
 
-  it('refuses AI training crawlers and bulk scrapers by name', () => {
+  it('lets answer engines read the blog and nothing else', () => {
     const txt = robotsTxt(APP);
 
-    for (const agent of ['GPTBot', 'ClaudeBot', 'CCBot', 'Bytespider', 'AhrefsBot']) {
-      expect(groupFor(txt, agent), agent).toMatch(/^Disallow: \/$/mu);
+    for (const agent of ['GPTBot', 'ClaudeBot', 'PerplexityBot', 'Google-Extended']) {
+      const group = groupFor(txt, agent);
+      expect(group, agent).toContain('Allow: /blog');
+      expect(group, agent).toContain('Allow: /llms.txt');
+      expect(group, agent).toMatch(/^Disallow: \/$/mu);
+    }
+  });
+
+  it('refuses bulk scrapers by name, including the blog', () => {
+    const txt = robotsTxt(APP);
+
+    for (const agent of ['CCBot', 'Bytespider', 'AhrefsBot']) {
+      const group = groupFor(txt, agent);
+      expect(group, agent).toMatch(/^Disallow: \/$/mu);
+      expect(group, agent).not.toContain('Allow: /blog');
     }
   });
 });

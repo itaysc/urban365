@@ -15,9 +15,13 @@
 
 /nadlan        https://urban365-production.up.railway.app/nadlan                  200
 /nadlan/*      https://urban365-production.up.railway.app/nadlan/:splat           200
+/blog          https://urban365-production.up.railway.app/blog                    200
+/blog/*        https://urban365-production.up.railway.app/blog/:splat             200
 /sitemap.xml   https://urban365-production.up.railway.app/sitemap.xml             200
 /sitemap-*     https://urban365-production.up.railway.app/sitemap-:splat          200
 /robots.txt    https://urban365-production.up.railway.app/robots.txt              200
+/llms.txt      https://urban365-production.up.railway.app/llms.txt                200
+/llms-full.txt https://urban365-production.up.railway.app/llms-full.txt           200
 
 # SPA: every other path (e.g. /agency/6816047?listing=…) is served by index.html and
 # resolved client-side by react-router.

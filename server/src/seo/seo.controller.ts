@@ -25,15 +25,19 @@ import { placeScriptHash, placeSearchScript } from './place-script.js';
 import { ListingPageService } from './listing-page.service.js';
 import { idFromSlug, listingPath } from './listing-slug.js';
 import { renderCityPage } from './render-city.js';
+import { blogPost } from './blog.js';
+import { renderBlogIndex, renderBlogPost } from './render-blog.js';
 import { renderCreditsPage } from './render-credits.js';
 import { renderFooterLinks } from './footer.js';
 import { renderAllCitiesPage } from './render-all-cities.js';
 import { renderHomePage } from './render-home.js';
 import { renderIndexPage, totalIn } from './render-index.js';
 import { renderGonePage, renderListingPage } from './render-listing.js';
+import { llmsFullTxt, llmsTxt } from './llms.js';
 import {
   LISTINGS_PER_SITEMAP,
   robotsTxt,
+  sitemapBlogXml,
   sitemapCitiesXml,
   sitemapFileCount,
   sitemapIndexXml,
@@ -139,6 +143,22 @@ export class SeoController {
     return robotsTxt(this.appUrl);
   }
 
+  /** The map a model is told to read: the blog, article by article, and what it may not copy. */
+  @Get('llms.txt')
+  @Header('Content-Type', 'text/plain; charset=utf-8')
+  @Header('Cache-Control', CACHE)
+  llms(): string {
+    return llmsTxt(this.appUrl);
+  }
+
+  /** Every blog article in one document, so a model can read the blog without crawling it. */
+  @Get('llms-full.txt')
+  @Header('Content-Type', 'text/plain; charset=utf-8')
+  @Header('Cache-Control', CACHE)
+  llmsFull(): string {
+    return llmsFullTxt(this.appUrl);
+  }
+
   /** An index of the files below, so the set can grow without the URL changing. */
   @Get('sitemap.xml')
   @Header('Content-Type', 'application/xml; charset=utf-8')
@@ -147,6 +167,7 @@ export class SeoController {
     const files = sitemapFileCount(await this.listings.countForSitemap());
     const paths = [
       '/sitemap-cities.xml',
+      '/sitemap-blog.xml',
       ...Array.from({ length: files }, (_, i) => `/sitemap-listings-${i + 1}.xml`),
     ];
 
@@ -158,6 +179,14 @@ export class SeoController {
   @Header('Cache-Control', CACHE)
   async sitemapCities(): Promise<string> {
     return sitemapCitiesXml(await this.cities.cities(), this.appUrl);
+  }
+
+  /** The blog index and every article. Its own file, listed from the sitemap index. */
+  @Get('sitemap-blog.xml')
+  @Header('Content-Type', 'application/xml; charset=utf-8')
+  @Header('Cache-Control', CACHE)
+  sitemapBlog(): string {
+    return sitemapBlogXml(this.appUrl);
   }
 
   /**
@@ -249,6 +278,30 @@ export class SeoController {
    * the medium and its guidance names exactly this — a page of attribution — and
    * because thirty names in a paragraph under a grid served nobody.
    */
+  @Get('blog')
+  @Header('Content-Type', 'text/html; charset=utf-8')
+  @Header('Cache-Control', CACHE)
+  async blog(): Promise<string> {
+    return renderBlogIndex(this.appUrl, await this.footer());
+  }
+
+  @Get('blog/:slug')
+  async article(@Param('slug') slug: string, @Res() res: Response): Promise<void> {
+    const post = blogPost(slug);
+    if (!post) {
+      res
+        .status(404)
+        .type('text/html; charset=utf-8')
+        .send(await this.missing('הדף לא נמצא', 'אין מאמר בכתובת הזו.'));
+      return;
+    }
+
+    res
+      .type('text/html; charset=utf-8')
+      .set('Cache-Control', CACHE)
+      .send(renderBlogPost(post, this.appUrl, await this.footer()));
+  }
+
   @Get('nadlan/credits')
   @Header('Content-Type', 'text/html; charset=utf-8')
   @Header('Cache-Control', CACHE)

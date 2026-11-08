@@ -1,4 +1,5 @@
 import { SECTIONS } from '../yad2/yad2.types.js';
+import { BLOG_POSTS, BLOG_PUBLISHED, blogPath } from './blog.js';
 import type { CityEntry } from './city-page.service.js';
 import { toSlug } from './city-slug.js';
 import { listingPath } from './listing-slug.js';
@@ -43,11 +44,13 @@ const CLOSED = [
 ];
 
 /**
- * Crawlers that take what is on the site for something other than a search result:
- * training data, answers that replace a visit, and bulk copies of the index. None of
- * them sends a visitor here, so each is refused outright.
+ * Answer engines. They may read the blog and the llms.txt files, and nothing else.
+ *
+ * The listings, city pages and agency pages stay closed: those belong to the people
+ * who published them. The blog is written to be found, including by a model that
+ * answers from it, so refusing these crawlers would hide the pages.
  */
-const REFUSED = [
+const READERS = [
   'GPTBot',
   'ChatGPT-User',
   'OAI-SearchBot',
@@ -55,6 +58,18 @@ const REFUSED = [
   'Claude-Web',
   'anthropic-ai',
   'PerplexityBot',
+  'cohere-ai',
+];
+
+/** What an answer engine is allowed to fetch. Everything else on the site stays shut. */
+const READER_RULES = ['Allow: /llms.txt', 'Allow: /llms-full.txt', 'Allow: /blog', 'Disallow: /'];
+
+/**
+ * Crawlers that copy the site in bulk. None of them sends a visitor here, and unlike
+ * the answer engines above they are not how a person finds an article, so each is
+ * refused outright.
+ */
+const REFUSED = [
   'CCBot',
   'Bytespider',
   'Amazonbot',
@@ -63,7 +78,6 @@ const REFUSED = [
   'Diffbot',
   'Omgilibot',
   'ImagesiBot',
-  'cohere-ai',
   'AhrefsBot',
   'SemrushBot',
   'MJ12bot',
@@ -87,11 +101,14 @@ export function robotsTxt(appUrl: string): string {
     'Allow: /',
     ...closedRules,
     '',
-    '# Google AI training. Opting out here does not affect Google Search rankings.',
+    '# Google AI training stays opted out of the listings. The blog is published to be',
+    '# read, so it is open here too. This opt-out does not affect Google Search rankings.',
     'User-agent: Google-Extended',
-    'Disallow: /',
+    ...READER_RULES,
     '',
-    '# Refused outright: AI training and answer engines, and bulk scrapers.',
+    '# Answer engines may read the blog and the llms.txt files. Nothing else.',
+    ...READERS.flatMap((agent) => [`User-agent: ${agent}`, ...READER_RULES, '']),
+    '# Refused outright: bulk scrapers.',
     ...REFUSED.flatMap((agent) => [`User-agent: ${agent}`, 'Disallow: /', '']),
     '# Every other crawler: public pages are open; everything behind a sign-in is closed.',
     'User-agent: *',
@@ -166,6 +183,28 @@ export function sitemapCitiesXml(entries: CityEntry[], appUrl: string): string {
       });
     }
   }
+
+  return urlset(urls);
+}
+
+/**
+ * The blog, as its own file.
+ *
+ * It used to ride along in the cities file, which is where a crawler that only reads
+ * the index would never see it named. A file of its own is listed from `sitemap.xml`
+ * next to the cities and the listings, and it stays in step with the catalog: a new
+ * article is a new URL here without anyone editing the index.
+ */
+export function sitemapBlogXml(appUrl: string): string {
+  const urls: Url[] = [
+    { loc: `${appUrl}/blog`, lastmod: BLOG_PUBLISHED, changefreq: 'monthly', priority: '0.6' },
+    ...BLOG_POSTS.map((post) => ({
+      loc: `${appUrl}${blogPath(post.slug)}`,
+      lastmod: BLOG_PUBLISHED,
+      changefreq: 'monthly' as const,
+      priority: '0.5',
+    })),
+  ];
 
   return urlset(urls);
 }

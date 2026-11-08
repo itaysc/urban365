@@ -74,6 +74,7 @@ export function renderFooterLinks(entries: CityEntry[], appUrl: string): string 
   columns.push({
     title: 'מידע',
     links: [
+      { href: '/blog', text: 'בלוג' },
       { href: `${appUrl}/terms`, text: 'תנאי שימוש' },
       { href: `${appUrl}/policy`, text: 'מדיניות פרטיות' },
       { href: `${appUrl}/accessibility`, text: 'הצהרת נגישות' },

@@ -150,6 +150,8 @@ export interface PageOptions {
   extraScript?: string;
   /** Marks "מחירים לפי עיר" as the section being read. */
   onCityPages?: boolean;
+  /** Marks "בלוג" as the section being read. */
+  onBlog?: boolean;
   /**
    * The picture a share of this page carries, absolute. Left out, the site's own
    * branded image is used; a city page can pass its photograph instead.
@@ -394,6 +396,21 @@ td.num,th.num{font-variant-numeric:tabular-nums;white-space:nowrap}
 .cta{display:inline-block;background:#1d4ed8;color:#fff;text-decoration:none;font-weight:600;
   border-radius:.625rem;padding:.625rem 1.125rem;margin-top:.5rem}
 .note{color:#64748b;font-size:.875rem}
+.prose p{margin:0 0 1rem;max-width:40rem}
+.prose ul{margin:0 0 1rem;padding-inline-start:1.25rem;max-width:40rem}
+.prose li{margin:.35rem 0}
+.group{margin-top:1.75rem}
+.group h2{font-size:1.125rem;margin:0 0 .25rem}
+.posts{list-style:none;padding:0;margin:.75rem 0 0;display:flex;flex-direction:column;gap:.75rem}
+.posts a{display:block;background:#fff;border:1px solid #e2e8f0;border-radius:.75rem;
+  padding:1rem 1.125rem;text-decoration:none;color:inherit}
+.posts a:hover{border-color:#94a3b8}
+.posts strong{display:block;color:#0f172a;font-size:1rem}
+.posts span{display:block;margin-top:.25rem;color:#64748b;font-size:.875rem;line-height:1.5}
+.moreposts{margin-top:1.75rem}
+.moreposts h2{font-size:1rem;margin:0 0 .5rem}
+.moreposts ul{list-style:none;padding:0;margin:0}
+.moreposts li{margin:.35rem 0}
 .citylist{list-style:none;padding:0;margin:.5rem 0 0;columns:4 9rem;column-gap:1.5rem}
 .citylist li{break-inside:avoid;padding:.1875rem 0}
 .citylist a{color:#1d4ed8;text-decoration:none;font-size:.9375rem}
@@ -577,6 +594,7 @@ ${blocks}
 <label class="drawer-x" for="u365-menu" aria-label="סגירה">${ICON.close.replace(' class="shut"', '')}</label>
 <a href="${esc(options.appUrl)}/agencies">סוכנויות</a>
 <a href="/nadlan"${options.onCityPages ? ' aria-current="page"' : ''}>מחירים לפי עיר</a>
+<a href="/blog"${options.onBlog ? ' aria-current="page"' : ''}>בלוג</a>
 <a href="${esc(options.appUrl)}/mortgage">מחשבון משכנתא</a>
 <a href="${esc(options.appUrl)}/valuation">הערכת שווי</a>
 <button type="button" class="leave" data-leave hidden>יציאה</button>

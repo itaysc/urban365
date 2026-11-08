@@ -113,6 +113,11 @@ export function SiteFooter() {
               </a>
             </li>
             <li>
+              <a className={linkClass} href="/blog">
+                בלוג
+              </a>
+            </li>
+            <li>
               <Link className={linkClass} to="/mortgage">
                 מחשבון משכנתא
               </Link>

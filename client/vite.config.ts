@@ -50,8 +50,11 @@ export default defineConfig({
        * and PRODUCTION.md.
        */
       '/nadlan': { target: serverTarget, changeOrigin: true },
+      '/blog': { target: serverTarget, changeOrigin: true },
       '/sitemap': { target: serverTarget, changeOrigin: true },
       '/robots.txt': { target: serverTarget, changeOrigin: true },
+      '/llms.txt': { target: serverTarget, changeOrigin: true },
+      '/llms-full.txt': { target: serverTarget, changeOrigin: true },
       /*
        * The front door, and only the front door. `bypass` returns a path to keep
        * serving locally, and nothing to let the request through — so `/` is the HTML

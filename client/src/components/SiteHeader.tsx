@@ -223,6 +223,14 @@ export function SiteHeader({ leading, subtitle, fullWidth = true }: Props) {
                 מחירים לפי עיר
               </a>
               <NavBar />
+              {/*
+                Plain anchor, like the city pages: /blog is HTML from the API, not a
+                route in this bundle.
+              */}
+              <a href="/blog" className={navLink}>
+                בלוג
+              </a>
+              <NavBar />
               <Link
                 to="/mortgage"
                 className={navLink}
@@ -448,6 +456,9 @@ export function SiteHeader({ leading, subtitle, fullWidth = true }: Props) {
               </Link>
               <a href="/nadlan" className={navLink} onClick={() => setMenuOpen(false)}>
                 מחירים לפי עיר
+              </a>
+              <a href="/blog" className={navLink} onClick={() => setMenuOpen(false)}>
+                בלוג
               </a>
               <Link to="/mortgage" className={navLink} onClick={() => setMenuOpen(false)}>
                 מחשבון משכנתא

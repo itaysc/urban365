@@ -101,7 +101,7 @@ async function checkRobots() {
   const disallowed = star.disallow;
 
   if (disallowed.includes('/')) error('robots.txt disallows the whole site for every other crawler');
-  for (const open of ['/nadlan', '/sitemap.xml']) {
+  for (const open of ['/nadlan', '/blog', '/sitemap.xml', '/sitemap-blog.xml', '/llms.txt']) {
     if (disallowed.some((d) => open.startsWith(d))) {
       error(`robots.txt disallows ${open}, which has to be crawlable`);
     }
@@ -129,15 +129,28 @@ async function checkRobots() {
     error('robots.txt does not opt out of Google AI training (Google-Extended)');
   }
 
-  // Refused by name. Keep this list in step with REFUSED in server/src/seo/sitemap.ts.
-  const REFUSED = [
+  // Answer engines may read the blog. Keep this list in step with READERS in sitemap.ts.
+  const READERS = [
     'GPTBot', 'ChatGPT-User', 'OAI-SearchBot', 'ClaudeBot', 'Claude-Web', 'anthropic-ai',
-    'PerplexityBot', 'CCBot', 'Bytespider', 'Amazonbot', 'Meta-ExternalAgent',
-    'Meta-ExternalFetcher', 'Diffbot', 'Omgilibot', 'ImagesiBot', 'cohere-ai', 'AhrefsBot',
-    'SemrushBot', 'MJ12bot', 'DotBot', 'PetalBot', 'DataForSeoBot', 'Scrapy',
+    'PerplexityBot', 'cohere-ai', 'Google-Extended',
+  ];
+  for (const agent of READERS) {
+    const group = groups.get(agent);
+    if (!group?.disallow.includes('/')) error(`robots.txt does not close the rest of the site to ${agent}`);
+    if (!group?.allow.includes('/blog')) error(`robots.txt does not let ${agent} read the blog`);
+    if (!group?.allow.includes('/llms.txt')) error(`robots.txt does not let ${agent} read llms.txt`);
+  }
+
+  // Bulk scrapers stay shut, including the blog. Keep in step with REFUSED in sitemap.ts.
+  const REFUSED = [
+    'CCBot', 'Bytespider', 'Amazonbot', 'Meta-ExternalAgent', 'Meta-ExternalFetcher',
+    'Diffbot', 'Omgilibot', 'ImagesiBot', 'AhrefsBot', 'SemrushBot', 'MJ12bot', 'DotBot',
+    'PetalBot', 'DataForSeoBot', 'Scrapy',
   ];
   for (const agent of REFUSED) {
-    if (!groups.get(agent)?.disallow.includes('/')) error(`robots.txt does not refuse ${agent}`);
+    const group = groups.get(agent);
+    if (!group?.disallow.includes('/')) error(`robots.txt does not refuse ${agent}`);
+    if (group?.allow.includes('/blog')) error(`robots.txt lets the scraper ${agent} read the blog`);
   }
 }
 
@@ -183,12 +196,12 @@ async function collectSitemapPaths() {
   const index = await get('/sitemap.xml');
   if (index.status !== 200) {
     error(`sitemap.xml answered ${index.status}`);
-    return { cities: [], listings: [] };
+    return { cities: [], listings: [], blog: [], client: [] };
   }
   if (!index.type.includes('xml')) error(`sitemap.xml is ${index.type}, should be XML`);
   if (!index.body.includes('<sitemapindex')) {
     error('sitemap.xml is not a sitemap index');
-    return { cities: [], listings: [] };
+    return { cities: [], listings: [], blog: [], client: [] };
   }
 
   const files = all(index.body, /<loc>([^<]+)<\/loc>/g);
@@ -196,6 +209,7 @@ async function collectSitemapPaths() {
 
   const cities = [];
   const listings = [];
+  const blog = [];
   const client = [];
 
   for (const file of files) {
@@ -225,6 +239,7 @@ async function collectSitemapPaths() {
 
       if (target.startsWith('/nadlan/property/')) listings.push(target);
       else if (target.startsWith('/nadlan')) cities.push(target);
+      else if (target === '/blog' || target.startsWith('/blog/')) blog.push(target);
       // Everything else in the sitemap belongs to the React client — the home page,
       // today. Those are rendered in the browser, so none of the checks below apply to
       // them; all that can be asserted from here is that the URL leads somewhere.
@@ -232,13 +247,13 @@ async function collectSitemapPaths() {
     }
   }
 
-  const everything = [...cities, ...listings, ...client];
+  const everything = [...cities, ...listings, ...blog, ...client];
   const duplicates = everything.filter((p, i) => everything.indexOf(p) !== i);
   if (duplicates.length > 0) {
     error(`the sitemaps list ${duplicates.length} URL(s) more than once, e.g. ${duplicates[0]}`);
   }
 
-  return { cities, listings, client };
+  return { cities, listings, blog, client };
 }
 
 // --------------------------------------------------------------------- pages
@@ -360,7 +375,12 @@ async function checkPage(path, { indexable }) {
 
 /** A path the API renders. Everything else is the React app, on the public origin. */
 const servedByApi = (path) =>
-  path === '/robots.txt' || path.startsWith('/sitemap') || path.startsWith('/nadlan');
+  path === '/robots.txt' ||
+  path === '/llms.txt' ||
+  path === '/llms-full.txt' ||
+  path.startsWith('/sitemap') ||
+  path.startsWith('/nadlan') ||
+  path.startsWith('/blog');
 
 /**
  * Follow the links off a page and make sure they land somewhere.
@@ -402,6 +422,7 @@ async function checkMissing() {
     ['/nadlan/forsale/עיר-שאין-בה-כלום', 404, 'an unknown city'],
     ['/nadlan/nosuchsection/חולון', 404, 'an unknown section'],
     ['/nadlan/property/nosuchlisting', 404, 'an unknown listing'],
+    ['/blog/אין-מאמר-כזה', 404, 'an unknown article'],
   ];
 
   for (const [path, expected, what] of cases) {
@@ -448,13 +469,25 @@ async function checkClientPage(path) {
 }
 
 await checkRobots();
-const { cities, listings, client } = await collectSitemapPaths();
+const { cities, listings, blog, client } = await collectSitemapPaths();
 
 if (cities.length === 0) error('no city pages are offered in the sitemap');
 if (listings.length === 0) warn('no listing pages are offered in the sitemap');
+if (blog.length === 0) error('the sitemap does not offer the blog');
 
 for (const path of pick(cities, SAMPLE)) await checkPage(path, { indexable: true });
 for (const path of pick(listings, SAMPLE)) await checkPage(path, { indexable: true });
+for (const path of blog) await checkPage(path, { indexable: true });
+
+const llms = await get('/llms.txt');
+if (llms.status !== 200) error(`llms.txt answered ${llms.status}`);
+else {
+  for (const path of blog) {
+    if (!llms.body.includes(path) && !llms.body.includes(decodeURIComponent(path))) {
+      error(`llms.txt does not mention ${path}, which the sitemap offers`);
+    }
+  }
+}
 
 for (const path of client) await checkClientPage(path);
 
@@ -469,7 +502,7 @@ for (const issue of warnings) console.warn(`WARN: ${issue.message}`);
 for (const issue of errors) console.error(`ERROR: ${issue.message}`);
 
 console.log(
-  `Checked ${seenTitles.size} page(s): ${cities.length} city, ${listings.length} listing.`,
+  `Checked ${seenTitles.size} page(s): ${cities.length} city, ${listings.length} listing, ${blog.length} blog.`,
 );
 
 if (errors.length === 0 && warnings.length === 0) {
