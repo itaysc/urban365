@@ -43,6 +43,7 @@ import { UsersPage } from '@/pages/admin/UsersPage';
 import { AccountPage } from '@/pages/account/AccountPage';
 import { MySalePage } from '@/pages/sell/MySalePage';
 import { PublishPage } from '@/pages/sell/PublishPage';
+import { NotFoundPage } from '@/pages/NotFoundPage';
 import { PageTitle } from '@/components/PageTitle';
 import { PreviewBanner } from '@/components/PreviewBanner';
 
@@ -198,6 +199,9 @@ export const router = createBrowserRouter([
       },
     ],
   },
+
+  // Last, so a real path always wins. Anything left is an address we do not have.
+  { path: '*', element: <NotFoundPage /> },
         ],
       },
     ],

@@ -264,7 +264,7 @@ export class SeoController {
       res
         .status(404)
         .type('text/html; charset=utf-8')
-        .send(this.missing('הנכס לא נמצא', 'הקישור לא מפנה לנכס שאנחנו מכירים.'));
+        .send(await this.missing('הנכס לא נמצא', 'הקישור לא מפנה לנכס שאנחנו מכירים.'));
       return;
     }
 
@@ -306,7 +306,7 @@ export class SeoController {
     if (!isSection(section)) {
       // A made-up section is a made-up page, and saying so with a 404 keeps it out of
       // the index rather than letting a crawler collect variations of it.
-      res.status(404).send(this.missing('הדף לא נמצא', 'הקישור מפנה לקטגוריה שלא קיימת.'));
+      res.status(404).send(await this.missing('הדף לא נמצא', 'הקישור מפנה לקטגוריה שלא קיימת.'));
       return;
     }
 
@@ -315,7 +315,7 @@ export class SeoController {
       res
         .status(404)
         .send(
-          this.missing(
+          await this.missing(
             'אין נכסים להצגה',
             'לא מצאנו נכסים בקטגוריה הזו בעיר הזו. ייתכן שהם נמכרו, וייתכן שהעיר נכתבת אצלנו אחרת.',
           ),
@@ -326,17 +326,23 @@ export class SeoController {
     res.set('Cache-Control', CACHE).send(renderCityPage(data, this.appUrl, await this.footer()));
   }
 
-  /** A 404 that is still a page: it says what happened and offers the way back. */
-  private missing(heading: string, explanation: string): string {
+  /**
+   * A 404 that is still a page.
+   *
+   * The bar and the footer are the same ones every other page ends with, and the way
+   * on is the front door rather than a dead end.
+   */
+  private async missing(heading: string, explanation: string): Promise<string> {
     return page({
       title: `${heading} | Urban365`,
       description: explanation,
-      canonical: `${this.appUrl}/nadlan`,
+      canonical: `${this.appUrl}/`,
       indexable: false,
       appUrl: this.appUrl,
+      links: await this.footer(),
       body: `<h1>${esc(heading)}</h1>
 <p class="lede">${esc(explanation)}</p>
-<a class="cta" href="/nadlan">לרשימת הערים</a>`,
+<a class="cta" href="${esc(this.appUrl)}/">לדף הבית</a>`,
     });
   }
 }
