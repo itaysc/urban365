@@ -91,6 +91,7 @@ export function LandingPage() {
             srcSet={COVER_SET}
             sizes="100vw"
             alt="קו הרקיע של תל אביב מעל חוף הים"
+            title="קו הרקיע של תל אביב מעל חוף הים"
             width={1600}
             height={359}
             className="absolute inset-0 -z-10 h-full w-full object-cover"
