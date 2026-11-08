@@ -14,11 +14,13 @@ import { useSearchFilters } from '@/hooks/useSearchFilters';
 import { fetchListing, fetchMapPoints, type MapBounds } from '@/services/search';
 import { qk } from '@/queries/keys';
 import { fetchSavedAmong } from '@/services/saved';
+import { searchDescription } from '@/lib/metaDescription';
 import { searchTitle } from '@/lib/searchTitle';
 import { SORT_LABELS, SORTS, type SearchListing } from '@/types/search';
 import type { Asset } from '@/types/yad2';
 import { SaveSearchButton } from '@/components/search/SaveSearchButton';
 import { useDocumentTitle } from '@/hooks/useDocumentTitle';
+import { useMetaDescription } from '@/hooks/useMetaDescription';
 
 /** Hebrew does not take a numeral before a singular noun here. */
 function resultCount(total: number | undefined): string {
@@ -35,6 +37,7 @@ export function SearchPage() {
   // its own — the search is in the query string, not the path — so it is set here
   // rather than in the table the other pages use.
   useDocumentTitle(searchTitle(filters));
+  useMetaDescription(searchDescription(filters));
   const { status, data, error } = useListingSearch(filters);
   /*
    * What has been fetched, and which id it was fetched for.

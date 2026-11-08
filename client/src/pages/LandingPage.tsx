@@ -1,10 +1,10 @@
 import { Link, Navigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { HeroSearch } from '@/components/home/HeroSearch';
+import { HomeGuide } from '@/components/home/HomeGuide';
 import { SiteFooter } from '@/components/SiteFooter';
 import { SiteHeader } from '@/components/SiteHeader';
 import { REGIONS } from '@/data/regions';
-import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 import { qk } from '@/queries/keys';
 import { fetchCityLinks, type CityLink } from '@/services/search';
 
@@ -15,8 +15,8 @@ import { fetchCityLinks, type CityLink } from '@/services/search';
  * renders the picture — its author and licence live with every other credit on
  * `/nadlan/credits`, which is where the licence asks them to be published.
  */
-const COVER_URL =
-  'https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e0/Tel_Aviv_Skyline_01.jpg/1920px-Tel_Aviv_Skyline_01.jpg';
+/** Same files the server-rendered door preloads. Two widths, from this site. */
+const COVER_SET = '/home/cover-800.webp 800w, /home/cover-1600.webp 1600w';
 
 /** Per region, so a column is a column and not a page. */
 const PER_REGION = 10;
@@ -60,7 +60,6 @@ function byRegion(cities: CityLink[]): { name: string; cities: CityLink[] }[] {
  */
 export function LandingPage() {
   const [params] = useSearchParams();
-  useDocumentTitle('נדל״ן למכירה ולהשכרה בישראל');
 
   const { data: cities } = useQuery({ queryKey: qk.cities, queryFn: fetchCityLinks });
 
@@ -88,8 +87,12 @@ export function LandingPage() {
         */}
         <section className="relative isolate">
           <img
-            src={COVER_URL}
+            src="/home/cover-1600.webp"
+            srcSet={COVER_SET}
+            sizes="100vw"
             alt=""
+            width={1600}
+            height={359}
             className="absolute inset-0 -z-10 h-full w-full object-cover"
             fetchPriority="high"
           />
@@ -169,8 +172,14 @@ export function LandingPage() {
                           className="flex items-baseline justify-between gap-3 rounded-lg px-2 py-1.5 text-sm text-slate-600 transition hover:bg-slate-50 hover:text-blue-700"
                           href={`/nadlan/forsale/${encodeURIComponent(city.slug)}`}
                         >
-                          <span className="truncate">{city.city}</span>
-                          <span className="shrink-0 text-xs tabular-nums text-slate-500">
+                          <span className="sr-only">
+                            דירות למכירה ב{city.city}
+                            {total(city) > 0 ? `, ${total(city)} נכסים` : ''}
+                          </span>
+                          <span className="truncate" aria-hidden="true">
+                            {city.city}
+                          </span>
+                          <span className="shrink-0 text-xs tabular-nums text-slate-500" aria-hidden="true">
                             {total(city)}
                           </span>
                         </a>
@@ -189,6 +198,8 @@ export function LandingPage() {
               סוכנויות נדל״ן ←
             </Link>
           </p>
+
+          <HomeGuide />
 
           <p className="mt-6 text-xs text-slate-500">
             תמונות הערים ותמונת השער מוויקיפדיה ומוויקישיתוף.{' '}

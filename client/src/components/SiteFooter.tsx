@@ -99,7 +99,7 @@ export function SiteFooter() {
             </li>
             <li>
               <Link className={linkClass} to="/search?section=commercial">
-                נדל״ן מסחרי
+                נדל״ן מסחרי בכל הארץ
               </Link>
             </li>
             <li>
@@ -114,7 +114,7 @@ export function SiteFooter() {
             </li>
             <li>
               <a className={linkClass} href="/blog">
-                בלוג
+                בלוג הנדל״ן
               </a>
             </li>
             <li>

@@ -13,8 +13,12 @@ describe('titleForPath', () => {
     expect(titleForPath('/search')).toBeNull();
   });
 
-  it('names the home page, which is no longer the results page', () => {
-    expect(titleForPath('/')).toBe('נדל״ן למכירה ולהשכרה בישראל');
+  it('names the home page long enough for a search result, keyword first', () => {
+    const title = documentTitle(titleForPath('/'));
+
+    expect(title).toBe('נדל״ן למכירה ולהשכרה בישראל — דירות לפי עיר · Urban365');
+    expect(title.length).toBeGreaterThanOrEqual(50);
+    expect(title.length).toBeLessThanOrEqual(60);
   });
 
   it('prefers an exact path over a prefix', () => {

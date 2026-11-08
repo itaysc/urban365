@@ -167,6 +167,7 @@ export function SiteHeader({ leading, subtitle, fullWidth = true }: Props) {
               place is the way back. */}
           <Link
             to="/"
+            aria-label="Urban365, דף הבית"
             className="relative inline-block text-xl font-extrabold tracking-tight text-blue-700 transition hover:text-blue-800"
           >
             {/* The roof from the icon, over the U. The wordmark is text so it stays
@@ -176,7 +177,7 @@ export function SiteHeader({ leading, subtitle, fullWidth = true }: Props) {
             <svg
               viewBox="0 0 18 8"
               aria-hidden
-              className="absolute -top-1.5 left-[-1px] h-2 w-[18px]"
+              className="absolute top-[-2px] left-[-1px] h-2 w-[18px]"
               fill="none"
               stroke="currentColor"
               strokeWidth="2.5"
@@ -203,7 +204,7 @@ export function SiteHeader({ leading, subtitle, fullWidth = true }: Props) {
               agency dashboard the space beside the logo already says which agency you
               are in, and a third item there reads as a breadcrumb that goes nowhere.
             */
-            <nav className="hidden items-center gap-0.5 border-s border-slate-200 ps-2 sm:flex">
+            <nav aria-label="ניווט ראשי" className="hidden items-center gap-0.5 border-s border-slate-200 ps-2 sm:flex">
               {/*
                 A plain anchor, unlike its neighbour: the city pages are rendered by the
                 API and are not in this bundle's route table, so a <Link> would try to
@@ -287,7 +288,11 @@ export function SiteHeader({ leading, subtitle, fullWidth = true }: Props) {
                   label follows what they have, and the destination follows the label:
                   the list for a seller, the form for everybody else.
                 */
-                <Link to={sells ? '/sell' : '/sell/new'} className={publishClass}>
+                <Link
+                  to={sells ? '/sell' : '/sell/new'}
+                  className={publishClass}
+                  aria-label={sells ? 'הנכסים שלי' : 'פרסום נכס'}
+                >
                   {sells ? (
                     <Building2 className="h-4 w-4" aria-hidden />
                   ) : (
@@ -341,6 +346,7 @@ export function SiteHeader({ leading, subtitle, fullWidth = true }: Props) {
           */}
           <Link
             to="/saved"
+            aria-label="נכסים שמורים"
             className="relative flex items-center gap-1.5 text-sm text-slate-600 hover:text-slate-900"
           >
             <span className="relative">
@@ -373,6 +379,7 @@ export function SiteHeader({ leading, subtitle, fullWidth = true }: Props) {
           {user && (
             <Link
               to="/alerts"
+              aria-label="חיפושים שמורים"
               className="flex items-center gap-1.5 text-sm text-slate-600 hover:text-slate-900"
             >
               <Bell className="h-5 w-5" aria-hidden />
@@ -438,6 +445,7 @@ export function SiteHeader({ leading, subtitle, fullWidth = true }: Props) {
             />
             <nav
               id="site-menu"
+              aria-label="תפריט ראשי"
               aria-hidden={!menuOpen}
               className={`fixed inset-y-0 start-0 z-50 flex w-72 max-w-[85vw] flex-col gap-1 bg-white p-4 shadow-xl transition-transform duration-200 ease-out sm:hidden ${
                 menuOpen ? 'translate-x-0' : 'pointer-events-none translate-x-full'

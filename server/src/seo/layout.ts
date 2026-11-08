@@ -153,6 +153,11 @@ export interface PageOptions {
   /** Marks "בלוג" as the section being read. */
   onBlog?: boolean;
   /**
+   * A tag for `<head>`, already safe to embed. The front door preloads its photograph
+   * so the browser can fetch it before it reaches the body.
+   */
+  preload?: string;
+  /**
    * The picture a share of this page carries, absolute. Left out, the site's own
    * branded image is used; a city page can pass its photograph instead.
    */
@@ -208,7 +213,7 @@ footer.site .band{max-width:80rem;margin-inline:auto}
 .brand span{color:#3b82f6}
 /* The roof from the icon, over the U — the same drawing the app's header carries.
    left, not inset-inline-start: the Latin run is left-to-right even on an RTL page. */
-.brand svg{position:absolute;top:-6px;left:-1px;width:18px;height:8px}
+.brand svg{position:absolute;top:-1px;left:-1px;width:18px;height:8px}
 /* The divider and the links beside the wordmark, as the app has them. The divider
    belongs to the group rather than to each link, or two links would draw two. */
 .navl .here{border-inline-start:1px solid #e2e8f0;padding-inline-start:.5rem;
@@ -524,6 +529,15 @@ main.door{padding:0 0 3rem}
 .more a{color:#1d4ed8}
 .credit{margin-top:1.5rem;font-size:.75rem;color:#64748b}
 .credit a{color:inherit}
+/* Read as part of the link, and kept out of the row so the city name stays the row. */
+.sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
+  clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.guide{max-width:42rem;margin:3.5rem auto 0;padding-top:2.5rem;border-top:1px solid #e2e8f0}
+.guide h2,.guide h3{color:#0f172a}
+.guide h2{margin:0 0 .75rem;font-size:1.25rem;font-weight:700}
+.guide h3{margin:1.75rem 0 .5rem;font-size:1.0625rem;font-weight:700}
+.guide p{margin:0 0 1rem;font-size:1rem;line-height:1.7;color:#334155}
+.guide a{color:#1d4ed8;font-weight:600}
 /* The city page's cover: the same photograph the index card uses, full width of the
    column, with the heading on it. These rules come last so they beat the plain h1. */
 .citycover{position:relative;display:flex;align-items:flex-end;min-height:13rem;
@@ -564,6 +578,7 @@ export function page(options: PageOptions): string {
 <title>${esc(options.title)}</title>
 <meta name="description" content="${esc(options.description)}">
 <link rel="canonical" href="${esc(options.canonical)}">
+${options.preload ?? ''}
 <meta name="robots" content="${options.indexable ? 'index,follow' : 'noindex,follow'}">
 <meta property="og:type" content="website">
 <meta property="og:locale" content="he_IL">
@@ -588,9 +603,9 @@ ${blocks}
 <div class="navl">
 <input id="u365-menu" class="menubox" type="checkbox">
 <label class="burger" for="u365-menu" aria-label="תפריט">${ICON.menu}${ICON.close}</label>
-<a class="brand" href="${esc(options.appUrl)}/"><svg viewBox="0 0 18 8" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 6.5 9 1.5l7.5 5"/></svg>Urban<span>365</span></a>
+<a class="brand" href="${esc(options.appUrl)}/" aria-label="Urban365, דף הבית"><svg viewBox="0 0 18 8" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 6.5 9 1.5l7.5 5"/></svg>Urban<span>365</span></a>
 <label class="shade" for="u365-menu" aria-hidden="true"></label>
-<nav class="here">
+<nav class="here" aria-label="ניווט ראשי">
 <label class="drawer-x" for="u365-menu" aria-label="סגירה">${ICON.close.replace(' class="shut"', '')}</label>
 <a href="${esc(options.appUrl)}/agencies">סוכנויות</a>
 <a href="/nadlan"${options.onCityPages ? ' aria-current="page"' : ''}>מחירים לפי עיר</a>
@@ -601,8 +616,8 @@ ${blocks}
 </nav>
 </div>
 <div class="navr">
-<a class="publish" href="${esc(options.appUrl)}/sell/new">${ICON.plus}<span class="word">פרסום נכס</span></a>
-<a href="${esc(options.appUrl)}/saved">${ICON.heart}<span class="word">שמורים</span></a>
+<a class="publish" href="${esc(options.appUrl)}/sell/new" aria-label="פרסום נכס">${ICON.plus}<span class="word">פרסום נכס</span></a>
+<a href="${esc(options.appUrl)}/saved" aria-label="נכסים שמורים">${ICON.heart}<span class="word">שמורים</span></a>
 <!--
   A link rather than the app's dialog: there is no JavaScript on this page to open one,
   and /login is where that dialog would have sent them anyway.
@@ -612,8 +627,8 @@ ${blocks}
   Hidden until the script below finds a session. Rendered into the document rather
   than created in JavaScript so the bar does not jump as it appears.
 -->
-<a id="u365-searches" hidden href="${esc(options.appUrl)}/alerts">${ICON.bell}<span class="word">חיפושים</span></a>
-<a class="who" id="u365-account" hidden href="${esc(options.appUrl)}/app/profile"></a>
+<a id="u365-searches" hidden href="${esc(options.appUrl)}/alerts" aria-label="חיפושים שמורים">${ICON.bell}<span class="word">חיפושים</span></a>
+<a class="who" id="u365-account" hidden href="${esc(options.appUrl)}/app/profile" aria-label="החשבון שלי"></a>
 <button type="button" class="leave" data-leave hidden>יציאה</button>
 </div>
 </div></header>

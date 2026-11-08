@@ -1,11 +1,26 @@
+import type { Section } from '../yad2/yad2.types.js';
 import type { CityEntry } from './city-page.service.js';
+import { HOME_GUIDE } from './home-guide.js';
 import { esc, number } from './html.js';
 import { page } from './layout.js';
-import { cityHref, totalIn } from './render-index.js';
+import { cityHref, mainSection, totalIn } from './render-index.js';
 
-/** The same photograph the app's home uses, credited on `/nadlan/credits`. */
-const COVER =
-  'https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e0/Tel_Aviv_Skyline_01.jpg/1920px-Tel_Aviv_Skyline_01.jpg';
+/**
+ * The same photograph the app's home uses, credited on `/nadlan/credits`.
+ *
+ * Served from this site in two widths, rather than from Wikimedia at 1920px. On a phone
+ * the wide file was the thing the page waited on, and it could not start until the
+ * browser had already read the body.
+ */
+const COVER_800 = '/home/cover-800.webp';
+const COVER_1600 = '/home/cover-1600.webp';
+const COVER_SET = `${COVER_800} 800w, ${COVER_1600} 1600w`;
+
+const LINK_LEAD: Record<Section, string> = {
+  forsale: 'דירות למכירה ב',
+  rent: 'דירות להשכרה ב',
+  commercial: 'נדל״ן מסחרי ב',
+};
 
 /** Per column, as the app's home does it, so a column stays a column. */
 const PER_REGION = 10;
@@ -26,6 +41,21 @@ const REGIONS = [
   'דרום',
   'יהודה ושומרון',
 ];
+
+/** The reading under the city columns. The first block titles it; the rest are its parts. */
+function renderGuide(): string {
+  const blocks = HOME_GUIDE.map((section, index) => {
+    const tag = index === 0 ? 'h2' : 'h3';
+    const links = (section.links ?? [])
+      .map((link) => `<p><a href="${esc(link.href)}">${esc(link.label)}</a></p>`)
+      .join('');
+    return `<${tag}>${esc(section.heading)}</${tag}>${section.paragraphs
+      .map((paragraph) => `<p>${esc(paragraph)}</p>`)
+      .join('')}${links}`;
+  }).join('');
+
+  return `<article class="guide">${blocks}</article>`;
+}
 
 /**
  * The front door, drawn the way the app draws it.
@@ -63,7 +93,9 @@ export function renderHomePage(
 <ul>${group.cities
         .map((entry) => {
           const count = totalIn(entry);
-          return `<li><a href="${esc(cityHref(entry))}"><span>${esc(entry.city)}</span><span class="n">${count > 0 ? esc(number(count)) : ''}</span></a></li>`;
+          const lead = `${LINK_LEAD[mainSection(entry)]}${entry.city}`;
+          const name = count > 0 ? `${lead}, ${number(count)} נכסים` : lead;
+          return `<li><a href="${esc(cityHref(entry))}"><span class="sr">${esc(name)}</span><span aria-hidden="true">${esc(entry.city)}</span><span class="n" aria-hidden="true">${count > 0 ? esc(number(count)) : ''}</span></a></li>`;
         })
         .join('')}</ul>
 </section>`,
@@ -71,7 +103,7 @@ export function renderHomePage(
     .join('');
 
   const body = `<section class="hero">
-<img class="cover" src="${esc(COVER)}" alt="" width="1920" height="1080">
+<img class="cover" src="${COVER_1600}" srcset="${COVER_SET}" sizes="100vw" alt="" width="1600" height="359" fetchpriority="high">
 <div class="veil" aria-hidden="true"></div>
 <div class="hero-inner">
 <div>
@@ -100,16 +132,18 @@ export function renderHomePage(
 <p class="intro">לכל עיר דף עם מחירים, פילוח לפי חדרים ושכונות, והנכסים שמוצעים בה כרגע.</p>
 <div class="regions">${sections}</div>
 <p class="more"><a href="/nadlan">כל הערים ומחירי הנדל״ן בהן ←</a> <a href="/agencies">סוכנויות נדל״ן ←</a></p>
+${renderGuide()}
 <p class="credit">תמונות הערים ותמונת השער מוויקיפדיה ומוויקישיתוף. <a href="/nadlan/credits">קרדיט לצלמים</a></p>
 </div>`;
 
   return page({
-    title: 'נדל״ן למכירה ולהשכרה בישראל | Urban365',
+    title: 'נדל״ן למכירה ולהשכרה בישראל — דירות לפי עיר · Urban365',
     description:
-      'דירות ונכסים מסחריים למכירה ולהשכרה בישראל, מהסוכנויות ומבעלי הבתים. לכל עיר דף עם מחירים והנכסים שמוצעים בה כרגע.',
+      'דירות למכירה ולהשכרה בישראל לפי עיר. ראו מה נמכר באמת, את הנכסים שמוצעים עכשיו, הערכת שווי ומחשבון משכנתא — מסוכנויות ומבעלי בתים, לפני הפנייה.',
     canonical: `${appUrl}/`,
     indexable: true,
     door: true,
+    preload: `<link rel="preload" as="image" href="${COVER_800}" imagesrcset="${COVER_SET}" imagesizes="100vw" fetchpriority="high" type="image/webp">`,
     extraScript: script,
     links,
     structuredData: [

@@ -1,5 +1,8 @@
 import { useLocation } from 'react-router-dom';
+import { useCanonical } from '@/hooks/useCanonical';
 import { useDocumentTitle } from '@/hooks/useDocumentTitle';
+import { useMetaDescription } from '@/hooks/useMetaDescription';
+import { descriptionForPath } from '@/lib/metaDescription';
 import { titleForPath } from '@/lib/pageTitle';
 
 /**
@@ -11,7 +14,9 @@ import { titleForPath } from '@/lib/pageTitle';
  * table returns null there so they do not overwrite each other.
  */
 export function PageTitle() {
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
   useDocumentTitle(titleForPath(pathname));
+  useMetaDescription(descriptionForPath(pathname));
+  useCanonical(pathname, search);
   return null;
 }

@@ -23,7 +23,8 @@ describe('renderHomePage', () => {
     expect(html).toContain(`<link rel="canonical" href="${APP}/">`);
     expect(html).toContain('content="index,follow"');
     expect(html).toContain('class="hero"');
-    expect(html).toContain('Tel_Aviv_Skyline');
+    expect(html).toContain('/home/cover-1600.webp');
+    expect(html).toContain('rel="preload"');
   });
 
   it('asks where, the same way the app does, and opens the search', () => {
@@ -43,6 +44,22 @@ describe('renderHomePage', () => {
     expect(html).toContain(`href="/nadlan/forsale/${encodeURIComponent(toSlug('חולון'))}"`);
     expect(html).toContain('href="/search?section=forsale&amp;city=%D7%90%D7%96%D7%95%D7%A8"');
     expect(html).toContain('>12<');
+  });
+
+  it('names a city link for where it goes, and reads as a page rather than a menu', () => {
+    expect(html).toContain('דירות למכירה בחולון');
+    expect(html).toContain('<header');
+    expect(html).toContain('<main');
+    expect(html).toContain('<footer');
+    expect(html).toContain('aria-label="ניווט ראשי"');
+    expect(html).toContain('aria-label="נכסים שמורים"');
+    const text = html
+      .replace(/<script[\s\S]*?<\/script>/g, ' ')
+      .replace(/<style[\s\S]*?<\/style>/g, ' ')
+      .replace(/<[^>]+>/g, ' ');
+    const words = text.split(/\s+/).filter(Boolean);
+    expect(words.length).toBeGreaterThanOrEqual(800);
+    expect(html).toContain('איך מחפשים דירה בישראל');
   });
 
   it('offers the full city list and the agencies', () => {

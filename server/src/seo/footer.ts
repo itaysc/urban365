@@ -64,7 +64,7 @@ export function renderFooterLinks(entries: CityEntry[], appUrl: string): string 
     links: [
       { href: `${appUrl}/search?section=forsale`, text: 'דירות למכירה בכל הארץ' },
       { href: `${appUrl}/search?section=rent`, text: 'דירות להשכרה בכל הארץ' },
-      { href: `${appUrl}/search?section=commercial`, text: 'נדל״ן מסחרי' },
+      { href: `${appUrl}/search?section=commercial`, text: 'נדל״ן מסחרי בכל הארץ' },
       { href: '/nadlan', text: 'מחירים לפי עיר' },
       { href: `${appUrl}/mortgage`, text: 'מחשבון משכנתא' },
       { href: `${appUrl}/sell/new`, text: 'פרסום נכס' },
@@ -74,7 +74,7 @@ export function renderFooterLinks(entries: CityEntry[], appUrl: string): string 
   columns.push({
     title: 'מידע',
     links: [
-      { href: '/blog', text: 'בלוג' },
+      { href: '/blog', text: 'בלוג הנדל״ן' },
       { href: `${appUrl}/terms`, text: 'תנאי שימוש' },
       { href: `${appUrl}/policy`, text: 'מדיניות פרטיות' },
       { href: `${appUrl}/accessibility`, text: 'הצהרת נגישות' },

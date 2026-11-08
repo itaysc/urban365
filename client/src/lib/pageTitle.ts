@@ -13,7 +13,7 @@ export const BRAND = 'Urban365';
  * this returns null so the two never fight over it.
  */
 const TITLES: Record<string, string> = {
-  '/': 'נדל״ן למכירה ולהשכרה בישראל',
+  '/': 'נדל״ן למכירה ולהשכרה בישראל — דירות לפי עיר',
   '/agencies': 'סוכנויות נדל״ן',
   '/saved': 'נכסים שמורים',
   '/mortgage': 'מחשבון משכנתא',
