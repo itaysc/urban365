@@ -556,7 +556,8 @@ node scripts/make-icons.mjs
 It writes `favicon.ico` (16/32/48, for the tools that still fetch `/favicon.ico` without
 reading the HTML), `favicon-48.png` (Google's result icon wants a multiple of 48),
 `apple-touch-icon.png` (180, square corners — iOS rounds the icon itself and paints
-anything transparent black), `icon-192.png` and `icon-512.png` (Android and the install
+anything transparent black), `icon-120.png` (the logo at the size profile and directory
+forms ask for), `icon-192.png` and `icon-512.png` (Android and the install
 prompt, listed in `client/public/manifest.webmanifest`), `icon-512-maskable.png`
 (Android's own crop, square and with the mark in the safe centre) and `og-image.png`.
 It renders with QuickLook, which every Mac has, and needs nothing installed. Change a

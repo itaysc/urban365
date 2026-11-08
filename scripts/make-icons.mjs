@@ -14,6 +14,7 @@
  *   favicon.ico              16/32/48    old browsers, and every tool that still reads /favicon.ico
  *   favicon-48.png           48          Google's result icon wants a multiple of 48
  *   apple-touch-icon.png     180         iOS home screen; square corners, iOS rounds them
+ *   icon-120.png             120         the logo for profiles and directories that ask for 120×120
  *   icon-192.png, icon-512   192/512     Android and the install prompt, via the manifest
  *   icon-512-maskable.png    512         Android's own crop; the mark sits in the safe centre
  *   og-image.png             1200×630    the picture on a shared link, everywhere
@@ -114,6 +115,7 @@ console.log(`  ${'client/public/favicon.ico'.padEnd(38)} ${icoSizes.join('/')}`)
 for (const size of icoSizes.filter((s) => s !== 48)) rmSync(path.join(out, `favicon-${size}.png`));
 
 console.log('Rendering from brand/lockup.svg (the large cut):');
+render(LOCKUP, 120, path.join(out, 'icon-120.png'));
 render(LOCKUP, 192, path.join(out, 'icon-192.png'));
 render(LOCKUP, 512, path.join(out, 'icon-512.png'));
 
