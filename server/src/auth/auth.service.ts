@@ -178,7 +178,12 @@ export class AuthService {
         }
       } else {
         const agency = await tx.agency.create({
-          data: { name: dto.agencyName!.trim(), status: 'pending', contactEmail: email },
+          data: {
+            name: dto.agencyName!.trim(),
+            status: 'pending',
+            contactEmail: email,
+            vertical: dto.vertical ?? 'real_estate',
+          },
         });
         await tx.agencyMembership.create({
           data: { userId: created.id, agencyId: agency.id, role: 'owner', status: 'pending' },
@@ -246,7 +251,12 @@ export class AuthService {
         }
       } else {
         const agency = await tx.agency.create({
-          data: { name: dto.agencyName!.trim(), status: 'pending', contactEmail: user.email },
+          data: {
+            name: dto.agencyName!.trim(),
+            status: 'pending',
+            contactEmail: user.email,
+            vertical: dto.vertical ?? 'real_estate',
+          },
         });
         await tx.agencyMembership.create({
           data: { userId, agencyId: agency.id, role: 'owner', status: 'pending' },
@@ -403,7 +413,7 @@ export class AuthService {
     if (!name) throw new BadRequestException('צריך לבחור סוכנות קיימת או להזין שם סוכנות חדשה.');
 
     const agency = await tx.agency.create({
-      data: { name, status: 'pending', contactEmail: user.email },
+      data: { name, status: 'pending', contactEmail: user.email, vertical: dto.vertical ?? 'real_estate' },
     });
     await tx.agencyMembership.create({
       data: { userId: user.id, agencyId: agency.id, role: 'owner', status: 'pending' },

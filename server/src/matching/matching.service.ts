@@ -221,9 +221,12 @@ export class MatchingService {
   private async coBrokerageFor(agencyId: string): Promise<Raised[]> {
     const agency = await this.prisma.agency.findUnique({
       where: { id: agencyId },
-      select: { coBrokerage: true },
+      select: { coBrokerage: true, vertical: true },
     });
-    if (!agency?.coBrokerage) return [];
+    // A mortgage broker has no listings of its own and no business being sent another
+    // agency's — this is the one rule here that looks outside the agency, and outside
+    // the real-estate vertical there is nothing for it to find.
+    if (!agency?.coBrokerage || agency.vertical !== 'real_estate') return [];
 
     const [customers, listings] = await Promise.all([
       this.prisma.customer.findMany({

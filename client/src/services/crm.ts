@@ -264,3 +264,150 @@ export const createCustomer = (input: CustomerInput) => api.post<Customer>('/my/
 export const updateCustomer = (id: string, input: Partial<CustomerInput>) =>
   api.patch<Customer>(`/my/customers/${id}`, input);
 export const deleteCustomer = (id: string) => api.delete(`/my/customers/${id}`);
+
+// ── mortgage-broker vertical ──────────────────────────────────────────────────────
+// A mortgage case is this vertical's deal — see `MortgageCase` in schema.prisma for
+// why it is its own model rather than a widened `Deal` — so the shapes below mirror
+// the deal ones above on purpose, down to the board/totals structure.
+
+export type MortgageCaseStage =
+  | 'new_request'
+  | 'consultation'
+  | 'documents'
+  | 'sent_to_banks'
+  | 'approved_in_principle'
+  | 'signed'
+  | 'lost';
+
+export const MORTGAGE_CASE_STAGES: { value: MortgageCaseStage; label: string }[] = [
+  { value: 'new_request', label: 'בקשה חדשה' },
+  { value: 'consultation', label: 'בשיחת ייעוץ' },
+  { value: 'documents', label: 'השלמת מסמכים' },
+  { value: 'sent_to_banks', label: 'במכרז בין בנקים' },
+  { value: 'approved_in_principle', label: 'אושרה עקרונית' },
+  { value: 'signed', label: 'נחתמה' },
+  { value: 'lost', label: 'לא יצא לפועל' },
+];
+
+export interface BankOffer {
+  id: string;
+  caseId: string;
+  bankName: string;
+  track: string | null;
+  interestRate: number | null;
+  monthlyPayment: number | null;
+  totalRepayment: number | null;
+  receivedAt: string | null;
+  notes: string | null;
+  createdAt: string;
+}
+
+export interface BankOfferInput {
+  bankName: string;
+  track?: string;
+  interestRate?: number;
+  monthlyPayment?: number;
+  totalRepayment?: number;
+  receivedAt?: string;
+  notes?: string;
+}
+
+export interface MortgageCase {
+  id: string;
+  stage: MortgageCaseStage;
+  leadId: string | null;
+  customerId: string | null;
+  dealId: string | null;
+  assignedToId: string | null;
+  requestedAmount: number | null;
+  propertyValue: number | null;
+  equityAvailable: number | null;
+  monthlyIncomePrimary: number | null;
+  monthlyIncomeSecondary: number | null;
+  employmentType: string | null;
+  propertyCity: string | null;
+  loanTermYears: number | null;
+  riskPreference: string | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+  lead: { id: string; name: string; phone: string | null; email: string | null } | null;
+  customer: { id: string; name: string; phone: string | null } | null;
+  assignedTo: { id: string; firstName: string; lastName: string } | null;
+  bankOffers: BankOffer[];
+}
+
+export interface MortgageCaseBoard {
+  columns: Record<MortgageCaseStage, MortgageCase[]>;
+  totals: Record<MortgageCaseStage, { count: number; requested: number }>;
+}
+
+export async function fetchMortgageCaseBoard(): Promise<MortgageCaseBoard> {
+  const { data } = await api.get<MortgageCaseBoard>('/my/mortgage-cases');
+  return data;
+}
+
+export async function fetchMortgageCase(id: string): Promise<MortgageCase> {
+  const { data } = await api.get<MortgageCase>(`/my/mortgage-cases/${id}`);
+  return data;
+}
+
+export interface MortgageCaseInput {
+  stage?: MortgageCaseStage;
+  leadId?: string;
+  customerId?: string;
+  assignedToId?: string;
+  requestedAmount?: number;
+  propertyValue?: number;
+  equityAvailable?: number;
+  monthlyIncomePrimary?: number;
+  monthlyIncomeSecondary?: number;
+  employmentType?: string;
+  propertyCity?: string;
+  loanTermYears?: number;
+  riskPreference?: string;
+  notes?: string;
+}
+
+export const createMortgageCase = (input: MortgageCaseInput) =>
+  api.post<MortgageCase>('/my/mortgage-cases', input);
+export const updateMortgageCase = (id: string, input: Partial<MortgageCaseInput>) =>
+  api.patch<MortgageCase>(`/my/mortgage-cases/${id}`, input);
+export const deleteMortgageCase = (id: string) => api.delete(`/my/mortgage-cases/${id}`);
+
+export const createBankOffer = (caseId: string, input: BankOfferInput) =>
+  api.post<BankOffer>(`/my/mortgage-cases/${caseId}/offers`, input);
+export const deleteBankOffer = (caseId: string, id: string) =>
+  api.delete(`/my/mortgage-cases/${caseId}/offers/${id}`);
+
+export interface BankerContact {
+  id: string;
+  bankName: string;
+  branch: string | null;
+  name: string;
+  phone: string | null;
+  email: string | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BankerContactInput {
+  bankName: string;
+  branch?: string;
+  name: string;
+  phone?: string;
+  email?: string;
+  notes?: string;
+}
+
+export async function fetchBankerContacts(): Promise<BankerContact[]> {
+  const { data } = await api.get<BankerContact[]>('/my/banker-contacts');
+  return data;
+}
+
+export const createBankerContact = (input: BankerContactInput) =>
+  api.post<BankerContact>('/my/banker-contacts', input);
+export const updateBankerContact = (id: string, input: Partial<BankerContactInput>) =>
+  api.patch<BankerContact>(`/my/banker-contacts/${id}`, input);
+export const deleteBankerContact = (id: string) => api.delete(`/my/banker-contacts/${id}`);

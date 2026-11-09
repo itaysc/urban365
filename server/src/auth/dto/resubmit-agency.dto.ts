@@ -1,4 +1,5 @@
 import { IsEmail, IsIn, IsOptional, IsString, MaxLength, ValidateIf } from 'class-validator';
+import { AGENCY_VERTICALS, type AgencyVerticalValue } from '../agency-vertical.js';
 
 /**
  * A turned-down agency asking again.
@@ -15,6 +16,9 @@ export class ResubmitAgencyDto {
 
   /** An existing unclaimed office, when they are asking for a different one. */
   @IsOptional() @IsString() claimAgencyId?: string;
+
+  /** Only meaningful for `switch` with no `claimAgencyId`: a brand-new agency again. */
+  @IsOptional() @IsIn(AGENCY_VERTICALS) vertical?: AgencyVerticalValue;
 
   @IsOptional() @IsString() @MaxLength(40) phone?: string;
 

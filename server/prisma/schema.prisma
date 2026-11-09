@@ -40,6 +40,15 @@ enum AgencyRole {
   agent
 }
 
+/// What kind of business an agency row is. `real_estate` is the default and the only
+/// kind that ever had a listing scraped for it; `mortgage_broker` has no listings at
+/// all and gets a different shell of CRM screens for the same reason a mortgage file
+/// is not a property deal — see `MortgageCase`.
+enum AgencyVertical {
+  real_estate
+  mortgage_broker
+}
+
 /// Platform staff, entirely separate from an agency role. Never writable over the API.
 enum PlatformRole {
   admin
@@ -142,6 +151,12 @@ model Agency {
   reviewedById    String?
   rejectionReason String?
 
+  /// Real estate brokerage or mortgage brokerage. Decided at signup (see
+  /// `AuthService.signup`/`attachAgency`) and not changed afterwards — the CRM screens
+  /// and the Lead/Deal stage labels a user sees are picked by this, so switching it
+  /// under an agency mid-use would strand whatever the old vertical had on the board.
+  vertical AgencyVertical @default(real_estate)
+
   name            String
   licenseNumber   String?
   phone           String?
@@ -160,19 +175,21 @@ model Agency {
   assetsForRentCount    Int?
   commercialAssetsCount Int?
 
-  brokers     Broker[]
-  offices     AgencyOffice[]
-  listings    Listing[]
-  runs        ScrapeRun[]
-  memberships AgencyMembership[]
-  claims      AgencyClaim[]
-  invites     AgencyInvite[]
-  leads       Lead[]
-  deals       Deal[]
-  customers   Customer[]
-  meetings    Meeting[]
-  suggestions Suggestion[]
-  demoRecords DemoRecord[]
+  brokers        Broker[]
+  offices        AgencyOffice[]
+  listings       Listing[]
+  runs           ScrapeRun[]
+  memberships    AgencyMembership[]
+  claims         AgencyClaim[]
+  invites        AgencyInvite[]
+  leads          Lead[]
+  deals          Deal[]
+  customers      Customer[]
+  meetings       Meeting[]
+  suggestions    Suggestion[]
+  demoRecords    DemoRecord[]
+  mortgageCases  MortgageCase[]
+  bankerContacts BankerContact[]
 
   /// Whether this agency takes part in co-brokerage at all.
   ///
@@ -200,8 +217,8 @@ model Agency {
 /// A pack of listing credits an agency bought. The price is the one in force at
 /// purchase, kept on the row so a later change does not rewrite what was sold.
 model ListingPackageOrder {
-  id     String @id @default(cuid())
-  agency Agency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  id       String @id @default(cuid())
+  agency   Agency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
   agencyId String
 
   /// How many listings the pack covers: 1, 10, 50 or 100.
@@ -408,8 +425,8 @@ model Listing {
 
   /// Set when the owner removes the listing. The row is kept; it is left out of
   /// every listing they and the public see.
-  removedAt      DateTime?
-  removalReason  ListingRemovalReason?
+  removedAt     DateTime?
+  removalReason ListingRemovalReason?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -524,29 +541,30 @@ model User {
   /// flow; only the consumer-specific data lives separately.
   buyerProfile BuyerProfile?
 
-  memberships       AgencyMembership[]
-  sessions          Session[]
-  authTokens        AuthToken[]
-  claims            AgencyClaim[]
-  createdListings   Listing[]              @relation("ListingCreator")
-  listingPackages   ListingPackageOrder[]  @relation("ListingPackageBuyer")
-  ownedListings     Listing[]              @relation("ListingOwner")
-  ownedLeads        Lead[]                 @relation("LeadOwner")
-  assignedLeads     Lead[]                 @relation("LeadAssignee")
-  assignedCustomers Customer[]             @relation("CustomerAssignee")
-  meetings          Meeting[]              @relation("MeetingOwner")
-  suggestions       Suggestion[]           @relation("SuggestionOwner")
-  coBrokeRequested  CoBrokerageRequest[]   @relation("CoBrokeRequester")
-  coBrokeResponded  CoBrokerageRequest[]   @relation("CoBrokeResponder")
-  coBrokeMessages   CoBrokerageMessage[]   @relation("CoBrokeMessageAuthor")
-  savedSearches     SavedSearch[]
-  meetingFeedback   Meeting[]              @relation("MeetingFeedbackAuthor")
-  googleCalendar    GoogleCalendarAccount?
-  ownedDeals        Deal[]                 @relation("DealOwner")
-  reviewedAgencies  Agency[]               @relation("AgencyReviewer")
-  reviewedClaims    AgencyClaim[]          @relation("ClaimReviewer")
-  valuations        Valuation[]
-  platformInvitesSent PlatformInvite[]
+  memberships           AgencyMembership[]
+  sessions              Session[]
+  authTokens            AuthToken[]
+  claims                AgencyClaim[]
+  createdListings       Listing[]              @relation("ListingCreator")
+  listingPackages       ListingPackageOrder[]  @relation("ListingPackageBuyer")
+  ownedListings         Listing[]              @relation("ListingOwner")
+  ownedLeads            Lead[]                 @relation("LeadOwner")
+  assignedLeads         Lead[]                 @relation("LeadAssignee")
+  assignedCustomers     Customer[]             @relation("CustomerAssignee")
+  meetings              Meeting[]              @relation("MeetingOwner")
+  suggestions           Suggestion[]           @relation("SuggestionOwner")
+  coBrokeRequested      CoBrokerageRequest[]   @relation("CoBrokeRequester")
+  coBrokeResponded      CoBrokerageRequest[]   @relation("CoBrokeResponder")
+  coBrokeMessages       CoBrokerageMessage[]   @relation("CoBrokeMessageAuthor")
+  savedSearches         SavedSearch[]
+  meetingFeedback       Meeting[]              @relation("MeetingFeedbackAuthor")
+  googleCalendar        GoogleCalendarAccount?
+  ownedDeals            Deal[]                 @relation("DealOwner")
+  reviewedAgencies      Agency[]               @relation("AgencyReviewer")
+  reviewedClaims        AgencyClaim[]          @relation("ClaimReviewer")
+  valuations            Valuation[]
+  platformInvitesSent   PlatformInvite[]
+  assignedMortgageCases MortgageCase[]         @relation("MortgageCaseAssignee")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -738,18 +756,18 @@ model AgencyInvite {
 /// `accountType`: a buyer uses the site, an agency may open the CRM.
 /// The plaintext token only ever exists in the email; this stores its sha256.
 model PlatformInvite {
-  id        String    @id @default(cuid())
-  email     String
+  id          String      @id @default(cuid())
+  email       String
   /// What the account will be when the link is accepted. A buyer uses the site;
   /// an agency may open the CRM.
   accountType AccountType @default(buyer)
-  invitedBy User      @relation(fields: [invitedById], references: [id], onDelete: Cascade)
+  invitedBy   User        @relation(fields: [invitedById], references: [id], onDelete: Cascade)
   invitedById String
-  tokenHash String    @unique
-  expiresAt DateTime
-  acceptedAt DateTime?
-  revokedAt  DateTime?
-  createdAt DateTime  @default(now())
+  tokenHash   String      @unique
+  expiresAt   DateTime
+  acceptedAt  DateTime?
+  revokedAt   DateTime?
+  createdAt   DateTime    @default(now())
 
   @@index([email, acceptedAt])
 }
@@ -936,6 +954,7 @@ model Customer {
   suggestions   Suggestion[]
   coBrokerage   CoBrokerageRequest[]
   deals         Deal[]
+  mortgageCases MortgageCase[]
 
   /// The list is "this agency's, newest first", which is the only query there is.
   @@index([agencyId, createdAt])
@@ -970,8 +989,9 @@ model Lead {
   assignedTo   User?   @relation("LeadAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
   assignedToId String?
 
-  deals       Deal[]
-  suggestions Suggestion[]
+  deals         Deal[]
+  suggestions   Suggestion[]
+  mortgageCases MortgageCase[]
 
   contactedAt DateTime?
   createdAt   DateTime  @default(now())
@@ -1182,6 +1202,10 @@ model Deal {
   owner   User?   @relation("DealOwner", fields: [ownerId], references: [id], onDelete: SetNull)
   ownerId String?
 
+  /// Set when a `MortgageCase` reaches `signed` and creates this deal to carry its
+  /// commission into the agency's existing dashboard. Null for every real-estate deal.
+  mortgageCase MortgageCase?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -1189,6 +1213,118 @@ model Deal {
   @@index([leadId])
   /// "What is open for this person", which the customer's own page asks.
   @@index([customerId])
+}
+
+/// A stage that ends the case; reaching `signed` is what stamps a linked `Deal`.
+enum MortgageCaseStage {
+  new_request
+  consultation
+  documents
+  sent_to_banks
+  approved_in_principle
+  signed
+  lost
+}
+
+/// One mortgage file, the mortgage-vertical's equivalent of `Deal`.
+///
+/// Kept separate from `Deal` rather than widening it, because a mortgage file carries
+/// an intake a property deal has no use for (income, employment, the loan itself) and
+/// moves through stages a property deal does not (sent to banks, approved in
+/// principle). What the two share — a commission, a price, a close date — is exactly
+/// what `Deal` already models, so a case links to one once it closes rather than
+/// duplicating that half.
+model MortgageCase {
+  id       String @id @default(cuid())
+  agency   Agency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  agencyId String
+
+  lead       Lead?     @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  leadId     String?
+  customer   Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  customerId String?
+
+  /// The deal this case became once signed. Created the moment the stage crosses into
+  /// `signed`; the agency's commission dashboard reads `Deal`, not this table, so a
+  /// closed mortgage shows up there with no change to how that dashboard is built.
+  deal   Deal?   @relation(fields: [dealId], references: [id], onDelete: SetNull)
+  dealId String? @unique
+
+  stage MortgageCaseStage @default(new_request)
+
+  assignedTo   User?   @relation("MortgageCaseAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+  assignedToId String?
+
+  // ── the intake ───────────────────────────────────────────────────────────────
+  // A focused subset of what a mortgage advisor actually asks, as named columns in
+  // the same spirit as `Customer`'s own brief — queryable, not a JSON blob nobody can
+  // report on. Smaller than a full underwriting questionnaire on purpose: this is
+  // what a first pipeline needs, and it widens once real use says what is missing.
+
+  requestedAmount        Int?
+  propertyValue          Int?
+  equityAvailable        Int?
+  monthlyIncomePrimary   Int?
+  monthlyIncomeSecondary Int?
+  employmentType         String?
+  propertyCity           String?
+  loanTermYears          Int?
+  riskPreference         String?
+
+  notes String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  bankOffers BankOffer[]
+
+  @@index([agencyId, stage, createdAt])
+  @@index([leadId])
+  @@index([customerId])
+  @@index([assignedToId])
+}
+
+/// One bank's competing offer on a case — the tender result an advisor logs after
+/// sending a file to several banks at once, so they sit side by side rather than in
+/// whichever inbox or notebook happened to catch each call.
+model BankOffer {
+  id     String       @id @default(cuid())
+  case   MortgageCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  caseId String
+
+  bankName       String
+  track          String?
+  /// Per cent, e.g. 4.35 for 4.35%.
+  interestRate   Float?
+  monthlyPayment Int?
+  totalRepayment Int?
+  receivedAt     DateTime?
+  notes          String?
+
+  createdAt DateTime @default(now())
+
+  @@index([caseId])
+}
+
+/// A personal contact at a bank — the loan officer an advisor actually calls, as
+/// opposed to the bank's own customer line. Agency-scoped, not global: two agencies
+/// may know the same branch through two different people.
+model BankerContact {
+  id       String @id @default(cuid())
+  agency   Agency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  agencyId String
+
+  bankName String
+  branch   String?
+  name     String
+  phone    String?
+  email    String?
+  notes    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([agencyId])
 }
 
 /// A place an agency works out of, drawn on the public map under the agency's name.

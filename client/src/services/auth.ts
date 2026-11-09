@@ -1,5 +1,5 @@
 import { api } from '@/services/api';
-import type { AuthUser, SignupInput } from '@/types/auth';
+import type { AgencyVertical, AuthUser, SignupInput } from '@/types/auth';
 
 export async function fetchMe(): Promise<AuthUser | null> {
   try {
@@ -58,6 +58,7 @@ export async function lookupAgencies(q: string): Promise<AgencyLookupResult[]> {
 export interface AttachAgencyInput {
   agencyName?: string;
   claimAgencyId?: string;
+  vertical?: AgencyVertical;
   phone?: string;
   /** The server rejects anything but true — see the note on the DTO. */
   acceptedTerms: boolean;
@@ -78,6 +79,7 @@ export interface ResubmitAgencyInput {
   mode: 'revise' | 'reask' | 'switch';
   agencyName?: string;
   claimAgencyId?: string;
+  vertical?: AgencyVertical;
   phone?: string;
   contactEmail?: string;
   description?: string;

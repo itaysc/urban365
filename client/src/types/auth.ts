@@ -4,6 +4,7 @@ export type MembershipStatus = 'pending' | 'active' | 'suspended';
 export type AgencyStatus = 'unclaimed' | 'pending' | 'active' | 'rejected' | 'suspended' | 'deleted';
 
 export type AccountType = 'buyer' | 'agency';
+export type AgencyVertical = 'real_estate' | 'mortgage_broker';
 
 export interface AuthUser {
   id: string;
@@ -30,6 +31,7 @@ export interface AuthUser {
     phone: string | null;
     contactEmail: string | null;
     description: string | null;
+    vertical: AgencyVertical;
   } | null;
 }
 
@@ -43,4 +45,6 @@ export interface SignupInput {
   acceptedTerms: boolean;
   agencyName?: string;
   claimAgencyId?: string;
+  /** Ignored once `claimAgencyId` is set — nothing scraped is ever a mortgage brokerage. */
+  vertical?: AgencyVertical;
 }

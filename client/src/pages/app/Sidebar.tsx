@@ -1,12 +1,16 @@
 import { NavLink } from 'react-router-dom';
 import { PanelRightClose, PanelRightOpen } from 'lucide-react';
 import { useListingCredits } from '@/hooks/useListingCredits';
+import type { AgencyVertical } from '@/types/auth';
 import { NAV_ITEMS, type NavItem } from './navItems';
 
 interface Props {
   collapsed: boolean;
   onToggle: () => void;
   isAdmin: boolean;
+  /** Missing while there is no agency yet (e.g. the pending page); reads as real-estate,
+   *  which is also what an item with no `vertical` of its own shows to either way. */
+  vertical?: AgencyVertical;
   /** Called after navigating, so the mobile drawer closes itself. */
   onNavigate?: () => void;
   /** The drawer renders the same items without the collapse control. */
@@ -30,11 +34,19 @@ const itemClass = (isActive: boolean, collapsed: boolean) =>
       : 'border-transparent font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900',
   ].join(' ');
 
-export function SidebarNav({ collapsed, onToggle, isAdmin, onNavigate, showToggle = true }: Props) {
+export function SidebarNav({
+  collapsed,
+  onToggle,
+  isAdmin,
+  vertical = 'real_estate',
+  onNavigate,
+  showToggle = true,
+}: Props) {
   const { data: credits } = useListingCredits();
   const items = NAV_ITEMS.filter((item) => {
     if ('adminOnly' in item && item.adminOnly && !isAdmin) return false;
     if ('billing' in item && item.billing && !credits?.enabled) return false;
+    if ('vertical' in item && item.vertical !== vertical) return false;
     return true;
   });
 

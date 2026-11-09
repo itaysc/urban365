@@ -1,4 +1,5 @@
-import { Equals, IsBoolean, IsEmail, IsOptional, IsString, Matches, MaxLength, MinLength } from 'class-validator';
+import { Equals, IsBoolean, IsEmail, IsIn, IsOptional, IsString, Matches, MaxLength, MinLength } from 'class-validator';
+import { AGENCY_VERTICALS, type AgencyVerticalValue } from '../agency-vertical.js';
 
 /** Mirrors the reference's policy: length plus a little complexity, nothing exotic. */
 export const PASSWORD_MIN = 10;
@@ -36,6 +37,13 @@ export class SignupDto {
 
   /** An existing *unclaimed* agency to request. Admin approval decides it. */
   @IsOptional() @IsString() claimAgencyId?: string;
+
+  /**
+   * What kind of business a brand-new agency is. Ignored when `claimAgencyId` is set —
+   * nothing scraped is ever a mortgage brokerage — and defaults to `real_estate` when
+   * left out, same as the column itself.
+   */
+  @IsOptional() @IsIn(AGENCY_VERTICALS) vertical?: AgencyVerticalValue;
 
   /** Cloudflare Turnstile. Only checked in production. */
   @IsOptional() @IsString() captchaToken?: string;

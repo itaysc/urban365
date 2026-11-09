@@ -3,6 +3,12 @@ import { useYad2Visible } from '@/hooks/useYad2Visible';
 import { Button } from '@/components/ui/Button';
 import { Field, inputClass } from '@/components/ui/Field';
 import { lookupAgencies, type AgencyLookupResult } from '@/services/auth';
+import type { AgencyVertical } from '@/types/auth';
+
+const VERTICALS: { value: AgencyVertical; label: string; hint: string }[] = [
+  { value: 'real_estate', label: 'סוכנות נדל״ן', hint: 'נכסים, פניות ועסקאות' },
+  { value: 'mortgage_broker', label: 'ברוקר משכנתאות', hint: 'תיקי משכנתא ובנקים' },
+];
 
 interface Props {
   /** The existing agency being claimed, or null while a new one is being named. */
@@ -11,6 +17,13 @@ interface Props {
   /** Name for a brand-new agency, used only while nothing is claimed. */
   agencyName: string;
   onAgencyNameChange: (name: string) => void;
+  /**
+   * What kind of business a brand-new agency is. Optional: a page that only ever
+   * creates real-estate agencies can leave this out and the default on the server
+   * side is the same either way.
+   */
+  vertical?: AgencyVertical;
+  onVerticalChange?: (vertical: AgencyVertical) => void;
 }
 
 /**
@@ -21,7 +34,14 @@ interface Props {
  * two drifting apart is how a claim gets filed one way on one page and another way on
  * the other.
  */
-export function AgencyPicker({ claimed, onClaimedChange, agencyName, onAgencyNameChange }: Props) {
+export function AgencyPicker({
+  claimed,
+  onClaimedChange,
+  agencyName,
+  onAgencyNameChange,
+  vertical,
+  onVerticalChange,
+}: Props) {
   const yad2Visible = useYad2Visible();
   const [query, setQuery] = useState('');
   const [matches, setMatches] = useState<AgencyLookupResult[]>([]);
@@ -98,6 +118,34 @@ export function AgencyPicker({ claimed, onClaimedChange, agencyName, onAgencyNam
               onChange={(e) => onAgencyNameChange(e.target.value)}
             />
           </Field>
+
+          {onVerticalChange && (
+            <fieldset className="mt-3">
+              <legend className="mb-1.5 text-xs font-medium text-slate-700">סוג העסק</legend>
+              <div className="grid grid-cols-2 gap-2">
+                {VERTICALS.map((v) => (
+                  <label
+                    key={v.value}
+                    className={`cursor-pointer rounded-lg border p-2 text-sm transition ${
+                      (vertical ?? 'real_estate') === v.value
+                        ? 'border-blue-400 bg-blue-50'
+                        : 'border-slate-200 hover:bg-slate-50'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="agency-vertical"
+                      className="sr-only"
+                      checked={(vertical ?? 'real_estate') === v.value}
+                      onChange={() => onVerticalChange(v.value)}
+                    />
+                    <span className="block font-medium text-slate-900">{v.label}</span>
+                    <span className="block text-xs text-slate-500">{v.hint}</span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+          )}
         </>
       )}
     </fieldset>

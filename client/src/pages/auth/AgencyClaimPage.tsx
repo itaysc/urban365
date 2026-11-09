@@ -9,6 +9,7 @@ import { errorMessageOf } from '@/lib/apiError';
 import { AuthLayout } from '@/pages/auth/AuthLayout';
 import { attachAgency, type AgencyLookupResult } from '@/services/auth';
 import { PhoneField } from '@/components/ui/PhoneField';
+import type { AgencyVertical } from '@/types/auth';
 
 /**
  * The second half of an agency signup that began with Google.
@@ -24,6 +25,7 @@ export function AgencyClaimPage() {
 
   const [claimed, setClaimed] = useState<AgencyLookupResult | null>(null);
   const [agencyName, setAgencyName] = useState('');
+  const [vertical, setVertical] = useState<AgencyVertical>('real_estate');
   const [phone, setPhone] = useState('');
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -47,6 +49,7 @@ export function AgencyClaimPage() {
       await attachAgency({
         claimAgencyId: claimed?.id,
         agencyName: claimed ? undefined : agencyName.trim(),
+        vertical: claimed ? undefined : vertical,
         phone: phone.trim() || undefined,
         acceptedTerms,
       });
@@ -71,6 +74,8 @@ export function AgencyClaimPage() {
           onClaimedChange={setClaimed}
           agencyName={agencyName}
           onAgencyNameChange={setAgencyName}
+          vertical={vertical}
+          onVerticalChange={setVertical}
         />
 
         <Field label="טלפון" htmlFor="phone">

@@ -21,7 +21,7 @@ function readCollapsed(): boolean {
 }
 
 /** Pages that are laid out across the window rather than read down a column. */
-const WIDE = new Set(['/app/deals']);
+const WIDE = new Set(['/app/deals', '/app/mortgage-cases']);
 
 export function AppLayout() {
   const { user } = useAuth();
@@ -31,6 +31,7 @@ export function AppLayout() {
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   const isAdmin = user?.platformRole === 'admin';
+  const vertical = user?.agency?.vertical;
 
   useEffect(() => {
     try {
@@ -103,6 +104,7 @@ export function AppLayout() {
               collapsed={collapsed}
               onToggle={() => setCollapsed((c) => !c)}
               isAdmin={isAdmin}
+              vertical={vertical}
             />
           </div>
         </aside>
@@ -156,6 +158,7 @@ export function AppLayout() {
               collapsed={false}
               onToggle={() => undefined}
               isAdmin={isAdmin}
+              vertical={vertical}
               onNavigate={() => setDrawerOpen(false)}
               showToggle={false}
             />

@@ -1,4 +1,5 @@
-import { Equals, IsBoolean, IsOptional, IsString, MaxLength } from 'class-validator';
+import { Equals, IsBoolean, IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
+import { AGENCY_VERTICALS, type AgencyVerticalValue } from '../agency-vertical.js';
 
 /**
  * Becoming an agency on an account that already exists.
@@ -13,6 +14,9 @@ export class AttachAgencyDto {
 
   /** An existing *unclaimed* agency to request. Admin approval decides it. */
   @IsOptional() @IsString() claimAgencyId?: string;
+
+  /** Same rule as on `SignupDto`: ignored once an existing agency is being claimed. */
+  @IsOptional() @IsIn(AGENCY_VERTICALS) vertical?: AgencyVerticalValue;
 
   @IsOptional() @IsString() @MaxLength(40) phone?: string;
 

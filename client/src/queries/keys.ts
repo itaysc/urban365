@@ -98,6 +98,17 @@ export const qk = {
     forCustomer: (customerId: string) => ['deals', 'customer', customerId] as const,
   },
 
+  mortgageCases: {
+    all: ['mortgage-cases'] as const,
+    board: ['mortgage-cases', 'board'] as const,
+    one: (id: string) => ['mortgage-cases', 'one', id] as const,
+  },
+
+  bankerContacts: {
+    all: ['banker-contacts'] as const,
+    list: ['banker-contacts', 'list'] as const,
+  },
+
   /** The site's cities, for the footer on every public page. */
   cities: ['cities'] as const,
 

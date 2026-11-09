@@ -30,6 +30,9 @@ import { AgencyProfilePage } from '@/pages/app/AgencyProfilePage';
 import { MyProfilePage } from '@/pages/app/MyProfilePage';
 import { TeamPage } from '@/pages/app/TeamPage';
 import { DealsPage } from '@/pages/app/DealsPage';
+import { MortgageCasesPage } from '@/pages/app/MortgageCasesPage';
+import { MortgageCaseDetailPage } from '@/pages/app/MortgageCaseDetailPage';
+import { BankerContactsPage } from '@/pages/app/BankerContactsPage';
 import { LeadsPage } from '@/pages/app/LeadsPage';
 import { CustomersPage } from '@/pages/app/CustomersPage';
 import { CalendarPage } from '@/pages/app/CalendarPage';
@@ -165,6 +168,9 @@ export const router = createBrowserRouter([
               { path: '/app/customers', element: <CustomersPage /> },
               { path: '/app/calendar', element: <CalendarPage /> },
               { path: '/app/deals', element: <DealsPage /> },
+              { path: '/app/mortgage-cases', element: <MortgageCasesPage /> },
+              { path: '/app/mortgage-cases/:caseId', element: <MortgageCaseDetailPage /> },
+              { path: '/app/banker-contacts', element: <BankerContactsPage /> },
               { path: '/app/agency', element: <AgencyProfilePage /> },
               { path: '/app/team', element: <TeamPage /> },
             ],

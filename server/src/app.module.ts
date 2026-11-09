@@ -14,6 +14,7 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AdminModule } from './admin/admin.module.js';
 import { BuyerModule } from './buyer/buyer.module.js';
 import { CrmModule } from './crm/crm.module.js';
+import { MortgageCrmModule } from './mortgage-crm/mortgage-crm.module.js';
 import { StorageModule } from './storage/storage.module.js';
 import { AgencyModule } from './agency/agency.module.js';
 import { AuthModule } from './auth/auth.module.js';
@@ -38,6 +39,7 @@ import { Yad2Module } from './yad2/yad2.module.js';
     StorageModule,
     BuyerModule,
     CrmModule,
+    MortgageCrmModule,
     CalendarModule,
     MatchingModule,
     DemoModule,

@@ -4,6 +4,7 @@
  *   npm run seed:dev-agency
  *   npm run seed:dev-agency -- --reset        # put the password back if it was changed
  *   npm run seed:dev-agency -- --slug two     # a SECOND agency, for co-brokerage
+ *   npm run seed:dev-agency -- --vertical mortgage_broker   # a mortgage brokerage
  *
  * The slug makes a second one, with its own owner at `dev-agency-<slug>@nadlan.test`
  * and the same password. Co-brokerage cannot be looked at with one agency — the whole
@@ -31,6 +32,13 @@ import { normalizeEmail } from '../auth/normalize-email.js';
  * address cannot collide with a person's and cannot receive mail.
  */
 const PASSWORD = 'DevAgency!2026';
+
+/** `--vertical mortgage_broker`; defaults to the ordinary real-estate agency. */
+function vertical(): 'real_estate' | 'mortgage_broker' {
+  const i = process.argv.indexOf('--vertical');
+  const value = i >= 0 ? process.argv[i + 1] : undefined;
+  return value === 'mortgage_broker' ? 'mortgage_broker' : 'real_estate';
+}
 
 /** `--slug two` gives a second agency; no slug gives the original one. */
 function identity(): { email: string; slug: string; name: string; firstName: string } {
@@ -105,7 +113,9 @@ async function main() {
 
   const agency = await prisma.agency.upsert({
     where: { slug: who.slug },
-    create: { name: who.name, slug: who.slug, status: 'active', contactEmail: email },
+    create: { name: who.name, slug: who.slug, status: 'active', contactEmail: email, vertical: vertical() },
+    // Not overwritten on a re-run: changing an existing dev agency's vertical from
+    // under a session already using it would be a surprise, not a convenience.
     update: {},
   });
 

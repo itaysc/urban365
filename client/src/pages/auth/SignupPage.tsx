@@ -13,6 +13,7 @@ import { TermsNotice } from '@/components/auth/TermsCheckbox';
 import { AuthLayout } from '@/pages/auth/AuthLayout';
 import type { AgencyLookupResult } from '@/services/auth';
 import { PhoneField } from '@/components/ui/PhoneField';
+import type { AgencyVertical } from '@/types/auth';
 
 const PASSWORD_MIN = 10;
 
@@ -24,6 +25,7 @@ export function SignupPage() {
 
   // Claiming an agency we already scraped, rather than creating an empty one.
   const [claimed, setClaimed] = useState<AgencyLookupResult | null>(null);
+  const [vertical, setVertical] = useState<AgencyVertical>('real_estate');
 
   const formik = useFormik({
     initialValues: {
@@ -60,7 +62,7 @@ export function SignupPage() {
           phone: values.phone || undefined,
           // The sentence above the form is the agreement; submitting is what accepts it.
           acceptedTerms: true,
-          ...(claimed ? { claimAgencyId: claimed.id } : { agencyName: values.agencyName }),
+          ...(claimed ? { claimAgencyId: claimed.id } : { agencyName: values.agencyName, vertical }),
         });
         navigate('/app/pending', { replace: true });
       } catch (e) {
@@ -130,6 +132,8 @@ export function SignupPage() {
           onClaimedChange={setClaimed}
           agencyName={formik.values.agencyName}
           onAgencyNameChange={(name) => void formik.setFieldValue('agencyName', name)}
+          vertical={vertical}
+          onVerticalChange={setVertical}
         />
 
         {formError && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">{formError}</p>}

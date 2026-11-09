@@ -15,6 +15,8 @@ export interface PublicAgency {
   phone: string | null;
   contactEmail: string | null;
   description: string | null;
+  /** Real-estate brokerage or mortgage brokerage — which CRM shell this account sees. */
+  vertical: string;
 }
 
 export interface PublicUser {
@@ -90,6 +92,7 @@ export function sanitizeUser(user: WithMembership): PublicUser {
           phone: kind === 'revise' ? membership.agency.phone : null,
           contactEmail: kind === 'revise' ? membership.agency.contactEmail : null,
           description: kind === 'revise' ? membership.agency.description : null,
+          vertical: membership.agency.vertical,
         }
       : null,
   };
