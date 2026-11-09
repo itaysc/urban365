@@ -5,6 +5,7 @@ import {
   extraBudgetFor,
   loanFor,
   LTV_CAP,
+  MIX_PRESETS,
   mix,
   mixProblems,
   monthlyPayment,
@@ -252,6 +253,28 @@ describe('defaultMix', () => {
 
   it('opens on a mix a bank would write', () => {
     expect(mixProblems(defaultMix(1_500_000, 25), 1_500_000)).toEqual([]);
+  });
+});
+
+describe('MIX_PRESETS', () => {
+  const loans = [100_000, 999_999, 1_000_000, 1_234_567, 1_500_000, 2_000_001];
+
+  it('offers three, each of which a bank could write', () => {
+    expect(MIX_PRESETS.map((preset) => preset.id)).toEqual(['thirds', 'calm', 'prime']);
+
+    for (const preset of MIX_PRESETS) {
+      for (const loan of loans) {
+        const parts = preset.build(loan, 25);
+        expect(parts.reduce((sum, part) => sum + part.amount, 0)).toBe(loan);
+        expect(mixProblems(parts, loan)).toEqual([]);
+      }
+    }
+  });
+
+  it('orders them from the dearest month to the cheapest', () => {
+    const [thirds, calm, prime] = MIX_PRESETS.map((preset) => mix(preset.build(1_500_000, 25)).monthly);
+    expect(calm).toBeGreaterThan(thirds);
+    expect(thirds).toBeGreaterThan(prime);
   });
 });
 

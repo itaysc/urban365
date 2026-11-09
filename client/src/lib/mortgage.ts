@@ -427,6 +427,33 @@ export function mixProblems(parts: MixPart[], loan: number): MixProblem[] {
   return problems;
 }
 
+/**
+ * A mix described as shares of the loan, with the bank's opening rate on each track.
+ *
+ * The leftover shekel from rounding lands on the largest part, so the parts add up to
+ * the loan exactly and a comparison is of the split, not of a shekel that went missing.
+ */
+function fromShares(
+  loan: number,
+  years: number,
+  shares: { key: TrackKey; share: number }[],
+): MixPart[] {
+  const parts = shares.map((part) => ({
+    key: part.key,
+    amount: Math.round(loan * part.share),
+    annualRate: TRACKS[part.key].rate,
+    years,
+  }));
+
+  const drift = loan - parts.reduce((sum, part) => sum + part.amount, 0);
+  if (drift !== 0 && parts.length > 0) {
+    const biggest = parts.reduce((at, part, i) => (part.amount > parts[at].amount ? i : at), 0);
+    parts[biggest] = { ...parts[biggest], amount: parts[biggest].amount + drift };
+  }
+
+  return parts;
+}
+
 /** A sensible opening mix for a loan: the regulator's minimum third fixed, the rest split. */
 export function defaultMix(loan: number, years: number): MixPart[] {
   // A third, a third, a third — the shape most brokers start a conversation from, and
@@ -438,6 +465,54 @@ export function defaultMix(loan: number, years: number): MixPart[] {
     { key: 'variable5', amount: third, annualRate: TRACKS.variable5.rate, years },
   ];
 }
+
+/**
+ * The three mixes a first conversation usually puts next to each other.
+ *
+ * Not a catalogue. Three is enough to see the trade — a lower payment, a payment
+ * that will not move, and the split most brokers start from — and a fourth would
+ * be another thing to hold in mind before the first one has been read.
+ */
+export interface MixPreset {
+  id: string;
+  name: string;
+  /** One line on what the split is, not on why it is wise. */
+  blurb: string;
+  build: (loan: number, years: number) => MixPart[];
+}
+
+export const MIX_PRESETS: MixPreset[] = [
+  {
+    id: 'thirds',
+    name: 'שלישים',
+    blurb: 'שליש קבועה, שליש פריים, שליש משתנה',
+    build: (loan, years) => defaultMix(loan, years),
+  },
+  {
+    id: 'calm',
+    name: 'שקט',
+    blurb: 'שני שלישים בריבית קבועה, והשאר פריים',
+    build: (loan, years) =>
+      fromShares(loan, years, [
+        { key: 'fixed', share: 2 / 3 },
+        { key: 'prime', share: 1 / 3 },
+      ]),
+  },
+  {
+    id: 'prime',
+    name: 'פריים',
+    blurb: 'שליש קבועה, והשאר פריים',
+    // Floored, not rounded: rounding the two thirds up by a shekel puts the mix
+    // over the cap, and the comparison would open on a mix a bank cannot write.
+    build: (loan, years) => {
+      const variable = Math.min(loan, Math.floor(loan * VARIABLE_CAP));
+      return [
+        { key: 'fixed', amount: loan - variable, annualRate: TRACKS.fixed.rate, years },
+        { key: 'prime', amount: variable, annualRate: TRACKS.prime.rate, years },
+      ];
+    },
+  },
+];
 
 /**
  * The same shape of mix, resized to a different loan.

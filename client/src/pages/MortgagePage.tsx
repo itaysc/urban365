@@ -5,9 +5,11 @@ import { SiteFooter } from '@/components/SiteFooter';
 import { SiteHeader } from '@/components/SiteHeader';
 import { selectClass } from '@/components/ui/Field';
 import { HouseholdPlanner } from '@/components/mortgage/HouseholdPlanner';
+import { MixCompare } from '@/components/mortgage/MixCompare';
 import { Money, Num, Row, Slide } from '@/components/mortgage/fields';
 import { panelClass } from '@/components/mortgage/panel';
 import { digits, formatPrice, formatShekel, grouped } from '@/lib/format';
+import { loadSavedMixes, storeSavedMixes, type SavedMix } from '@/lib/mortgage-mixes';
 import {
   BUYER_LABEL,
   budget,
@@ -293,6 +295,19 @@ export function MortgagePage() {
    * the mix, which keeps its shape.
    */
   const [parts, setParts] = useState<MixPart[]>(() => defaultMix(result.loan, DEFAULT_YEARS));
+  const [savedMixes, setSavedMixes] = useState<SavedMix[]>(() => loadSavedMixes());
+  /** The mix on screen before the last comparison replaced it. One step, not a history. */
+  const [previousMix, setPreviousMix] = useState<MixPart[] | null>(null);
+
+  const rememberMixes = (next: SavedMix[]) => {
+    setSavedMixes(next);
+    storeSavedMixes(next);
+  };
+
+  const applyMix = (next: MixPart[]) => {
+    setPreviousMix(parts);
+    setParts(next);
+  };
 
   const summary = mix(parts);
   const problems = mixProblems(parts, result.loan);
@@ -515,6 +530,20 @@ export function MortgagePage() {
               <p className="mt-1 text-4xl font-extrabold tabular-nums text-slate-900">
                 {formatShekel(summary.monthly)}
               </p>
+
+              <MixCompare
+                loan={result.loan}
+                parts={parts}
+                saved={savedMixes}
+                canUndo={previousMix !== null}
+                onUndo={() => {
+                  if (!previousMix) return;
+                  setParts(previousMix);
+                  setPreviousMix(null);
+                }}
+                onApply={applyMix}
+                onSaved={rememberMixes}
+              />
 
               <div className="mt-4">
                 <Row label="סכום המשכנתא" value={formatShekel(result.loan)} />
