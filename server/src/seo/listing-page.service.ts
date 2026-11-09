@@ -51,6 +51,7 @@ const DETAIL = {
   description: true,
   coverImageUrl: true,
   imageUrls: true,
+  savedCount: true,
   listedAt: true,
   lastSeenAt: true,
   updatedAt: true,

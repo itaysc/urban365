@@ -1,3 +1,4 @@
+import { Heart } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { qk } from '@/queries/keys';
@@ -127,6 +128,10 @@ export function MyListingsPage() {
                     ]
                       .filter(Boolean)
                       .join(' · ')}
+                  </p>
+                  <p className="mt-1 flex items-center gap-1 text-xs text-slate-600">
+                    <Heart className="h-3.5 w-3.5" aria-hidden />
+                    {(listing.savedCount ?? 0).toLocaleString('he-IL')} שמרו
                   </p>
                 </div>
 

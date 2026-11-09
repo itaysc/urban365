@@ -13,6 +13,8 @@ export interface MyListing {
   city: string | null;
   street: string | null;
   coverImageUrl: string | null;
+  /** How many people saved this listing. */
+  savedCount: number;
   updatedAt: string;
 }
 

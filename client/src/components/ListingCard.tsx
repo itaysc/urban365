@@ -49,7 +49,7 @@ export function ListingCard({
         something other than open the listing.
       */}
       <div className="absolute left-2 top-2 z-10">
-        <SaveButton listingId={listing.id} saved={saved} size="sm" />
+        <SaveButton listingId={listing.id} saved={saved} savedCount={listing.savedCount} size="sm" />
       </div>
 
       <button
@@ -76,7 +76,17 @@ export function ListingCard({
           Stacked rather than placed in separate corners: a listing can be both, and two
           badges facing each other across the photo read as unrelated to one another.
         */}
-        <div className="absolute top-2 start-2 flex flex-col items-start gap-1">
+        <div className="absolute top-2 start-2 flex max-w-[calc(100%-4.5rem)] flex-col items-start gap-1">
+          {/*
+            Who is selling, on the photo rather than under the specs. The heart sits in
+            the opposite corner, so the name stops short of it.
+          */}
+          {listing.agency && (
+            <span className="max-w-full truncate rounded-md bg-white/95 px-2 py-0.5 text-xs font-semibold text-slate-800 shadow-sm">
+              {listing.agency.name}
+            </span>
+          )}
+
           {/*
             The drop first: it is the one that changes a decision. Dark green and the
             figure spelled out, because "ירידת מחיר" without the number is an
@@ -163,12 +173,17 @@ export function ListingCard({
           </div>
         )}
 
-        <div className="flex items-center justify-between text-xs text-slate-500">
-          {/* A private seller has no agency. Saying who is selling matters to a buyer,
-              so the absence is filled rather than left blank. */}
-          <span className="truncate">{listing.agency?.name ?? 'מוכר פרטי'}</span>
-          {listing.pricePerSquareMeter && <span>{listing.pricePerSquareMeter.toLocaleString('he-IL')} ₪/מ״ר</span>}
-        </div>
+        {(!listing.agency || listing.pricePerSquareMeter) && (
+          <div className="flex items-center justify-between text-xs text-slate-500">
+            {/* A private seller has no agency. Saying who is selling matters to a buyer,
+                so the absence is filled rather than left blank. An agency's name is on
+                the photo. */}
+            {!listing.agency && <span className="truncate">מוכר פרטי</span>}
+            {listing.pricePerSquareMeter && (
+              <span>{listing.pricePerSquareMeter.toLocaleString('he-IL')} ₪/מ״ר</span>
+            )}
+          </div>
+        )}
       </div>
       </button>
     </div>

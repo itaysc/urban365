@@ -521,6 +521,7 @@ export class ListingsService {
 
     return {
       ...listingRowToAsset(located),
+      savedCount: row.savedCount,
       section: row.section,
       // Null for a private seller. The client shows who is selling from `seller` below
       // rather than inventing an agency that does not exist.

@@ -80,6 +80,7 @@ export class MyListingsController {
           city: true,
           street: true,
           coverImageUrl: true,
+          savedCount: true,
           agencyId: true,
           updatedAt: true,
         },

@@ -36,6 +36,7 @@ function listing(over: Partial<ListingDetail> = {}): ListingDetail {
     longitude: 34.77,
     amenities: ['מעלית', 'ממ״ד'],
     description: 'דירה מרווחת ומוארת.\nקומה שלישית עם מעלית.',
+    savedCount: 3,
     coverImageUrl: 'https://img.example/cover.jpg',
     imageUrls: ['https://img.example/cover.jpg', 'https://img.example/2.jpg'],
     listedAt: new Date('2026-10-20T00:00:00Z'),
@@ -74,6 +75,13 @@ function structured(html: string): Record<string, unknown>[] {
 }
 
 describe('renderListingPage', () => {
+  it('says how many people saved the listing', () => {
+    const html = renderListingPage(listing({ savedCount: 12 }), [], APP);
+
+    expect(html).toContain('שמרו');
+    expect(html).toContain('12');
+  });
+
   it('titles the page the way somebody would have searched for it', () => {
     const html = renderListingPage(listing(), [], APP);
 

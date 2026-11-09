@@ -75,6 +75,8 @@ export interface Asset {
   coverImageUrl: string;
   imageUrls: string[];
   imagesCount: number;
+  /** How many people saved this listing. Present on the detail response. */
+  savedCount?: number;
   videoUrl: string;
   contactName: string;
   agencyName: string;

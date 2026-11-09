@@ -18,6 +18,11 @@ import type { Asset } from '@/types/yad2';
 /** The `dealType` of a purchase, as the server's own subcategory map spells it. */
 const SALE = 'מכירה';
 
+function savedBy(count: number): string {
+  if (count === 1) return 'אדם אחד שמר את הנכס';
+  return `${count.toLocaleString('he-IL')} אנשים שמרו את הנכס`;
+}
+
 const Spec = ({ label, value }: { label: string; value: string | number | null }) =>
   value === null || value === '' ? null : (
     <div className="rounded-lg bg-slate-50 p-3 text-center">
@@ -142,6 +147,9 @@ export function AssetModal({ asset, onClose }: { asset: Asset; onClose: () => vo
               {[asset.propertyType, asset.rooms && `${asset.rooms} חדרים`].filter(Boolean).join(', ')}
             </p>
             <p className="text-slate-500">{formatAddress(asset)}</p>
+            {typeof asset.savedCount === 'number' && (
+              <p className="mt-1 text-sm text-slate-600">{savedBy(asset.savedCount)}</p>
+            )}
             <p className="text-sm text-slate-500">
               {[asset.area, asset.region].filter(Boolean).join(' · ')}
             </p>

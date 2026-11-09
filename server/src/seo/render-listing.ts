@@ -119,6 +119,7 @@ function figures(listing: ListingDetail): string {
   if (listing.pricePerSquareMeter !== null) {
     items.push(['מחיר למ״ר', money(listing.pricePerSquareMeter, listing.section)]);
   }
+  items.push(['שמרו', number(listing.savedCount)]);
 
   if (items.length === 0) return '';
 
