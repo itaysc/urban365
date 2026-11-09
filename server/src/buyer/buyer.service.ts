@@ -1,6 +1,6 @@
 import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
-import { FROM_A_VISIBLE_AGENCY } from '../listings/on-the-market.js';
+import { onTheMarket } from '../listings/on-the-market.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { SavesService } from '../saves/saves.service.js';
 import { RequestContextService } from '../tenancy/request-context.service.js';
@@ -104,8 +104,17 @@ export class BuyerService {
 
     // Only a published listing can be saved; an id guessed from elsewhere is not a
     // shortcut to confirming that a draft exists.
+    const hidden = await this.owner.user.findMany({
+      where: { disabledAt: { not: null } },
+      select: { id: true },
+    });
     const listing = await this.prisma.client.listing.findFirst({
-      where: { id: dto.listingId, status: 'published', delistedAt: null, AND: [FROM_A_VISIBLE_AGENCY] },
+      where: {
+        id: dto.listingId,
+        status: 'published',
+        delistedAt: null,
+        AND: [onTheMarket(hidden.map((row) => row.id))],
+      },
       select: { id: true },
     });
     if (!listing) throw new NotFoundException('הנכס לא נמצא.');

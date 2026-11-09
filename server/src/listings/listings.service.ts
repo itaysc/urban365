@@ -5,7 +5,7 @@ import { TenantPrismaService } from '../tenancy/tenant-prisma.service.js';
 import { listingRowToAsset } from '../yad2/listing-row.js';
 import { type Section } from '../yad2/yad2.types.js';
 import { cityKey } from './city-name.js';
-import { FROM_A_VISIBLE_AGENCY } from './on-the-market.js';
+import { FROM_A_VISIBLE_AGENCY, onTheMarket } from './on-the-market.js';
 import { pointInGeometry } from './point-in-polygon.js';
 import { GeocodeService } from '../geocode/geocode.service.js';
 import type { SearchListingsDto, Sort } from './dto/search-listings.dto.js';
@@ -151,11 +151,26 @@ export class ListingsService {
     return all.size > 0 ? [...all] : [];
   }
 
-  private where(dto: SearchListingsDto, cities?: string[]): Prisma.ListingWhereInput {
+  /**
+   * Accounts an admin has switched off. Read on the owner client: the tenant role
+   * cannot see `User`, and a filter that joins it hides every private listing.
+   */
+  private async disabledSellerIds(): Promise<string[]> {
+    const rows = await this.owner.user.findMany({
+      where: { disabledAt: { not: null } },
+      select: { id: true },
+    });
+    return rows.map((row) => row.id);
+  }
+
+  private async where(dto: SearchListingsDto, cities?: string[]): Promise<Prisma.ListingWhereInput> {
     // Published only, and stated explicitly rather than left to RLS alone: results must
     // not change depending on whether the visitor happens to be logged in to an agency
     // whose drafts the tenant policy would also match.
-    const where: Prisma.ListingWhereInput = { status: 'published', AND: [FROM_A_VISIBLE_AGENCY] };
+    const where: Prisma.ListingWhereInput = {
+      status: 'published',
+      AND: [onTheMarket(await this.disabledSellerIds())],
+    };
 
     if (!dto.includeDelisted) where.delistedAt = null;
     if (dto.section) where.section = dto.section as DbSection;
@@ -218,7 +233,7 @@ export class ListingsService {
   }
 
   async search(dto: SearchListingsDto): Promise<SearchResponse> {
-    const where = this.where(dto, await this.citiesFor(dto));
+    const where = await this.where(dto, await this.citiesFor(dto));
     const page = dto.page ?? 1;
     const pageSize = dto.pageSize ?? DEFAULT_PAGE_SIZE;
 
@@ -261,7 +276,7 @@ export class ListingsService {
     if (ids.length === 0) return [];
 
     const rows = await this.prisma.client.listing.findMany({
-      where: { id: { in: ids }, status: 'published', AND: [FROM_A_VISIBLE_AGENCY] },
+      where: { id: { in: ids }, status: 'published', AND: [onTheMarket(await this.disabledSellerIds())] },
       include: { agency: { select: { id: true, name: true } } },
     });
 
@@ -387,7 +402,7 @@ export class ListingsService {
       where: {
         status: 'published',
         delistedAt: null,
-        AND: [FROM_A_VISIBLE_AGENCY],
+        AND: [onTheMarket(await this.disabledSellerIds())],
         city: { equals: trimmed, mode },
         neighborhood: { not: null, ...(q ? { contains: q, mode } : {}) },
       },
@@ -411,7 +426,7 @@ export class ListingsService {
     const published: Prisma.ListingWhereInput = {
       status: 'published',
       delistedAt: null,
-      AND: [FROM_A_VISIBLE_AGENCY],
+      AND: [onTheMarket(await this.disabledSellerIds())],
       ...(section && { section: section as DbSection }),
     };
 
@@ -509,7 +524,7 @@ export class ListingsService {
       where: {
         status: 'published',
         delistedAt: null,
-        AND: [FROM_A_VISIBLE_AGENCY],
+        AND: [onTheMarket(await this.disabledSellerIds())],
         OR: [{ id }, { token: id }],
       },
       include: {
@@ -673,7 +688,7 @@ export class ListingsService {
    * does not need to know the zoom level.
    */
   async mapPoints(dto: SearchListingsDto) {
-    const base = this.where(dto, await this.citiesFor(dto));
+    const base = await this.where(dto, await this.citiesFor(dto));
 
     // A listing with no coordinates cannot be drawn, so it is excluded here rather
     // than filtered client-side. When a viewport is set, `base` already carries

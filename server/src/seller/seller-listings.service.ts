@@ -48,6 +48,7 @@ export class SellerListingsService {
     // An agency account that was held before the flag was limited to regular users
     // gets those listings back the next time they open the page.
     await releaseAgencyHolds(this.prisma, userId);
+    await this.giveToAgency(userId);
 
     return this.prisma.listing.findMany({
       where: { ownerUserId: userId, status: { not: 'removed' } },
@@ -216,9 +217,39 @@ export class SellerListingsService {
 
     if (flagged) {
       this.logger.warn(`Listing ${id} flagged (${verdict.confidence}): ${verdict.reason}`);
+      return { published: false, pendingReview: false };
     }
 
-    return { published: !flagged, pendingReview: false };
+    // An agency account that used the private form still published a private listing,
+    // which the CRM never lists and which search then treated as somebody's own flat.
+    // Once it is actually on the market it belongs to the office.
+    await this.giveToAgency(userId, id);
+
+    return { published: true, pendingReview: false };
+  }
+
+  /**
+   * Moves listings this person owns onto their agency, when they have one.
+   *
+   * The private form can only set `ownerUserId` while the photos are still uploading.
+   * The check constraint allows exactly one of the two, so both change in one write.
+   */
+  private async giveToAgency(userId: string, listingId?: string): Promise<void> {
+    const membership = await this.prisma.agencyMembership.findFirst({
+      where: { userId, status: 'active', agency: { status: 'active' } },
+      select: { agencyId: true },
+    });
+    if (!membership) return;
+
+    await this.prisma.listing.updateMany({
+      where: {
+        ownerUserId: userId,
+        // A draft still belongs here until its photos have uploaded. Moving it earlier
+        // would make that upload look for an owner and find none.
+        ...(listingId ? { id: listingId } : { status: 'published' }),
+      },
+      data: { agencyId: membership.agencyId, ownerUserId: null },
+    });
   }
 
   // ── images ──────────────────────────────────────────────────────────────────
