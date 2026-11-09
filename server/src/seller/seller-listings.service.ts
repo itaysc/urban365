@@ -6,6 +6,7 @@ import { StorageService } from '../storage/storage.service.js';
 import { dropColumns, priceChange } from '../listings/price-history.js';
 import { listingImageUrl } from '../agency/image-url.js';
 import { ListingReviewService } from '../moderation/listing-review.service.js';
+import { holdsListingForApproval, releaseAgencyHolds } from './listing-hold.js';
 import type { CreateSellerListingDto, SellerListingDto } from './dto/seller-listing.dto.js';
 
 /** Ten, as asked. A private sale is one property, not a portfolio. */
@@ -43,7 +44,11 @@ export class SellerListingsService {
     private readonly config: ConfigService,
   ) {}
 
-  list(userId: string) {
+  async list(userId: string) {
+    // An agency account that was held before the flag was limited to regular users
+    // gets those listings back the next time they open the page.
+    await releaseAgencyHolds(this.prisma, userId);
+
     return this.prisma.listing.findMany({
       where: { ownerUserId: userId, status: { not: 'removed' } },
       orderBy: { createdAt: 'desc' },
@@ -177,9 +182,15 @@ export class SellerListingsService {
         }
       : {};
 
-    // Review mode holds every private listing for a person. The spam check still runs,
-    // so the queue can show what the model objected to, but it does not decide.
-    if (this.config.get<boolean>('app.listingReview') === true) {
+    // Review mode holds a regular user's listing for a person. An agency account
+    // publishes as before: the spam check can still keep a flagged one as a draft,
+    // but it does not wait for an admin. The check still runs for a regular user so
+    // the queue can show what the model objected to, without letting it decide.
+    const owner = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { accountType: true },
+    });
+    if (holdsListingForApproval(this.config.get<boolean>('app.listingReview') === true, owner?.accountType)) {
       await this.prisma.listing.update({
         where: { id },
         data: { status: 'draft', approval: 'pending', rejectionNote: null, decidedAt: null, ...opinion },

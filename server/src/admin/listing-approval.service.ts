@@ -3,6 +3,7 @@ import { listingPath } from '../seo/listing-slug.js';
 import { MailService } from '../mail/mail.service.js';
 import { listingDecisionTemplate } from '../mail/templates.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { releaseAgencyHolds } from '../seller/listing-hold.js';
 
 const QUEUE = {
   id: true,
@@ -26,9 +27,10 @@ const QUEUE = {
 /**
  * Private listings held because review mode is on.
  *
- * An agency listing never lands here: publishing one does not set `approval` to
- * pending. Approving is what first puts the row on the site, and the email is the
- * only notice the owner gets.
+ * An agency account never lands here. Anything already held for one is published
+ * on the way in, so opening the queue is what lets those listings out. Approving
+ * is what first puts a regular user's row on the site, and the email is the only
+ * notice that owner gets.
  */
 @Injectable()
 export class ListingApprovalService {
@@ -38,8 +40,15 @@ export class ListingApprovalService {
   ) {}
 
   async pending() {
+    await releaseAgencyHolds(this.prisma);
+
     const rows = await this.prisma.listing.findMany({
-      where: { approval: 'pending', ownerUserId: { not: null }, status: { not: 'removed' } },
+      where: {
+        approval: 'pending',
+        ownerUserId: { not: null },
+        status: { not: 'removed' },
+        owner: { accountType: { not: 'agency' } },
+      },
       orderBy: { updatedAt: 'desc' },
       select: QUEUE,
     });
@@ -117,7 +126,13 @@ export class ListingApprovalService {
 
   private async requirePending(id: string) {
     const listing = await this.prisma.listing.findFirst({
-      where: { id, approval: 'pending', ownerUserId: { not: null }, status: { not: 'removed' } },
+      where: {
+        id,
+        approval: 'pending',
+        ownerUserId: { not: null },
+        status: { not: 'removed' },
+        owner: { accountType: { not: 'agency' } },
+      },
       select: {
         id: true,
         publishedAt: true,
