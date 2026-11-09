@@ -334,6 +334,9 @@ export class SellerListingsService {
       street: dto.street,
       houseNumber: dto.houseNumber,
     });
-    return at ?? {};
+    // `kind` is how the geocoder describes the match. It is not a column, and leaving
+    // it in the write makes Prisma reject the whole row.
+    if (!at) return {};
+    return { latitude: at.latitude, longitude: at.longitude };
   }
 }

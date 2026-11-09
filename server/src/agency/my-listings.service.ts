@@ -174,7 +174,10 @@ export class MyListingsService {
       houseNumber: address.houseNumber,
     });
 
-    return at ?? {};
+    // `kind` says what was matched. It is not a column, and a write that includes it
+    // is rejected outright.
+    if (!at) return {};
+    return { latitude: at.latitude, longitude: at.longitude };
   }
 
   /**

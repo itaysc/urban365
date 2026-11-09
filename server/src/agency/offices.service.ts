@@ -42,6 +42,13 @@ export class OfficesService {
     }
   }
 
+  /** Coordinates only. The geocoder also says what it matched, and that is not a column. */
+  private async place(dto: UpsertOfficeDto) {
+    const at = await this.geocode.locate(dto);
+    if (!at) return {};
+    return { latitude: at.latitude, longitude: at.longitude };
+  }
+
   list() {
     return this.prisma.client.agencyOffice.findMany({
       select: SELECT,
@@ -58,7 +65,7 @@ export class OfficesService {
       data: {
         agencyId: this.context.requireAgencyId(),
         ...dto,
-        ...(await this.geocode.locate(dto)),
+        ...(await this.place(dto)),
       },
       select: SELECT,
     });
@@ -83,7 +90,7 @@ export class OfficesService {
         phone: dto.phone ?? null,
         latitude: null,
         longitude: null,
-        ...(await this.geocode.locate(dto)),
+        ...(await this.place(dto)),
       },
     });
 
