@@ -6,7 +6,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import type { Agency, AgencyMembership, User } from '@prisma/client';
+import { Prisma, type Agency, type AgencyMembership, type User } from '@prisma/client';
 import { MailService } from '../mail/mail.service.js';
 import {
   accountExistsTemplate,
@@ -22,7 +22,9 @@ import { randomBytes } from 'node:crypto';
 import { RefreshReuseError, SessionService } from './session.service.js';
 import type { GoogleIdentity } from './google.service.js';
 import { shouldAdoptGooglePicture } from './google-avatar.js';
-import { sanitizeUser, type PublicUser } from './sanitize-user.js';
+import { sanitizeUser, shownMembership, type PublicUser } from './sanitize-user.js';
+import { resubmitKind } from './resubmit-agency.js';
+import type { ResubmitAgencyDto } from './dto/resubmit-agency.dto.js';
 import { TokenService } from './token.service.js';
 import type { SignupDto } from './dto/signup.dto.js';
 import type { AttachAgencyDto } from './dto/attach-agency.dto.js';
@@ -65,7 +67,13 @@ export class AuthService {
     }
   }
 
-  private include = { memberships: { include: { agency: true } }, } as const;
+  private include = {
+    memberships: { include: { agency: true }, orderBy: { createdAt: 'desc' as const } },
+    claims: {
+      orderBy: { createdAt: 'desc' as const },
+      select: { agencyId: true, status: true, rejectionReason: true },
+    },
+  } as const;
 
   private claimsFor(user: UserWithMembership): AccessTokenClaims {
     // Only an *active* membership grants an agency; a pending claim must not.
@@ -261,6 +269,145 @@ export class AuthService {
 
     this.logger.log(`Attached agency to ${user.email}`);
     return sanitizeUser(updated);
+  }
+
+  /**
+   * A turned-down request, sent again.
+   *
+   * The waiting page is the wrong place to leave someone whose request was refused:
+   * they can correct the agency they created, repeat a claim that went back to the
+   * directory, or leave it and ask for a different office. An office an admin
+   * suspended stays suspended.
+   */
+  async resubmitAgency(userId: string, dto: ResubmitAgencyDto): Promise<PublicUser> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, include: this.include });
+    if (!user) throw new UnauthorizedException(INVALID_CREDENTIALS);
+
+    const membership = shownMembership(user);
+    if (!membership) throw new BadRequestException('אין בקשה שנדחתה לעדכן.');
+
+    const kind = resubmitKind({
+      agencyStatus: membership.agency.status,
+      membershipStatus: membership.status,
+      yad2Id: membership.agency.yad2Id,
+    });
+    if (kind === 'waiting') throw new BadRequestException('הבקשה עדיין בבדיקה.');
+    if (kind === 'closed') throw new BadRequestException('אין בקשה שנדחתה לעדכן.');
+    if (dto.mode === 'revise' && kind !== 'revise') {
+      throw new BadRequestException('אי אפשר לעדכן את פרטי הסוכנות הזו.');
+    }
+    if (dto.mode === 'reask' && kind !== 'reask') {
+      throw new BadRequestException('אי אפשר לבקש שוב את הסוכנות הזו.');
+    }
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      if (dto.mode === 'revise') {
+        const name = dto.agencyName?.trim();
+        if (!name) throw new BadRequestException('צריך שם לסוכנות.');
+
+        await tx.agency.update({
+          where: { id: membership.agencyId },
+          data: {
+            name,
+            status: 'pending',
+            rejectionReason: null,
+            reviewedAt: null,
+            reviewedById: null,
+            phone: dto.phone?.trim() || null,
+            contactEmail: dto.contactEmail?.trim() || user.email,
+            description: dto.description?.trim() || null,
+          },
+        });
+        await tx.agencyMembership.update({
+          where: { id: membership.id },
+          data: { status: 'pending' },
+        });
+      } else if (dto.mode === 'reask') {
+        await tx.agencyMembership.update({
+          where: { id: membership.id },
+          data: { status: 'pending' },
+        });
+        await tx.agencyClaim.upsert({
+          where: { agencyId_userId: { agencyId: membership.agencyId, userId } },
+          create: {
+            agencyId: membership.agencyId,
+            userId,
+            status: 'pending',
+            evidence: { signupPhone: user.phone },
+          },
+          update: { status: 'pending', rejectionReason: null, reviewedAt: null, reviewedById: null },
+        });
+        if (membership.agency.status === 'unclaimed') {
+          await tx.agency.update({
+            where: { id: membership.agencyId },
+            data: { status: 'pending', rejectionReason: null },
+          });
+        }
+      } else {
+        if (dto.claimAgencyId === membership.agencyId) {
+          throw new BadRequestException('צריך לבחור סוכנות אחרת.');
+        }
+        await this.leaveDeclinedAgency(tx, membership.id);
+        await this.openAgencyRequest(tx, user, dto);
+      }
+
+      return tx.user.findUniqueOrThrow({ where: { id: userId }, include: this.include });
+    });
+
+    this.logger.log(`Resubmitted agency for ${user.email} (${dto.mode})`);
+    return sanitizeUser(updated);
+  }
+
+  /**
+   * Drops the membership on an office the person is no longer asking for.
+   *
+   * The office itself stays. A scraped one goes back to the directory, and one they
+   * created stays rejected with nobody on it.
+   */
+  private async leaveDeclinedAgency(tx: Prisma.TransactionClient, membershipId: string): Promise<void> {
+    await tx.agencyMembership.delete({ where: { id: membershipId } });
+  }
+
+  /** The agency half of `attachAgency`, for an account that just left the previous one. */
+  private async openAgencyRequest(
+    tx: Prisma.TransactionClient,
+    user: { id: string; email: string; phone: string | null },
+    dto: ResubmitAgencyDto,
+  ): Promise<void> {
+    if (dto.claimAgencyId) {
+      const agency = await tx.agency.findUnique({ where: { id: dto.claimAgencyId } });
+      if (!agency || (agency.status !== 'unclaimed' && agency.status !== 'pending')) {
+        throw new BadRequestException('הסוכנות הזו אינה זמינה לשיוך.');
+      }
+
+      await tx.agencyMembership.create({
+        data: { userId: user.id, agencyId: agency.id, role: 'owner', status: 'pending' },
+      });
+      await tx.agencyClaim.upsert({
+        where: { agencyId_userId: { agencyId: agency.id, userId: user.id } },
+        create: {
+          agencyId: agency.id,
+          userId: user.id,
+          status: 'pending',
+          evidence: { signupPhone: user.phone },
+        },
+        update: { status: 'pending', rejectionReason: null, reviewedAt: null, reviewedById: null },
+      });
+      if (agency.status === 'unclaimed') {
+        await tx.agency.update({ where: { id: agency.id }, data: { status: 'pending' } });
+      }
+      return;
+    }
+
+    const name = dto.agencyName?.trim();
+    if (!name) throw new BadRequestException('צריך לבחור סוכנות קיימת או להזין שם סוכנות חדשה.');
+
+    const agency = await tx.agency.create({
+      data: { name, status: 'pending', contactEmail: user.email },
+    });
+    await tx.agencyMembership.create({
+      data: { userId: user.id, agencyId: agency.id, role: 'owner', status: 'pending' },
+    });
   }
 
   /**

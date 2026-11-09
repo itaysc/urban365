@@ -73,3 +73,18 @@ export async function attachAgency(input: AttachAgencyInput): Promise<AuthUser> 
   const { data } = await api.post<{ user: AuthUser }>('/auth/agency', input);
   return data.user;
 }
+
+export interface ResubmitAgencyInput {
+  mode: 'revise' | 'reask' | 'switch';
+  agencyName?: string;
+  claimAgencyId?: string;
+  phone?: string;
+  contactEmail?: string;
+  description?: string;
+}
+
+/** A turned-down request, sent again with corrected details or for a different office. */
+export async function resubmitAgency(input: ResubmitAgencyInput): Promise<AuthUser> {
+  const { data } = await api.post<{ user: AuthUser }>('/auth/agency/resubmit', input);
+  return data.user;
+}

@@ -1,4 +1,5 @@
 import { assertBootConfig } from './assert-boot-config.js';
+import { resubmitKind } from './resubmit-agency.js';
 import { normalizeEmail } from './normalize-email.js';
 import { can } from './permissions.js';
 import type { Principal } from './types/principal.js';
@@ -47,6 +48,28 @@ describe('permissions', () => {
 
   it('lets a platform admin through regardless of agency role', () => {
     expect(can(principal({ role: null, platformRole: 'admin' }), 'agency:manage')).toBe(true);
+  });
+});
+
+describe('resubmitKind', () => {
+  it('keeps a request that is still in the queue on the waiting page', () => {
+    expect(resubmitKind({ agencyStatus: 'pending', membershipStatus: 'pending', yad2Id: null })).toBe('waiting');
+  });
+
+  it('lets someone correct an agency they created after it was turned down', () => {
+    expect(resubmitKind({ agencyStatus: 'rejected', membershipStatus: 'suspended', yad2Id: null })).toBe('revise');
+  });
+
+  it('lets a turned-down claim ask again for the same office', () => {
+    expect(resubmitKind({ agencyStatus: 'unclaimed', membershipStatus: 'suspended', yad2Id: 'y1' })).toBe('reask');
+  });
+
+  it('sends a claim that lost to someone else towards a different office', () => {
+    expect(resubmitKind({ agencyStatus: 'active', membershipStatus: 'suspended', yad2Id: 'y1' })).toBe('switch');
+  });
+
+  it('leaves an office an admin suspended where it is', () => {
+    expect(resubmitKind({ agencyStatus: 'suspended', membershipStatus: 'active', yad2Id: null })).toBe('closed');
   });
 });
 

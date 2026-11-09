@@ -27,6 +27,7 @@ import { LoginDto } from './dto/login.dto.js';
 import { ForgotPasswordDto, ResetPasswordDto, VerifyEmailDto } from './dto/password.dto.js';
 import { SignupDto } from './dto/signup.dto.js';
 import { AttachAgencyDto } from './dto/attach-agency.dto.js';
+import { ResubmitAgencyDto } from './dto/resubmit-agency.dto.js';
 import type { Principal } from './types/principal.js';
 import { BuyerSignupDto } from '../buyer/dto/buyer.dto.js';
 import { GoogleService } from './google.service.js';
@@ -253,6 +254,16 @@ export class AuthController {
   @Post('agency')
   async attachAgency(@Body() dto: AttachAgencyDto, @CurrentUser() principal: Principal) {
     return { user: await this.auth.attachAgency(principal.userId, dto) };
+  }
+
+  /**
+   * A request that was turned down, sent again — with corrected details, or for a
+   * different office. The waiting page is where the person does this.
+   */
+  @Throttle(AUTH_THROTTLE)
+  @Post('agency/resubmit')
+  async resubmitAgency(@Body() dto: ResubmitAgencyDto, @CurrentUser() principal: Principal) {
+    return { user: await this.auth.resubmitAgency(principal.userId, dto) };
   }
 
   // ── Google ────────────────────────────────────────────────────────────────

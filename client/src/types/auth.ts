@@ -24,6 +24,12 @@ export interface AuthUser {
     status: AgencyStatus;
     role: AgencyRole;
     membershipStatus: MembershipStatus;
+    /** What they can do while the agency is not active. `waiting` is still in the queue. */
+    resubmit: 'waiting' | 'revise' | 'reask' | 'switch' | 'closed';
+    rejectionReason: string | null;
+    phone: string | null;
+    contactEmail: string | null;
+    description: string | null;
   } | null;
 }
 
