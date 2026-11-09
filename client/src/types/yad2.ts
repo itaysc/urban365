@@ -93,6 +93,8 @@ export interface Asset {
   agency?: {
     id: string;
     name: string;
+    slug: string | null;
+    logoUrl: string | null;
     licenseNumber: string | null;
     hasPhone: boolean;
   };

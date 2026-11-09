@@ -61,6 +61,15 @@ export interface Band {
  */
 export const MIN_BAND_SUPPORT = 3;
 
+/**
+ * Below this many listings a place is not offered to the index.
+ *
+ * Six is where a median starts to describe a market rather than a coincidence. The
+ * page can still be built for a reader who followed a link, but a city or a
+ * neighborhood under this line carries `noindex` and stays out of the sitemap.
+ */
+export const MIN_INDEXABLE = 6;
+
 /** The middle value, or the mean of the middle two. Null when there is nothing to take. */
 export function median(values: number[]): number | null {
   if (values.length === 0) return null;

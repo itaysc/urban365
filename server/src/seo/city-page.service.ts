@@ -6,7 +6,16 @@ import { PrismaService } from '../prisma/prisma.service.js';
 import type { Section } from '../yad2/yad2.types.js';
 import { Cached } from './cached.js';
 import { slugKey } from './city-slug.js';
-import { byNeighborhood, byPropertyType, byRooms, summarise, type Band, type StatRow, type Summary } from './stats.js';
+import {
+  byNeighborhood,
+  byPropertyType,
+  byRooms,
+  MIN_INDEXABLE,
+  summarise,
+  type Band,
+  type StatRow,
+  type Summary,
+} from './stats.js';
 
 /** Listings anybody can see: published, and still on the market. */
 const PUBLIC: Prisma.ListingWhereInput = {
@@ -77,8 +86,24 @@ export interface CityListing {
   coverImageUrl: string | null;
 }
 
+/** One neighborhood the sitemap may name. Spellings of the same place are already merged. */
+export interface NeighborhoodSitemapEntry {
+  city: string;
+  section: Section;
+  neighborhood: string;
+  count: number;
+  updatedAt: Date;
+}
+
 export interface CityPage {
   city: string;
+  /**
+   * Set on a neighborhood page, null on a city page.
+   *
+   * The spelling is the one carried by the most listings, the same rule the city
+   * directory uses, so two feeds writing the name differently still share one page.
+   */
+  neighborhood: string | null;
   section: Section;
   summary: Summary;
   rooms: Band[];
@@ -298,6 +323,7 @@ export class CityPageService {
 
     return {
       city: entry.city,
+      neighborhood: null,
       section,
       summary: summarise(stats),
       rooms: byRooms(stats),
@@ -310,6 +336,113 @@ export class CityPageService {
       district: await this.districtFor(entry.city),
       updatedAt: newest(rows.map((r) => r.lastSeenAt)),
     };
+  }
+
+  /**
+   * One neighborhood's page, or null when it does not clear the indexing bar.
+   *
+   * Under six listings there is no address: the name stays a row on the city page.
+   * Spellings collapse the way city slugs do, so `קרית-שרת` and `קרית שרת` are one page
+   * and the spelling more listings use is the one printed on it.
+   */
+  async neighborhood(citySlug: string, section: Section, neighborhoodSlug: string): Promise<CityPage | null> {
+    const entry = await this.resolve(citySlug);
+    if (!entry || entry.counts[section] === 0) return null;
+
+    const where = { ...PUBLIC, section, city: entry.city };
+    const rows = await this.prisma.listing.findMany({
+      where,
+      select: {
+        price: true,
+        squareMeter: true,
+        pricePerSquareMeter: true,
+        rooms: true,
+        propertyType: true,
+        neighborhood: true,
+        lastSeenAt: true,
+      },
+    });
+
+    const key = slugKey(neighborhoodSlug);
+    const matched = rows.filter((row) => row.neighborhood && slugKey(row.neighborhood) === key);
+    if (matched.length < MIN_INDEXABLE) return null;
+
+    const tally = new Map<string, number>();
+    for (const row of matched) {
+      const name = row.neighborhood as string;
+      tally.set(name, (tally.get(name) ?? 0) + 1);
+    }
+    const neighborhood = [...tally.entries()].sort((a, b) => b[1] - a[1])[0][0];
+
+    const listings = await this.prisma.listing.findMany({
+      where: { ...where, neighborhood: { in: [...tally.keys()] } },
+      orderBy: [{ listedAt: { sort: 'desc', nulls: 'last' } }, { firstSeenAt: 'desc' }],
+      take: LISTINGS_SHOWN,
+      select: {
+        id: true,
+        price: true,
+        lastPriceDropAmount: true,
+        lastPriceDropAt: true,
+        listedAt: true,
+        publishedAt: true,
+        rooms: true,
+        squareMeter: true,
+        floor: true,
+        street: true,
+        houseNumber: true,
+        neighborhood: true,
+        city: true,
+        propertyType: true,
+        coverImageUrl: true,
+      },
+    });
+
+    const stats: StatRow[] = matched;
+
+    return {
+      city: entry.city,
+      neighborhood,
+      section,
+      summary: summarise(stats),
+      rooms: byRooms(stats),
+      types: byPropertyType(stats),
+      // One neighborhood has no breakdown of itself. The city page is where the
+      // other neighborhoods are listed.
+      neighborhoods: [],
+      listings,
+      otherSections: (Object.entries(entry.counts) as [Section, number][])
+        .filter(([other, count]) => other !== section && count > 0)
+        .map(([other, count]) => ({ section: other, count })),
+      district: await this.districtFor(entry.city),
+      updatedAt: newest(matched.map((row) => row.lastSeenAt)),
+    };
+  }
+
+  /**
+   * Every neighborhood a sitemap may offer: six listings or more, one spelling each.
+   */
+  async neighborhoodsForSitemap(): Promise<NeighborhoodSitemapEntry[]> {
+    const groups = await this.prisma.listing.groupBy({
+      by: ['city', 'section', 'neighborhood'],
+      where: { ...PUBLIC, city: { not: null }, neighborhood: { not: null } },
+      _count: { _all: true },
+      _max: { lastSeenAt: true },
+    });
+
+    return collapseNeighborhoods(
+      groups.flatMap((group) => {
+        if (!group.city || !group.neighborhood?.trim()) return [];
+        return [
+          {
+            city: group.city,
+            section: group.section,
+            neighborhood: group.neighborhood,
+            count: group._count._all,
+            updatedAt: group._max.lastSeenAt,
+          },
+        ];
+      }),
+    ).filter((group) => group.count >= MIN_INDEXABLE);
   }
 
   /**
@@ -443,6 +576,60 @@ export class CityPageService {
     return rows.map((row) => ({ name: row.name, members: row.memberCities }));
   }
 }
+
+/**
+ * Two spellings of one neighborhood, in one city and one section, become one row.
+ *
+ * The spelling with more listings wins, on the same grounds as the city directory:
+ * it is the one more people have seen. A blank name is not a neighborhood.
+ */
+export function collapseNeighborhoods(
+  groups: {
+    city: string;
+    section: Section;
+    neighborhood: string;
+    count: number;
+    updatedAt: Date | null;
+  }[],
+): NeighborhoodSitemapEntry[] {
+  const merged = new Map<
+    string,
+    NeighborhoodSitemapEntry & { cityTally: Map<string, number>; nameTally: Map<string, number> }
+  >();
+
+  for (const group of groups) {
+    const neighborhood = group.neighborhood.trim();
+    if (!neighborhood) continue;
+
+    const key = `${cityKey(group.city)}\0${group.section}\0${cityKey(neighborhood)}`;
+    const found = merged.get(key) ?? {
+      city: group.city,
+      section: group.section,
+      neighborhood,
+      count: 0,
+      updatedAt: new Date(0),
+      cityTally: new Map<string, number>(),
+      nameTally: new Map<string, number>(),
+    };
+
+    found.count += group.count;
+    if (group.updatedAt && group.updatedAt > found.updatedAt) found.updatedAt = group.updatedAt;
+    found.cityTally.set(group.city, (found.cityTally.get(group.city) ?? 0) + group.count);
+    found.nameTally.set(neighborhood, (found.nameTally.get(neighborhood) ?? 0) + group.count);
+    merged.set(key, found);
+  }
+
+  return [...merged.values()].map((group) => ({
+    city: majority(group.cityTally),
+    section: group.section,
+    neighborhood: majority(group.nameTally),
+    count: group.count,
+    updatedAt: group.updatedAt,
+  }));
+}
+
+const majority = (tally: Map<string, number>) =>
+  [...tally.entries()].sort((a, b) => b[1] - a[1])[0][0];
 
 const total = (entry: CityEntry) =>
   entry.counts.forsale + entry.counts.rent + entry.counts.commercial;

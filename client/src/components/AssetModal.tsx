@@ -1,3 +1,5 @@
+import { Link } from 'react-router-dom';
+import { Building2 } from 'lucide-react';
 import { useAuth } from '@/auth/auth-context';
 import { useYad2Visible } from '@/hooks/useYad2Visible';
 import { EnquiryForm } from '@/components/EnquiryForm';
@@ -10,6 +12,7 @@ import { DetailGrid, type Detail } from '@/components/DetailGrid';
 import { MortgageTeaser } from '@/components/MortgageTeaser';
 import { EXCLUSIVE_LABEL, isExclusiveAsset } from '@/lib/exclusivity';
 import { formatAddress, formatDate, formatPrice, formatShekel } from '@/lib/format';
+import { agencyPublicPath } from '@/services/publicAgencies';
 import type { Asset } from '@/types/yad2';
 
 /** The `dealType` of a purchase, as the server's own subcategory map spells it. */
@@ -112,10 +115,27 @@ export function AssetModal({ asset, onClose }: { asset: Asset; onClose: () => vo
               </span>
             )}
 
-            <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <h2 className="text-2xl font-bold text-slate-900">{formatPrice(asset.price)}</h2>
-              {asset.priceBeforeDrop && (
-                <span className="text-slate-500 line-through">{formatPrice(asset.priceBeforeDrop)}</span>
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex flex-wrap items-baseline gap-2">
+                <h2 className="text-2xl font-bold text-slate-900">{formatPrice(asset.price)}</h2>
+                {asset.priceBeforeDrop && (
+                  <span className="text-slate-500 line-through">{formatPrice(asset.priceBeforeDrop)}</span>
+                )}
+              </div>
+              {asset.agency && (
+                <Link
+                  to={agencyPublicPath(asset.agency)}
+                  className="flex min-w-0 items-center gap-2 text-slate-700 transition hover:text-slate-900"
+                >
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-slate-200 bg-white">
+                    {asset.agency.logoUrl ? (
+                      <img src={asset.agency.logoUrl} alt="" className="h-full w-full object-contain" />
+                    ) : (
+                      <Building2 className="h-5 w-5 text-slate-400" aria-hidden />
+                    )}
+                  </span>
+                  <span className="truncate text-sm font-medium">{asset.agency.name}</span>
+                </Link>
               )}
             </div>
             <p className="mt-1 text-lg text-slate-800">

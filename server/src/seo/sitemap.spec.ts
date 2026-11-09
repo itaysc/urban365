@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { CityEntry } from './city-page.service.js';
+import { collapseNeighborhoods, type CityEntry } from './city-page.service.js';
 import { MIN_INDEXABLE } from './render-city.js';
 import {
   robotsTxt,
@@ -86,6 +86,37 @@ describe('robotsTxt', () => {
   });
 });
 
+describe('collapseNeighborhoods', () => {
+  it('merges two spellings of one neighborhood onto the majority spelling', () => {
+    const merged = collapseNeighborhoods([
+      {
+        city: 'תל אביב יפו',
+        section: 'forsale',
+        neighborhood: 'פלורנטין',
+        count: 4,
+        updatedAt: new Date('2026-10-01T00:00:00Z'),
+      },
+      {
+        city: 'תל-אביב יפו',
+        section: 'forsale',
+        neighborhood: 'פלורנטין ',
+        count: 3,
+        updatedAt: new Date('2026-11-01T00:00:00Z'),
+      },
+    ]);
+
+    expect(merged).toEqual([
+      {
+        city: 'תל אביב יפו',
+        section: 'forsale',
+        neighborhood: 'פלורנטין',
+        count: 7,
+        updatedAt: new Date('2026-11-01T00:00:00Z'),
+      },
+    ]);
+  });
+});
+
 describe('sitemapCitiesXml', () => {
   it('always offers the home page and the city index', () => {
     const xml = sitemapCitiesXml([], APP);
@@ -127,6 +158,23 @@ describe('sitemapCitiesXml', () => {
 
     expect(big).toContain('<priority>0.8</priority>');
     expect(small).toContain('<priority>0.5</priority>');
+  });
+
+  it('offers a neighborhood once it has enough listings, and not before', () => {
+    const when = new Date('2026-10-29T11:00:00Z');
+    const xml = sitemapCitiesXml(
+      [entry('חולון', { forsale: 20 })],
+      APP,
+      [
+        { city: 'חולון', section: 'forsale', neighborhood: 'קרית שרת', count: MIN_INDEXABLE, updatedAt: when },
+        { city: 'חולון', section: 'forsale', neighborhood: 'נווה רמז', count: MIN_INDEXABLE - 1, updatedAt: when },
+      ],
+    );
+
+    expect(xml).toContain(
+      `/nadlan/forsale/${encodeURIComponent('חולון')}/${encodeURIComponent('קרית-שרת')}`,
+    );
+    expect(xml).not.toContain(encodeURIComponent('נווה-רמז'));
   });
 
   it('hyphenates a two-word city into one slug', () => {

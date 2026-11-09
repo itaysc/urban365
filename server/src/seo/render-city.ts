@@ -1,5 +1,5 @@
 import type { Section } from '../yad2/yad2.types.js';
-import type { Band, Summary } from './stats.js';
+import { MIN_INDEXABLE, type Band, type Summary } from './stats.js';
 import type { CityListing, CityPage } from './city-page.service.js';
 import { toSlug } from './city-slug.js';
 import { badgesFor } from './badges.js';
@@ -64,8 +64,11 @@ const VOICE: Record<Section, Voice> = {
  * find what we have, and the links on it are still worth crawling — but it carries
  * `noindex` and stays out of the sitemap, because a thousand near-empty pages is the
  * definition of the doorway pattern search engines demote whole sites for.
+ *
+ * The number lives in `stats.ts`, next to the smaller floor a table row uses, so the
+ * sitemap and the neighborhood pages can share it without importing this file.
  */
-export const MIN_INDEXABLE = 6;
+export { MIN_INDEXABLE };
 
 /**
  * `['א','ב','ג']` → `א, ב וג`, which is how a Hebrew sentence ends a list.
@@ -94,6 +97,16 @@ function searchUrl(appUrl: string, section: Section, city: string, extra: Record
 
 const pageUrl = (section: Section, city: string) => `/nadlan/${section}/${encodeURIComponent(toSlug(city))}`;
 
+/** The neighborhood page: the city page, filtered to one neighborhood. */
+export function neighborhoodUrl(section: Section, city: string, neighborhood: string): string {
+  return `${pageUrl(section, city)}/${encodeURIComponent(toSlug(neighborhood))}`;
+}
+
+/** "פלורנטין, תל אביב" on a neighborhood page, and the city alone on a city page. */
+function place(data: CityPage): string {
+  return data.neighborhood ? `${data.neighborhood}, ${data.city}` : data.city;
+}
+
 /**
  * The city's own photograph, with the heading on it.
  *
@@ -121,7 +134,7 @@ function lede(data: CityPage): string {
   const voice = VOICE[data.section];
   const { summary } = data;
 
-  const parts = [`${properties(summary.count)} ${voice.offered} ב${data.city}.`];
+  const parts = [`${properties(summary.count)} ${voice.offered} ב${place(data)}.`];
 
   if (summary.medianPrice !== null) {
     parts.push(
@@ -304,13 +317,21 @@ ${
 export function renderCityPage(data: CityPage, appUrl: string, links = ''): string {
   const voice = VOICE[data.section];
   const { summary } = data;
-  const heading = `${voice.heading} ב${data.city}`;
-  const canonical = `${appUrl}${pageUrl(data.section, data.city)}`;
+  const here = place(data);
+  const heading = `${voice.heading} ב${here}`;
+  const canonical = `${appUrl}${
+    data.neighborhood
+      ? neighborhoodUrl(data.section, data.city, data.neighborhood)
+      : pageUrl(data.section, data.city)
+  }`;
 
   const trail = breadcrumbs(
     [
       { name: 'ערים', href: '/nadlan' },
       { name: data.city, href: pageUrl(data.section, data.city) },
+      ...(data.neighborhood
+        ? [{ name: data.neighborhood, href: neighborhoodUrl(data.section, data.city, data.neighborhood) }]
+        : []),
     ],
     canonical,
   );
@@ -333,7 +354,7 @@ export function renderCityPage(data: CityPage, appUrl: string, links = ''): stri
   ].filter((part): part is string => part !== null);
 
   const described = [
-    `${properties(summary.count)} ${voice.suffix} ב${data.city}.`,
+    `${properties(summary.count)} ${voice.suffix} ב${here}.`,
     summary.medianPrice !== null
       ? `מחיר חציוני ${money(summary.medianPrice, voice.perMonth)}` +
         (summary.medianPricePerSqm !== null
@@ -369,7 +390,7 @@ export function renderCityPage(data: CityPage, appUrl: string, links = ''): stri
     : '';
 
   const listings = data.listings.length
-    ? `<h2>${esc(`${voice.noun} ב${data.city}`)}</h2>
+    ? `<h2>${esc(`${voice.noun} ב${here}`)}</h2>
 <p class="note">${esc(
         data.listings.length < summary.count
           ? `${number(data.listings.length)} מתוך ${number(summary.count)} הנכסים, החדשים ביותר תחילה.`
@@ -383,12 +404,17 @@ ${cover(data.city, heading)}
 <p class="lede">${esc(lede(data))}</p>
 ${figures(data)}
 ${whatTheFiguresMean(summary)}
-<a class="cta" href="${esc(searchUrl(appUrl, data.section, data.city))}">${esc(
-    `לחיפוש ${voice.noun} ב${data.city}`,
-  )}</a>
+<a class="cta" href="${esc(
+    searchUrl(
+      appUrl,
+      data.section,
+      data.city,
+      data.neighborhood ? { neighborhood: data.neighborhood } : {},
+    ),
+  )}">${esc(`לחיפוש ${voice.noun} ב${here}`)}</a>
 ${sections}
 ${bandTable(data.rooms, {
-  heading: `מחירים לפי מספר חדרים ב${data.city}`,
+  heading: `מחירים לפי מספר חדרים ב${here}`,
   caption: 'חציון לכל גודל דירה, מתוך הנכסים שמוצעים כרגע. גדלים עם פחות משלושה נכסים אינם מוצגים.',
   column: 'חדרים',
   total: summary.count,
@@ -405,10 +431,13 @@ ${bandTable(data.neighborhoods, {
   total: summary.count,
   perMonth: voice.perMonth,
   sqmLabel: voice.sqmLabel,
-  hrefFor: (band) => searchUrl(appUrl, data.section, data.city, { neighborhood: band.label }),
+  hrefFor: (band) =>
+    band.count >= MIN_INDEXABLE
+      ? neighborhoodUrl(data.section, data.city, band.label)
+      : searchUrl(appUrl, data.section, data.city, { neighborhood: band.label }),
 })}
 ${bandTable(data.types, {
-  heading: `מחירים לפי סוג נכס ב${data.city}`,
+  heading: `מחירים לפי סוג נכס ב${here}`,
   caption: 'חציון לכל סוג נכס, מתוך הנכסים שמוצעים כרגע.',
   column: 'סוג נכס',
   total: summary.count,

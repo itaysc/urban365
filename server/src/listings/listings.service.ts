@@ -509,7 +509,9 @@ export class ListingsService {
         AND: [FROM_A_VISIBLE_AGENCY],
         OR: [{ id }, { token: id }],
       },
-      include: { agency: { select: { id: true, name: true, licenseNumber: true, phone: true } } },
+      include: {
+        agency: { select: { id: true, name: true, licenseNumber: true, phone: true, logoUrl: true, slug: true } },
+      },
     });
     if (!row) return null;
 
@@ -525,6 +527,8 @@ export class ListingsService {
       agency: row.agency && {
         id: row.agency.id,
         name: row.agency.name,
+        slug: row.agency.slug,
+        logoUrl: row.agency.logoUrl,
         licenseNumber: row.agency.licenseNumber,
         // Deliberately NOT the number. It is fetched on demand from `phoneFor` below,
         // so a scraper reading this payload gets nothing to dial — which is the whole

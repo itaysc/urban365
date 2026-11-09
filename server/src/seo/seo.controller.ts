@@ -178,7 +178,11 @@ export class SeoController {
   @Header('Content-Type', 'application/xml; charset=utf-8')
   @Header('Cache-Control', CACHE)
   async sitemapCities(): Promise<string> {
-    return sitemapCitiesXml(await this.cities.cities(), this.appUrl);
+    const [cities, neighborhoods] = await Promise.all([
+      this.cities.cities(),
+      this.cities.neighborhoodsForSitemap(),
+    ]);
+    return sitemapCitiesXml(cities, this.appUrl, neighborhoods);
   }
 
   /** The blog index and every article. Its own file, listed from the sitemap index. */
@@ -371,6 +375,42 @@ export class SeoController {
           await this.missing(
             'אין נכסים להצגה',
             'לא מצאנו נכסים בקטגוריה הזו בעיר הזו. ייתכן שהם נמכרו, וייתכן שהעיר נכתבת אצלנו אחרת.',
+          ),
+        );
+      return;
+    }
+
+    res.set('Cache-Control', CACHE).send(renderCityPage(data, this.appUrl, await this.footer()));
+  }
+
+  /**
+   * A neighborhood, rendered like the city it sits in.
+   *
+   * Declared after the city route so a two-segment path stays a city. Under six
+   * listings the address does not exist: the name remains a row on the city page.
+   */
+  @Get('nadlan/:section/:city/:neighborhood')
+  async neighborhood(
+    @Param('section') section: string,
+    @Param('city') city: string,
+    @Param('neighborhood') neighborhood: string,
+    @Res() res: Response,
+  ): Promise<void> {
+    res.type('text/html; charset=utf-8');
+
+    if (!isSection(section)) {
+      res.status(404).send(await this.missing('הדף לא נמצא', 'הקישור מפנה לקטגוריה שלא קיימת.'));
+      return;
+    }
+
+    const data = await this.cities.neighborhood(city, section, neighborhood);
+    if (!data) {
+      res
+        .status(404)
+        .send(
+          await this.missing(
+            'אין נכסים להצגה',
+            'לא מצאנו מספיק נכסים בשכונה הזו. ייתכן שהשם נכתב אחרת, או שיש בה פחות מדי נכסים לדף משלה.',
           ),
         );
       return;

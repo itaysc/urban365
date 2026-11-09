@@ -1,9 +1,9 @@
 import { SECTIONS } from '../yad2/yad2.types.js';
 import { BLOG_POSTS, BLOG_PUBLISHED, blogPath } from './blog.js';
-import type { CityEntry } from './city-page.service.js';
+import type { CityEntry, NeighborhoodSitemapEntry } from './city-page.service.js';
 import { toSlug } from './city-slug.js';
 import { listingPath } from './listing-slug.js';
-import { MIN_INDEXABLE } from './render-city.js';
+import { MIN_INDEXABLE, neighborhoodUrl } from './render-city.js';
 
 /**
  * Listings per sitemap file.
@@ -164,7 +164,11 @@ ${body}
  * The two have to agree: a sitemap that offers a page the page itself asks not to index
  * is a contradiction, and the crawler resolves it by trusting neither.
  */
-export function sitemapCitiesXml(entries: CityEntry[], appUrl: string): string {
+export function sitemapCitiesXml(
+  entries: CityEntry[],
+  appUrl: string,
+  neighborhoods: NeighborhoodSitemapEntry[] = [],
+): string {
   const urls: Url[] = [
     { loc: `${appUrl}/`, changefreq: 'daily', priority: '1.0' },
     { loc: `${appUrl}/nadlan`, changefreq: 'daily', priority: '0.9' },
@@ -182,6 +186,19 @@ export function sitemapCitiesXml(entries: CityEntry[], appUrl: string): string {
         priority: priorityFor(entry.counts[section]),
       });
     }
+  }
+
+  // A neighborhood is the same offer as a city, one step down: its own address only
+  // once it has enough listings that the median describes the place.
+  for (const neighborhood of neighborhoods) {
+    if (neighborhood.count < MIN_INDEXABLE) continue;
+
+    urls.push({
+      loc: `${appUrl}${neighborhoodUrl(neighborhood.section, neighborhood.city, neighborhood.neighborhood)}`,
+      lastmod: neighborhood.updatedAt,
+      changefreq: 'daily',
+      priority: priorityFor(neighborhood.count),
+    });
   }
 
   return urlset(urls);

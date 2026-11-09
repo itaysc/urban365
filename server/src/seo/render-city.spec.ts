@@ -27,6 +27,7 @@ function build(rows: StatRow[], over: Partial<CityPage> = {}): CityPage {
     listings: [],
     otherSections: [],
     district: null,
+    neighborhood: null,
     updatedAt: new Date('2026-11-01T00:00:00Z'),
     ...over,
   };
@@ -203,6 +204,35 @@ describe('renderCityPage', () => {
 
   it('states that the prices are asking prices', () => {
     expect(renderCityPage(build(healthy()), APP)).toContain('ולא ממחירי עסקאות שנסגרו');
+  });
+
+  it('gives a neighborhood its own address once it has enough listings', () => {
+    const rows = [
+      ...Array.from({ length: MIN_INDEXABLE }, () => stat({ neighborhood: 'קרית שרת' })),
+      ...Array.from({ length: 3 }, () => stat({ neighborhood: 'נווה רמז', price: 1_500_000 })),
+    ];
+    const html = renderCityPage(build(rows), APP);
+
+    expect(html).toContain(
+      `/nadlan/forsale/${encodeURIComponent('חולון')}/${encodeURIComponent('קרית-שרת')}`,
+    );
+    // Under six it stays a search, because that address would be a 404.
+    expect(html).not.toContain(encodeURIComponent('נווה-רמז'));
+    expect(html).toContain('neighborhood=');
+  });
+
+  it('names the neighborhood in the title, and points the canonical at its own address', () => {
+    const html = renderCityPage(
+      build(healthy(), { neighborhood: 'קרית שרת', neighborhoods: [] }),
+      APP,
+    );
+
+    expect(html).toContain('<title>נדל״ן למכירה בקרית שרת, חולון — מחירים ונכסים | Urban365</title>');
+    expect(html).toContain('<h1>נדל״ן למכירה בקרית שרת, חולון</h1>');
+    expect(html).toContain(
+      `<link rel="canonical" href="${APP}/nadlan/forsale/${encodeURIComponent('חולון')}/${encodeURIComponent('קרית-שרת')}">`,
+    );
+    expect(html).toContain('content="index,follow"');
   });
 
   it('builds a page for a city where nothing carries a price', () => {
