@@ -304,7 +304,11 @@ export class MyListingsService {
 
     await this.prisma.client.listing.update({
       where: { id: listingId },
-      data: { coverImageUrl: images[0]?.url ?? null, imagesCount: images.length },
+      data: {
+        coverImageUrl: images[0]?.url ?? null,
+        imagesCount: images.length,
+        imageUrls: images.map((image) => image.url),
+      },
     });
   }
 

@@ -529,6 +529,7 @@ export class ListingsService {
       },
       include: {
         agency: { select: { id: true, name: true, licenseNumber: true, phone: true, logoUrl: true, slug: true } },
+        images: { orderBy: { position: 'asc' }, select: { url: true } },
       },
     });
     if (!row) return null;
@@ -537,8 +538,14 @@ export class ListingsService {
     // written back, so the next reader — and the search map — gets it for free.
     const located = row.latitude === null ? await this.backfillLocation(row) : row;
 
+    // Photos uploaded here live on ListingImage. `imageUrls` is the scraped feed, and a
+    // listing typed in here has none, so the gallery would open empty while the card
+    // still shows the cover.
+    const uploaded = located.images.map((image) => image.url).filter((url) => url.length > 0);
+
     return {
       ...listingRowToAsset(located),
+      ...(uploaded.length > 0 ? { imageUrls: uploaded } : {}),
       savedCount: row.savedCount,
       section: row.section,
       // Null for a private seller. The client shows who is selling from `seller` below

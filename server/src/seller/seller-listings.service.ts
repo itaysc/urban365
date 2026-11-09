@@ -347,6 +347,7 @@ export class SellerListingsService {
       data: {
         imagesCount: images.length,
         coverImageUrl: images[0]?.url ?? null,
+        imageUrls: images.map((image) => image.url),
       },
     });
   }
