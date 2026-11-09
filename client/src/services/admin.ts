@@ -1,5 +1,5 @@
 import { api } from '@/services/api';
-import type { AuthUser } from '@/types/auth';
+import type { AgencyVertical, AuthUser } from '@/types/auth';
 
 export interface PendingClaim {
   id: string;
@@ -73,6 +73,9 @@ export interface ManagedUser {
   publishedCount: number;
   role: ManagedUserRole;
   agencyName: string | null;
+  agencyId: string | null;
+  /** Which CRM shell that office sees. Null along with `agencyName` when there is none. */
+  agencyVertical: AgencyVertical | null;
 }
 
 export async function fetchUsers(q: string): Promise<ManagedUser[]> {
@@ -84,6 +87,11 @@ export async function fetchUsers(q: string): Promise<ManagedUser[]> {
 
 export const setUserRole = (userId: string, role: ManagedUserRole) =>
   api.post(`/admin/moderation/users/${userId}/role`, { role });
+
+/** Reclassifies the office this account belongs to — nav items and case types, not a
+ *  permission, so unlike `setUserRole` this signs nobody out. */
+export const setAgencyVertical = (agencyId: string, vertical: AgencyVertical) =>
+  api.post(`/admin/moderation/agencies/${agencyId}/vertical`, { vertical });
 
 export const disableUser = (userId: string) => api.post(`/admin/moderation/users/${userId}/disable`);
 

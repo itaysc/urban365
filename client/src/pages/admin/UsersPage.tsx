@@ -11,15 +11,22 @@ import {
   disableUser,
   enableUser,
   fetchUsers,
+  setAgencyVertical,
   setUserRole,
   type ManagedUser,
   type ManagedUserRole,
 } from '@/services/admin';
+import type { AgencyVertical } from '@/types/auth';
 
 const ROLE_LABEL: Record<ManagedUserRole, string> = {
   buyer: 'משתמש רגיל',
   agency: 'סוכנות',
   admin: 'מנהל',
+};
+
+const VERTICAL_LABEL: Record<AgencyVertical, string> = {
+  real_estate: 'נדל״ן',
+  mortgage_broker: 'משכנתאות',
 };
 
 type Pending =
@@ -82,7 +89,8 @@ export function UsersPage() {
       <div>
         <h2 className="text-xl font-bold text-slate-900">משתמשים</h2>
         <p className="mt-1 text-sm text-slate-500">
-          אפשר לשנות חשבון למשתמש רגיל, לסוכנות או למנהל. השבתה מונעת כניסה ומסתירה נכסים שהאדם פרסם בעצמו.
+          אפשר לשנות חשבון למשתמש רגיל, לסוכנות או למנהל, ולסוכנות — גם את סוג העסק (נדל״ן או משכנתאות).
+          השבתה מונעת כניסה ומסתירה נכסים שהאדם פרסם בעצמו.
         </p>
       </div>
 
@@ -133,6 +141,7 @@ export function UsersPage() {
               <p className="text-xs text-slate-500">
                 {ROLE_LABEL[person.role]}
                 {person.agencyName ? ` · ${person.agencyName}` : ''}
+                {person.agencyVertical ? ` · ${VERTICAL_LABEL[person.agencyVertical]}` : ''}
                 {person.disabled ? ' · מושבת' : ''}
                 {!person.emailVerified ? ' · אימייל לא אומת' : ''}
                 {` · הצטרף ${formatDate(person.createdAt)}`}
@@ -157,6 +166,26 @@ export function UsersPage() {
                   </option>
                 ))}
               </select>
+              {person.role === 'agency' && person.agencyId && person.agencyVertical && (
+                <select
+                  aria-label={`סוג העסק של ${person.agencyName}`}
+                  className={selectClass}
+                  value={person.agencyVertical}
+                  disabled={busy !== null}
+                  onChange={(event) => {
+                    const vertical = event.target.value as AgencyVertical;
+                    if (vertical !== person.agencyVertical) {
+                      void run(person.id, () => setAgencyVertical(person.agencyId!, vertical));
+                    }
+                  }}
+                >
+                  {(Object.keys(VERTICAL_LABEL) as AgencyVertical[]).map((v) => (
+                    <option key={v} value={v}>
+                      {VERTICAL_LABEL[v]}
+                    </option>
+                  ))}
+                </select>
+              )}
               {person.disabled ? (
                 <Button
                   variant="secondary"

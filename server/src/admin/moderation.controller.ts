@@ -1,6 +1,7 @@
 import { Body, Controller, Get, HttpCode, Param, Post, Query } from '@nestjs/common';
 import { IsIn, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
 import type { ManagedUserRole } from './moderation.service.js';
+import { AGENCY_VERTICALS, type AgencyVerticalValue } from '../auth/agency-vertical.js';
 import { CurrentUser } from '../auth/decorators/current-user.decorator.js';
 import { PlatformAdmin } from '../auth/decorators/roles.decorator.js';
 import type { Principal } from '../auth/types/principal.js';
@@ -18,6 +19,11 @@ class RejectDto {
 class SetRoleDto {
   @IsIn(['buyer', 'agency', 'admin'])
   role!: ManagedUserRole;
+}
+
+class SetVerticalDto {
+  @IsIn(AGENCY_VERTICALS)
+  vertical!: AgencyVerticalValue;
 }
 
 class RejectListingDto {
@@ -86,6 +92,12 @@ export class ModerationController {
   @Get('agencies/directory')
   directory(@Query('q') q?: string) {
     return this.moderation.directory(q);
+  }
+
+  @HttpCode(204)
+  @Post('agencies/:id/vertical')
+  async setVertical(@Param('id') id: string, @Body() dto: SetVerticalDto, @CurrentUser() admin: Principal) {
+    await this.moderation.setAgencyVertical(id, admin.userId, dto.vertical);
   }
 
   @HttpCode(204)

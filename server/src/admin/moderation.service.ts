@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import type { AgencyVerticalValue } from '../auth/agency-vertical.js';
 import { MailService } from '../mail/mail.service.js';
 import { claimDecisionTemplate } from '../mail/templates.js';
 import { PrismaService } from '../prisma/prisma.service.js';
@@ -28,6 +29,9 @@ export interface ManagedUser {
   role: ManagedUserRole;
   /** The office they currently belong to, when they have one. */
   agencyName: string | null;
+  agencyId: string | null;
+  /** Which CRM shell that office sees. Null along with `agencyName` when there is none. */
+  agencyVertical: string | null;
 }
 
 export interface PendingAgency {
@@ -270,6 +274,25 @@ export class ModerationService {
   }
 
   /**
+   * Reclassifies an office between the real-estate and mortgage-broker CRM shells.
+   *
+   * Unlike `setRole`, this signs nobody out and resets no session: the vertical only
+   * decides which nav items and case types an agency sees, not what it is allowed to
+   * do, so there is nothing a stale token would get wrong by not knowing it yet. Data
+   * from the old vertical — listings for an office switched to mortgage, mortgage
+   * cases for one switched back — is left exactly as it is; this moves the sign on
+   * the door, not the filing cabinets behind it.
+   */
+  async setAgencyVertical(agencyId: string, adminId: string, vertical: AgencyVerticalValue): Promise<void> {
+    const agency = await this.prisma.agency.findUnique({ where: { id: agencyId } });
+    if (!agency) throw new NotFoundException('הסוכנות לא נמצאה.');
+    if (agency.vertical === vertical) return;
+
+    await this.prisma.agency.update({ where: { id: agencyId }, data: { vertical } });
+    this.logger.log(`Agency ${agencyId} set to vertical ${vertical} by ${adminId}`);
+  }
+
+  /**
    * The agency leaves the site. Its listings are marked removed rather than deleted,
    * which is what keeps them out of search, and the people in it lose the agency on
    * their next sign-in.
@@ -366,7 +389,7 @@ export class ModerationService {
         memberships: {
           where: { status: 'active' },
           take: 1,
-          select: { agency: { select: { name: true } } },
+          select: { agency: { select: { id: true, name: true, vertical: true } } },
         },
         _count: {
           select: { createdListings: { where: { status: 'published', agencyId: null } } },
@@ -387,6 +410,8 @@ export class ModerationService {
       publishedCount: person._count.createdListings,
       role: roleOf(person),
       agencyName: person.memberships[0]?.agency.name ?? null,
+      agencyId: person.memberships[0]?.agency.id ?? null,
+      agencyVertical: person.memberships[0]?.agency.vertical ?? null,
     }));
   }
 
