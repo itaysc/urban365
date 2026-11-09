@@ -565,6 +565,7 @@ model User {
   valuations            Valuation[]
   platformInvitesSent   PlatformInvite[]
   assignedMortgageCases MortgageCase[]         @relation("MortgageCaseAssignee")
+  impersonatedSessions  Session[]              @relation("SessionImpersonation")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -791,6 +792,12 @@ model Session {
 
   ip         String?
   userAgent  String?
+
+  /// Set while an admin is using this session as somebody else. The refresh token
+  /// stays the admin's; only the access token is rewritten to the other account.
+  impersonating   User?   @relation("SessionImpersonation", fields: [impersonatingUserId], references: [id], onDelete: SetNull)
+  impersonatingUserId String?
+
   lastUsedAt DateTime @default(now())
   createdAt  DateTime @default(now())
 

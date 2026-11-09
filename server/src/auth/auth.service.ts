@@ -3,6 +3,7 @@ import {
   ForbiddenException,
   Injectable,
   Logger,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -39,6 +40,8 @@ export interface AuthResult {
   user: PublicUser;
   accessToken: string;
   refreshToken: string;
+  /** The access token belongs to somebody the admin is acting as. */
+  impersonating?: boolean;
 }
 
 interface RequestMeta {
@@ -75,7 +78,7 @@ export class AuthService {
     },
   } as const;
 
-  private claimsFor(user: UserWithMembership): AccessTokenClaims {
+  private claimsFor(user: UserWithMembership, impersonatedBy?: string): AccessTokenClaims {
     // Only an *active* membership grants an agency; a pending claim must not.
     const active = user.memberships.find((m) => m.status === 'active');
 
@@ -86,6 +89,7 @@ export class AuthService {
       role: active?.role ?? null,
       platformRole: user.platformRole,
       sessionEpoch: user.sessionEpoch,
+      ...(impersonatedBy ? { isImpersonation: true, impersonatedBy } : {}),
     };
   }
 
@@ -637,11 +641,96 @@ export class AuthService {
 
     if (!user || user.disabledAt) throw new UnauthorizedException('ההתחברות פגה. יש להתחבר מחדש.');
 
+    const acting = await this.actingAs(rotated.session.id, rotated.session.impersonatingUserId, user.id);
     return {
-      user: sanitizeUser(user),
-      accessToken: this.tokens.signAccessToken(this.claimsFor(user)),
+      user: sanitizeUser(acting.user),
+      accessToken: this.tokens.signAccessToken(this.claimsFor(acting.user, acting.impersonatedBy)),
       refreshToken: rotated.token,
+      impersonating: acting.impersonatedBy !== undefined,
     };
+  }
+
+  /**
+   * An admin's session starts acting as `targetId`. The refresh token stays the
+   * admin's, so ending it is a return rather than a second login.
+   */
+  async startImpersonation(admin: { userId: string; platformRole: string | null; isImpersonation?: boolean }, targetId: string, presented: string): Promise<AuthResult> {
+    if (admin.platformRole !== 'admin' || admin.isImpersonation) {
+      throw new ForbiddenException('נדרשת הרשאת מנהל מערכת.');
+    }
+
+    const session = await this.liveSession(presented);
+    if (session.userId !== admin.userId) {
+      throw new ForbiddenException('נדרשת הרשאת מנהל מערכת.');
+    }
+    if (targetId === admin.userId) throw new BadRequestException('אי אפשר להתחזות לעצמך.');
+
+    const target = await this.prisma.user.findUnique({ where: { id: targetId }, include: this.include });
+    if (!target) throw new NotFoundException('המשתמש לא נמצא.');
+    if (target.disabledAt) throw new BadRequestException('החשבון מושבת.');
+
+    await this.sessions.setImpersonation(session.id, target.id);
+    this.logger.warn(`Admin ${admin.userId} started impersonating ${target.id}`);
+
+    return {
+      user: sanitizeUser(target),
+      accessToken: this.tokens.signAccessToken(this.claimsFor(target, admin.userId)),
+      refreshToken: presented,
+      impersonating: true,
+    };
+  }
+
+  /** Back to the admin who started it. */
+  async stopImpersonation(principal: { userId: string; isImpersonation?: boolean; impersonatedBy?: string }, presented: string): Promise<AuthResult> {
+    if (!principal.isImpersonation || !principal.impersonatedBy) {
+      throw new BadRequestException('אין התחזות פעילה.');
+    }
+
+    const session = await this.liveSession(presented);
+    if (session.userId !== principal.impersonatedBy || session.impersonatingUserId !== principal.userId) {
+      throw new ForbiddenException('אין התחזות פעילה.');
+    }
+
+    await this.sessions.setImpersonation(session.id, null);
+    const admin = await this.prisma.user.findUnique({ where: { id: session.userId }, include: this.include });
+    if (!admin || admin.disabledAt) throw new UnauthorizedException('ההתחברות פגה. יש להתחבר מחדש.');
+
+    this.logger.warn(`Admin ${admin.id} stopped impersonating ${principal.userId}`);
+
+    return {
+      user: sanitizeUser(admin),
+      accessToken: this.tokens.signAccessToken(this.claimsFor(admin)),
+      refreshToken: presented,
+      impersonating: false,
+    };
+  }
+
+  /** The account a refreshed session should act as, or the admin when that account is gone. */
+  private async actingAs(
+    sessionId: string,
+    impersonatingUserId: string | null,
+    adminId: string,
+  ): Promise<{ user: UserWithMembership; impersonatedBy?: string }> {
+    const admin = await this.prisma.user.findUniqueOrThrow({ where: { id: adminId }, include: this.include });
+    if (!impersonatingUserId) return { user: admin };
+
+    const target = await this.prisma.user.findUnique({ where: { id: impersonatingUserId }, include: this.include });
+    if (!target || target.disabledAt) {
+      await this.sessions.setImpersonation(sessionId, null);
+      return { user: admin };
+    }
+    return { user: target, impersonatedBy: adminId };
+  }
+
+  private async liveSession(presented: string) {
+    try {
+      return await this.sessions.requireValid(presented);
+    } catch (e) {
+      if (e instanceof RefreshReuseError) {
+        throw new UnauthorizedException('ההתחברות אופסה מטעמי אבטחה. יש להתחבר מחדש.');
+      }
+      throw new UnauthorizedException('ההתחברות פגה. יש להתחבר מחדש.');
+    }
   }
 
   async logout(presented: string | undefined): Promise<void> {

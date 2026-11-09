@@ -74,9 +74,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // suspect, not just the user.
         await queryClient.invalidateQueries();
       },
+      impersonate: async (userId) => {
+        const next = await authApi.impersonate(userId);
+        queryClient.setQueryData<AuthUser | null>(qk.me, next);
+        // The lists on screen belong to the admin. Drop them before the next page reads them.
+        await queryClient.invalidateQueries({ predicate: (query) => query.queryKey[0] !== 'me' });
+        return next;
+      },
+      stopImpersonating: async () => {
+        const next = await authApi.stopImpersonating();
+        queryClient.setQueryData<AuthUser | null>(qk.me, next);
+        await queryClient.invalidateQueries({ predicate: (query) => query.queryKey[0] !== 'me' });
+        return next;
+      },
     };
   }, [user, isPending, queryClient]);
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+      {user?.impersonating && (
+        <div
+          aria-hidden
+          className="pointer-events-none fixed inset-0 z-[200] border-4 border-red-600"
+        />
+      )}
+    </AuthContext.Provider>
+  );
 }
 

@@ -23,6 +23,7 @@ import { Public } from './decorators/public.decorator.js';
 import { SavesService } from '../saves/saves.service.js';
 import { VISITOR_COOKIE, VisitorService } from '../visitor/visitor.service.js';
 import { CaptchaService } from './captcha.service.js';
+import { IsString } from 'class-validator';
 import { LoginDto } from './dto/login.dto.js';
 import { ForgotPasswordDto, ResetPasswordDto, VerifyEmailDto } from './dto/password.dto.js';
 import { SignupDto } from './dto/signup.dto.js';
@@ -34,6 +35,10 @@ import { GoogleService } from './google.service.js';
 
 /** Tight limits on the routes worth attacking. */
 const AUTH_THROTTLE = { auth: { limit: 10, ttl: 15 * 60_000 } };
+
+class ImpersonateDto {
+  @IsString() userId!: string;
+}
 
 @Controller('auth')
 export class AuthController {
@@ -78,7 +83,13 @@ export class AuthController {
   ) {
     setAuthCookies(res, result, this.cookieOpts);
     await this.adoptAnonymousSaves(req, res, result.user.id);
-    return { user: result.user };
+    return { user: result.user, impersonating: result.impersonating === true };
+  }
+
+  /** Same cookies as a sign-in, without collecting a stranger's saved listings into their account. */
+  private async replaceAccess(res: Response, result: Awaited<ReturnType<AuthService['login']>>) {
+    setAuthCookies(res, result, this.cookieOpts);
+    return { user: result.user, impersonating: result.impersonating === true };
   }
 
   private async adoptAnonymousSaves(req: Request, res: Response, userId: string) {
@@ -135,6 +146,36 @@ export class AuthController {
   @Post('login')
   async login(@Body() dto: LoginDto, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
     return this.send(req, res, await this.auth.login(dto.email, dto.password, this.meta(req)));
+  }
+
+  /**
+   * The refresh cookie is path-scoped to `/auth/refresh`, which includes these two.
+   * Starting and stopping both need that cookie, because the access token alone does
+   * not name the admin's session.
+   */
+  @HttpCode(200)
+  @Post('refresh/impersonate')
+  async startImpersonation(
+    @Body() dto: ImpersonateDto,
+    @CurrentUser() principal: Principal,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const presented = (req.cookies as Record<string, string> | undefined)?.[REFRESH_COOKIE];
+    if (!presented) throw new UnauthorizedException('ההתחברות פגה. יש להתחבר מחדש.');
+    return this.replaceAccess(res, await this.auth.startImpersonation(principal, dto.userId, presented));
+  }
+
+  @HttpCode(200)
+  @Post('refresh/impersonate/stop')
+  async stopImpersonation(
+    @CurrentUser() principal: Principal,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const presented = (req.cookies as Record<string, string> | undefined)?.[REFRESH_COOKIE];
+    if (!presented) throw new UnauthorizedException('ההתחברות פגה. יש להתחבר מחדש.');
+    return this.replaceAccess(res, await this.auth.stopImpersonation(principal, presented));
   }
 
   /** The refresh cookie is path-scoped to exactly this route. */
@@ -237,7 +278,10 @@ export class AuthController {
   /** What the client calls on boot to hydrate its session. */
   @Get('me')
   async me(@CurrentUser() principal: Principal) {
-    return { user: await this.auth.me(principal.userId) };
+    return {
+      user: await this.auth.me(principal.userId),
+      impersonating: principal.isImpersonation === true,
+    };
   }
 
   /**

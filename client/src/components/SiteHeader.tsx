@@ -69,7 +69,7 @@ const ASKED_FOR: Record<LoginIntent, { because?: string; then?: string }> = {
 };
 
 export function SiteHeader({ leading, subtitle, fullWidth = true }: Props) {
-  const { user, logout } = useAuth();
+  const { user, logout, stopImpersonating } = useAuth();
   const navigate = useNavigate();
 
   const [loginOpen, setLoginOpen] = useState(false);
@@ -392,6 +392,20 @@ export function SiteHeader({ leading, subtitle, fullWidth = true }: Props) {
             redirects anyone who already has a session, so offering it here sent you to
             /login and straight back, which reads as the link being broken.
           */}
+          {user?.impersonating && (
+            <button
+              type="button"
+              onClick={() =>
+                void stopImpersonating().then(() =>
+                  navigate('/admin/moderation?tab=support', { replace: true }),
+                )
+              }
+              className="rounded-lg bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700"
+            >
+              סיום התחזות
+            </button>
+          )}
+
           {user ? (
             <div className="flex items-center gap-2">
               <Link
@@ -486,6 +500,20 @@ export function SiteHeader({ leading, subtitle, fullWidth = true }: Props) {
                   }}
                 >
                   הערכת שווי
+                </button>
+              )}
+              {user?.impersonating && (
+                <button
+                  type="button"
+                  className={`${navLink} text-start font-medium text-red-700`}
+                  onClick={() => {
+                    setMenuOpen(false);
+                    void stopImpersonating().then(() =>
+                      navigate('/admin/moderation?tab=support', { replace: true }),
+                    );
+                  }}
+                >
+                  סיום התחזות
                 </button>
               )}
               {user && (

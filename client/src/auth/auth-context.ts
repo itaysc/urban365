@@ -20,6 +20,10 @@ export interface AuthContextValue {
    * whenever the token happens to expire.
    */
   recheck: () => Promise<void>;
+  /** Act as another account. The caller decides where to go afterwards. */
+  impersonate: (userId: string) => Promise<AuthUser>;
+  /** Back to the admin account that started it. */
+  stopImpersonating: () => Promise<AuthUser>;
 }
 
 /**

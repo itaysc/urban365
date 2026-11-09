@@ -9,10 +9,10 @@ export interface Principal {
   role: AgencyRole | null;
   platformRole: PlatformRole | null;
   sessionEpoch: number;
-}
-
-export interface AccessTokenClaims extends Principal {
-  /** Reserved now so impersonation can ship later without re-cutting tokens. */
+  /** Present only while an admin is acting as this account. */
   isImpersonation?: boolean;
+  /** The admin's own user id. The rest of the token is the account being used. */
   impersonatedBy?: string;
 }
+
+export interface AccessTokenClaims extends Principal {}

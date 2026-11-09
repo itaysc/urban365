@@ -40,6 +40,7 @@ export class SessionService {
     userId: string,
     familyId: string,
     meta: { ip?: string; userAgent?: string },
+    impersonatingUserId?: string | null,
   ): Promise<IssuedRefresh> {
     const secret = randomBytes(48).toString('base64url');
 
@@ -51,17 +52,30 @@ export class SessionService {
         expiresAt: this.expiry(),
         ip: meta.ip ?? null,
         userAgent: meta.userAgent?.slice(0, 255) ?? null,
+        impersonatingUserId: impersonatingUserId ?? null,
       },
     });
 
     return { token: `${session.id}.${secret}`, session };
   }
 
+  /** The live session behind a refresh cookie, without rotating it. */
+  async requireValid(presented: string): Promise<Session> {
+    return this.load(presented);
+  }
+
+  async setImpersonation(sessionId: string, impersonatingUserId: string | null): Promise<void> {
+    await this.prisma.session.update({
+      where: { id: sessionId },
+      data: { impersonatingUserId },
+    });
+  }
+
   /**
    * Validates and rotates. Throws RefreshReuseError when a tombstoned token is replayed,
    * having first killed the family and bumped the user's session epoch.
    */
-  async rotate(presented: string, meta: { ip?: string; userAgent?: string }): Promise<IssuedRefresh> {
+  private async load(presented: string): Promise<Session> {
     const [sessionId, secret] = presented.split('.');
     if (!sessionId || !secret) throw new Error('Malformed refresh token');
 
@@ -82,8 +96,15 @@ export class SessionService {
     }
 
     if (session.expiresAt.getTime() <= Date.now()) throw new Error('Refresh token expired');
+    return session;
+  }
 
-    const next = await this.create(session.userId, session.familyId, meta);
+  async rotate(presented: string, meta: { ip?: string; userAgent?: string }): Promise<IssuedRefresh> {
+    const session = await this.load(presented);
+
+    // The next row keeps an impersonation that is still going, so a token refresh
+    // in the middle of one does not silently drop the admin back into their own account.
+    const next = await this.create(session.userId, session.familyId, meta, session.impersonatingUserId);
 
     await this.prisma.session.update({
       where: { id: session.id },

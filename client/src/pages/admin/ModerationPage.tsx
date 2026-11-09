@@ -15,6 +15,7 @@ import {
 import { AgencyDirectory } from '@/pages/admin/AgencyDirectory';
 import { ListingReviewQueue } from '@/pages/admin/ListingReviewQueue';
 import { PlatformInvites } from '@/pages/admin/PlatformInvites';
+import { SupportPanel } from '@/pages/admin/SupportPanel';
 import { UsersPage } from '@/pages/admin/UsersPage';
 
 const TABS = [
@@ -23,6 +24,7 @@ const TABS = [
   { id: 'agencies', label: 'סוכנויות' },
   { id: 'users', label: 'משתמשים' },
   { id: 'invites', label: 'הזמנות' },
+  { id: 'support', label: 'תמיכה' },
 ] as const;
 
 type TabId = (typeof TABS)[number]['id'];
@@ -139,6 +141,7 @@ export function ModerationPage() {
       {tab === 'listings' && <ListingReviewQueue />}
       {tab === 'agencies' && <AgencyDirectory />}
       {tab === 'users' && <UsersPage />}
+      {tab === 'support' && <SupportPanel />}
 
       {tab === 'requests' && <h2 className="text-xl font-bold text-slate-900">בקשות ממתינות</h2>}
 

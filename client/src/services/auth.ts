@@ -3,11 +3,26 @@ import type { AgencyVertical, AuthUser, SignupInput } from '@/types/auth';
 
 export async function fetchMe(): Promise<AuthUser | null> {
   try {
-    const { data } = await api.get<{ user: AuthUser }>('/auth/me');
-    return data.user;
+    const { data } = await api.get<{ user: AuthUser; impersonating?: boolean }>('/auth/me');
+    return { ...data.user, impersonating: data.impersonating === true };
   } catch {
     return null;
   }
+}
+
+export async function impersonate(userId: string): Promise<AuthUser> {
+  const { data } = await api.post<{ user: AuthUser; impersonating: boolean }>(
+    '/auth/refresh/impersonate',
+    { userId },
+  );
+  return { ...data.user, impersonating: data.impersonating };
+}
+
+export async function stopImpersonating(): Promise<AuthUser> {
+  const { data } = await api.post<{ user: AuthUser; impersonating: boolean }>(
+    '/auth/refresh/impersonate/stop',
+  );
+  return { ...data.user, impersonating: data.impersonating === true };
 }
 
 export async function login(email: string, password: string): Promise<AuthUser> {

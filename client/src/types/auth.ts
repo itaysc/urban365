@@ -33,6 +33,8 @@ export interface AuthUser {
     description: string | null;
     vertical: AgencyVertical;
   } | null;
+  /** An admin is using this account. The session underneath is still theirs. */
+  impersonating?: boolean;
 }
 
 export interface SignupInput {
