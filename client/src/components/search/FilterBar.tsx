@@ -3,6 +3,7 @@ import { ChevronDown, Search, SlidersHorizontal } from 'lucide-react';
 import { FacetList } from '@/components/FacetList';
 import { amenityIcon } from '@/components/listing/amenities';
 import { RangeInputs } from '@/components/RangeInputs';
+import { RangeSlider } from '@/components/RangeSlider';
 import { PlaceSearchBox } from '@/components/search/PlaceSearchBox';
 import { RoomsPicker } from '@/components/search/RoomsPicker';
 import { roomsLabel } from '@/components/search/roomsRange';
@@ -19,6 +20,22 @@ interface Props {
 
 const SECTIONS: Section[] = ['forsale', 'rent', 'commercial'];
 
+/**
+ * Ends of the two price tracks. A thumb left at the ceiling means no limit, so these
+ * sit above the listings we hold rather than cutting the expensive ones out.
+ */
+const PRICE_SCALE: Record<Section, { floor: number; ceiling: number; step: number }> = {
+  forsale: { floor: 0, ceiling: 15_000_000, step: 50_000 },
+  rent: { floor: 0, ceiling: 20_000, step: 100 },
+  commercial: { floor: 0, ceiling: 5_000_000, step: 25_000 },
+};
+
+const PER_SQM_SCALE: Record<Section, { floor: number; ceiling: number; step: number }> = {
+  forsale: { floor: 0, ceiling: 100_000, step: 1_000 },
+  rent: { floor: 0, ceiling: 200, step: 5 },
+  commercial: { floor: 0, ceiling: 30_000, step: 500 },
+};
+
 const compact = new Intl.NumberFormat('he-IL', { notation: 'compact', maximumFractionDigits: 1 });
 
 /** "עד 3M", "מ־1.5M", "1.5M–3M" — short enough to sit inside a button label. */
@@ -26,6 +43,32 @@ function rangeLabel(min: number | undefined, max: number | undefined, format = c
   if (min === undefined && max === undefined) return null;
   if (min !== undefined && max !== undefined) return `${format(min)}–${format(max)}`;
   return min !== undefined ? `מ־${format(min)}` : `עד ${format(max as number)}`;
+}
+
+/**
+ * The widest label a track can produce. Compact notation is not monotonic —
+ * "10.1M" is longer than "15M" — so the button is sized to this and a shorter
+ * reading does not pull the filters beside it.
+ */
+function widestRangeLabel(ceiling: number, step: number): string {
+  let widest = 'הכול';
+  for (let n = step; n <= ceiling; n += step) {
+    const both = rangeLabel(n, n);
+    if (both && both.length > widest.length) widest = both;
+  }
+  return widest;
+}
+
+const PRICE_LABEL_WIDTH: Record<Section, string> = {
+  forsale: widestRangeLabel(PRICE_SCALE.forsale.ceiling, PRICE_SCALE.forsale.step),
+  rent: widestRangeLabel(PRICE_SCALE.rent.ceiling, PRICE_SCALE.rent.step),
+  commercial: widestRangeLabel(PRICE_SCALE.commercial.ceiling, PRICE_SCALE.commercial.step),
+};
+
+/** Drop a bound the new track cannot show. An empty bound is "no limit", which still matches. */
+function within(value: number | undefined, ceiling: number): number | undefined {
+  if (value === undefined || value > ceiling) return undefined;
+  return value;
 }
 
 /** "דירה", or "דירה +2" once there are several — the bar has no room for a list. */
@@ -38,7 +81,16 @@ interface PopoverProps {
   label: string;
   /** The current setting, shown in the trigger so the bar reads without being opened. */
   value: string | null;
-  /** Panel width. Widened for the rooms row, which is eleven steps across. */
+  /**
+   * A string at least as wide as any value this trigger will show. The slot keeps
+   * that width, so the button does not grow and shrink as the number changes.
+   */
+  reserved?: string;
+  /**
+   * Panel width, as a CSS length. It is also the minimum and the maximum: the
+   * panel used to grow and shrink with whatever was inside it, and a price that
+   * went from 0 to 15,000,000 was enough to move the whole box.
+   */
   width?: string;
   children: React.ReactNode;
 }
@@ -50,7 +102,7 @@ interface PopoverProps {
  * only `מחיר ⌄` forces you to open each one to find out what the search is currently
  * doing, which is the thing a collapsed filter bar is supposed to save you.
  */
-function FilterPopover({ label, value, width = 'w-72', children }: PopoverProps) {
+function FilterPopover({ label, value, reserved, width = '18rem', children }: PopoverProps) {
   const [open, setOpen] = useState(false);
   const wrap = useRef<HTMLDivElement>(null);
   const panel = useRef<HTMLDivElement>(null);
@@ -111,8 +163,19 @@ function FilterPopover({ label, value, width = 'w-72', children }: PopoverProps)
       >
         <span className="flex min-w-0 flex-col leading-tight">
           <span className="text-xs text-slate-500">{label}</span>
-          <span className={`truncate ${value ? 'font-semibold' : 'text-slate-500'}`}>
-            {value ?? 'הכול'}
+          <span className="relative block whitespace-nowrap">
+            {reserved && (
+              <span className="invisible font-semibold" aria-hidden>
+                {reserved}
+              </span>
+            )}
+            <span
+              className={`${reserved ? 'absolute inset-x-0 top-0 truncate' : 'truncate'} ${
+                value ? 'font-semibold' : 'text-slate-500'
+              }`}
+            >
+              {value ?? 'הכול'}
+            </span>
           </span>
         </span>
         <ChevronDown
@@ -127,8 +190,13 @@ function FilterPopover({ label, value, width = 'w-72', children }: PopoverProps)
           // Scrolls on its own. The page behind it no longer does, so a panel taller
           // than the viewport — the property-type list is thirty options — had no way
           // to reach its own bottom.
-          className={`absolute end-0 top-full z-30 mt-1 max-h-[70vh] max-w-[calc(100vw-2rem)] overflow-y-auto rounded-xl border border-slate-200 bg-white p-4 shadow-lg ${width}`}
-          style={shift === 0 ? undefined : { transform: `translateX(${shift}px)` }}
+          className="absolute end-0 top-full z-30 mt-1 max-h-[70vh] overflow-y-auto rounded-xl border border-slate-200 bg-white p-4 shadow-lg"
+          style={{
+            width,
+            minWidth: width,
+            maxWidth: `min(${width}, calc(100vw - 2rem))`,
+            ...(shift === 0 ? {} : { transform: `translateX(${shift}px)` }),
+          }}
         >
           {children}
         </div>
@@ -183,9 +251,13 @@ export function FilterBar({ filters, facets, activeCount, onUpdate, onReset }: P
     } as Partial<SearchFilters>);
   };
 
+  const priceScale = PRICE_SCALE[draft.section ?? 'forsale'];
+  const perSqmScale = PER_SQM_SCALE[draft.section ?? 'forsale'];
+
   const extrasCount =
     draft.amenities.length +
     (draft.minSquareMeter !== undefined || draft.maxSquareMeter !== undefined ? 1 : 0) +
+    (draft.minPricePerSqm !== undefined || draft.maxPricePerSqm !== undefined ? 1 : 0) +
     (draft.q ? 1 : 0);
 
   return (
@@ -213,7 +285,19 @@ export function FilterBar({ filters, facets, activeCount, onUpdate, onReset }: P
               key={s}
               type="button"
               aria-pressed={draft.section === s}
-              onClick={() => patch({ section: s })}
+              onClick={() => {
+                // A sale price left on the draft means nothing once the track is a
+                // monthly rent, and the slider cannot show a number past its end.
+                const nextPrice = PRICE_SCALE[s];
+                const nextPerSqm = PER_SQM_SCALE[s];
+                patch({
+                  section: s,
+                  minPrice: within(draft.minPrice, nextPrice.ceiling),
+                  maxPrice: within(draft.maxPrice, nextPrice.ceiling),
+                  minPricePerSqm: within(draft.minPricePerSqm, nextPerSqm.ceiling),
+                  maxPricePerSqm: within(draft.maxPricePerSqm, nextPerSqm.ceiling),
+                });
+              }}
               className={`rounded-lg px-3 py-1.5 text-sm transition ${
                 draft.section === s
                   ? 'bg-slate-900 font-semibold text-white'
@@ -251,11 +335,16 @@ export function FilterBar({ filters, facets, activeCount, onUpdate, onReset }: P
           ))}
         </div>
 
-        <FilterPopover label="מחיר" value={rangeLabel(draft.minPrice, draft.maxPrice)}>
-          <RangeInputs
+        <FilterPopover
+          label="מחיר"
+          value={rangeLabel(draft.minPrice, draft.maxPrice)}
+          reserved={PRICE_LABEL_WIDTH[draft.section ?? 'forsale']}
+          width="24rem"
+        >
+          <RangeSlider
             title="מחיר"
             suffix="₪"
-            step={50000}
+            {...priceScale}
             min={draft.minPrice}
             max={draft.maxPrice}
             onChange={({ min, max }) => patch({ minPrice: min, maxPrice: max })}
@@ -265,7 +354,7 @@ export function FilterBar({ filters, facets, activeCount, onUpdate, onReset }: P
         <FilterPopover
           label="חדרים"
           value={roomsLabel({ min: draft.minRooms, max: draft.maxRooms })}
-          width="w-[31rem]"
+          width="31rem"
         >
           <RoomsPicker
             min={draft.minRooms}
@@ -297,6 +386,15 @@ export function FilterBar({ filters, facets, activeCount, onUpdate, onReset }: P
                 className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
               />
             </label>
+
+            <RangeSlider
+              title="מחיר למ״ר"
+              suffix="₪"
+              {...perSqmScale}
+              min={draft.minPricePerSqm}
+              max={draft.maxPricePerSqm}
+              onChange={({ min, max }) => patch({ minPricePerSqm: min, maxPricePerSqm: max })}
+            />
 
             <RangeInputs
               title="שטח"

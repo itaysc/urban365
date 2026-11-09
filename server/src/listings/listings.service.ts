@@ -184,6 +184,9 @@ export class ListingsService {
     const price = range(dto.minPrice, dto.maxPrice);
     if (price) where.price = price;
 
+    const perSqm = range(dto.minPricePerSqm, dto.maxPricePerSqm);
+    if (perSqm) where.pricePerSquareMeter = perSqm;
+
     const rooms = range(dto.minRooms, dto.maxRooms);
     if (rooms) where.rooms = rooms;
 

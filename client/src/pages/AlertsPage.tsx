@@ -1,9 +1,11 @@
+import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { Bell, BellOff, Trash2 } from 'lucide-react';
 import { SavedTabs } from '@/components/SavedTabs';
 import { SiteFooter } from '@/components/SiteFooter';
 import { SiteHeader } from '@/components/SiteHeader';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useToast } from '@/components/ui/Toast';
 import { errorMessageOf } from '@/lib/apiError';
 import { formatPrice } from '@/lib/format';
@@ -85,6 +87,7 @@ function searchHref(search: SavedSearch): string {
 export function AlertsPage() {
   const toast = useToast();
   const queryClient = useQueryClient();
+  const [pendingDelete, setPendingDelete] = useState<SavedSearch | null>(null);
 
   const { data, isPending } = useQuery({ queryKey: qk.searches, queryFn: fetchSavedSearches });
   const refresh = () => queryClient.invalidateQueries({ queryKey: qk.searches });
@@ -102,6 +105,7 @@ export function AlertsPage() {
   const remove = useMutation({
     mutationFn: (id: string) => deleteSavedSearch(id),
     onSuccess: () => {
+      setPendingDelete(null);
       void refresh();
       toast.show('החיפוש נמחק.');
     },
@@ -187,9 +191,8 @@ export function AlertsPage() {
 
                 <button
                   type="button"
-                  onClick={() => remove.mutate(search.id)}
-                  disabled={remove.isPending}
-                  className="flex items-center gap-1 text-slate-500 hover:text-red-700 disabled:opacity-50"
+                  onClick={() => setPendingDelete(search)}
+                  className="flex items-center gap-1 text-slate-500 hover:text-red-700"
                 >
                   <Trash2 className="h-4 w-4" aria-hidden />
                   מחיקה
@@ -199,6 +202,19 @@ export function AlertsPage() {
           ))}
         </ul>
       </main>
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingDelete(null);
+        }}
+        title="למחוק את החיפוש?"
+        description={pendingDelete ? `״${pendingDelete.name}״ יימחק, וגם ההתראה שלו.` : undefined}
+        confirmLabel="כן"
+        cancelLabel="לא"
+        busy={remove.isPending}
+        onConfirm={() => pendingDelete && remove.mutate(pendingDelete.id)}
+      />
 
       <SiteFooter />
     </div>

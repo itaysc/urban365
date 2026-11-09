@@ -102,6 +102,8 @@ export interface SearchFilters {
   amenities: string[];
   minPrice?: number;
   maxPrice?: number;
+  minPricePerSqm?: number;
+  maxPricePerSqm?: number;
   minRooms?: number;
   maxRooms?: number;
   minSquareMeter?: number;

@@ -12,6 +12,8 @@ export function toQueryParams(filters: SearchFilters, withFacets = true): URLSea
   set('agencyId', filters.agencyId);
   set('minPrice', filters.minPrice);
   set('maxPrice', filters.maxPrice);
+  set('minPricePerSqm', filters.minPricePerSqm);
+  set('maxPricePerSqm', filters.maxPricePerSqm);
   set('minRooms', filters.minRooms);
   set('maxRooms', filters.maxRooms);
   set('minSquareMeter', filters.minSquareMeter);

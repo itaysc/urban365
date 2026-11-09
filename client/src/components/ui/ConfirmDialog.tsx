@@ -8,6 +8,7 @@ interface Props {
   title: string;
   description?: ReactNode;
   confirmLabel?: string;
+  cancelLabel?: string;
   onConfirm: () => void;
   busy?: boolean;
   /** Extra controls, such as a required choice, between the text and the buttons. */
@@ -25,6 +26,7 @@ export function ConfirmDialog({
   title,
   description,
   confirmLabel = 'מחיקה',
+  cancelLabel = 'ביטול',
   onConfirm,
   busy,
   children,
@@ -50,7 +52,7 @@ export function ConfirmDialog({
               {busy ? 'רגע…' : confirmLabel}
             </Button>
             <AlertDialog.Cancel asChild>
-              <Button variant="secondary">ביטול</Button>
+              <Button variant="secondary">{cancelLabel}</Button>
             </AlertDialog.Cancel>
           </div>
         </AlertDialog.Content>

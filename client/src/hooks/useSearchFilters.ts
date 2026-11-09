@@ -32,6 +32,8 @@ export function useSearchFilters() {
       amenities: list(params.get('amenities')),
       minPrice: num(params.get('minPrice')),
       maxPrice: num(params.get('maxPrice')),
+      minPricePerSqm: num(params.get('minPricePerSqm')),
+      maxPricePerSqm: num(params.get('maxPricePerSqm')),
       minRooms: num(params.get('minRooms')),
       maxRooms: num(params.get('maxRooms')),
       minSquareMeter: num(params.get('minSquareMeter')),
@@ -92,6 +94,8 @@ export function useSearchFilters() {
     [
       filters.minPrice,
       filters.maxPrice,
+      filters.minPricePerSqm,
+      filters.maxPricePerSqm,
       filters.minRooms,
       filters.maxRooms,
       filters.minSquareMeter,

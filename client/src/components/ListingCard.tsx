@@ -1,9 +1,91 @@
+import { useLayoutEffect, useRef, useState } from 'react';
 import { EXCLUSIVE_LABEL, isExclusiveListing } from '@/lib/exclusivity';
 import { SaveButton } from '@/components/SaveButton';
 import { isNew, priceDrop } from '@/lib/listingBadges';
 import { amenityIcon } from '@/components/listing/amenities';
 import { formatAddress, formatPrice, formatShekel } from '@/lib/format';
 import type { SearchListing } from '@/types/search';
+
+const CHIP = 'flex shrink-0 items-center gap-1 rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-600';
+
+/** How many leading chips fit on one line, leaving room for "עוד N" when some remain. */
+function fittingCount(widths: number[], available: number, moreWidth: number, gap: number, total: number): number {
+  const limit = Math.min(3, widths.length, total);
+  let best = 0;
+  for (let n = 1; n <= limit; n++) {
+    let width = 0;
+    for (let i = 0; i < n; i++) width += widths[i] + (i > 0 ? gap : 0);
+    const remaining = total - n;
+    if (remaining > 0) width += gap + moreWidth;
+    if (width <= available + 1) best = n;
+    else break;
+  }
+  return best === 0 && total > 0 ? 1 : best;
+}
+
+function AmenityChip({ label }: { label: string }) {
+  const Icon = amenityIcon(label);
+  return (
+    <span data-chip className={CHIP}>
+      <Icon className="h-3 w-3 text-slate-500" aria-hidden />
+      {label}
+    </span>
+  );
+}
+
+/**
+ * One line, always the same height. Two or three labels when they fit, then "עוד 3"
+ * for whatever did not — a second line of chips is what was making the cards differ.
+ */
+function AmenityLine({ amenities }: { amenities: string[] }) {
+  const row = useRef<HTMLDivElement>(null);
+  const probe = useRef<HTMLDivElement>(null);
+  const [shown, setShown] = useState(() => Math.min(3, amenities.length));
+
+  const key = amenities.join('\0');
+
+  useLayoutEffect(() => {
+    const fit = () => {
+      const available = row.current?.clientWidth ?? 0;
+      const chips = [...(probe.current?.querySelectorAll<HTMLElement>('[data-chip]') ?? [])];
+      const more = probe.current?.querySelector<HTMLElement>('[data-more]');
+      if (available === 0 || chips.length === 0) return;
+      const gap = parseFloat(getComputedStyle(probe.current as HTMLElement).columnGap) || 0;
+      setShown(fittingCount(chips.map((chip) => chip.offsetWidth), available, more?.offsetWidth ?? 0, gap, amenities.length));
+    };
+
+    fit();
+    const observer = new ResizeObserver(fit);
+    if (row.current) observer.observe(row.current);
+    return () => observer.disconnect();
+    // The labels are the dependency; the array is new on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
+
+  const visible = amenities.slice(0, shown);
+  const rest = amenities.length - visible.length;
+
+  return (
+    <div ref={row} className="relative h-6 overflow-hidden">
+      <div ref={probe} className="pointer-events-none invisible absolute flex gap-1" aria-hidden>
+        {amenities.slice(0, 3).map((label) => (
+          <AmenityChip key={label} label={label} />
+        ))}
+        <span data-more className={CHIP}>
+          עוד {Math.max(amenities.length - 1, 1)}
+        </span>
+      </div>
+      {visible.length > 0 && (
+        <div className="flex gap-1">
+          {visible.map((label) => (
+            <AmenityChip key={label} label={label} />
+          ))}
+          {rest > 0 && <span className={CHIP}>עוד {rest.toLocaleString('he-IL')}</span>}
+        </div>
+      )}
+    </div>
+  );
+}
 
 const Spec = ({ label, value }: { label: string; value: string | number | null }) =>
   value === null || value === '' ? null : (
@@ -43,7 +125,7 @@ export function ListingCard({
     // button is invalid HTML, and the browser rearranges the tree to cope — the heart
     // rendered in the right place and received no clicks at all, because hit testing
     // handed them to the card it was nested in.
-    <div className="relative flex flex-col">
+    <div className="relative flex h-full flex-col">
       {/*
         Top-left, opposite the badges. It is the one control on a card that does
         something other than open the listing.
@@ -55,7 +137,7 @@ export function ListingCard({
       <button
         type="button"
         onClick={() => onOpen(listing)}
-        className="flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white text-right transition hover:border-slate-400 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-slate-900"
+        className="flex h-full flex-col overflow-hidden rounded-xl border border-slate-200 bg-white text-right transition hover:border-slate-400 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-slate-900"
       >
       <div className="relative h-44 bg-slate-100">
         {/*
@@ -129,24 +211,24 @@ export function ListingCard({
       </div>
 
       <div className="flex flex-1 flex-col gap-2 p-4">
-        <div className="flex items-baseline justify-between gap-2">
+        <div className="flex h-7 items-baseline justify-between gap-2 whitespace-nowrap">
           <span className="text-xl font-bold text-slate-900">{formatPrice(listing.price)}</span>
           {listing.priceBeforeDrop && (
-            <span className="text-sm text-slate-500 line-through">{formatPrice(listing.priceBeforeDrop)}</span>
+            <span className="truncate text-sm text-slate-500 line-through">{formatPrice(listing.priceBeforeDrop)}</span>
           )}
         </div>
 
         <div>
-          <div className="font-medium text-slate-800">
+          <div className="truncate font-medium text-slate-800">
             {[listing.propertyType, listing.city].filter(Boolean).join(', ')}
           </div>
-          <div className="text-sm text-slate-500">
+          <div className="truncate text-sm text-slate-500">
             {formatAddress({
               street: listing.street ?? '',
               houseNumber: listing.houseNumber,
               neighborhood: listing.neighborhood ?? '',
               city: listing.city ?? '',
-            })}
+            }) || '\u00a0'}
           </div>
         </div>
 
@@ -156,34 +238,17 @@ export function ListingCard({
           <Spec label='מ"ר' value={listing.squareMeter} />
         </div>
 
-        {amenities.length > 0 && (
-          <div className="flex flex-wrap gap-1">
-            {amenities.slice(0, 4).map((a) => {
-              const Icon = amenityIcon(a);
-              return (
-                <span
-                  key={a}
-                  className="flex items-center gap-1 rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-600"
-                >
-                  <Icon className="h-3 w-3 text-slate-500" aria-hidden />
-                  {a}
-                </span>
-              );
-            })}
-          </div>
-        )}
+        <AmenityLine amenities={amenities} />
 
-        {(!listing.agency || listing.pricePerSquareMeter) && (
-          <div className="flex items-center justify-between text-xs text-slate-500">
-            {/* A private seller has no agency. Saying who is selling matters to a buyer,
-                so the absence is filled rather than left blank. An agency's name is on
-                the photo. */}
-            {!listing.agency && <span className="truncate">מוכר פרטי</span>}
-            {listing.pricePerSquareMeter && (
-              <span>{listing.pricePerSquareMeter.toLocaleString('he-IL')} ₪/מ״ר</span>
-            )}
-          </div>
-        )}
+        <div className="flex h-4 items-center justify-between text-xs text-slate-500">
+          {/* A private seller has no agency. Saying who is selling matters to a buyer,
+              so the absence is filled rather than left blank. An agency's name is on
+              the photo. */}
+          {!listing.agency && <span className="truncate">מוכר פרטי</span>}
+          {listing.pricePerSquareMeter && (
+            <span>{listing.pricePerSquareMeter.toLocaleString('he-IL')} ₪/מ״ר</span>
+          )}
+        </div>
       </div>
       </button>
     </div>
