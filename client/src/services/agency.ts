@@ -376,7 +376,7 @@ export interface AgencyDocument {
   contentType: string;
   byteSize: number;
   createdAt: string;
-  uploadedBy: { firstName: string; lastName: string } | null;
+  uploadedBy: { id: string; firstName: string; lastName: string } | null;
   links: DocumentLink[];
 }
 

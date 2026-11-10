@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { X } from 'lucide-react';
+import { CityBox } from '@/components/listing/CityBox';
 import { Button } from '@/components/ui/Button';
 import { Field, inputClass, selectClass } from '@/components/ui/Field';
 import { errorMessageOf } from '@/lib/apiError';
@@ -64,7 +65,7 @@ export function NewMortgageCaseDialog({ open, onOpenChange, onCreated, initialSt
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm" />
 
-        <Dialog.Content className="fixed start-1/2 top-1/2 z-50 max-h-[90vh] w-[min(34rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl bg-white p-6 shadow-xl rtl:translate-x-1/2">
+        <Dialog.Content className="fixed start-1/2 top-1/2 z-50 max-h-[90vh] w-[min(42rem,calc(100vw-2rem))] min-w-0 -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl bg-white p-6 shadow-xl sm:min-h-[28rem] rtl:translate-x-1/2">
           <header className="mb-4 flex items-start justify-between gap-4">
             <div>
               <Dialog.Title className="text-lg font-bold text-slate-900">תיק משכנתא חדש</Dialog.Title>
@@ -82,65 +83,73 @@ export function NewMortgageCaseDialog({ open, onOpenChange, onCreated, initialSt
           </header>
 
           <form
-            className="grid gap-3 sm:grid-cols-2"
+            className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2"
             onSubmit={(e) => {
               e.preventDefault();
               void submit();
             }}
           >
-            <div className="sm:col-span-2">
+            <div className="min-w-0 sm:col-span-2">
               <Field label="לקוח" htmlFor="case-customer">
                 <CustomerSelect id="case-customer" value={customer} onChange={setCustomer} />
               </Field>
             </div>
 
-            <Field label="שלב" htmlFor="case-stage">
-              <select
-                id="case-stage"
-                className={selectClass}
-                value={stage}
-                onChange={(e) => setStage(e.target.value as MortgageCaseStage)}
-              >
-                {MORTGAGE_CASE_STAGES.map((s) => (
-                  <option key={s.value} value={s.value}>
-                    {s.label}
-                  </option>
-                ))}
-              </select>
-            </Field>
+            <div className="min-w-0">
+              <Field label="שלב" htmlFor="case-stage">
+                <select
+                  id="case-stage"
+                  className={`${selectClass} w-full min-w-0`}
+                  value={stage}
+                  onChange={(e) => setStage(e.target.value as MortgageCaseStage)}
+                >
+                  {MORTGAGE_CASE_STAGES.map((s) => (
+                    <option key={s.value} value={s.value}>
+                      {s.label}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            </div>
 
-            <Field label="עיר הנכס" htmlFor="case-city">
-              <input
-                id="case-city"
-                className={inputClass}
-                value={form.propertyCity}
-                onChange={(e) => set('propertyCity', e.target.value)}
-              />
-            </Field>
+            <div className="min-w-0">
+              <Field label="עיר הנכס" htmlFor="case-city">
+                <CityBox
+                  id="case-city"
+                  warn={false}
+                  value={form.propertyCity}
+                  onChange={(value) => set('propertyCity', value)}
+                />
+              </Field>
+            </div>
 
-            <Field label="סכום מבוקש (₪)" htmlFor="case-requested">
-              <input
-                id="case-requested"
-                type="number"
-                inputMode="numeric"
-                min="0"
-                className={inputClass}
-                value={form.requestedAmount}
-                onChange={(e) => set('requestedAmount', e.target.value)}
-              />
-            </Field>
+            <div className="min-w-0">
+              <Field label="סכום מבוקש (₪)" htmlFor="case-requested">
+                <input
+                  id="case-requested"
+                  type="number"
+                  inputMode="numeric"
+                  min="0"
+                  className={`${inputClass} w-full min-w-0`}
+                  value={form.requestedAmount}
+                  onChange={(e) => set('requestedAmount', e.target.value)}
+                />
+              </Field>
+            </div>
 
-            <Field label="שווי נכס (₪)" htmlFor="case-value">
-              <input
-                id="case-value"
-                type="number"
-                inputMode="numeric"
-                min="0"
-                className={inputClass}
-                value={form.propertyValue}
-                onChange={(e) => set('propertyValue', e.target.value)}
-              />
-            </Field>
+            <div className="min-w-0">
+              <Field label="שווי נכס (₪)" htmlFor="case-value">
+                <input
+                  id="case-value"
+                  type="number"
+                  inputMode="numeric"
+                  min="0"
+                  className={`${inputClass} w-full min-w-0`}
+                  value={form.propertyValue}
+                  onChange={(e) => set('propertyValue', e.target.value)}
+                />
+              </Field>
+            </div>
 
             {error && (
               <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 sm:col-span-2">

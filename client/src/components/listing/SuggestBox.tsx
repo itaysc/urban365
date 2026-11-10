@@ -123,12 +123,12 @@ export function SuggestBox({
   };
 
   return (
-    <div ref={box} className="relative">
+    <div ref={box} className="relative w-full min-w-0">
       <input
         id={id}
         required={required}
         autoComplete="off"
-        className={`${inputClass} w-full`}
+        className={`${inputClass} w-full min-w-0`}
         value={value}
         placeholder={placeholder}
         onChange={(e) => {

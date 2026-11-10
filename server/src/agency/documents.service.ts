@@ -6,6 +6,7 @@ import {
   PayloadTooLargeException,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { PrismaService } from '../prisma/prisma.service.js';
 import { RequestContextService } from '../tenancy/request-context.service.js';
 import { TenantPrismaService } from '../tenancy/tenant-prisma.service.js';
 import { StorageService, isNotFoundError } from '../storage/storage.service.js';
@@ -34,7 +35,7 @@ const SELECT = {
   contentType: true,
   byteSize: true,
   createdAt: true,
-  uploadedBy: { select: { firstName: true, lastName: true } },
+  uploadedById: true,
   links: { select: LINK_SELECT },
 } as const;
 
@@ -45,15 +46,11 @@ const WITH_LINKS = {
 
 type DocumentRow = Prisma.AgencyDocumentGetPayload<{ select: typeof SELECT }>;
 
-function present(row: DocumentRow) {
-  const { links, ...rest } = row;
-  return {
-    ...rest,
-    links: links.flatMap((link) => {
-      const view = presentLink(link as LinkRow);
-      return view ? [view] : [];
-    }),
-  };
+function presentLinks(links: DocumentRow['links']) {
+  return links.flatMap((link) => {
+    const view = presentLink(link as LinkRow);
+    return view ? [view] : [];
+  });
 }
 
 /**
@@ -68,6 +65,11 @@ function present(row: DocumentRow) {
 export class DocumentsService {
   constructor(
     private readonly prisma: TenantPrismaService,
+    /**
+     * `User` is invisible to the tenant role, so the name on a file is read here and
+     * only for ids already stored on this office's own documents.
+     */
+    private readonly owner: PrismaService,
     private readonly context: RequestContextService,
     private readonly storage: StorageService,
   ) {}
@@ -82,7 +84,7 @@ export class DocumentsService {
       select: WITH_LINKS,
       orderBy: { createdAt: 'desc' },
     });
-    return rows.map(present);
+    return this.presentAll(rows);
   }
 
   async add(file: Express.Multer.File | undefined, subject?: string, subjectId?: string) {
@@ -210,7 +212,34 @@ export class DocumentsService {
       select: WITH_LINKS,
     });
     if (!row) throw new NotFoundException('המסמך לא נמצא.');
-    return present(row);
+    const [presented] = await this.presentAll([row]);
+    return presented;
+  }
+
+  /**
+   * Names come from the owner client. A nested `uploadedBy` on the tenant client is
+   * always null: `User` has row security and no policy, so the relation is invisible
+   * rather than rejected.
+   */
+  private async presentAll(rows: DocumentRow[]) {
+    const ids = [...new Set(rows.flatMap((row) => (row.uploadedById ? [row.uploadedById] : [])))];
+    const people =
+      ids.length === 0
+        ? []
+        : await this.owner.user.findMany({
+            where: { id: { in: ids } },
+            select: { id: true, firstName: true, lastName: true },
+          });
+    const byId = new Map(people.map((person) => [person.id, person]));
+
+    return rows.map((row) => {
+      const { links, uploadedById, ...rest } = row;
+      return {
+        ...rest,
+        uploadedBy: uploadedById ? (byId.get(uploadedById) ?? null) : null,
+        links: presentLinks(links),
+      };
+    });
   }
 
   private async attach(documentId: string, subject: DocumentSubject, subjectId: string): Promise<DocumentLinkView> {

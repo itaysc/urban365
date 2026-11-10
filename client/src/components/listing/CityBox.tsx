@@ -10,6 +10,11 @@ interface Props {
   id?: string;
   /** The agency editor saves half-filled drafts; the publish form does not. */
   required?: boolean;
+  /**
+   * Whether an unknown name gets the note under the field. Off where that note would
+   * resize a dialog, and where a listing search is not what the city is for.
+   */
+  warn?: boolean;
 }
 
 /** Enough to be worth drawing, few enough to read without scrolling past the field. */
@@ -26,7 +31,7 @@ const MAX_SUGGESTIONS = 8;
  * רמת גן before רמת ישי and both before אבן יהודה — the thing you are most likely to
  * have meant is the thing at the top.
  */
-export function CityBox({ value, onChange, onPick, id = 'city', required = false }: Props) {
+export function CityBox({ value, onChange, onPick, id = 'city', required = false, warn = true }: Props) {
   const term = value.trim();
 
   const matches = useMemo(() => {
@@ -64,7 +69,7 @@ export function CityBox({ value, onChange, onPick, id = 'city', required = false
         // name that is not on it is almost always a typo — but "almost" is doing work,
         // and refusing to let somebody name their own town would be worse than a stray
         // entry.
-        term !== '' && !known.has(term) ? (
+        warn && term !== '' && !known.has(term) ? (
           <p className="mt-1 text-xs text-amber-700">
             לא מצאנו יישוב בשם הזה. אפשר להמשיך, אבל ייתכן שהנכס לא יופיע בחיפושים.
           </p>
