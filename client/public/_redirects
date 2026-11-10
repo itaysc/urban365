@@ -9,6 +9,12 @@
 # The dev server proxies this same set; see `server.proxy` in vite.config.ts. Change one
 # and change the other, or a link works in dev and 404s in production.
 
+# Listing photos (and the city-page session check) are stored as site-relative
+# `/api/v1/...` paths. The client talks to the API by its own origin, so without
+# this the catch-all below answers an <img> with index.html and the gallery is blank.
+# Vite proxies `/api` the same way; see `server.proxy` in vite.config.ts.
+/api/*         https://urban365-production.up.railway.app/api/:splat             200
+
 # The front door is HTML from the API, like the city pages. Exact `/` only: the
 # splat below is what serves the app everywhere else.
 #
