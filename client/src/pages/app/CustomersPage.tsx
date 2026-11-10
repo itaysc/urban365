@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { CalendarPlus, ChevronDown, ChevronUp, Mail, Phone, Plus, Search } from 'lucide-react';
+import { Archive, CalendarPlus, ChevronDown, ChevronUp, Mail, Phone, Plus, Search } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { inputClass, selectClass } from '@/components/ui/Field';
@@ -16,7 +16,9 @@ import { createMeeting, fetchMeetings, type MeetingInput } from '@/services/cale
 import {
   createCustomer,
   deleteCustomer,
+  fetchCustomerArchive,
   fetchCustomers,
+  restoreCustomer,
   updateCustomer,
   type AgreementFilter,
   type Customer,
@@ -24,7 +26,9 @@ import {
   type CustomerKind,
 } from '@/services/crm';
 import { AgreementDialog } from '@/components/agency/AgreementDialog';
+import { ArchivePanel } from '@/components/agency/ArchivePanel';
 import { CustomerDeals } from '@/components/agency/CustomerDeals';
+import { RecordDocuments } from '@/components/agency/RecordDocuments';
 
 const KIND_LABEL: Record<CustomerKind, string> = {
   buyer: 'קונה',
@@ -89,6 +93,7 @@ export function CustomersPage() {
   const [booking, setBooking] = useState<Customer | null>(null);
   /** Whose history is open. One at a time: this is a list, not a dashboard. */
   const [showing, setShowing] = useState<string | null>(null);
+  const [archiveOpen, setArchiveOpen] = useState(false);
 
   const { data, isPending } = useQuery({
     queryKey: qk.customers.list(q, kind, agreement, page),
@@ -112,10 +117,10 @@ export function CustomersPage() {
     mutationFn: (id: string) => deleteCustomer(id),
     onSuccess: () => {
       void refresh();
-      toast.success('הלקוח נמחק.');
+      toast.success('הלקוח הועבר לארכיון.');
       setDeleting(null);
     },
-    onError: (e) => toast.error(errorMessageOf(e, 'לא הצלחנו למחוק את הלקוח.')),
+    onError: (e) => toast.error(errorMessageOf(e, 'לא הצלחנו להעביר את הלקוח לארכיון.')),
   });
 
   const book = useMutation({
@@ -155,13 +160,35 @@ export function CustomersPage() {
           </p>
         </div>
 
-        {editing === null && (
-          <Button onClick={() => setEditing('new')}>
-            <Plus className="h-4 w-4" aria-hidden />
-            לקוח חדש
+        <div className="flex items-center gap-2">
+          <Button variant="secondary" onClick={() => setArchiveOpen(true)}>
+            <Archive className="h-4 w-4" aria-hidden />
+            ארכיון
           </Button>
-        )}
+          {editing === null && (
+            <Button onClick={() => setEditing('new')}>
+              <Plus className="h-4 w-4" aria-hidden />
+              לקוח חדש
+            </Button>
+          )}
+        </div>
       </header>
+
+      <ArchivePanel
+        open={archiveOpen}
+        onOpenChange={setArchiveOpen}
+        title="לקוחות"
+        queryKey={qk.customers.archive}
+        fetchArchive={fetchCustomerArchive}
+        onRestore={restoreCustomer}
+        onRestored={refresh}
+        renderRow={(customer) => (
+          <p className="truncate text-sm font-medium text-slate-900">
+            {customer.name}
+            {customer.phone ? <span className="font-normal text-slate-500"> · {customer.phone}</span> : null}
+          </p>
+        )}
+      />
 
       {editing !== null && (
         <section className="rounded-xl border border-slate-200 bg-white p-4">
@@ -362,6 +389,7 @@ export function CustomersPage() {
               <div className="mt-3 border-t border-slate-100 pt-3">
                 <CustomerViewings customerId={customer.id} />
                 <CustomerDeals customer={customer} />
+                <RecordDocuments subject="customer" subjectId={customer.id} />
               </div>
             )}
           </li>

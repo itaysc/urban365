@@ -38,6 +38,8 @@ const SELECT = {
 
 type CaseRow = Prisma.MortgageCaseGetPayload<{ select: typeof SELECT }>;
 
+const ARCHIVE_SELECT = { ...SELECT, deletedAt: true } satisfies Prisma.MortgageCaseSelect;
+
 /**
  * The mortgage-vertical's pipeline, the same shape `DealsService.board()` returns for
  * a brokerage — a kanban reads as columns, and an agency's open cases are a small set.
@@ -70,7 +72,7 @@ export class MortgageCasesService {
   async board() {
     const agencyId = this.context.requireAgencyId();
     const cases = await this.prisma.client.mortgageCase.findMany({
-      where: { agencyId, ...this.scope() },
+      where: { agencyId, deletedAt: null, ...this.scope() },
       orderBy: [{ updatedAt: 'desc' }, { id: 'asc' }],
       select: SELECT,
     });
@@ -163,17 +165,49 @@ export class MortgageCasesService {
     return this.syncDeal(updated);
   }
 
+  /** Archives the case rather than destroying it — see `restore`. The linked `Deal`,
+   *  when there is one, is left exactly as it is; a commission record does not vanish
+   *  because the file wrapper around it was archived. */
   async remove(id: string) {
     this.assertCanWrite();
     const existing = await this.requireOwn(id);
-    await this.prisma.client.mortgageCase.delete({ where: { id: existing.id } });
+    await this.prisma.client.mortgageCase.update({
+      where: { id: existing.id },
+      data: { deletedAt: new Date() },
+    });
     return { deleted: true };
+  }
+
+  /** Cases removed from the pipeline, newest removal first. */
+  async archive() {
+    const agencyId = this.context.requireAgencyId();
+    return this.prisma.client.mortgageCase.findMany({
+      where: { agencyId, deletedAt: { not: null }, ...this.scope() },
+      orderBy: [{ deletedAt: 'desc' }, { id: 'asc' }],
+      select: ARCHIVE_SELECT,
+    });
+  }
+
+  /** Puts a removed case back in the pipeline, in whichever stage it was in. */
+  async restore(id: string) {
+    this.assertCanWrite();
+    const agencyId = this.context.requireAgencyId();
+    const existing = await this.prisma.client.mortgageCase.findFirst({
+      where: { id, agencyId, deletedAt: { not: null }, ...this.scope() },
+    });
+    if (!existing) throw new NotFoundException('התיק לא נמצא בארכיון.');
+
+    return this.prisma.client.mortgageCase.update({
+      where: { id: existing.id },
+      data: { deletedAt: null },
+      select: SELECT,
+    });
   }
 
   private async requireOwn(id: string) {
     const agencyId = this.context.requireAgencyId();
     const found = await this.prisma.client.mortgageCase.findFirst({
-      where: { id, agencyId, ...this.scope() },
+      where: { id, agencyId, deletedAt: null, ...this.scope() },
     });
     if (!found) throw new NotFoundException('התיק לא נמצא.');
     return found;

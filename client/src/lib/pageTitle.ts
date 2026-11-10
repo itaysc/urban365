@@ -42,6 +42,7 @@ const TITLES: Record<string, string> = {
   '/app/customers': 'לקוחות',
   '/app/calendar': 'יומן',
   '/app/deals': 'עסקאות',
+  '/app/documents': 'מסמכים',
   '/app/agency': 'עמוד הסוכנות',
   '/app/team': 'צוות',
   '/app/profile': 'הפרופיל שלי',

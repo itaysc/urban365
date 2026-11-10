@@ -29,6 +29,7 @@ export interface MyListingsPage {
 export async function fetchMyListings(params: {
   status?: ListingStatus;
   page?: number;
+  pageSize?: number;
 } = {}): Promise<MyListingsPage> {
   const { data } = await api.get<MyListingsPage>('/my/listings', { params });
   return data;
@@ -353,4 +354,75 @@ export async function updateOffice(id: string, input: OfficeInput): Promise<Agen
 
 export async function deleteOffice(id: string): Promise<void> {
   await api.delete(`/my/offices/${id}`);
+}
+
+// ── documents ─────────────────────────────────────────────────────────────────
+
+/** The same cap the server enforces. A scan of a contract fits; a drive dump does not. */
+export const MAX_DOCUMENT_BYTES = 10 * 1024 * 1024;
+
+export type DocumentSubject = 'customer' | 'listing' | 'deal' | 'mortgage_case' | 'lead';
+
+export interface DocumentLink {
+  id: string;
+  subject: DocumentSubject;
+  subjectId: string;
+  label: string;
+}
+
+export interface AgencyDocument {
+  id: string;
+  fileName: string;
+  contentType: string;
+  byteSize: number;
+  createdAt: string;
+  uploadedBy: { firstName: string; lastName: string } | null;
+  links: DocumentLink[];
+}
+
+export async function fetchDocuments(filter?: {
+  subject: DocumentSubject;
+  subjectId: string;
+}): Promise<AgencyDocument[]> {
+  const { data } = await api.get<AgencyDocument[]>('/my/documents', { params: filter });
+  return data;
+}
+
+/**
+ * `Content-Type` is deliberately not set — the browser must add the multipart boundary
+ * itself, and setting the header by hand strips it.
+ */
+export async function uploadDocument(
+  file: File,
+  link?: { subject: DocumentSubject; subjectId: string },
+): Promise<AgencyDocument> {
+  const body = new FormData();
+  body.append('file', file);
+  if (link) {
+    body.append('subject', link.subject);
+    body.append('subjectId', link.subjectId);
+  }
+  const { data } = await api.post<AgencyDocument>('/my/documents', body);
+  return data;
+}
+
+export async function linkDocument(
+  id: string,
+  link: { subject: DocumentSubject; subjectId: string },
+): Promise<DocumentLink> {
+  const { data } = await api.post<DocumentLink>(`/my/documents/${id}/links`, link);
+  return data;
+}
+
+export async function unlinkDocument(id: string, linkId: string): Promise<void> {
+  await api.delete(`/my/documents/${id}/links/${linkId}`);
+}
+
+export async function downloadDocument(id: string): Promise<Blob> {
+  const { data } = await api.get<Blob>(`/my/documents/${id}/file`, { responseType: 'blob' });
+  return data;
+}
+
+export async function deleteDocument(id: string): Promise<void> {
+  await api.delete(`/my/documents/${id}`);
 }

@@ -190,6 +190,8 @@ model Agency {
   demoRecords    DemoRecord[]
   mortgageCases  MortgageCase[]
   bankerContacts BankerContact[]
+  documents      AgencyDocument[]
+  documentLinks  AgencyDocumentLink[]
 
   /// Whether this agency takes part in co-brokerage at all.
   ///
@@ -431,15 +433,16 @@ model Listing {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  images       ListingImage[]
-  priceChanges ListingPriceChange[]
-  engagements  ListingEngagement[]
-  leads        Lead[]
-  deals        Deal[]
-  saves        SavedListing[]
-  meetings     Meeting[]
-  suggestions  Suggestion[]
-  coBrokerage  CoBrokerageRequest[]
+  images        ListingImage[]
+  priceChanges  ListingPriceChange[]
+  engagements   ListingEngagement[]
+  leads         Lead[]
+  deals         Deal[]
+  saves         SavedListing[]
+  meetings      Meeting[]
+  suggestions   Suggestion[]
+  coBrokerage   CoBrokerageRequest[]
+  documentLinks AgencyDocumentLink[]
 
   @@index([ownerUserId])
   @@index([approval])
@@ -565,6 +568,7 @@ model User {
   valuations            Valuation[]
   platformInvitesSent   PlatformInvite[]
   assignedMortgageCases MortgageCase[]         @relation("MortgageCaseAssignee")
+  uploadedDocuments     AgencyDocument[]
   impersonatedSessions  Session[]              @relation("SessionImpersonation")
 
   createdAt DateTime @default(now())
@@ -790,12 +794,12 @@ model Session {
   replacedBy   Session?  @relation("SessionChain", fields: [replacedById], references: [id], onDelete: SetNull)
   replaces     Session?  @relation("SessionChain")
 
-  ip         String?
-  userAgent  String?
+  ip        String?
+  userAgent String?
 
   /// Set while an admin is using this session as somebody else. The refresh token
   /// stays the admin's; only the access token is rewritten to the other account.
-  impersonating   User?   @relation("SessionImpersonation", fields: [impersonatingUserId], references: [id], onDelete: SetNull)
+  impersonating       User?   @relation("SessionImpersonation", fields: [impersonatingUserId], references: [id], onDelete: SetNull)
   impersonatingUserId String?
 
   lastUsedAt DateTime @default(now())
@@ -951,8 +955,12 @@ model Customer {
   assignedTo   User?   @relation("CustomerAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
   assignedToId String?
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  /// Soft-deleted when set — the row stays, out of the ordinary list, until restored
+  /// from the archive. The relationship this person has with the agency predates the
+  /// row and often outlasts whatever made someone remove it.
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
   meetings      Meeting[]
   /// The properties this person is selling, for a customer on the other side of the
@@ -962,10 +970,12 @@ model Customer {
   coBrokerage   CoBrokerageRequest[]
   deals         Deal[]
   mortgageCases MortgageCase[]
+  documentLinks AgencyDocumentLink[]
 
   /// The list is "this agency's, newest first", which is the only query there is.
   @@index([agencyId, createdAt])
   @@index([assignedToId])
+  @@index([agencyId, deletedAt])
 }
 
 model Lead {
@@ -999,14 +1009,19 @@ model Lead {
   deals         Deal[]
   suggestions   Suggestion[]
   mortgageCases MortgageCase[]
+  documentLinks AgencyDocumentLink[]
 
   contactedAt DateTime?
+  /// Soft-deleted when set — the row stays, out of the ordinary inbox, until restored
+  /// from the archive. A real enquiry is not something a mis-click should destroy.
+  deletedAt   DateTime?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
   @@index([agencyId, status, createdAt])
   @@index([listingId])
   @@index([assignedToId])
+  @@index([agencyId, deletedAt])
 }
 
 /// A user's connected Google Calendar.
@@ -1211,15 +1226,21 @@ model Deal {
 
   /// Set when a `MortgageCase` reaches `signed` and creates this deal to carry its
   /// commission into the agency's existing dashboard. Null for every real-estate deal.
-  mortgageCase MortgageCase?
+  mortgageCase  MortgageCase?
+  documentLinks AgencyDocumentLink[]
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  /// Soft-deleted when set — the row stays, out of the ordinary pipeline, until
+  /// restored from the archive. A real transaction, closed or not, is not something a
+  /// mis-click should destroy.
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
   @@index([agencyId, stage, createdAt])
   @@index([leadId])
   /// "What is open for this person", which the customer's own page asks.
   @@index([customerId])
+  @@index([agencyId, deletedAt])
 }
 
 /// A stage that ends the case; reaching `signed` is what stamps a linked `Deal`.
@@ -1280,11 +1301,17 @@ model MortgageCase {
 
   notes String?
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  /// Soft-deleted when set — the row stays, out of the ordinary pipeline, until
+  /// restored from the archive. Same reason `Deal` gets one: a real file is not
+  /// something a mis-click should destroy.
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
-  bankOffers BankOffer[]
+  bankOffers    BankOffer[]
+  documentLinks AgencyDocumentLink[]
 
+  @@index([agencyId, deletedAt])
   @@index([agencyId, stage, createdAt])
   @@index([leadId])
   @@index([customerId])
@@ -1328,10 +1355,82 @@ model BankerContact {
   email    String?
   notes    String?
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  /// Soft-deleted when set — the row stays, out of the ordinary directory, until
+  /// restored from the archive.
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
   @@index([agencyId])
+  @@index([agencyId, deletedAt])
+}
+
+/// A file the office keeps for its own work: a contract, a payslip, a scan of an ID.
+///
+/// Shared by both CRM verticals — a brokerage and a mortgage office keep the same
+/// kind of paper. The bytes live in the private bucket under `storageKey`. The CRM
+/// lists this row, and a signed-in member of the office downloads it through the API.
+model AgencyDocument {
+  id           String  @id @default(cuid())
+  agency       Agency  @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  agencyId     String
+  uploadedBy   User?   @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+  uploadedById String?
+
+  /// Shown in the list and used when the file is saved. The extension is the one
+  /// the bytes sniffed to, not the one the browser claimed.
+  fileName    String
+  contentType String
+  byteSize    Int
+  storageKey  String @unique
+
+  createdAt DateTime @default(now())
+
+  links AgencyDocumentLink[]
+
+  @@index([agencyId, createdAt])
+}
+
+/// A document attached to one CRM record.
+///
+/// The file itself stays on `AgencyDocument` — the office library — and this row is
+/// the attachment. One file can hang off a customer and a listing at once, which is
+/// how a contract belongs to both the person and the property. Exactly one of the
+/// subject columns is set; deleting the customer, listing, deal, case or lead
+/// removes the attachment and leaves the file.
+model AgencyDocumentLink {
+  id         String         @id @default(cuid())
+  agency     Agency         @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  agencyId   String
+  document   AgencyDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  documentId String
+
+  customer       Customer?     @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  customerId     String?
+  listing        Listing?      @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  listingId      String?
+  deal           Deal?         @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  dealId         String?
+  mortgageCase   MortgageCase? @relation(fields: [mortgageCaseId], references: [id], onDelete: Cascade)
+  mortgageCaseId String?
+  lead           Lead?         @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  leadId         String?
+
+  createdAt DateTime @default(now())
+
+  /// Postgres treats nulls as distinct, so a second listing link is not blocked by
+  /// the customer unique, and two links to the same customer are.
+  @@unique([documentId, customerId])
+  @@unique([documentId, listingId])
+  @@unique([documentId, dealId])
+  @@unique([documentId, mortgageCaseId])
+  @@unique([documentId, leadId])
+  @@index([agencyId])
+  @@index([customerId])
+  @@index([listingId])
+  @@index([dealId])
+  @@index([mortgageCaseId])
+  @@index([leadId])
 }
 
 /// A place an agency works out of, drawn on the public map under the agency's name.

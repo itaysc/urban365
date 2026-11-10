@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus } from 'lucide-react';
+import { Archive, Plus } from 'lucide-react';
+import { ArchivePanel } from '@/components/agency/ArchivePanel';
 import { MortgageCaseCard } from '@/components/agency/MortgageCaseCard';
 import { NewMortgageCaseDialog } from '@/components/agency/NewMortgageCaseDialog';
 import { Button } from '@/components/ui/Button';
@@ -12,7 +13,9 @@ import { formatShekel } from '@/lib/format';
 import { qk } from '@/queries/keys';
 import {
   deleteMortgageCase,
+  fetchMortgageCaseArchive,
   fetchMortgageCaseBoard,
+  restoreMortgageCase,
   updateMortgageCase,
   MORTGAGE_CASE_STAGES,
   type MortgageCase,
@@ -33,6 +36,7 @@ export function MortgageCasesPage() {
   const [addingTo, setAddingTo] = useState<MortgageCaseStage | undefined>();
   const [lifted, setLifted] = useState<string | null>(null);
   const [over, setOver] = useState<MortgageCaseStage | null>(null);
+  const [archiveOpen, setArchiveOpen] = useState(false);
 
   const { data, isPending } = useQuery({
     queryKey: qk.mortgageCases.board,
@@ -61,10 +65,10 @@ export function MortgageCasesPage() {
   const remove = async (item: MortgageCase) => {
     try {
       await deleteMortgageCase(item.id);
-      toast.success('התיק נמחק.');
+      toast.success('התיק הועבר לארכיון.');
       await reload();
     } catch (e) {
-      toast.error(errorMessageOf(e, 'המחיקה נכשלה.'));
+      toast.error(errorMessageOf(e, 'ההעברה לארכיון נכשלה.'));
     }
   };
 
@@ -93,11 +97,32 @@ export function MortgageCasesPage() {
     <div className={`flex flex-col gap-4 ${board ? 'h-[calc(100vh-9rem)]' : ''}`}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-xl font-bold text-slate-900">תיקי משכנתא</h1>
-        <Button onClick={() => openDialog()}>
-          <Plus className="h-4 w-4" aria-hidden />
-          תיק חדש
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="secondary" onClick={() => setArchiveOpen(true)}>
+            <Archive className="h-4 w-4" aria-hidden />
+            ארכיון
+          </Button>
+          <Button onClick={() => openDialog()}>
+            <Plus className="h-4 w-4" aria-hidden />
+            תיק חדש
+          </Button>
+        </div>
       </div>
+
+      <ArchivePanel
+        open={archiveOpen}
+        onOpenChange={setArchiveOpen}
+        title="תיקי משכנתא"
+        queryKey={qk.mortgageCases.archive}
+        fetchArchive={fetchMortgageCaseArchive}
+        onRestore={restoreMortgageCase}
+        onRestored={reload}
+        renderRow={(item) => (
+          <p className="truncate text-sm font-medium text-slate-900">
+            {item.customer?.name ?? item.lead?.name ?? 'ללא שיוך'}
+          </p>
+        )}
+      />
 
       {isPending && <p className="text-sm text-slate-500">טוען…</p>}
 

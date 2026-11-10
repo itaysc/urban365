@@ -1,8 +1,9 @@
 import { useRef, useState } from 'react';
-import { Trash2 } from 'lucide-react';
+import { Archive, Trash2 } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { qk } from '@/queries/keys';
 import { useSearchParams } from 'react-router-dom';
+import { ArchivePanel } from '@/components/agency/ArchivePanel';
 import { Button } from '@/components/ui/Button';
 import { Field, inputClass } from '@/components/ui/Field';
 import { useToast } from '@/components/ui/Toast';
@@ -11,15 +12,18 @@ import { formatDate, formatPrice } from '@/lib/format';
 import {
   createLead,
   deleteLead,
+  fetchLeadArchive,
   fetchLeadCounts,
   fetchLeads,
   importLeadsCsv,
+  restoreLead,
   updateLead,
   type ImportResult,
   type Lead,
   type LeadStatus,
 } from '@/services/crm';
 import { PhoneField } from '@/components/ui/PhoneField';
+import { RecordDocumentsToggle } from '@/components/agency/RecordDocuments';
 
 /**
  * A status, named. One set, used wherever a single enquiry's status is shown.
@@ -84,6 +88,7 @@ export function LeadsPage() {
   const [error, setError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
+  const [archiveOpen, setArchiveOpen] = useState(false);
   /** The enquiry whose status is in flight, so its control cannot be used twice. */
   const [busy, setBusy] = useState<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -131,10 +136,10 @@ export function LeadsPage() {
   const remove = async (lead: Lead) => {
     try {
       await deleteLead(lead.id);
-      toast.success('הפנייה נמחקה.');
+      toast.success('הפנייה הועברה לארכיון.');
       await reload();
     } catch (e) {
-      const message = errorMessageOf(e, 'המחיקה נכשלה.');
+      const message = errorMessageOf(e, 'ההעברה לארכיון נכשלה.');
       setError(message);
       toast.error(message);
     }
@@ -175,9 +180,29 @@ export function LeadsPage() {
           <Button variant="secondary" onClick={() => fileInput.current?.click()}>
             יבוא מקובץ
           </Button>
+          <Button variant="secondary" onClick={() => setArchiveOpen(true)}>
+            <Archive className="h-4 w-4" aria-hidden />
+            ארכיון
+          </Button>
           <Button onClick={() => setAdding((a) => !a)}>{adding ? 'ביטול' : 'פנייה חדשה'}</Button>
         </div>
       </div>
+
+      <ArchivePanel
+        open={archiveOpen}
+        onOpenChange={setArchiveOpen}
+        title="פניות"
+        queryKey={qk.leads.archive}
+        fetchArchive={fetchLeadArchive}
+        onRestore={restoreLead}
+        onRestored={reload}
+        renderRow={(lead) => (
+          <p className="truncate text-sm font-medium text-slate-900">
+            {lead.name}
+            {lead.phone ? <span className="font-normal text-slate-500"> · {lead.phone}</span> : null}
+          </p>
+        )}
+      />
 
       {error && (
         <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>
@@ -300,6 +325,7 @@ export function LeadsPage() {
                 </button>
               </div>
             </div>
+            <RecordDocumentsToggle subject="lead" subjectId={lead.id} />
           </li>
         ))}
       </ul>

@@ -28,6 +28,8 @@ const LIST_SELECT = {
   assignedTo: { select: { id: true, firstName: true, lastName: true } },
 } satisfies Prisma.LeadSelect;
 
+const ARCHIVE_SELECT = { ...LIST_SELECT, deletedAt: true } satisfies Prisma.LeadSelect;
+
 @Injectable()
 export class LeadsService {
   constructor(
@@ -62,7 +64,7 @@ export class LeadsService {
     const page = query.page ?? 1;
     const pageSize = query.pageSize ?? DEFAULT_PAGE_SIZE;
 
-    const where: Prisma.LeadWhereInput = { agencyId, AND: [this.scope()] };
+    const where: Prisma.LeadWhereInput = { agencyId, deletedAt: null, AND: [this.scope()] };
     if (query.status) where.status = query.status;
     if (query.listingId) where.listingId = query.listingId;
     if (query.q?.trim()) {
@@ -97,11 +99,37 @@ export class LeadsService {
     const agencyId = this.context.requireAgencyId();
     const rows = await this.prisma.client.lead.groupBy({
       by: ['status'],
-      where: { agencyId, ...this.scope() },
+      where: { agencyId, deletedAt: null, ...this.scope() },
       _count: { _all: true },
     });
 
     return Object.fromEntries(rows.map((r) => [r.status, r._count._all]));
+  }
+
+  /** Leads removed from the inbox, newest removal first — the archive, not the trash. */
+  async archive() {
+    const agencyId = this.context.requireAgencyId();
+    return this.prisma.client.lead.findMany({
+      where: { agencyId, deletedAt: { not: null }, ...this.scope() },
+      orderBy: [{ deletedAt: 'desc' }, { id: 'asc' }],
+      select: ARCHIVE_SELECT,
+    });
+  }
+
+  /** Puts a removed lead back in the ordinary inbox. */
+  async restore(id: string) {
+    this.assertCanWrite();
+    const agencyId = this.context.requireAgencyId();
+    const existing = await this.prisma.client.lead.findFirst({
+      where: { id, agencyId, deletedAt: { not: null }, ...this.scope() },
+    });
+    if (!existing) throw new NotFoundException('הפנייה לא נמצאה בארכיון.');
+
+    return this.prisma.client.lead.update({
+      where: { id: existing.id },
+      data: { deletedAt: null },
+      select: LIST_SELECT,
+    });
   }
 
   async create(dto: CreateLeadDto) {
@@ -148,10 +176,11 @@ export class LeadsService {
     });
   }
 
+  /** Archives the lead rather than destroying it — see `restore`. */
   async remove(id: string) {
     this.assertCanWrite();
     const existing = await this.requireOwn(id);
-    await this.prisma.client.lead.delete({ where: { id: existing.id } });
+    await this.prisma.client.lead.update({ where: { id: existing.id }, data: { deletedAt: new Date() } });
     return { deleted: true };
   }
 
@@ -216,7 +245,9 @@ export class LeadsService {
 
   private async requireOwn(id: string) {
     const agencyId = this.context.requireAgencyId();
-    const lead = await this.prisma.client.lead.findFirst({ where: { id, agencyId, ...this.scope() } });
+    const lead = await this.prisma.client.lead.findFirst({
+      where: { id, agencyId, deletedAt: null, ...this.scope() },
+    });
     if (!lead) throw new NotFoundException('הפנייה לא נמצאה.');
     return lead;
   }

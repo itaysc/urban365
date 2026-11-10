@@ -18,6 +18,12 @@ export class CustomersController {
     return this.customers.list(query);
   }
 
+  /** Customers removed from the list, waiting to be put back. */
+  @Get('archive')
+  archive() {
+    return this.customers.archive();
+  }
+
   @Post()
   create(@Body() dto: CreateCustomerDto) {
     return this.customers.create(dto);
@@ -31,5 +37,10 @@ export class CustomersController {
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.customers.remove(id);
+  }
+
+  @Post(':id/restore')
+  restore(@Param('id') id: string) {
+    return this.customers.restore(id);
   }
 }

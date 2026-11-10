@@ -28,6 +28,8 @@ const SELECT = {
   owner: { select: { id: true, firstName: true, lastName: true } },
 } satisfies Prisma.DealSelect;
 
+const ARCHIVE_SELECT = { ...SELECT, deletedAt: true } satisfies Prisma.DealSelect;
+
 /** A stage that ends the deal; entering one stamps `closedAt`. */
 const TERMINAL: DealStageValue[] = ['closed_won', 'closed_lost'];
 
@@ -64,7 +66,7 @@ export class DealsService {
     const agencyId = this.context.requireAgencyId();
 
     return this.prisma.client.deal.findMany({
-      where: { agencyId, customerId, ...this.scope() },
+      where: { agencyId, customerId, deletedAt: null, ...this.scope() },
       orderBy: [{ updatedAt: 'desc' }, { id: 'asc' }],
       select: SELECT,
     });
@@ -73,7 +75,7 @@ export class DealsService {
   async board() {
     const agencyId = this.context.requireAgencyId();
     const deals = await this.prisma.client.deal.findMany({
-      where: { agencyId, ...this.scope() },
+      where: { agencyId, deletedAt: null, ...this.scope() },
       orderBy: [{ updatedAt: 'desc' }, { id: 'asc' }],
       select: SELECT,
     });
@@ -168,16 +170,45 @@ export class DealsService {
     });
   }
 
+  /** Archives the deal rather than destroying it — see `restore`. */
   async remove(id: string) {
     this.assertCanWrite();
     const existing = await this.requireOwn(id);
-    await this.prisma.client.deal.delete({ where: { id: existing.id } });
+    await this.prisma.client.deal.update({ where: { id: existing.id }, data: { deletedAt: new Date() } });
     return { deleted: true };
+  }
+
+  /** Deals removed from the pipeline, newest removal first. */
+  async archive() {
+    const agencyId = this.context.requireAgencyId();
+    return this.prisma.client.deal.findMany({
+      where: { agencyId, deletedAt: { not: null }, ...this.scope() },
+      orderBy: [{ deletedAt: 'desc' }, { id: 'asc' }],
+      select: ARCHIVE_SELECT,
+    });
+  }
+
+  /** Puts a removed deal back in the pipeline, in whichever stage it was in. */
+  async restore(id: string) {
+    this.assertCanWrite();
+    const agencyId = this.context.requireAgencyId();
+    const existing = await this.prisma.client.deal.findFirst({
+      where: { id, agencyId, deletedAt: { not: null }, ...this.scope() },
+    });
+    if (!existing) throw new NotFoundException('העסקה לא נמצאה בארכיון.');
+
+    return this.prisma.client.deal.update({
+      where: { id: existing.id },
+      data: { deletedAt: null },
+      select: SELECT,
+    });
   }
 
   private async requireOwn(id: string) {
     const agencyId = this.context.requireAgencyId();
-    const deal = await this.prisma.client.deal.findFirst({ where: { id, agencyId, ...this.scope() } });
+    const deal = await this.prisma.client.deal.findFirst({
+      where: { id, agencyId, deletedAt: null, ...this.scope() },
+    });
     if (!deal) throw new NotFoundException('העסקה לא נמצאה.');
     return deal;
   }

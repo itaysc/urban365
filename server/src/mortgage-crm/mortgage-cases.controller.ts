@@ -15,6 +15,13 @@ export class MortgageCasesController {
     return this.cases.board();
   }
 
+  /** Cases removed from the pipeline, waiting to be put back. Declared above `:id`,
+   *  or Nest would read "archive" as an id and route it to `findOne` instead. */
+  @Get('archive')
+  archive() {
+    return this.cases.archive();
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.cases.findOne(id);
@@ -33,5 +40,10 @@ export class MortgageCasesController {
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.cases.remove(id);
+  }
+
+  @Post(':id/restore')
+  restore(@Param('id') id: string) {
+    return this.cases.restore(id);
   }
 }

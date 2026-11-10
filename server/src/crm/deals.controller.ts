@@ -20,6 +20,12 @@ export class DealsController {
     return this.deals.forCustomer(customerId);
   }
 
+  /** Deals removed from the pipeline, waiting to be put back. */
+  @Get('archive')
+  archive() {
+    return this.deals.archive();
+  }
+
   @Post()
   create(@Body() dto: CreateDealDto) {
     return this.deals.create(dto);
@@ -33,5 +39,10 @@ export class DealsController {
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.deals.remove(id);
+  }
+
+  @Post(':id/restore')
+  restore(@Param('id') id: string) {
+    return this.deals.restore(id);
   }
 }

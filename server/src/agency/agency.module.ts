@@ -8,6 +8,8 @@ import { AgencyProfileController } from './agency-profile.controller.js';
 import { ImagesController } from './images.controller.js';
 import { OfficesController } from './offices.controller.js';
 import { OfficesService } from './offices.service.js';
+import { DocumentsController } from './documents.controller.js';
+import { DocumentsService } from './documents.service.js';
 import { AgencyService } from './agency.service.js';
 import { PublicAgenciesService } from './public-agencies.service.js';
 import { OverviewController } from './overview.controller.js';
@@ -28,6 +30,7 @@ import { TeamService } from './team.service.js';
     AgencyProfileController,
     ImagesController,
     OfficesController,
+    DocumentsController,
     MyListingsController,
     ListingPackagesController,
     TeamController,
@@ -42,6 +45,7 @@ import { TeamService } from './team.service.js';
     ListingBillingService,
     TeamService,
     OfficesService,
+    DocumentsService,
   ],
 })
 export class AgencyModule {}

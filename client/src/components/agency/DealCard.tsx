@@ -1,4 +1,5 @@
 import { GripVertical, Trash2 } from 'lucide-react';
+import { RecordDocumentsToggle } from '@/components/agency/RecordDocuments';
 import { selectClass } from '@/components/ui/Field';
 import { formatShekel } from '@/lib/format';
 import { DEAL_STAGES, type Deal, type DealStage } from '@/services/crm';
@@ -103,6 +104,8 @@ export function DealCard({
           <Trash2 className="h-4 w-4" aria-hidden />
         </button>
       </div>
+
+      <RecordDocumentsToggle subject="deal" subjectId={deal.id} />
     </li>
   );
 }

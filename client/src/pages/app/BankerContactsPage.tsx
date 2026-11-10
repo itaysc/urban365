@@ -1,15 +1,20 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus, Trash2 } from 'lucide-react';
+import { Archive, Plus, Trash2 } from 'lucide-react';
+import { ArchivePanel } from '@/components/agency/ArchivePanel';
+import { SuggestBox } from '@/components/listing/SuggestBox';
 import { Button } from '@/components/ui/Button';
 import { Field, inputClass } from '@/components/ui/Field';
 import { useToast } from '@/components/ui/Toast';
 import { errorMessageOf } from '@/lib/apiError';
+import { ISRAELI_BANKS, bankLabel, branchLabel } from '@/lib/israeli-banks';
 import { qk } from '@/queries/keys';
 import {
   createBankerContact,
   deleteBankerContact,
+  fetchBankerContactArchive,
   fetchBankerContacts,
+  restoreBankerContact,
   type BankerContactInput,
 } from '@/services/crm';
 
@@ -26,16 +31,39 @@ export function BankerContactsPage() {
   const { data, isPending } = useQuery({ queryKey: qk.bankerContacts.list, queryFn: fetchBankerContacts });
 
   const [form, setForm] = useState<BankerContactInput>(EMPTY);
+  const [bankCode, setBankCode] = useState('');
   const [saving, setSaving] = useState(false);
+  const [archiveOpen, setArchiveOpen] = useState(false);
+
+  const bank = ISRAELI_BANKS.find((item) => String(item.code) === bankCode);
+  const bankOptions = useMemo(() => {
+    const labels = ISRAELI_BANKS.map(bankLabel);
+    const typed = form.bankName.trim();
+    if (!typed || labels.includes(typed)) return labels;
+    return labels.filter((label) => label.includes(typed));
+  }, [form.bankName]);
+  const branchOptions = useMemo(() => {
+    if (!bank) return [];
+    const labels = bank.branches.map(branchLabel);
+    const typed = (form.branch ?? '').trim();
+    if (!typed || labels.includes(typed)) return labels.slice(0, 40);
+    return labels.filter((label) => label.includes(typed)).slice(0, 40);
+  }, [bank, form.branch]);
 
   const reload = () => queryClient.invalidateQueries({ queryKey: qk.bankerContacts.all });
 
   const set = (key: keyof BankerContactInput, value: string) =>
     setForm((f) => ({ ...f, [key]: value }));
 
+  const chooseBank = (label: string) => {
+    const next = ISRAELI_BANKS.find((item) => bankLabel(item) === label);
+    setBankCode(next ? String(next.code) : '');
+    setForm((current) => ({ ...current, bankName: label, branch: '' }));
+  };
+
   const submit = async () => {
-    if (!form.bankName.trim() || !form.name.trim() || (!form.phone?.trim() && !form.email?.trim())) {
-      toast.error('צריך שם בנק, שם איש קשר, וטלפון או אימייל.');
+    if (!bank || !form.name.trim() || (!form.phone?.trim() && !form.email?.trim())) {
+      toast.error('צריך לבחור בנק מהרשימה, שם איש קשר, וטלפון או אימייל.');
       return;
     }
     setSaving(true);
@@ -48,6 +76,7 @@ export function BankerContactsPage() {
         email: form.email?.trim() || undefined,
       });
       setForm(EMPTY);
+      setBankCode('');
       await reload();
       toast.success('איש הקשר נוסף.');
     } catch (e) {
@@ -61,15 +90,37 @@ export function BankerContactsPage() {
     try {
       await deleteBankerContact(id);
       await reload();
-      toast.success('איש הקשר נמחק.');
+      toast.success('איש הקשר הועבר לארכיון.');
     } catch (e) {
-      toast.error(errorMessageOf(e, 'המחיקה נכשלה.'));
+      toast.error(errorMessageOf(e, 'ההעברה לארכיון נכשלה.'));
     }
   };
 
   return (
     <div className="flex flex-col gap-5">
-      <h1 className="text-xl font-bold text-slate-900">אנשי קשר בבנקים</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-xl font-bold text-slate-900">אנשי קשר בבנקים</h1>
+        <Button variant="secondary" onClick={() => setArchiveOpen(true)}>
+          <Archive className="h-4 w-4" aria-hidden />
+          ארכיון
+        </Button>
+      </div>
+
+      <ArchivePanel
+        open={archiveOpen}
+        onOpenChange={setArchiveOpen}
+        title="אנשי קשר בבנקים"
+        queryKey={qk.bankerContacts.archive}
+        fetchArchive={fetchBankerContactArchive}
+        onRestore={restoreBankerContact}
+        onRestored={reload}
+        renderRow={(contact) => (
+          <p className="truncate text-sm font-medium text-slate-900">
+            {contact.name}
+            <span className="font-normal text-slate-500"> · {contact.bankName}</span>
+          </p>
+        )}
+      />
 
       <section className="rounded-xl border border-slate-200 bg-white p-4">
         <h2 className="mb-3 text-sm font-semibold text-slate-900">הוספת איש קשר</h2>
@@ -82,21 +133,45 @@ export function BankerContactsPage() {
           }}
         >
           <Field label="בנק" htmlFor="bc-bank" required>
-            <input
+            <SuggestBox
               id="bc-bank"
-              className={inputClass}
+              required
               value={form.bankName}
-              onChange={(e) => set('bankName', e.target.value)}
+              onChange={(value) => {
+                const next = ISRAELI_BANKS.find((item) => bankLabel(item) === value);
+                setBankCode(next ? String(next.code) : '');
+                setForm((current) => ({
+                  ...current,
+                  bankName: value,
+                  branch: next ? current.branch ?? '' : '',
+                }));
+              }}
+              onPick={chooseBank}
+              options={bankOptions}
+              term={form.bankName}
+              placeholder="שם או מספר בנק"
             />
           </Field>
 
           <Field label="סניף" htmlFor="bc-branch">
-            <input
-              id="bc-branch"
-              className={inputClass}
-              value={form.branch}
-              onChange={(e) => set('branch', e.target.value)}
-            />
+            {bank ? (
+              <SuggestBox
+                id="bc-branch"
+                value={form.branch ?? ''}
+                onChange={(value) => set('branch', value)}
+                options={branchOptions}
+                term={form.branch ?? ''}
+                placeholder="שם, עיר או מספר סניף"
+              />
+            ) : (
+              <input
+                id="bc-branch"
+                className={`${inputClass} w-full`}
+                disabled
+                placeholder="קודם בוחרים בנק"
+                value=""
+              />
+            )}
           </Field>
 
           <Field label="שם איש הקשר" htmlFor="bc-name" required>

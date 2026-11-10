@@ -5,6 +5,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ImageManager } from '@/components/listing/ImageManager';
 import { Button } from '@/components/ui/Button';
 import { ViewingHistory } from '@/components/agency/ViewingHistory';
+import { RecordDocuments } from '@/components/agency/RecordDocuments';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { CityBox } from '@/components/listing/CityBox';
 import { NeighborhoodBox } from '@/components/listing/NeighborhoodBox';
@@ -548,6 +549,12 @@ export function ListingEditorPage() {
       {listing && (
         <section className="rounded-xl border border-slate-200 bg-white p-4">
           <ImageManager listing={listing} onChange={setListing} />
+        </section>
+      )}
+
+      {listing && (
+        <section className="rounded-xl border border-slate-200 bg-white p-4">
+          <RecordDocuments subject="listing" subjectId={listing.id} />
         </section>
       )}
 

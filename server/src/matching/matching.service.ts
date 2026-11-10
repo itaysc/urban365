@@ -151,7 +151,7 @@ export class MatchingService {
     const [customers, listings] = await Promise.all([
       this.prisma.customer.findMany({
         // Sellers are not shown things to buy. `both` is, because they are also buying.
-        where: { agencyId, kind: { in: ['buyer', 'both'] } },
+        where: { agencyId, deletedAt: null, kind: { in: ['buyer', 'both'] } },
         select: BRIEF_SELECT,
       }),
       this.prisma.listing.findMany({
@@ -230,7 +230,7 @@ export class MatchingService {
 
     const [customers, listings] = await Promise.all([
       this.prisma.customer.findMany({
-        where: { agencyId, kind: { in: ['buyer', 'both'] } },
+        where: { agencyId, deletedAt: null, kind: { in: ['buyer', 'both'] } },
         select: BRIEF_SELECT,
       }),
       this.prisma.listing.findMany({

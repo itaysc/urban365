@@ -14,6 +14,12 @@ export class BankerContactsController {
     return this.contacts.list();
   }
 
+  /** Contacts removed from the directory, waiting to be put back. */
+  @Get('archive')
+  archive() {
+    return this.contacts.archive();
+  }
+
   @Post()
   create(@Body() dto: CreateBankerContactDto) {
     return this.contacts.create(dto);
@@ -27,5 +33,10 @@ export class BankerContactsController {
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.contacts.remove(id);
+  }
+
+  @Post(':id/restore')
+  restore(@Param('id') id: string) {
+    return this.contacts.restore(id);
   }
 }

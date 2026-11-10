@@ -75,7 +75,7 @@ export class OverviewService {
       }),
 
       this.prisma.client.lead.count({
-        where: { agencyId, status: { in: ['new', 'contacted'] }, ...leadScope },
+        where: { agencyId, deletedAt: null, status: { in: ['new', 'contacted'] }, ...leadScope },
       }),
 
       // Mine and the agency's unclaimed, which is what the radar itself shows.
@@ -89,18 +89,18 @@ export class OverviewService {
 
       this.prisma.client.deal.groupBy({
         by: ['stage'],
-        where: { agencyId, ...dealScope },
+        where: { agencyId, deletedAt: null, ...dealScope },
         _count: { _all: true },
         _sum: { price: true, commission: true },
       }),
 
       this.prisma.client.lead.findMany({
-        where: { agencyId, createdAt: { gte: weeksBack }, ...leadScope },
+        where: { agencyId, deletedAt: null, createdAt: { gte: weeksBack }, ...leadScope },
         select: { createdAt: true },
       }),
 
       this.prisma.client.deal.findMany({
-        where: { agencyId, closedAt: { gte: monthsBack }, ...dealScope },
+        where: { agencyId, deletedAt: null, closedAt: { gte: monthsBack }, ...dealScope },
         select: { closedAt: true, stage: true, commission: true },
       }),
     ]);

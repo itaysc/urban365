@@ -4,6 +4,7 @@ import {
   Contact,
   CalendarDays,
   ContactRound,
+  FileText,
   Handshake,
   HandHeart,
   LayoutDashboard,
@@ -51,6 +52,7 @@ export const NAV_ITEMS = [
     group: 'work',
     vertical: 'real_estate',
   },
+  { path: '/app/documents', label: 'מסמכים', icon: FileText, group: 'work' },
   { path: '/app/calendar', label: 'יומן', icon: CalendarDays, group: 'work' },
   {
     path: '/app/billing',

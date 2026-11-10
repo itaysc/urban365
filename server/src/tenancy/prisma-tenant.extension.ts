@@ -21,6 +21,8 @@ export const TENANT_MODELS = new Set([
   'ListingImage',
   'Lead',
   'Deal',
+  'AgencyDocument',
+  'AgencyDocumentLink',
 ]);
 
 const WRITES = new Set(['create', 'createMany', 'createManyAndReturn', 'upsert']);

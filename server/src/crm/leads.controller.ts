@@ -21,6 +21,12 @@ export class LeadsController {
     return this.leads.counts();
   }
 
+  /** Leads removed from the inbox, waiting to be put back. */
+  @Get('archive')
+  archive() {
+    return this.leads.archive();
+  }
+
   @Post()
   create(@Body() dto: CreateLeadDto) {
     return this.leads.create(dto);
@@ -39,6 +45,11 @@ export class LeadsController {
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.leads.remove(id);
+  }
+
+  @Post(':id/restore')
+  restore(@Param('id') id: string) {
+    return this.leads.restore(id);
   }
 }
 

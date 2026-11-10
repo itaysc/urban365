@@ -145,7 +145,7 @@ export class RulesService {
     const quiet = new Date(now.getTime() - days(LEAD_QUIET_DAYS));
 
     const leads = await this.prisma.lead.findMany({
-      where: { agencyId, status: { in: ['new', 'contacted'] }, updatedAt: { lt: quiet } },
+      where: { agencyId, deletedAt: null, status: { in: ['new', 'contacted'] }, updatedAt: { lt: quiet } },
       select: { id: true, name: true, assignedToId: true, status: true, updatedAt: true },
       orderBy: { updatedAt: 'asc' },
       take: PER_KIND_LIMIT,

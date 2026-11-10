@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus } from 'lucide-react';
+import { Archive, Plus } from 'lucide-react';
+import { ArchivePanel } from '@/components/agency/ArchivePanel';
 import { DealCard } from '@/components/agency/DealCard';
 import { NewDealDialog } from '@/components/agency/NewDealDialog';
 import { Button } from '@/components/ui/Button';
@@ -12,7 +13,9 @@ import { formatShekel } from '@/lib/format';
 import { qk } from '@/queries/keys';
 import {
   deleteDeal,
+  fetchDealArchive,
   fetchDealBoard,
+  restoreDeal,
   updateDeal,
   DEAL_STAGES,
   type Deal,
@@ -45,6 +48,7 @@ export function DealsPage() {
   /** The card currently being carried, and the column under the cursor. */
   const [lifted, setLifted] = useState<string | null>(null);
   const [over, setOver] = useState<DealStage | null>(null);
+  const [archiveOpen, setArchiveOpen] = useState(false);
 
   const { data, isPending } = useQuery({ queryKey: qk.deals.board, queryFn: fetchDealBoard });
 
@@ -78,10 +82,10 @@ export function DealsPage() {
   const remove = async (deal: Deal) => {
     try {
       await deleteDeal(deal.id);
-      toast.success('העסקה נמחקה.');
+      toast.success('העסקה הועברה לארכיון.');
       await reload();
     } catch (e) {
-      toast.error(errorMessageOf(e, 'המחיקה נכשלה.'));
+      toast.error(errorMessageOf(e, 'ההעברה לארכיון נכשלה.'));
     }
   };
 
@@ -112,11 +116,30 @@ export function DealsPage() {
     <div className={`flex flex-col gap-4 ${board ? 'h-[calc(100vh-9rem)]' : ''}`}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-xl font-bold text-slate-900">עסקאות</h1>
-        <Button onClick={() => openDialog()}>
-          <Plus className="h-4 w-4" aria-hidden />
-          עסקה חדשה
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="secondary" onClick={() => setArchiveOpen(true)}>
+            <Archive className="h-4 w-4" aria-hidden />
+            ארכיון
+          </Button>
+          <Button onClick={() => openDialog()}>
+            <Plus className="h-4 w-4" aria-hidden />
+            עסקה חדשה
+          </Button>
+        </div>
       </div>
+
+      <ArchivePanel
+        open={archiveOpen}
+        onOpenChange={setArchiveOpen}
+        title="עסקאות"
+        queryKey={qk.deals.archive}
+        fetchArchive={fetchDealArchive}
+        onRestore={restoreDeal}
+        onRestored={reload}
+        renderRow={(deal) => (
+          <p className="truncate text-sm font-medium text-slate-900">{deal.title}</p>
+        )}
+      />
 
       {isPending && <p className="text-sm text-slate-500">טוען…</p>}
 

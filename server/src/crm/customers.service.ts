@@ -41,6 +41,8 @@ const LIST_SELECT = {
   _count: { select: { meetings: true } },
 } satisfies Prisma.CustomerSelect;
 
+const ARCHIVE_SELECT = { ...LIST_SELECT, deletedAt: true } satisfies Prisma.CustomerSelect;
+
 /**
  * The people an agency works with.
  *
@@ -79,7 +81,7 @@ export class CustomersService {
     const page = query.page ?? 1;
     const pageSize = query.pageSize ?? DEFAULT_PAGE_SIZE;
 
-    const where: Prisma.CustomerWhereInput = { agencyId, AND: [this.scope()] };
+    const where: Prisma.CustomerWhereInput = { agencyId, deletedAt: null, AND: [this.scope()] };
     if (query.kind) where.kind = query.kind;
     // Unsigned is the useful half of this filter and the reason it exists: the list of
     // people the agency is working for without anything in writing.
@@ -145,12 +147,39 @@ export class CustomersService {
     });
   }
 
+  /** Archives the customer rather than destroying it — see `restore`. */
   async remove(id: string) {
     this.assertCanWrite();
     await this.require(id);
 
-    await this.prisma.client.customer.delete({ where: { id } });
+    await this.prisma.client.customer.update({ where: { id }, data: { deletedAt: new Date() } });
     return { deleted: true };
+  }
+
+  /** Customers removed from the list, newest removal first. */
+  async archive() {
+    const agencyId = this.context.requireAgencyId();
+    return this.prisma.client.customer.findMany({
+      where: { agencyId, deletedAt: { not: null }, ...this.scope() },
+      orderBy: [{ deletedAt: 'desc' }, { id: 'asc' }],
+      select: ARCHIVE_SELECT,
+    });
+  }
+
+  /** Puts a removed customer back in the ordinary list. */
+  async restore(id: string) {
+    this.assertCanWrite();
+    const existing = await this.prisma.client.customer.findFirst({
+      where: { id, deletedAt: { not: null }, ...this.scope() },
+      select: { id: true },
+    });
+    if (!existing) throw new NotFoundException('הלקוח לא נמצא בארכיון.');
+
+    return this.prisma.client.customer.update({
+      where: { id: existing.id },
+      data: { deletedAt: null },
+      select: LIST_SELECT,
+    });
   }
 
   /**
@@ -160,7 +189,7 @@ export class CustomersService {
    */
   private async require(id: string) {
     const customer = await this.prisma.client.customer.findFirst({
-      where: { id, ...this.scope() },
+      where: { id, deletedAt: null, ...this.scope() },
       select: { id: true },
     });
     if (!customer) throw new NotFoundException('הלקוח לא נמצא.');

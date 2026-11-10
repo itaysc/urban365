@@ -4,6 +4,8 @@ import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config';
 import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import type { StorageConfig } from '../config/configuration.js';
+import { DOCUMENT_EXTENSIONS } from './document-type.js';
+import { sniffImageType } from './image-type.js';
 
 /** What may be uploaded. Checked on the declared type and on the magic bytes. */
 const ALLOWED_TYPES: Record<string, string> = {
@@ -78,7 +80,7 @@ export class StorageService {
   }
 
   extensionFor(contentType: string): string | null {
-    return ALLOWED_TYPES[contentType] ?? null;
+    return ALLOWED_TYPES[contentType] ?? DOCUMENT_EXTENSIONS[contentType] ?? null;
   }
 
   /**
@@ -87,22 +89,7 @@ export class StorageService {
    * further than this.
    */
   detectImageType(buffer: Buffer): string | null {
-    if (buffer.length < 12) return null;
-
-    if (buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) return 'image/jpeg';
-    if (buffer.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) {
-      return 'image/png';
-    }
-    if (buffer.subarray(0, 4).toString('ascii') === 'RIFF' && buffer.subarray(8, 12).toString('ascii') === 'WEBP') {
-      return 'image/webp';
-    }
-    // AVIF is ISO-BMFF: a `ftyp` box whose brand says avif.
-    if (buffer.subarray(4, 8).toString('ascii') === 'ftyp') {
-      const brand = buffer.subarray(8, 12).toString('ascii');
-      if (brand === 'avif' || brand === 'avis') return 'image/avif';
-    }
-
-    return null;
+    return sniffImageType(buffer);
   }
 
   /** Lazily built, so an unconfigured deployment never constructs one. */

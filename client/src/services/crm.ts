@@ -32,6 +32,7 @@ export async function fetchLeads(params: {
   status?: LeadStatus;
   q?: string;
   page?: number;
+  pageSize?: number;
 } = {}): Promise<LeadsPage> {
   const { data } = await api.get<LeadsPage>('/my/leads', { params });
   return data;
@@ -55,7 +56,15 @@ export interface LeadInput {
 export const createLead = (input: LeadInput) => api.post<Lead>('/my/leads', input);
 export const updateLead = (id: string, input: Partial<LeadInput>) =>
   api.patch<Lead>(`/my/leads/${id}`, input);
+/** Archives the lead — see `fetchLeadArchive`/`restoreLead`, not a permanent delete. */
 export const deleteLead = (id: string) => api.delete(`/my/leads/${id}`);
+
+export async function fetchLeadArchive(): Promise<(Lead & { deletedAt: string })[]> {
+  const { data } = await api.get<(Lead & { deletedAt: string })[]>('/my/leads/archive');
+  return data;
+}
+
+export const restoreLead = (id: string) => api.post<Lead>(`/my/leads/${id}/restore`);
 
 export interface ImportResult {
   imported: number;
@@ -146,7 +155,15 @@ export async function fetchCustomerDeals(customerId: string): Promise<Deal[]> {
 export const createDeal = (input: DealInput) => api.post<Deal>('/my/deals', input);
 export const updateDeal = (id: string, input: Partial<DealInput>) =>
   api.patch<Deal>(`/my/deals/${id}`, input);
+/** Archives the deal — see `fetchDealArchive`/`restoreDeal`, not a permanent delete. */
 export const deleteDeal = (id: string) => api.delete(`/my/deals/${id}`);
+
+export async function fetchDealArchive(): Promise<(Deal & { deletedAt: string })[]> {
+  const { data } = await api.get<(Deal & { deletedAt: string })[]>('/my/deals/archive');
+  return data;
+}
+
+export const restoreDeal = (id: string) => api.post<Deal>(`/my/deals/${id}/restore`);
 
 /**
  * The contact number for a listing, fetched only when the visitor asks. It is not part
@@ -263,7 +280,16 @@ export async function fetchCustomers(params: {
 export const createCustomer = (input: CustomerInput) => api.post<Customer>('/my/customers', input);
 export const updateCustomer = (id: string, input: Partial<CustomerInput>) =>
   api.patch<Customer>(`/my/customers/${id}`, input);
+/** Archives the customer — see `fetchCustomerArchive`/`restoreCustomer`, not a
+ *  permanent delete. */
 export const deleteCustomer = (id: string) => api.delete(`/my/customers/${id}`);
+
+export async function fetchCustomerArchive(): Promise<(Customer & { deletedAt: string })[]> {
+  const { data } = await api.get<(Customer & { deletedAt: string })[]>('/my/customers/archive');
+  return data;
+}
+
+export const restoreCustomer = (id: string) => api.post<Customer>(`/my/customers/${id}/restore`);
 
 // ── mortgage-broker vertical ──────────────────────────────────────────────────────
 // A mortgage case is this vertical's deal — see `MortgageCase` in schema.prisma for
@@ -373,7 +399,17 @@ export const createMortgageCase = (input: MortgageCaseInput) =>
   api.post<MortgageCase>('/my/mortgage-cases', input);
 export const updateMortgageCase = (id: string, input: Partial<MortgageCaseInput>) =>
   api.patch<MortgageCase>(`/my/mortgage-cases/${id}`, input);
+/** Archives the case — see `fetchMortgageCaseArchive`/`restoreMortgageCase`, not a
+ *  permanent delete. */
 export const deleteMortgageCase = (id: string) => api.delete(`/my/mortgage-cases/${id}`);
+
+export async function fetchMortgageCaseArchive(): Promise<(MortgageCase & { deletedAt: string })[]> {
+  const { data } = await api.get<(MortgageCase & { deletedAt: string })[]>('/my/mortgage-cases/archive');
+  return data;
+}
+
+export const restoreMortgageCase = (id: string) =>
+  api.post<MortgageCase>(`/my/mortgage-cases/${id}/restore`);
 
 export const createBankOffer = (caseId: string, input: BankOfferInput) =>
   api.post<BankOffer>(`/my/mortgage-cases/${caseId}/offers`, input);
@@ -410,4 +446,14 @@ export const createBankerContact = (input: BankerContactInput) =>
   api.post<BankerContact>('/my/banker-contacts', input);
 export const updateBankerContact = (id: string, input: Partial<BankerContactInput>) =>
   api.patch<BankerContact>(`/my/banker-contacts/${id}`, input);
+/** Archives the contact — see `fetchBankerContactArchive`/`restoreBankerContact`, not
+ *  a permanent delete. */
 export const deleteBankerContact = (id: string) => api.delete(`/my/banker-contacts/${id}`);
+
+export async function fetchBankerContactArchive(): Promise<(BankerContact & { deletedAt: string })[]> {
+  const { data } = await api.get<(BankerContact & { deletedAt: string })[]>('/my/banker-contacts/archive');
+  return data;
+}
+
+export const restoreBankerContact = (id: string) =>
+  api.post<BankerContact>(`/my/banker-contacts/${id}/restore`);

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowRight, Plus, Trash2 } from 'lucide-react';
+import { RecordDocuments } from '@/components/agency/RecordDocuments';
 import { Button } from '@/components/ui/Button';
 import { Field, inputClass, selectClass } from '@/components/ui/Field';
 import { useToast } from '@/components/ui/Toast';
@@ -283,6 +284,10 @@ export function MortgageCaseDetailPage() {
             </Field>
           </div>
         </div>
+      </section>
+
+      <section className="rounded-xl border border-slate-200 bg-white p-4">
+        <RecordDocuments subject="mortgage_case" subjectId={caseId} />
       </section>
 
       <section className="rounded-xl border border-slate-200 bg-white p-4">

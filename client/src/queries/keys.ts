@@ -53,6 +53,7 @@ export const qk = {
     all: ['leads'] as const,
     list: (status: LeadStatus | undefined, page: number) => ['leads', 'list', status ?? 'any', page] as const,
     counts: ['leads', 'counts'] as const,
+    archive: ['leads', 'archive'] as const,
   },
 
   customers: {
@@ -63,6 +64,7 @@ export const qk = {
     picker: ['customers', 'picker'] as const,
     /** The deal dialog's search, keyed on what has been typed. */
     search: (q: string) => ['customers', 'search', q] as const,
+    archive: ['customers', 'archive'] as const,
   },
 
   cobrokerage: {
@@ -96,17 +98,27 @@ export const qk = {
     all: ['deals'] as const,
     board: ['deals', 'board'] as const,
     forCustomer: (customerId: string) => ['deals', 'customer', customerId] as const,
+    archive: ['deals', 'archive'] as const,
   },
 
   mortgageCases: {
     all: ['mortgage-cases'] as const,
     board: ['mortgage-cases', 'board'] as const,
     one: (id: string) => ['mortgage-cases', 'one', id] as const,
+    archive: ['mortgage-cases', 'archive'] as const,
   },
 
   bankerContacts: {
     all: ['banker-contacts'] as const,
     list: ['banker-contacts', 'list'] as const,
+    archive: ['banker-contacts', 'archive'] as const,
+  },
+
+  documents: {
+    all: ['documents'] as const,
+    list: ['documents', 'list'] as const,
+    for: (subject: string, id: string) => ['documents', 'for', subject, id] as const,
+    options: (subject: string) => ['documents', 'options', subject] as const,
   },
 
   /** The site's cities, for the footer on every public page. */
