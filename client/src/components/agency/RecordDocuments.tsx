@@ -57,7 +57,7 @@ async function saveFile(doc: AgencyDocument) {
   URL.revokeObjectURL(url);
 }
 
-async function recordOptions(subject: DocumentSubject): Promise<{ id: string; label: string }[]> {
+export async function recordOptions(subject: DocumentSubject): Promise<{ id: string; label: string }[]> {
   switch (subject) {
     case 'customer': {
       const page = await fetchCustomers({ pageSize: 100 });

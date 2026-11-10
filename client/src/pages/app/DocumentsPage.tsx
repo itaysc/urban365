@@ -1,8 +1,9 @@
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Download, Search, Trash2, Upload } from 'lucide-react';
 import { useAuth } from '@/auth/auth-context';
 import { LibraryDocumentLinks, subjectsFor } from '@/components/agency/RecordDocuments';
+import { UploadDocumentDialog } from '@/components/agency/UploadDocumentDialog';
 import { Button } from '@/components/ui/Button';
 import { inputClass, selectClass } from '@/components/ui/Field';
 import { useToast } from '@/components/ui/Toast';
@@ -10,17 +11,13 @@ import { errorMessageOf } from '@/lib/apiError';
 import { formatDate } from '@/lib/format';
 import { qk } from '@/queries/keys';
 import {
-  MAX_DOCUMENT_BYTES,
   deleteDocument,
   downloadDocument,
   fetchDocuments,
-  uploadDocument,
   type AgencyDocument,
   type DocumentSubject,
 } from '@/services/agency';
 import { fetchCustomers, fetchDealBoard, fetchMortgageCaseBoard } from '@/services/crm';
-
-const ACCEPT = '.pdf,.jpg,.jpeg,.png,.webp,.docx,.xlsx';
 
 type FileKind = 'pdf' | 'image' | 'word' | 'excel';
 type LinkFilter = DocumentSubject | 'none';
@@ -57,7 +54,6 @@ export function DocumentsPage() {
   const toast = useToast();
   const queryClient = useQueryClient();
   const { user } = useAuth();
-  const inputRef = useRef<HTMLInputElement>(null);
   const { data, isPending } = useQuery({ queryKey: qk.documents.list, queryFn: () => fetchDocuments() });
   const { data: customers } = useQuery({
     queryKey: qk.customers.picker,
@@ -68,7 +64,7 @@ export function DocumentsPage() {
   const [customerId, setCustomerId] = useState('');
   const [link, setLink] = useState<LinkFilter | ''>('');
   const [kind, setKind] = useState<FileKind | ''>('');
-  const [uploading, setUploading] = useState(false);
+  const [uploadOpen, setUploadOpen] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const vertical = user?.agency?.vertical;
@@ -131,25 +127,6 @@ export function DocumentsPage() {
 
   const reload = () => queryClient.invalidateQueries({ queryKey: qk.documents.all });
 
-  const onFile = async (file: File | undefined) => {
-    if (!file) return;
-    if (file.size > MAX_DOCUMENT_BYTES) {
-      toast.error('הקובץ גדול מ-10 מ״ב.');
-      return;
-    }
-    setUploading(true);
-    try {
-      await uploadDocument(file);
-      await reload();
-      toast.success('המסמך הועלה.');
-    } catch (e) {
-      toast.error(errorMessageOf(e, 'ההעלאה נכשלה.'));
-    } finally {
-      setUploading(false);
-      if (inputRef.current) inputRef.current.value = '';
-    }
-  };
-
   const download = async (doc: AgencyDocument) => {
     setBusyId(doc.id);
     try {
@@ -190,26 +167,20 @@ export function DocumentsPage() {
             אפשר לקשר מסמך ללקוח, לנכס ולשאר הרשומות במשרד.
           </p>
         </div>
-        <div>
-          <input
-            ref={inputRef}
-            type="file"
-            accept={ACCEPT}
-            className="sr-only"
-            aria-label="בחירת מסמך"
-            onChange={(e) => void onFile(e.target.files?.[0])}
-          />
-          <Button
-            type="button"
-            disabled={uploading}
-            className="inline-flex items-center gap-2"
-            onClick={() => inputRef.current?.click()}
-          >
-            <Upload className="h-4 w-4" aria-hidden />
-            {uploading ? 'מעלה…' : 'העלאת מסמך'}
-          </Button>
-        </div>
+        <Button type="button" className="inline-flex items-center gap-2" onClick={() => setUploadOpen(true)}>
+          <Upload className="h-4 w-4" aria-hidden />
+          העלאת מסמך
+        </Button>
       </div>
+
+      <UploadDocumentDialog
+        open={uploadOpen}
+        onOpenChange={setUploadOpen}
+        onUploaded={() => {
+          setUploadOpen(false);
+          void reload();
+        }}
+      />
 
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative min-w-0 flex-1">
