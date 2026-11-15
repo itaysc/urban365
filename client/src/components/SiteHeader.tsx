@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Bell, Building2, Heart, Menu, Plus, X } from 'lucide-react';
 import { useAuth } from '@/auth/auth-context';
@@ -54,6 +54,12 @@ const NavBar = () => (
 const navLink =
   'rounded-lg px-2.5 py-1.5 text-base text-slate-600 transition hover:bg-slate-100 hover:text-slate-900';
 
+/** The page you are on, in the same weight the server-rendered bar uses. */
+const navItem = (current: boolean) =>
+  current
+    ? { className: `${navLink} font-semibold text-slate-900`, 'aria-current': 'page' as const }
+    : { className: navLink };
+
 type LoginIntent = 'account' | 'sell' | 'valuation';
 
 /**
@@ -71,6 +77,16 @@ const ASKED_FOR: Record<LoginIntent, { because?: string; then?: string }> = {
 export function SiteHeader({ leading, subtitle, fullWidth = true }: Props) {
   const { user, logout, stopImpersonating } = useAuth();
   const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const section = (path: string) => pathname === path || pathname.startsWith(`${path}/`);
+  const selected = {
+    home: pathname === '/',
+    agencies: section('/agencies'),
+    cities: section('/nadlan'),
+    blog: section('/blog'),
+    mortgage: section('/mortgage'),
+    valuation: section('/valuation'),
+  };
 
   const [loginOpen, setLoginOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -190,9 +206,16 @@ export function SiteHeader({ leading, subtitle, fullWidth = true }: Props) {
           </Link>
 
           {subtitle ? (
-            <span className="hidden border-s border-slate-200 ps-3 text-sm text-slate-500 sm:inline">
-              {subtitle}
-            </span>
+            <>
+              <nav aria-label="ניווט ראשי" className="flex items-center border-s border-slate-200 ps-2">
+                <Link to="/" {...navItem(selected.home)}>
+                  ראשי
+                </Link>
+              </nav>
+              <span className="hidden border-s border-slate-200 ps-3 text-sm text-slate-500 sm:inline">
+                {subtitle}
+              </span>
+            </>
           ) : (
             /*
               The way in to the city pages, and the only link to them from the app.
@@ -201,26 +224,25 @@ export function SiteHeader({ leading, subtitle, fullWidth = true }: Props) {
               client's own route table and find nothing.
 
               Only where there is no subtitle, which is the buyer-facing pages. On the
-              agency dashboard the space beside the logo already says which agency you
-              are in, and a third item there reads as a breadcrumb that goes nowhere.
+              agency dashboard the same spot keeps just the way home; the city pages
+              beside the agency name read as a breadcrumb that goes nowhere.
             */
             <nav aria-label="ניווט ראשי" className="hidden items-center gap-0.5 border-s border-slate-200 ps-2 sm:flex">
+              {/* Same destination as the wordmark: the public home page. */}
+              <Link to="/" {...navItem(selected.home)}>
+                ראשי
+              </Link>
+              <NavBar />
+              <Link to="/agencies" {...navItem(selected.agencies)}>
+                סוכנויות
+              </Link>
+              <NavBar />
               {/*
                 A plain anchor, unlike its neighbour: the city pages are rendered by the
                 API and are not in this bundle's route table, so a <Link> would try to
                 resolve /nadlan here and find nothing.
               */}
-              <Link
-                to="/agencies"
-                className={navLink}
-              >
-                סוכנויות
-              </Link>
-              <NavBar />
-              <a
-                href="/nadlan"
-                className={navLink}
-              >
+              <a href="/nadlan" {...navItem(selected.cities)}>
                 מחירים לפי עיר
               </a>
               <NavBar />
@@ -228,14 +250,11 @@ export function SiteHeader({ leading, subtitle, fullWidth = true }: Props) {
                 Plain anchor, like the city pages: /blog is HTML from the API, not a
                 route in this bundle.
               */}
-              <a href="/blog" className={navLink}>
+              <a href="/blog" {...navItem(selected.blog)}>
                 בלוג
               </a>
               <NavBar />
-              <Link
-                to="/mortgage"
-                className={navLink}
-              >
+              <Link to="/mortgage" {...navItem(selected.mortgage)}>
                 מחשבון משכנתא
               </Link>
               <NavBar />
@@ -246,10 +265,7 @@ export function SiteHeader({ leading, subtitle, fullWidth = true }: Props) {
                 them a navigation to learn something we already knew.
               */}
               {user ? (
-                <Link
-                  to="/valuation"
-                  className={navLink}
-                >
+                <Link to="/valuation" {...navItem(selected.valuation)}>
                   הערכת שווי
                 </Link>
               ) : (
@@ -473,20 +489,23 @@ export function SiteHeader({ leading, subtitle, fullWidth = true }: Props) {
               >
                 <X className="h-5 w-5" aria-hidden />
               </button>
-              <Link to="/agencies" className={navLink} onClick={() => setMenuOpen(false)}>
+              <Link to="/" {...navItem(selected.home)} onClick={() => setMenuOpen(false)}>
+                ראשי
+              </Link>
+              <Link to="/agencies" {...navItem(selected.agencies)} onClick={() => setMenuOpen(false)}>
                 סוכנויות
               </Link>
-              <a href="/nadlan" className={navLink} onClick={() => setMenuOpen(false)}>
+              <a href="/nadlan" {...navItem(selected.cities)} onClick={() => setMenuOpen(false)}>
                 מחירים לפי עיר
               </a>
-              <a href="/blog" className={navLink} onClick={() => setMenuOpen(false)}>
+              <a href="/blog" {...navItem(selected.blog)} onClick={() => setMenuOpen(false)}>
                 בלוג
               </a>
-              <Link to="/mortgage" className={navLink} onClick={() => setMenuOpen(false)}>
+              <Link to="/mortgage" {...navItem(selected.mortgage)} onClick={() => setMenuOpen(false)}>
                 מחשבון משכנתא
               </Link>
               {user ? (
-                <Link to="/valuation" className={navLink} onClick={() => setMenuOpen(false)}>
+                <Link to="/valuation" {...navItem(selected.valuation)} onClick={() => setMenuOpen(false)}>
                   הערכת שווי
                 </Link>
               ) : (
