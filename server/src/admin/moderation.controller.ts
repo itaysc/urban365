@@ -33,6 +33,13 @@ class RejectListingDto {
   note!: string;
 }
 
+class LinkYad2Dto {
+  @IsString()
+  @MinLength(1, { message: 'צריך מספר סוכנות או קישור ליד2.' })
+  @MaxLength(300)
+  input!: string;
+}
+
 @PlatformAdmin()
 @Controller('admin/moderation')
 export class ModerationController {
@@ -128,6 +135,12 @@ export class ModerationController {
   @Post('agencies/:id/unlink-yad2')
   async unlinkYad2(@Param('id') id: string, @CurrentUser() admin: Principal) {
     await this.moderation.unlinkYad2(id, admin.userId);
+  }
+
+  @HttpCode(204)
+  @Post('agencies/:id/link-yad2')
+  async linkYad2(@Param('id') id: string, @Body() dto: LinkYad2Dto, @CurrentUser() admin: Principal) {
+    await this.moderation.linkYad2(id, admin.userId, dto.input);
   }
 
   @HttpCode(204)

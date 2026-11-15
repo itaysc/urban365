@@ -1,9 +1,11 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import type { AgencyVerticalValue } from '../auth/agency-vertical.js';
 import { MailService } from '../mail/mail.service.js';
 import { claimDecisionTemplate } from '../mail/templates.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { StorageService } from '../storage/storage.service.js';
+import { parseAgencyInput } from '../yad2/yad2.transform.js';
 
 export interface ManagedAgency {
   id: string;
@@ -356,6 +358,39 @@ export class ModerationService {
     ]);
 
     this.logger.log(`Agency ${agencyId} unlinked from yad2 ${agency.yad2Id} by ${adminId}`);
+  }
+
+  /**
+   * Points an office at a yad2 page. The id is only a link: listings are not imported
+   * here. An id another office already holds is refused, because two rows cannot share it.
+   */
+  async linkYad2(agencyId: string, adminId: string, input: string): Promise<void> {
+    const agency = await this.prisma.agency.findUnique({ where: { id: agencyId } });
+    if (!agency) throw new NotFoundException('הסוכנות לא נמצאה.');
+    if (agency.yad2Id) throw new BadRequestException('הסוכנות כבר מקושרת לעמוד יד2. נתקו אותו קודם.');
+
+    let yad2Id: string;
+    try {
+      yad2Id = parseAgencyInput(input).agencyId;
+    } catch {
+      throw new BadRequestException('לא הצלחנו לקרוא מספר סוכנות. הזינו מספר או קישור ליד2.');
+    }
+
+    const taken = await this.prisma.agency.findUnique({
+      where: { yad2Id },
+      select: { name: true },
+    });
+    if (taken) throw new BadRequestException(`עמוד היד2 הזה כבר משויך ל${taken.name}.`);
+
+    try {
+      await this.prisma.agency.update({ where: { id: agencyId }, data: { yad2Id } });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        throw new BadRequestException('עמוד היד2 הזה כבר משויך לסוכנות אחרת.');
+      }
+      throw error;
+    }
+    this.logger.log(`Agency ${agencyId} linked to yad2 ${yad2Id} by ${adminId}`);
   }
 
   /**

@@ -2,10 +2,13 @@ import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/Button';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { inputClass } from '@/components/ui/Field';
+import { errorMessageOf } from '@/lib/apiError';
 import { qk } from '@/queries/keys';
 import {
   deleteAgency,
   fetchAgencyDirectory,
+  linkAgencyYad2,
   restoreAgency,
   suspendAgency,
   unlinkAgencyYad2,
@@ -20,7 +23,7 @@ const STATUS_LABEL: Record<ManagedAgency['status'], string> = {
 };
 
 type Pending =
-  | { kind: 'suspend' | 'delete' | 'restore' | 'unlink'; agency: ManagedAgency }
+  | { kind: 'suspend' | 'delete' | 'restore' | 'unlink' | 'link'; agency: ManagedAgency }
   | null;
 
 /**
@@ -37,6 +40,7 @@ export function AgencyDirectory() {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState<Pending>(null);
+  const [yad2Input, setYad2Input] = useState('');
 
   const { data: agencies = null } = useQuery({
     queryKey: qk.admin.directory(submitted),
@@ -49,8 +53,8 @@ export function AgencyDirectory() {
     try {
       await action();
       await queryClient.invalidateQueries({ queryKey: qk.admin.all });
-    } catch {
-      setError('הפעולה נכשלה.');
+    } catch (caught) {
+      setError(errorMessageOf(caught, 'הפעולה נכשלה.'));
     } finally {
       setBusy(null);
     }
@@ -62,7 +66,7 @@ export function AgencyDirectory() {
         <h2 className="text-xl font-bold text-slate-900">סוכנויות</h2>
         <p className="mt-1 text-sm text-slate-500">
           השעיה מסתירה את הנכסים מהאתר. מחיקה מסמנת אותם כנמחקים. אפשר להחזיר סוכנות שנמחקה.
-          ניתוק מיד2 מוריד את הקישור לעמוד, והנכסים שכבר יובאו נשארים.
+          ניתוק מיד2 מוריד את הקישור לעמוד, והנכסים שכבר יובאו נשארים. קישור מיד2 מחבר משרד לעמוד לפי המספר.
         </p>
       </div>
 
@@ -110,9 +114,20 @@ export function AgencyDirectory() {
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            {agency.yad2Id && (
+            {agency.yad2Id ? (
               <Button variant="secondary" disabled={busy !== null} onClick={() => setPending({ kind: 'unlink', agency })}>
                 ניתוק מיד2
+              </Button>
+            ) : (
+              <Button
+                variant="secondary"
+                disabled={busy !== null}
+                onClick={() => {
+                  setYad2Input('');
+                  setPending({ kind: 'link', agency });
+                }}
+              >
+                קישור ליד2
               </Button>
             )}
             {agency.status === 'deleted' ? (
@@ -152,7 +167,9 @@ export function AgencyDirectory() {
               ? 'להחזיר את הסוכנות?'
               : pending?.kind === 'unlink'
                 ? 'לנתק את הקישור ליד2?'
-                : 'להשעות את הסוכנות?'
+                : pending?.kind === 'link'
+                  ? 'לקשר לעמוד יד2?'
+                  : 'להשעות את הסוכנות?'
         }
         description={
           pending?.kind === 'delete'
@@ -161,9 +178,11 @@ export function AgencyDirectory() {
               ? `הנכסים של ${pending.agency.name} שירדו עם המחיקה יחזרו לאתר. נכס שהסוכנות הסירה בעצמה יישאר מוסתר.`
               : pending?.kind === 'unlink'
                 ? `${pending.agency.name} תפסיק להיות מקושרת לעמוד יד2 ${pending.agency.yad2Id}. הנכסים שכבר יובאו נשארים אצלה, וייבוא חדש של אותו עמוד לא יעדכן אותם.`
-                : pending
-                  ? `הנכסים של ${pending.agency.name} לא יוצגו באתר כל עוד ההשעיה בתוקף.`
-                  : ''
+                : pending?.kind === 'link'
+                  ? `${pending.agency.name} תקושר לעמוד היד2. הנכסים לא מיובאים כאן.`
+                  : pending
+                    ? `הנכסים של ${pending.agency.name} לא יוצגו באתר כל עוד ההשעיה בתוקף.`
+                    : ''
         }
         confirmLabel={
           pending?.kind === 'delete'
@@ -172,12 +191,17 @@ export function AgencyDirectory() {
               ? 'החזרה'
               : pending?.kind === 'unlink'
                 ? 'ניתוק'
-                : 'השעיה'
+                : pending?.kind === 'link'
+                  ? 'קישור'
+                  : 'השעיה'
         }
+        confirmDisabled={pending?.kind === 'link' && yad2Input.trim() === ''}
         busy={busy !== null}
         onConfirm={() => {
           const target = pending;
+          const input = yad2Input.trim();
           setPending(null);
+          setYad2Input('');
           if (!target) return;
           void run(target.agency.id, () =>
             target.kind === 'delete'
@@ -186,11 +210,29 @@ export function AgencyDirectory() {
                 ? restoreAgency(target.agency.id)
                 : target.kind === 'unlink'
                   ? unlinkAgencyYad2(target.agency.id)
-                  : suspendAgency(target.agency.id),
+                  : target.kind === 'link'
+                    ? linkAgencyYad2(target.agency.id, input)
+                    : suspendAgency(target.agency.id),
           );
         }}
-        onOpenChange={(open) => !open && setPending(null)}
-      />
+        onOpenChange={(open) => {
+          if (!open) {
+            setPending(null);
+            setYad2Input('');
+          }
+        }}
+      >
+        {pending?.kind === 'link' && (
+          <input
+            value={yad2Input}
+            onChange={(event) => setYad2Input(event.target.value)}
+            placeholder="מספר סוכנות או קישור ליד2"
+            aria-label="מספר סוכנות ביד2"
+            dir="ltr"
+            className={`${inputClass} mt-4`}
+          />
+        )}
+      </ConfirmDialog>
     </section>
   );
 }

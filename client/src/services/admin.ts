@@ -62,6 +62,10 @@ export const deleteAgency = (agencyId: string) =>
 export const unlinkAgencyYad2 = (agencyId: string) =>
   api.post(`/admin/moderation/agencies/${agencyId}/unlink-yad2`);
 
+/** Points the office at a yad2 page. Accepts the agency number or a yad2 URL. */
+export const linkAgencyYad2 = (agencyId: string, input: string) =>
+  api.post(`/admin/moderation/agencies/${agencyId}/link-yad2`, { input });
+
 export type ManagedUserRole = 'buyer' | 'agency' | 'admin';
 
 export interface ManagedUser {
