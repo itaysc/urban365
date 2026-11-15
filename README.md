@@ -399,6 +399,16 @@ the check:
 profile (Chrome refuses a debugging port on a profile that is already running) and opens
 yad2. Then set `YAD2_CDP_URL=http://127.0.0.1:9222` in `server/.env` and restart the server.
 
+The production server cannot see that Chrome: its `127.0.0.1:9222` is its own. To import
+into production, leave the debug Chrome open on yad2 and run:
+
+```bash
+npm run import:yad2 --prefix server
+```
+
+That reads `server/.prod.env`, asks which user, and writes the scrape into that user's
+office. `--email someone@example.com --section forsale --yes` skips the questions.
+
 Without it the job fails fast with `errorCode: "BOT_CHECK"`, and the UI shows those steps
 instead of a raw error. Agencies already in the cache need none of this.
 

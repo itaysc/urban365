@@ -1,8 +1,17 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import type { Browser, Page } from 'playwright';
+import type { Browser, BrowserContext, Page } from 'playwright';
 import { agencyPageUrl, listingUrl } from './yad2.transform.js';
 import type { AgencyDump, RawAgencyData, RawListing, Section } from './yad2.types.js';
+
+/** Listing text stays. Cover and gallery URLs are dropped so nothing stores the photos. */
+function withoutImageFields(dump: AgencyDump): AgencyDump {
+  const strip = (listing: RawListing): RawListing => {
+    if (!listing.metaData) return listing;
+    return { ...listing, metaData: { ...listing.metaData, coverImage: undefined, images: undefined } };
+  };
+  return { ...dump, feed: dump.feed.map(strip), items: dump.items.map(strip) };
+}
 
 /**
  * Real counts, not a spinner: the agency's first page already states how many listings
@@ -41,7 +50,7 @@ export class Yad2ScraperService {
     agencyId: string,
     section: Section,
     onProgress: (p: ScrapeProgress) => void,
-    options: { limit?: number; delayMs?: number } = {},
+    options: { limit?: number; delayMs?: number; images?: boolean } = {},
   ): Promise<AgencyDump> {
     const delay = options.delayMs ?? this.config.get<number>('yad2.delayMs') ?? 150;
     const cdpUrl = this.config.get<string>('yad2.cdpUrl');
@@ -53,11 +62,14 @@ export class Yad2ScraperService {
     let page: Page;
     // Set when we created the tab ourselves, so we only close what we opened.
     let openedOwnPage = false;
+    // Set when this run is refusing photos, so the block is lifted when we disconnect.
+    let imageBlock: BrowserContext | undefined;
 
     if (cdpUrl) {
       await this.ensureTabExists(cdpUrl);
       browser = await chromium.connectOverCDP(cdpUrl);
       const context = browser.contexts()[0] ?? (await browser.newContext({ locale: 'he-IL' }));
+      if (options.images === false) imageBlock = await this.blockImages(context);
 
       // Reuse a tab that is already open rather than creating one: a new tab pulls the
       // Chrome window to the front on every scrape. Reusing one lets that window sit
@@ -79,7 +91,9 @@ export class Yad2ScraperService {
       // Headless gets Radware's captcha — see the README. Kept so the failure is a clear
       // BotCheckError rather than a missing-browser crash.
       browser = await chromium.launch({ headless: true });
-      page = await (await browser.newContext({ locale: 'he-IL' })).newPage();
+      const context = await browser.newContext({ locale: 'he-IL' });
+      if (options.images === false) imageBlock = await this.blockImages(context);
+      page = await context.newPage();
     }
 
     try {
@@ -134,7 +148,7 @@ export class Yad2ScraperService {
 
       report({ phase: 'done', pagesDone: pagesTotal, pagesTotal, itemsDone: wanted.length, itemsTotal });
 
-      return {
+      const dump: AgencyDump = {
         agency: {
           details: first.details,
           brokers: first.brokers,
@@ -145,7 +159,9 @@ export class Yad2ScraperService {
         items,
         failed,
       };
+      return options.images === false ? withoutImageFields(dump) : dump;
     } finally {
+      if (imageBlock) await imageBlock.unroute('**/*').catch(() => undefined);
       if (cdpUrl) {
         // Closing the last tab leaves Chrome with no browser context, and the next
         // connectOverCDP then fails with "Browser context management is not supported".
@@ -163,6 +179,19 @@ export class Yad2ScraperService {
     }
   }
 
+
+  /**
+   * Drops picture requests before Chrome downloads them. The listing text still arrives
+   * in the page JSON; only the photo files are refused.
+   */
+  private async blockImages(context: BrowserContext): Promise<BrowserContext> {
+    await context.route('**/*', (route) => {
+      const type = route.request().resourceType();
+      if (type === 'image' || type === 'media') return route.abort();
+      return route.continue();
+    });
+    return context;
+  }
 
   /**
    * Playwright's connectOverCDP calls Browser.setDownloadBehavior, which needs a browser

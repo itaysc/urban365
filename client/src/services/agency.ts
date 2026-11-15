@@ -191,6 +191,8 @@ export interface AgencyProfile {
   coverImageUrl: string | null;
   /** Whether this agency takes part in co-brokerage with others. */
   coBrokerage: boolean;
+  /** The Yad2 page this office is already linked to, when it has one. */
+  yad2Id: string | null;
   _count: { listings: number; leads: number; deals: number };
 }
 
@@ -282,9 +284,9 @@ export interface ImportJob {
   errorCode: string | null;
 }
 
-export async function startYad2Import(input: string, section?: string) {
+export async function startYad2Import(input: string | null, section?: string) {
   const { data } = await api.post<{ jobId: string; yad2Id: string }>('/my/agency/import/yad2', {
-    input,
+    ...(input ? { input } : {}),
     ...(section ? { section } : {}),
   });
   return data;

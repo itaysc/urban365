@@ -17,6 +17,7 @@
     "db:studio": "prisma studio",
     "db:generate": "prisma generate",
     "import:cache": "node dist/scripts/import-cache.js",
+    "import:yad2": "npm run build && node dist/scripts/import-yad2-prod.js",
     "grant:admin": "node dist/scripts/grant-admin.js",
     "seed:dev-agency": "node dist/scripts/seed-dev-agency.js",
     "seed:demo": "npm run build && node dist/scripts/seed-demo-data.js",

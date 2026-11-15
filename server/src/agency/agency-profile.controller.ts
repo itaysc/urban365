@@ -79,6 +79,7 @@ export class AgencyProfileController {
         logoUrl: true,
         coverImageUrl: true,
         coBrokerage: true,
+        yad2Id: true,
         _count: { select: { listings: true, leads: true, deals: true } },
       },
     });
@@ -158,36 +159,41 @@ export class AgencyProfileController {
     this.assertYad2Offered();
     const agencyId = this.context.requireAgencyId();
 
-    let parsed: { agencyId: string; section: 'forsale' | 'rent' | 'commercial' | null };
-    try {
-      parsed = this.yad2.parseInput(dto.input) as typeof parsed;
-    } catch (e) {
-      throw new BadRequestException((e as Error).message);
-    }
-
-    const yad2Id = parsed.agencyId;
-    const section = dto.section ?? parsed.section ?? 'forsale';
-
     const agency = await this.owner.agency.findUniqueOrThrow({
       where: { id: agencyId },
       select: { id: true, yad2Id: true },
     });
 
-    // Someone else's yad2 page is not theirs to import — that is the claim flow, which
-    // a platform admin reviews.
-    const taken = await this.owner.agency.findUnique({
-      where: { yad2Id },
-      select: { id: true },
-    });
-    if (taken && taken.id !== agencyId) {
-      throw new BadRequestException('עמוד היד2 הזה כבר משויך לסוכנות אחרת.');
-    }
+    // An office that already has a page imports only that page. The request cannot
+    // name a different one.
+    let yad2Id = agency.yad2Id;
+    let section = dto.section ?? 'forsale';
 
-    if (agency.yad2Id && agency.yad2Id !== yad2Id) {
-      throw new BadRequestException('הסוכנות כבר מקושרת לעמוד יד2 אחר.');
-    }
+    if (!yad2Id) {
+      if (!dto.input?.trim()) {
+        throw new BadRequestException('צריך מספר סוכנות או קישור ליד2.');
+      }
 
-    if (!agency.yad2Id) {
+      let parsed: { agencyId: string; section: 'forsale' | 'rent' | 'commercial' | null };
+      try {
+        parsed = this.yad2.parseInput(dto.input) as typeof parsed;
+      } catch (e) {
+        throw new BadRequestException((e as Error).message);
+      }
+
+      yad2Id = parsed.agencyId;
+      section = dto.section ?? parsed.section ?? 'forsale';
+
+      // Someone else's yad2 page is not theirs to import — that is the claim flow, which
+      // a platform admin reviews.
+      const taken = await this.owner.agency.findUnique({
+        where: { yad2Id },
+        select: { id: true },
+      });
+      if (taken && taken.id !== agencyId) {
+        throw new BadRequestException('עמוד היד2 הזה כבר משויך לסוכנות אחרת.');
+      }
+
       await this.owner.agency.update({ where: { id: agencyId }, data: { yad2Id } });
     }
 

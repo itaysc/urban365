@@ -169,6 +169,7 @@ export function AgencyProfilePage() {
           A platform admin still sees it. */}
       {yad2Visible && (
         <Yad2ImportPanel
+          yad2Id={profile.yad2Id}
           onImported={() => {
             void queryClient.invalidateQueries({ queryKey: qk.agency.all });
             void queryClient.invalidateQueries({ queryKey: qk.listings.all });

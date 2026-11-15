@@ -22,8 +22,11 @@ export class UpdateAgencyProfileDto {
   // identifier for the agency, not a field to self-edit.
 }
 
-/** A yad2 agency id, or any link containing one. Parsed server-side. */
+/**
+ * A yad2 agency id, or any link containing one. Parsed server-side.
+ * Omitted when the office is already linked: that import can only use its own page.
+ */
 export class ImportYad2Dto {
-  @IsString() @MaxLength(300) input!: string;
+  @IsOptional() @IsString() @MaxLength(300) input?: string;
   @IsOptional() @IsIn(['forsale', 'rent', 'commercial']) section?: 'forsale' | 'rent' | 'commercial';
 }

@@ -7,6 +7,18 @@ import type { AgencyDump, AgencyResult, Asset, RawListing, Section } from './yad
 import { dropColumns, priceChange } from '../listings/price-history.js';
 
 const toDbSection = (section: Section): DbSection => section as DbSection;
+
+/** Drops the photo columns so an update leaves whatever is already stored. */
+function listingWithoutImages<T extends { coverImageUrl: unknown; imageUrls: unknown; imagesCount: unknown }>(
+  data: T,
+): Omit<T, 'coverImageUrl' | 'imageUrls' | 'imagesCount'> {
+  const { coverImageUrl, imageUrls, imagesCount, ...rest } = data;
+  void coverImageUrl;
+  void imageUrls;
+  void imagesCount;
+  return rest;
+}
+
 const asDate = (v: string | undefined | null): Date | null => (v ? new Date(v) : null);
 
 /**
@@ -84,7 +96,7 @@ export class AgencyRepository {
     dump: AgencyDump,
     agencyId: string,
     section: Section,
-    opts: { preserveProfile?: boolean } = {},
+    opts: { preserveProfile?: boolean; images?: boolean } = {},
   ): Promise<void> {
     const summary = toAgencySummary(dump, agencyId, section);
     const team = toTeam(dump);
@@ -99,6 +111,9 @@ export class AgencyRepository {
       item: details.get(String(c.token)) ?? null,
     }));
 
+    // One upsert per listing, and this often runs against a remote database. The default
+    // five seconds expires partway through an office of this size.
+    const timeout = Math.min(10 * 60_000, Math.max(60_000, assets.length * 250));
     await this.prisma.$transaction(async (tx) => {
       const agency = await tx.agency.upsert({
         where: { yad2Id: agencyId },
@@ -171,16 +186,29 @@ export class AgencyRepository {
         ).map((row) => [row.token as string, row]),
       );
 
+      // Keyed on yad2's token, which is unique. A second run of the same page updates
+      // these rows; it does not insert another copy.
+      let created = 0;
       for (const { asset, item } of assets) {
+        if (!asset.token) continue;
         const data = this.listingData(asset, item, agency.id, section);
+        // A run that is not collecting photos must not wipe photos already stored.
+        const row = opts.images === false ? listingWithoutImages(data) : data;
         const was = before.get(asset.token);
+        if (!was) created += 1;
         const change = was ? priceChange(was.id, was.price, data.price) : null;
 
         await tx.listing.upsert({
           where: { token: asset.token },
-          create: { token: asset.token, ...data, firstSeenAt: now, lastSeenAt: now },
+          create: {
+            token: asset.token,
+            ...row,
+            ...(opts.images === false ? { coverImageUrl: null, imageUrls: [], imagesCount: 0 } : {}),
+            firstSeenAt: now,
+            lastSeenAt: now,
+          },
           update: {
-            ...data,
+            ...row,
             lastSeenAt: now,
             ...(change ? dropColumns(change, now) : {}),
           },
@@ -237,11 +265,12 @@ export class AgencyRepository {
         },
       });
 
+      const updated = assets.length - created;
       this.logger.log(
-        `Saved ${agencyId}/${section}: ${assets.length} listing(s), ${team.length} broker(s)` +
+        `Saved ${agencyId}/${section}: ${created} new, ${updated} updated, ${team.length} broker(s)` +
           (delisted > 0 ? `, ${delisted} delisted` : ''),
       );
-    });
+    }, { timeout, maxWait: 15_000 });
   }
 
   /** Rebuilds the API shape from the stored rows. */

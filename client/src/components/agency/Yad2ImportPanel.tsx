@@ -14,8 +14,17 @@ const SECTIONS = [
  * Onboarding shortcut: pull this agency's own listings across from yad2 rather than
  * retyping them. It writes into *this* agency only — the server links the yad2 id to
  * the caller's row first and refuses a page another agency already holds.
+ *
+ * Once the office is linked, the page is fixed. The field that names an agency is
+ * only there for an office that does not have one yet.
  */
-export function Yad2ImportPanel({ onImported }: { onImported: () => void }) {
+export function Yad2ImportPanel({
+  yad2Id,
+  onImported,
+}: {
+  yad2Id: string | null;
+  onImported: () => void;
+}) {
   const [input, setInput] = useState('');
   const [section, setSection] = useState('forsale');
   const [job, setJob] = useState<ImportJob | null>(null);
@@ -37,7 +46,7 @@ export function Yad2ImportPanel({ onImported }: { onImported: () => void }) {
     setJob(null);
 
     try {
-      const { jobId } = await startYad2Import(input.trim(), section);
+      const { jobId } = await startYad2Import(yad2Id ?? input.trim(), section);
 
       poll.current = window.setInterval(() => {
         void fetchImportJob(jobId)
@@ -69,7 +78,9 @@ export function Yad2ImportPanel({ onImported }: { onImported: () => void }) {
       <div>
         <h2 className="text-sm font-semibold text-slate-900">ייבוא מיד2</h2>
         <p className="mt-1 text-xs text-slate-500">
-          מייבא את הנכסים של הסוכנות שלך מעמוד היד2 שלה, כדי שלא תצטרכו להזין אותם מחדש.
+          {yad2Id
+            ? `הסוכנות מקושרת לעמוד יד2 ${yad2Id}. הייבוא מביא נכסים רק ממנו.`
+            : 'מייבא את הנכסים של הסוכנות שלך מעמוד היד2 שלה, כדי שלא תצטרכו להזין אותם מחדש.'}
         </p>
       </div>
 
@@ -91,17 +102,19 @@ export function Yad2ImportPanel({ onImported }: { onImported: () => void }) {
         </p>
       )}
 
-      <div className="grid gap-3 sm:grid-cols-[1fr_auto_auto] sm:items-end">
-        <Field label="מספר סוכנות או קישור ליד2" htmlFor="yad2-input">
-          <input
-            id="yad2-input"
-            className={inputClass}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="6816047 או https://www.yad2.co.il/realestate/agency/6816047/forsale"
-            disabled={running}
-          />
-        </Field>
+      <div className={`grid gap-3 sm:items-end ${yad2Id ? 'sm:grid-cols-[auto_auto]' : 'sm:grid-cols-[1fr_auto_auto]'}`}>
+        {!yad2Id && (
+          <Field label="מספר סוכנות או קישור ליד2" htmlFor="yad2-input">
+            <input
+              id="yad2-input"
+              className={inputClass}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="6816047 או https://www.yad2.co.il/realestate/agency/6816047/forsale"
+              disabled={running}
+            />
+          </Field>
+        )}
 
         <Field label="סוג" htmlFor="yad2-section">
           <select
@@ -119,7 +132,7 @@ export function Yad2ImportPanel({ onImported }: { onImported: () => void }) {
           </select>
         </Field>
 
-        <Button disabled={running || !input.trim()} onClick={() => void start()}>
+        <Button disabled={running || (!yad2Id && !input.trim())} onClick={() => void start()}>
           {running ? 'מייבא…' : 'ייבא'}
         </Button>
       </div>
