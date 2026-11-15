@@ -96,6 +96,10 @@ export async function fetchUsers(q: string): Promise<ManagedUser[]> {
 export const setUserRole = (userId: string, role: ManagedUserRole) =>
   api.post(`/admin/moderation/users/${userId}/role`, { role });
 
+/** Makes this agency account an active owner of the office, and signs them out. */
+export const assignUserToAgency = (userId: string, agencyId: string) =>
+  api.post(`/admin/moderation/users/${userId}/agency`, { agencyId });
+
 /** Reclassifies the office this account belongs to — nav items and case types, not a
  *  permission, so unlike `setUserRole` this signs nobody out. */
 export const setAgencyVertical = (agencyId: string, vertical: AgencyVertical) =>

@@ -8,12 +8,15 @@ import { errorMessageOf } from '@/lib/apiError';
 import { formatDate } from '@/lib/format';
 import { qk } from '@/queries/keys';
 import {
+  assignUserToAgency,
   deleteUser,
   disableUser,
   enableUser,
+  fetchAgencyDirectory,
   fetchUsers,
   setAgencyVertical,
   setUserRole,
+  type ManagedAgency,
   type ManagedUser,
   type ManagedUserRole,
 } from '@/services/admin';
@@ -33,6 +36,7 @@ const VERTICAL_LABEL: Record<AgencyVertical, string> = {
 type Pending =
   | { kind: 'disable'; person: ManagedUser }
   | { kind: 'delete'; person: ManagedUser }
+  | { kind: 'assign'; person: ManagedUser }
   | { kind: 'role'; person: ManagedUser; role: ManagedUserRole }
   | null;
 
@@ -43,6 +47,9 @@ function describe(pending: Exclude<Pending, null>): string {
   }
   if (pending.kind === 'delete') {
     return `${name} יימחק לצמיתות ולא יוכל להיכנס. נכסים ופניות שפרסם בעצמו יימחקו. שיוך למשרד יוסר, ונתוני המשרד עצמם יישארו. אי אפשר לבטל את זה.`;
+  }
+  if (pending.kind === 'assign') {
+    return `${name} ישויך כבעלים של הסוכנות שתיבחר, ויתנתק כדי שהשיוך ייכנס לתוקף.`;
   }
 
   const next = ROLE_LABEL[pending.role];
@@ -58,12 +65,14 @@ function describe(pending: Exclude<Pending, null>): string {
 function titleOf(pending: Exclude<Pending, null>): string {
   if (pending.kind === 'role') return 'לשנות את התפקיד?';
   if (pending.kind === 'delete') return 'למחוק את החשבון?';
+  if (pending.kind === 'assign') return 'לשייך לסוכנות?';
   return 'להשבית את החשבון?';
 }
 
 function confirmLabelOf(pending: Exclude<Pending, null>): string {
   if (pending.kind === 'role') return 'שינוי';
   if (pending.kind === 'delete') return 'מחיקה';
+  if (pending.kind === 'assign') return 'שיוך';
   return 'השבתה';
 }
 
@@ -73,8 +82,8 @@ function confirmLabelOf(pending: Exclude<Pending, null>): string {
  * Disabling blocks the next sign-in and hides listings this person published themselves.
  * Deleting removes the account: their own listings go with them, an office they belonged
  * to does not. Changing the role signs them out, so the next login is the one that
- * carries it. An agency with no office is asked to connect one; this page does not
- * invent the office.
+ * carries it. An agency account with no office can be attached to one here; otherwise
+ * the next sign-in asks them to connect one. This page does not invent the office.
  */
 export function UsersPage() {
   const { user } = useAuth();
@@ -84,6 +93,10 @@ export function UsersPage() {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState<Pending>(null);
+  const [officeTerm, setOfficeTerm] = useState('');
+  const [offices, setOffices] = useState<ManagedAgency[] | null>(null);
+  const [chosenOffice, setChosenOffice] = useState<ManagedAgency | null>(null);
+  const [searchingOffices, setSearchingOffices] = useState(false);
 
   const { data: users = null } = useQuery({
     queryKey: qk.admin.users(submitted),
@@ -110,6 +123,7 @@ export function UsersPage() {
         <p className="mt-1 text-sm text-slate-500">
           אפשר לשנות חשבון למשתמש רגיל, לסוכנות או למנהל, ולסוכנות — גם את סוג העסק (נדל״ן או משכנתאות).
           השבתה מונעת כניסה ומסתירה נכסים שהאדם פרסם בעצמו. מחיקה מוחקת את החשבון לצמיתות.
+          חשבון סוכנות בלי משרד אפשר לשייך למשרד קיים.
         </p>
       </div>
 
@@ -185,6 +199,20 @@ export function UsersPage() {
                   </option>
                 ))}
               </select>
+              {person.role === 'agency' && !person.agencyId && (
+                <Button
+                  variant="secondary"
+                  disabled={busy !== null}
+                  onClick={() => {
+                    setOfficeTerm('');
+                    setOffices(null);
+                    setChosenOffice(null);
+                    setPending({ kind: 'assign', person });
+                  }}
+                >
+                  שיוך לסוכנות
+                </Button>
+              )}
               {person.role === 'agency' && person.agencyId && person.agencyVertical && (
                 <select
                   aria-label={`סוג העסק של ${person.agencyName}`}
@@ -233,17 +261,79 @@ export function UsersPage() {
         title={pending ? titleOf(pending) : ''}
         description={pending ? describe(pending) : ''}
         confirmLabel={pending ? confirmLabelOf(pending) : 'אישור'}
+        confirmDisabled={pending?.kind === 'assign' && chosenOffice === null}
         busy={busy !== null}
         onConfirm={() => {
           const target = pending;
+          const office = chosenOffice;
           setPending(null);
+          setChosenOffice(null);
+          setOffices(null);
           if (!target) return;
           if (target.kind === 'disable') void run(target.person.id, () => disableUser(target.person.id));
           else if (target.kind === 'delete') void run(target.person.id, () => deleteUser(target.person.id));
-          else void run(target.person.id, () => setUserRole(target.person.id, target.role));
+          else if (target.kind === 'assign' && office) {
+            void run(target.person.id, () => assignUserToAgency(target.person.id, office.id));
+          } else if (target.kind === 'role') {
+            void run(target.person.id, () => setUserRole(target.person.id, target.role));
+          }
         }}
-        onOpenChange={(open) => !open && setPending(null)}
-      />
+        onOpenChange={(open) => {
+          if (!open) {
+            setPending(null);
+            setChosenOffice(null);
+            setOffices(null);
+          }
+        }}
+      >
+        {pending?.kind === 'assign' && (
+          <div className="mt-4 flex flex-col gap-2">
+            <form
+              className="flex gap-2"
+              onSubmit={(event) => {
+                event.preventDefault();
+                setSearchingOffices(true);
+                void fetchAgencyDirectory(officeTerm.trim())
+                  .then((found) => {
+                    setOffices(found.filter((office) => office.status !== 'deleted' && office.status !== 'suspended'));
+                    setChosenOffice(null);
+                  })
+                  .catch(() => setOffices([]))
+                  .finally(() => setSearchingOffices(false));
+              }}
+            >
+              <input
+                value={officeTerm}
+                onChange={(event) => setOfficeTerm(event.target.value)}
+                placeholder="חיפוש סוכנות לפי שם"
+                aria-label="חיפוש סוכנות"
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              />
+              <Button type="submit" variant="secondary" disabled={searchingOffices}>
+                חיפוש
+              </Button>
+            </form>
+            {offices?.length === 0 && <p className="text-sm text-slate-500">אין סוכנויות להצגה.</p>}
+            {offices && offices.length > 0 && (
+              <div className="flex max-h-48 flex-col gap-1 overflow-y-auto">
+                {offices.map((office) => (
+                  <button
+                    key={office.id}
+                    type="button"
+                    onClick={() => setChosenOffice(office)}
+                    className={`rounded-lg px-3 py-2 text-start text-sm ${
+                      chosenOffice?.id === office.id ? 'bg-slate-900 text-white' : 'bg-slate-50 text-slate-800'
+                    }`}
+                  >
+                    {office.name}
+                    {office.yad2Id ? ` · יד2 ${office.yad2Id}` : ''}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </ConfirmDialog>
     </section>
   );
 }

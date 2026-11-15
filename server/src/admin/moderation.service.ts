@@ -520,6 +520,80 @@ export class ModerationService {
     this.logger.log(`User ${userId} set to ${role} by ${adminId}`);
   }
 
+  /**
+   * Puts an agency account into an office as an active owner, and signs them out so
+   * the next login carries that office.
+   *
+   * An office that was still waiting, unclaimed or turned down becomes active: an
+   * admin attaching someone is the approval. A suspended or deleted office is left
+   * alone. Someone who already belongs to a different office is refused — the token
+   * can only name one.
+   */
+  async assignToAgency(userId: string, agencyId: string, adminId: string): Promise<void> {
+    const person = await this.requireUser(userId);
+    if (person.accountType !== 'agency') {
+      throw new BadRequestException('אפשר לשייך רק חשבון סוכנות.');
+    }
+
+    const agency = await this.prisma.agency.findUnique({ where: { id: agencyId } });
+    if (!agency) throw new NotFoundException('הסוכנות לא נמצאה.');
+    if (agency.status === 'deleted') throw new BadRequestException('הסוכנות נמחקה.');
+    if (agency.status === 'suspended') {
+      throw new BadRequestException('הסוכנות מושעית. בטלו את ההשעיה קודם.');
+    }
+
+    const elsewhere = await this.prisma.agencyMembership.findFirst({
+      where: { userId, status: 'active', agencyId: { not: agencyId } },
+      select: { id: true },
+    });
+    if (elsewhere) throw new BadRequestException('החשבון כבר משויך לסוכנות אחרת.');
+
+    const now = new Date();
+    const activating = agency.status !== 'active';
+    await this.prisma.$transaction([
+      this.prisma.agencyMembership.upsert({
+        where: { userId_agencyId: { userId, agencyId } },
+        create: { userId, agencyId, role: 'owner', status: 'active', joinedAt: now },
+        update: { role: 'owner', status: 'active', joinedAt: now },
+      }),
+      ...(activating
+        ? [
+            this.prisma.agency.update({
+              where: { id: agencyId },
+              data: { status: 'active', reviewedAt: now, reviewedById: adminId, rejectionReason: null },
+            }),
+            this.prisma.agencyClaim.updateMany({
+              where: { agencyId, status: 'pending', NOT: { userId } },
+              data: {
+                status: 'rejected',
+                reviewedAt: now,
+                reviewedById: adminId,
+                rejectionReason: 'הסוכנות שויכה למבקש אחר',
+              },
+            }),
+            this.prisma.agencyMembership.updateMany({
+              where: { agencyId, status: 'pending', NOT: { userId } },
+              data: { status: 'suspended' },
+            }),
+          ]
+        : []),
+      this.prisma.agencyClaim.updateMany({
+        where: { agencyId, userId, status: 'pending' },
+        data: { status: 'approved', reviewedAt: now, reviewedById: adminId },
+      }),
+      this.prisma.user.update({
+        where: { id: userId },
+        data: { sessionEpoch: { increment: 1 } },
+      }),
+      this.prisma.session.updateMany({
+        where: { userId, revokedAt: null },
+        data: { revokedAt: now },
+      }),
+    ]);
+
+    this.logger.log(`User ${userId} assigned to agency ${agencyId} by ${adminId}`);
+  }
+
   /** Blocks sign-in and hides the listings this person published. */
   async disableUser(userId: string, adminId: string): Promise<void> {
     if (userId === adminId) throw new BadRequestException('אי אפשר להשבית את החשבון שלך.');

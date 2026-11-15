@@ -40,6 +40,12 @@ class LinkYad2Dto {
   input!: string;
 }
 
+class AssignAgencyDto {
+  @IsString()
+  @MinLength(1)
+  agencyId!: string;
+}
+
 @PlatformAdmin()
 @Controller('admin/moderation')
 export class ModerationController {
@@ -94,6 +100,12 @@ export class ModerationController {
   @Post('users/:id/delete')
   async deleteUser(@Param('id') id: string, @CurrentUser() admin: Principal) {
     await this.moderation.deleteUser(id, admin.userId);
+  }
+
+  @HttpCode(204)
+  @Post('users/:id/agency')
+  async assignToAgency(@Param('id') id: string, @Body() dto: AssignAgencyDto, @CurrentUser() admin: Principal) {
+    await this.moderation.assignToAgency(id, dto.agencyId, admin.userId);
   }
 
   @Get('agencies')
