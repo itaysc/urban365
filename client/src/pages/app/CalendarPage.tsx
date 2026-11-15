@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
@@ -14,7 +14,8 @@ import { gridFor, isoDay, VIEW_LABEL, VIEWS, type View } from '@/lib/calendarSpa
 import { qk } from '@/queries/keys';
 import { apiBaseUrl } from '@/services/api';
 import { fetchTeam } from '@/services/agency';
-import { MeetingForm } from '@/pages/app/MeetingForm';
+import { DayWeekGrid } from '@/components/agency/DayWeekGrid';
+import { MeetingForm, type MeetingFormHandle } from '@/pages/app/MeetingForm';
 import { ViewingCoordination } from '@/components/agency/ViewingCoordination';
 import { ViewingFeedbackForm } from '@/pages/app/ViewingFeedbackForm';
 import { OUTCOME_CLASS, OUTCOME_LABEL } from '@/lib/viewingOutcome';
@@ -32,6 +33,7 @@ import {
   sendSellerConfirmation,
   type ViewingOutcome,
   updateMeeting,
+  type GoogleEvent,
   type Meeting,
   type MeetingInput,
 } from '@/services/calendar';
@@ -47,6 +49,12 @@ const DAY_NAMES = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ש'];
  */
 const localSlot = (at: Date) => `${isoDay(at)}T09:00`;
 
+/** `YYYY-MM-DDTHH:mm` in local time, which is what the booking form's clock wants. */
+const localDateTime = (at: Date) => {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${isoDay(at)}T${pad(at.getHours())}:${pad(at.getMinutes())}`;
+};
+
 const sameDay = (a: Date, b: Date) =>
   a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 
@@ -55,6 +63,7 @@ const time = (iso: string) =>
 
 export function CalendarPage() {
   const toast = useToast();
+  const formRef = useRef<MeetingFormHandle>(null);
   const queryClient = useQueryClient();
   const [params, setParams] = useSearchParams();
 
@@ -156,8 +165,15 @@ export function CalendarPage() {
     enabled: isOwner,
   });
 
+  const rangeKey = qk.meetings.range(
+    from.toISOString(),
+    to.toISOString(),
+    google?.connected ?? false,
+    whose,
+  );
+
   const { data, isPending } = useQuery({
-    queryKey: qk.meetings.range(from.toISOString(), to.toISOString(), google?.connected ?? false, whose),
+    queryKey: rangeKey,
     queryFn: () =>
       fetchMeetings({
         from: from.toISOString(),
@@ -180,6 +196,15 @@ export function CalendarPage() {
       closeForm();
     },
     onError: (e) => toast.error(errorMessageOf(e, 'לא הצלחנו לשמור את הפגישה.')),
+  });
+
+  const relocate = useMutation({
+    mutationFn: (input: { id: string; startsAt: string; endsAt: string }) =>
+      updateMeeting(input.id, { startsAt: input.startsAt, endsAt: input.endsAt }),
+    onError: (e) => toast.error(errorMessageOf(e, 'לא הצלחנו להזיז את הפגישה.')),
+    onSettled: () => {
+      void refresh();
+    },
   });
 
   const remove = useMutation({
@@ -487,7 +512,7 @@ export function CalendarPage() {
       <Dialog.Root
         open={editing !== null}
         onOpenChange={(next) => {
-          if (!next && !save.isPending) closeForm();
+          if (!next) formRef.current?.requestClose();
         }}
       >
         <Dialog.Portal>
@@ -507,6 +532,7 @@ export function CalendarPage() {
             </header>
             {editing !== null && (
               <MeetingForm
+                ref={formRef}
                 key={editing === 'new' ? `new-${newAt}` : editing.id}
                 meeting={editing === 'new' ? null : editing}
                 defaultStart={newAt ?? undefined}
@@ -576,7 +602,7 @@ export function CalendarPage() {
           </div>
         </div>
 
-        {view !== 'day' && (
+        {view === 'month' && (
           <div className="grid grid-cols-7 gap-1 text-center text-xs text-slate-500">
             {DAY_NAMES.map((d) => (
               <div key={d} className="py-1">
@@ -586,7 +612,47 @@ export function CalendarPage() {
           </div>
         )}
 
-        <div className={view === 'day' ? 'grid grid-cols-1' : 'grid grid-cols-7 gap-1'}>
+        {view !== 'month' && (
+          <DayWeekGrid
+            days={days}
+            meetings={meetings}
+            googleEvents={googleEvents}
+            today={today}
+            selected={selected}
+            onSelectDay={(day) => go({ day: isoDay(day) })}
+            onCreate={(at) => go({ day: isoDay(at), new: localDateTime(at) }, true)}
+            onOpen={(meeting) => go({ day: isoDay(new Date(meeting.startsAt)), edit: meeting.id }, true)}
+            onMove={(meeting, startsAt, endsAt) => {
+              const next = { startsAt: startsAt.toISOString(), endsAt: endsAt.toISOString() };
+              // Shown in the new place before the server answers, so the block does not
+              // jump back to where the finger left it.
+              const previous = queryClient.getQueryData<{ items: Meeting[]; googleEvents: GoogleEvent[] }>(
+                rangeKey,
+              );
+              queryClient.setQueryData(rangeKey, (current: typeof previous) =>
+                current
+                  ? {
+                      ...current,
+                      items: current.items.map((item) =>
+                        item.id === meeting.id ? { ...item, ...next } : item,
+                      ),
+                    }
+                  : current,
+              );
+              relocate.mutate(
+                { id: meeting.id, ...next },
+                {
+                  onError: () => {
+                    if (previous) queryClient.setQueryData(rangeKey, previous);
+                  },
+                },
+              );
+            }}
+          />
+        )}
+
+        {view === 'month' && (
+        <div className="grid grid-cols-7 gap-1">
           {days.map((day) => {
             const ours = onDay(day);
             const theirs = googleOnDay(day);
@@ -676,6 +742,7 @@ export function CalendarPage() {
             );
           })}
         </div>
+        )}
       </section>
 
       <section className="flex flex-col gap-3">

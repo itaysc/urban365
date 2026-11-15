@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { CustomerSelect, type PickedCustomer } from '@/components/agency/CustomerSelect';
 import { SuggestBox } from '@/components/listing/SuggestBox';
 import { Button } from '@/components/ui/Button';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Field, inputClass, selectClass } from '@/components/ui/Field';
 import { ISRAELI_CITIES } from '@/data/cities';
 import { splitPlace } from '@/lib/address-line';
@@ -61,30 +62,57 @@ interface Props {
   busy?: boolean;
 }
 
-export function MeetingForm({
-  meeting,
-  customerId,
-  defaultStart,
-  onSubmit,
-  onCancel,
-  onDelete,
-  busy = false,
-}: Props) {
-  const opensAt = defaultStart ?? nextHour();
+/** So the dialog around the form can ask before it closes, the same way ביטול does. */
+export interface MeetingFormHandle {
+  requestClose: () => void;
+}
 
-  const [title, setTitle] = useState(meeting?.title ?? '');
-  const [startsAt, setStartsAt] = useState(meeting ? toLocalInput(meeting.startsAt) : opensAt);
-  const [endsAt, setEndsAt] = useState(
-    meeting ? toLocalInput(meeting.endsAt) : plusHour(opensAt),
-  );
-  const [location, setLocation] = useState(meeting?.location ?? '');
-  const [notes, setNotes] = useState(meeting?.notes ?? '');
+export const MeetingForm = forwardRef<MeetingFormHandle, Props>(function MeetingForm(
+  { meeting, customerId, defaultStart, onSubmit, onCancel, onDelete, busy = false },
+  ref,
+) {
+  const opensAt = defaultStart ?? nextHour();
+  const seeded = {
+    title: meeting?.title ?? '',
+    startsAt: meeting ? toLocalInput(meeting.startsAt) : opensAt,
+    endsAt: meeting ? toLocalInput(meeting.endsAt) : plusHour(opensAt),
+    location: meeting?.location ?? '',
+    notes: meeting?.notes ?? '',
+    customerId: customerId ?? meeting?.customer?.id ?? '',
+    listingId: meeting?.listingId ?? '',
+  };
+  // What the form held when it opened. Closing compares against this.
+  const [baseline] = useState(seeded);
+  const [confirmingClose, setConfirmingClose] = useState(false);
+
+  const [title, setTitle] = useState(seeded.title);
+  const [startsAt, setStartsAt] = useState(seeded.startsAt);
+  const [endsAt, setEndsAt] = useState(seeded.endsAt);
+  const [location, setLocation] = useState(seeded.location);
+  const [notes, setNotes] = useState(seeded.notes);
   const [customer, setCustomer] = useState<PickedCustomer | null>(
     meeting?.customer
       ? { id: meeting.customer.id, name: meeting.customer.name, phone: meeting.customer.phone }
       : null,
   );
-  const [listing, setListing] = useState(meeting?.listingId ?? '');
+  const [listing, setListing] = useState(seeded.listingId);
+
+  const dirty =
+    title !== baseline.title ||
+    startsAt !== baseline.startsAt ||
+    endsAt !== baseline.endsAt ||
+    location !== baseline.location ||
+    notes !== baseline.notes ||
+    (customerId ?? customer?.id ?? '') !== baseline.customerId ||
+    listing !== baseline.listingId;
+
+  const requestClose = useCallback(() => {
+    if (busy) return;
+    if (dirty) setConfirmingClose(true);
+    else onCancel();
+  }, [busy, dirty, onCancel]);
+
+  useImperativeHandle(ref, () => ({ requestClose }), [requestClose]);
   const [error, setError] = useState<string | null>(null);
 
   // Naming the property is what turns a diary entry into a viewing: it is the only
@@ -202,6 +230,7 @@ export function MeetingForm({
   };
 
   return (
+    <>
     <form onSubmit={submit} className="flex flex-col gap-4">
       {/*
         The whole list on focus, before a letter is typed: a diary is nine kinds of
@@ -311,7 +340,7 @@ export function MeetingForm({
         </Button>
         <button
           type="button"
-          onClick={onCancel}
+          onClick={requestClose}
           className="text-sm text-slate-500 transition hover:text-slate-900"
         >
           ביטול
@@ -328,5 +357,18 @@ export function MeetingForm({
         )}
       </div>
     </form>
+    <ConfirmDialog
+      open={confirmingClose}
+      onOpenChange={setConfirmingClose}
+      title="לבטל את השינויים?"
+      description="השינויים שערכתם לא יישמרו."
+      confirmLabel="ביטול השינויים"
+      cancelLabel="להישאר"
+      onConfirm={() => {
+        setConfirmingClose(false);
+        onCancel();
+      }}
+    />
+    </>
   );
-}
+});
