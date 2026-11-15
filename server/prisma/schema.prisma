@@ -1384,6 +1384,10 @@ model AgencyDocument {
   byteSize    Int
   storageKey  String @unique
 
+  /// What the office wrote about this file — a payslip for March, the signed order.
+  /// Null until somebody fills it in. The file name is not a place for that sentence.
+  description String?
+
   createdAt DateTime @default(now())
 
   links AgencyDocumentLink[]

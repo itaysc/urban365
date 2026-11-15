@@ -32,6 +32,7 @@ const LINK_SELECT = {
 const SELECT = {
   id: true,
   fileName: true,
+  description: true,
   contentType: true,
   byteSize: true,
   createdAt: true,
@@ -45,6 +46,12 @@ const WITH_LINKS = {
 };
 
 type DocumentRow = Prisma.AgencyDocumentGetPayload<{ select: typeof SELECT }>;
+
+/** A memo nobody wrote is null, not a row of spaces. */
+function blankToNull(value: string | undefined): string | null {
+  const trimmed = value?.trim() ?? '';
+  return trimmed === '' ? null : trimmed;
+}
 
 function presentLinks(links: DocumentRow['links']) {
   return links.flatMap((link) => {
@@ -87,7 +94,7 @@ export class DocumentsService {
     return this.presentAll(rows);
   }
 
-  async add(file: Express.Multer.File | undefined, subject?: string, subjectId?: string) {
+  async add(file: Express.Multer.File | undefined, subject?: string, subjectId?: string, description?: string) {
     if (!file?.buffer?.length) throw new BadRequestException('לא נבחר קובץ.');
     if (file.buffer.length > MAX_DOCUMENT_BYTES) {
       throw new PayloadTooLargeException('הקובץ גדול מ-10 מ״ב.');
@@ -115,6 +122,7 @@ export class DocumentsService {
           agencyId,
           uploadedById: this.context.getPrincipal()?.userId ?? null,
           fileName: documentFileName(file.originalname, detected.extension),
+          description: blankToNull(description),
           contentType: detected.contentType,
           byteSize: file.buffer.length,
           storageKey,
@@ -156,6 +164,28 @@ export class DocumentsService {
       if (isNotFoundError(error)) throw new NotFoundException('המסמך לא נמצא.');
       throw error;
     }
+  }
+
+  async update(id: string, input: { fileName?: string; description?: string }) {
+    const agencyId = this.context.requireAgencyId();
+    const existing = await this.prisma.client.agencyDocument.findFirst({
+      where: { id, agencyId },
+      select: { id: true },
+    });
+    if (!existing) throw new NotFoundException('המסמך לא נמצא.');
+
+    const data: Prisma.AgencyDocumentUpdateInput = {};
+    if (input.fileName !== undefined) {
+      const fileName = input.fileName.replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, 180);
+      if (!fileName) throw new BadRequestException('צריך שם למסמך.');
+      data.fileName = fileName;
+    }
+    if (input.description !== undefined) data.description = blankToNull(input.description);
+
+    if (Object.keys(data).length > 0) {
+      await this.prisma.client.agencyDocument.update({ where: { id }, data });
+    }
+    return this.one(id);
   }
 
   async link(id: string, subject: string, subjectId: string): Promise<DocumentLinkView> {

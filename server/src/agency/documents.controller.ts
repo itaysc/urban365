@@ -7,6 +7,7 @@ import {
   ExceptionFilter,
   Get,
   Param,
+  Patch,
   Post,
   Query,
   Res,
@@ -21,7 +22,7 @@ import type { Response } from 'express';
 import { TenantGuard } from '../tenancy/tenant.guard.js';
 import { MAX_DOCUMENT_BYTES } from '../storage/document-type.js';
 import { DocumentsService } from './documents.service.js';
-import { LinkDocumentDto, ListDocumentsQuery, UploadDocumentDto } from './dto/document.dto.js';
+import { LinkDocumentDto, ListDocumentsQuery, UpdateDocumentDto, UploadDocumentDto } from './dto/document.dto.js';
 
 /**
  * Multer rejects an oversized part before the handler runs, which would otherwise
@@ -60,7 +61,12 @@ export class DocumentsController {
   @Post()
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: MAX_DOCUMENT_BYTES, files: 1 } }))
   add(@UploadedFile() file: Express.Multer.File, @Body() body: UploadDocumentDto) {
-    return this.documents.add(file, body.subject, body.subjectId);
+    return this.documents.add(file, body.subject, body.subjectId, body.description);
+  }
+
+  @Patch(':id')
+  update(@Param('id') id: string, @Body() body: UpdateDocumentDto) {
+    return this.documents.update(id, body);
   }
 
   @Post(':id/links')

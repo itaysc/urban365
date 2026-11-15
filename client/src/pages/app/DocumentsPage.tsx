@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Download, Search, Trash2, Upload } from 'lucide-react';
+import { Download, Pencil, Search, Trash2, Upload } from 'lucide-react';
 import { useAuth } from '@/auth/auth-context';
-import { LibraryDocumentLinks, subjectsFor } from '@/components/agency/RecordDocuments';
+import { EditDocumentDialog } from '@/components/agency/EditDocumentDialog';
+import { subjectsFor } from '@/components/agency/RecordDocuments';
 import { UploadDocumentDialog } from '@/components/agency/UploadDocumentDialog';
 import { Button } from '@/components/ui/Button';
 import { inputClass, selectClass } from '@/components/ui/Field';
@@ -39,6 +40,39 @@ function fileKindOf(contentType: string): FileKind | null {
 
 const isFileKind = (value: string): value is FileKind => FILE_KINDS.some((item) => item.value === value);
 
+/** The same page length as the customer list, so a long library does not become one scroll. */
+const PAGE_SIZE = 25;
+
+/**
+ * One line in the table, the whole sentence on hover. The tooltip is fixed so the
+ * table's own scroll does not clip it.
+ */
+function NoteCell({ note }: { note: string | null }) {
+  const [tip, setTip] = useState<{ top: number; right: number } | null>(null);
+
+  if (!note) return <span className="text-slate-400">—</span>;
+
+  const place = (target: HTMLElement) => {
+    const rect = target.getBoundingClientRect();
+    setTip({ top: rect.bottom + 6, right: window.innerWidth - rect.right });
+  };
+
+  return (
+    <div onMouseEnter={(e) => place(e.currentTarget)} onMouseLeave={() => setTip(null)}>
+      <p className="truncate text-slate-600">{note.replace(/\s+/g, ' ')}</p>
+      {tip && (
+        <span
+          role="tooltip"
+          style={{ top: tip.top, right: tip.right }}
+          className="pointer-events-none fixed z-50 max-h-60 max-w-sm overflow-y-auto whitespace-pre-wrap rounded-lg bg-slate-900 px-3 py-2 text-xs leading-snug text-white shadow-lg"
+        >
+          {note}
+        </span>
+      )}
+    </div>
+  );
+}
+
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} ב׳`;
   if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} ק״ב`;
@@ -64,7 +98,9 @@ export function DocumentsPage() {
   const [customerId, setCustomerId] = useState('');
   const [link, setLink] = useState<LinkFilter | ''>('');
   const [kind, setKind] = useState<FileKind | ''>('');
+  const [page, setPage] = useState(1);
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const vertical = user?.agency?.vertical;
@@ -120,10 +156,18 @@ export function DocumentsPage() {
       if (link === 'none' && doc.links.length > 0) return false;
       if (link && link !== 'none' && !doc.links.some((item) => item.subject === link)) return false;
       if (!term) return true;
-      const haystack = [doc.fileName, ...doc.links.map((item) => item.label)].join(' ').toLowerCase();
+      const haystack = [doc.fileName, doc.description ?? '', ...doc.links.map((item) => item.label)]
+        .join(' ')
+        .toLowerCase();
       return haystack.includes(term);
     });
   }, [data, q, customerId, customerRecords, kind, link]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const rows = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
+  const editing = (data ?? []).find((doc) => doc.id === editingId) ?? null;
 
   const reload = () => queryClient.invalidateQueries({ queryKey: qk.documents.all });
 
@@ -181,6 +225,13 @@ export function DocumentsPage() {
           void reload();
         }}
       />
+      <EditDocumentDialog
+        doc={editing}
+        onOpenChange={(next) => {
+          if (!next) setEditingId(null);
+        }}
+        onSaved={() => void reload()}
+      />
 
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative min-w-0 flex-1">
@@ -190,7 +241,10 @@ export function DocumentsPage() {
             placeholder="חיפוש לפי שם קובץ או רשומה"
             value={q}
             aria-label="חיפוש מסמכים"
-            onChange={(e) => setQ(e.target.value)}
+            onChange={(e) => {
+              setQ(e.target.value);
+              setPage(1);
+            }}
           />
         </div>
 
@@ -198,7 +252,10 @@ export function DocumentsPage() {
           className={selectClass}
           value={customerId}
           aria-label="לקוח"
-          onChange={(e) => setCustomerId(e.target.value)}
+          onChange={(e) => {
+            setCustomerId(e.target.value);
+            setPage(1);
+          }}
         >
           <option value="">לקוח</option>
           {customerOptions.map((customer) => (
@@ -217,6 +274,7 @@ export function DocumentsPage() {
             setLink(
               value === 'none' || subjects.some((item) => item.value === value) ? (value as LinkFilter) : '',
             );
+            setPage(1);
           }}
         >
           <option value="">כל הקישורים</option>
@@ -232,7 +290,10 @@ export function DocumentsPage() {
           className={selectClass}
           value={kind}
           aria-label="סוג קובץ"
-          onChange={(e) => setKind(isFileKind(e.target.value) ? e.target.value : '')}
+          onChange={(e) => {
+            setKind(isFileKind(e.target.value) ? e.target.value : '');
+            setPage(1);
+          }}
         >
           <option value="">כל הסוגים</option>
           {FILE_KINDS.map((item) => (
@@ -243,52 +304,116 @@ export function DocumentsPage() {
         </select>
       </div>
 
-      <section className="rounded-xl border border-slate-200 bg-white p-4">
-        {isPending && <p className="text-sm text-slate-500">טוען…</p>}
-        {data && data.length === 0 && <p className="text-sm text-slate-500">עדיין אין מסמכים.</p>}
+      <section className="rounded-xl border border-slate-200 bg-white">
+        {isPending && <p className="p-4 text-sm text-slate-500">טוען…</p>}
+        {data && data.length === 0 && <p className="p-4 text-sm text-slate-500">עדיין אין מסמכים.</p>}
         {data && data.length > 0 && filtered.length === 0 && (
-          <p className="text-sm text-slate-500">אין מסמכים שתואמים לחיפוש.</p>
+          <p className="p-4 text-sm text-slate-500">אין מסמכים שתואמים לחיפוש.</p>
         )}
 
-        {filtered.length > 0 && (
-          <ul className="flex flex-col gap-2">
-            {filtered.map((doc) => {
-              const who = doc.uploadedBy ? `${doc.uploadedBy.firstName} ${doc.uploadedBy.lastName}` : null;
-              return (
-                <li key={doc.id} className="rounded-lg border border-slate-200 p-2.5">
-                  <div className="flex items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-slate-900">{doc.fileName}</p>
-                    <p className="text-xs text-slate-500">
-                      {[formatBytes(doc.byteSize), formatDate(doc.createdAt), who].filter(Boolean).join(' · ')}
-                    </p>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-1">
-                    <button
-                      type="button"
-                      aria-label={`הורדת ${doc.fileName}`}
-                      disabled={busyId === doc.id}
-                      className="rounded-lg p-1.5 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 disabled:opacity-40"
-                      onClick={() => void download(doc)}
-                    >
-                      <Download className="h-4 w-4" aria-hidden />
-                    </button>
-                    <button
-                      type="button"
-                      aria-label={`מחיקת ${doc.fileName}`}
-                      disabled={busyId === doc.id}
-                      className="rounded-lg p-1.5 text-slate-500 transition hover:bg-red-50 hover:text-red-700 disabled:opacity-40"
-                      onClick={() => void remove(doc)}
-                    >
-                      <Trash2 className="h-4 w-4" aria-hidden />
-                    </button>
-                  </div>
-                  </div>
-                  <LibraryDocumentLinks doc={doc} />
-                </li>
-              );
-            })}
-          </ul>
+        {rows.length > 0 && (
+          <div className="overflow-x-auto">
+            <table className="w-full table-fixed text-sm">
+              <thead className="text-slate-500">
+                <tr>
+                  <th className="w-[22%] px-3 py-2 text-start font-medium">מסמך</th>
+                  <th className="w-[22%] px-3 py-2 text-start font-medium">הערה</th>
+                  <th className="px-3 py-2 text-start font-medium">קישורים</th>
+                  <th className="px-3 py-2 text-start font-medium">גודל</th>
+                  <th className="px-3 py-2 text-start font-medium">תאריך</th>
+                  <th className="px-3 py-2 text-start font-medium">העלה</th>
+                  <th className="px-3 py-2 text-end font-medium">פעולה</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((doc) => {
+                  const who = doc.uploadedBy ? `${doc.uploadedBy.firstName} ${doc.uploadedBy.lastName}` : null;
+                  return (
+                    <tr key={doc.id} className="border-t border-slate-100">
+                      <td className="overflow-hidden px-3 py-2">
+                        <p className="truncate font-medium text-slate-900">{doc.fileName}</p>
+                      </td>
+                      <td className="overflow-hidden px-3 py-2">
+                        <NoteCell note={doc.description} />
+                      </td>
+                      <td className="px-3 py-2">
+                        {doc.links.length === 0 ? (
+                          <span className="text-slate-400">—</span>
+                        ) : (
+                          <ul className="flex flex-wrap gap-1.5">
+                            {doc.links.map((item) => (
+                              <li key={item.id}>
+                                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-700">
+                                  {item.label}
+                                </span>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-2 text-slate-600">{formatBytes(doc.byteSize)}</td>
+                      <td className="whitespace-nowrap px-3 py-2 text-slate-600">{formatDate(doc.createdAt)}</td>
+                      <td className="whitespace-nowrap px-3 py-2 text-slate-600">{who ?? '—'}</td>
+                      <td className="px-3 py-2">
+                        <div className="flex items-center justify-end gap-1">
+                          <button
+                            type="button"
+                            aria-label={`עריכת ${doc.fileName}`}
+                            className="rounded-lg p-1.5 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+                            onClick={() => setEditingId(doc.id)}
+                          >
+                            <Pencil className="h-4 w-4" aria-hidden />
+                          </button>
+                          <button
+                            type="button"
+                            aria-label={`הורדת ${doc.fileName}`}
+                            disabled={busyId === doc.id}
+                            className="rounded-lg p-1.5 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 disabled:opacity-40"
+                            onClick={() => void download(doc)}
+                          >
+                            <Download className="h-4 w-4" aria-hidden />
+                          </button>
+                          <button
+                            type="button"
+                            aria-label={`מחיקת ${doc.fileName}`}
+                            disabled={busyId === doc.id}
+                            className="rounded-lg p-1.5 text-slate-500 transition hover:bg-red-50 hover:text-red-700 disabled:opacity-40"
+                            onClick={() => void remove(doc)}
+                          >
+                            <Trash2 className="h-4 w-4" aria-hidden />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {filtered.length > PAGE_SIZE && (
+          <div className="flex items-center justify-center gap-3 border-t border-slate-100 px-3 py-3 text-sm">
+            <button
+              type="button"
+              disabled={currentPage <= 1}
+              onClick={() => setPage(currentPage - 1)}
+              className="text-blue-700 disabled:text-slate-300"
+            >
+              הקודם
+            </button>
+            <span className="text-slate-500">
+              {currentPage} מתוך {totalPages}
+            </span>
+            <button
+              type="button"
+              disabled={currentPage >= totalPages}
+              onClick={() => setPage(currentPage + 1)}
+              className="text-blue-700 disabled:text-slate-300"
+            >
+              הבא
+            </button>
+          </div>
         )}
       </section>
     </div>

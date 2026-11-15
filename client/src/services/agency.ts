@@ -373,6 +373,7 @@ export interface DocumentLink {
 export interface AgencyDocument {
   id: string;
   fileName: string;
+  description: string | null;
   contentType: string;
   byteSize: number;
   createdAt: string;
@@ -394,15 +395,24 @@ export async function fetchDocuments(filter?: {
  */
 export async function uploadDocument(
   file: File,
-  link?: { subject: DocumentSubject; subjectId: string },
+  options?: { subject?: DocumentSubject; subjectId?: string; description?: string },
 ): Promise<AgencyDocument> {
   const body = new FormData();
   body.append('file', file);
-  if (link) {
-    body.append('subject', link.subject);
-    body.append('subjectId', link.subjectId);
+  if (options?.subject && options.subjectId) {
+    body.append('subject', options.subject);
+    body.append('subjectId', options.subjectId);
   }
+  if (options?.description?.trim()) body.append('description', options.description.trim());
   const { data } = await api.post<AgencyDocument>('/my/documents', body);
+  return data;
+}
+
+export async function updateDocument(
+  id: string,
+  input: { fileName: string; description: string },
+): Promise<AgencyDocument> {
+  const { data } = await api.patch<AgencyDocument>(`/my/documents/${id}`, input);
   return data;
 }
 

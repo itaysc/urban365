@@ -3,9 +3,9 @@ import * as Dialog from '@radix-ui/react-dialog';
 import { useQueries } from '@tanstack/react-query';
 import { X } from 'lucide-react';
 import { useAuth } from '@/auth/auth-context';
-import { recordOptions, subjectsFor } from '@/components/agency/RecordDocuments';
+import { RecordPicker, recordOptions, subjectsFor } from '@/components/agency/RecordDocuments';
 import { Button } from '@/components/ui/Button';
-import { Field, selectClass } from '@/components/ui/Field';
+import { Field, inputClass } from '@/components/ui/Field';
 import { useToast } from '@/components/ui/Toast';
 import { errorMessageOf } from '@/lib/apiError';
 import { qk } from '@/queries/keys';
@@ -50,6 +50,7 @@ export function UploadDocumentDialog({ open, onOpenChange, onUploaded }: Props) 
   const [file, setFile] = useState<File | null>(null);
   const [over, setOver] = useState(false);
   const [note, setNote] = useState<string | null>(null);
+  const [description, setDescription] = useState('');
   const [picks, setPicks] = useState<Partial<Record<DocumentSubject, string>>>({});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -66,6 +67,7 @@ export function UploadDocumentDialog({ open, onOpenChange, onUploaded }: Props) 
     if (!next) {
       setFile(null);
       setNote(null);
+      setDescription('');
       setPicks({});
       setError(null);
       setOver(false);
@@ -106,12 +108,13 @@ export function UploadDocumentDialog({ open, onOpenChange, onUploaded }: Props) 
     setError(null);
     let createdId: string | null = null;
     try {
-      const created = await uploadDocument(file, links[0]);
+      const created = await uploadDocument(file, { ...links[0], description });
       createdId = created.id;
       for (const link of links.slice(1)) {
         await linkDocument(created.id, link);
       }
       setFile(null);
+      setDescription('');
       setPicks({});
       toast.success(links.length > 0 ? 'המסמך הועלה וקושר.' : 'המסמך הועלה.');
       onUploaded();
@@ -119,6 +122,7 @@ export function UploadDocumentDialog({ open, onOpenChange, onUploaded }: Props) 
       if (createdId) {
         toast.error(errorMessageOf(e, 'הקובץ הועלה, אבל חלק מהשיוך נכשל.'));
         setFile(null);
+        setDescription('');
         setPicks({});
         onUploaded();
         return;
@@ -198,26 +202,31 @@ export function UploadDocumentDialog({ open, onOpenChange, onUploaded }: Props) 
             </button>
             {note && <p className="text-xs text-amber-700">{note}</p>}
 
+            <Field label="הערה" htmlFor="upload-description">
+              <textarea
+                id="upload-description"
+                rows={3}
+                maxLength={2000}
+                className={`${inputClass} w-full`}
+                placeholder="למשל: תלוש מרץ, הזמנת תיווך חתומה"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+              />
+            </Field>
+
             <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2">
               {subjects.map((subject, index) => (
                 <div key={subject.value} className="min-w-0">
                   <Field label={subject.label} htmlFor={`upload-${subject.value}`}>
-                    <select
+                    <RecordPicker
                       id={`upload-${subject.value}`}
-                      className={`${selectClass} w-full min-w-0`}
+                      className="w-full"
+                      options={records[index]?.data ?? []}
                       value={picks[subject.value] ?? ''}
-                      disabled={records[index]?.isPending}
-                      onChange={(e) =>
-                        setPicks((current) => ({ ...current, [subject.value]: e.target.value }))
-                      }
-                    >
-                      <option value="">{records[index]?.isPending ? 'טוען…' : 'ללא שיוך'}</option>
-                      {(records[index]?.data ?? []).map((record) => (
-                        <option key={record.id} value={record.id}>
-                          {record.label}
-                        </option>
-                      ))}
-                    </select>
+                      loading={records[index]?.isFetching}
+                      placeholder="חיפוש רשומה"
+                      onChange={(id) => setPicks((current) => ({ ...current, [subject.value]: id }))}
+                    />
                   </Field>
                 </div>
               ))}

@@ -1,11 +1,30 @@
+import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Database, Trash2 } from 'lucide-react';
+import { useAuth } from '@/auth/auth-context';
 import { Button } from '@/components/ui/Button';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useToast } from '@/components/ui/Toast';
 import { errorMessageOf } from '@/lib/apiError';
-import { clearDemoData, fetchDemoStatus, seedDemoData } from '@/services/demo';
-import { useState } from 'react';
+import { clearDemoData, fetchDemoStatus, seedDemoData, type DemoSummary } from '@/services/demo';
+
+function addedSummary(result: DemoSummary): string {
+  if (result.mortgageCases) {
+    return `נוספו ${result.customers} לקוחות, ${result.mortgageCases} תיקי משכנתא, ${result.leads} פניות ו-${result.bankerContacts ?? 0} אנשי קשר בבנקים.`;
+  }
+  return `נוספו ${result.customers} לקוחות, ${result.listings} נכסים, ${result.leads} פניות ו-${result.meetings} פגישות.`;
+}
+
+function removedCount(result: DemoSummary): number {
+  return (
+    result.customers +
+    result.listings +
+    result.leads +
+    result.meetings +
+    (result.mortgageCases ?? 0) +
+    (result.bankerContacts ?? 0)
+  );
+}
 
 /**
  * Filling the agency with something to look at, and emptying it again.
@@ -21,6 +40,8 @@ import { useState } from 'react';
 export function DemoDataPanel() {
   const toast = useToast();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const mortgage = user?.agency?.vertical === 'mortgage_broker';
   const [confirming, setConfirming] = useState(false);
 
   const { data } = useQuery({ queryKey: ['demo-data'], queryFn: fetchDemoStatus });
@@ -33,9 +54,7 @@ export function DemoDataPanel() {
     mutationFn: seedDemoData,
     onSuccess: (result) => {
       void refreshAll();
-      toast.success(
-        `נוספו ${result.customers} לקוחות, ${result.listings} נכסים, ${result.leads} פניות ו-${result.meetings} פגישות.`,
-      );
+      toast.success(addedSummary(result));
     },
     onError: (e) => toast.error(errorMessageOf(e, 'לא הצלחנו להוסיף נתוני הדגמה.')),
   });
@@ -45,7 +64,7 @@ export function DemoDataPanel() {
     onSuccess: (result) => {
       void refreshAll();
       setConfirming(false);
-      toast.success(`נמחקו ${result.customers + result.listings + result.leads + result.meetings} רשומות הדגמה.`);
+      toast.success(`נמחקו ${removedCount(result)} רשומות הדגמה.`);
     },
     onError: (e) => toast.error(errorMessageOf(e, 'לא הצלחנו למחוק את נתוני ההדגמה.')),
   });
@@ -62,7 +81,9 @@ export function DemoDataPanel() {
         <p className="mt-1 text-xs text-amber-800">
           {seeded > 0
             ? `${seeded} רשומות הדגמה רשומות כרגע. המחיקה מוחקת רק אותן.`
-            : 'לקוחות, נכסים, פניות ופגישות לדוגמה, כדי שיהיה מה לבדוק.'}
+            : mortgage
+              ? 'לקוחות, תיקי משכנתא, פניות ואנשי קשר בבנקים לדוגמה, כדי שיהיה מה לבדוק.'
+              : 'לקוחות, נכסים, פניות ופגישות לדוגמה, כדי שיהיה מה לבדוק.'}
         </p>
       </div>
 
@@ -88,7 +109,11 @@ export function DemoDataPanel() {
         open={confirming}
         onOpenChange={setConfirming}
         title="למחוק את נתוני ההדגמה?"
-        description={`יימחקו ${seeded} הרשומות שנוצרו על ידי כפתור ההדגמה בלבד. לקוחות, נכסים ופגישות שהוספתם בעצמכם לא ייגעו.`}
+        description={
+          mortgage
+            ? `יימחקו ${seeded} הרשומות שנוצרו על ידי כפתור ההדגמה בלבד. לקוחות, תיקים ופגישות שהוספתם בעצמכם לא ייגעו.`
+            : `יימחקו ${seeded} הרשומות שנוצרו על ידי כפתור ההדגמה בלבד. לקוחות, נכסים ופגישות שהוספתם בעצמכם לא ייגעו.`
+        }
         confirmLabel="מחיקה"
         busy={clear.isPending}
         onConfirm={() => clear.mutate()}

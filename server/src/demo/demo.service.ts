@@ -2,6 +2,13 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { briefSummary } from '../cobrokerage/brief-summary.js';
 import { CO_BROKERAGE, CUSTOMERS, DEALS, LEADS, LISTINGS, MEETINGS } from './demo-data.js';
+import {
+  MORTGAGE_BANKERS,
+  MORTGAGE_CASES,
+  MORTGAGE_CUSTOMERS,
+  MORTGAGE_LEADS,
+  MORTGAGE_MEETINGS,
+} from './mortgage-demo-data.js';
 
 /** Counts, so the caller can say what happened rather than "done". */
 export interface DemoSummary {
@@ -12,17 +19,22 @@ export interface DemoSummary {
   suggestions?: number;
   coBrokerage?: number;
   deals?: number;
+  mortgageCases?: number;
+  bankerContacts?: number;
 }
 
 /**
  * The order things must be deleted in, because of the foreign keys between them.
  *
- * Suggestions first — they point at everything else — then meetings, then leads, then
- * listings, then customers. Getting this wrong does not corrupt anything: Postgres
- * refuses the delete and the whole clear rolls back. It is written down so it is
- * obvious rather than discovered.
+ * A mortgage file points at a customer, a lead and a deal, so it goes before all three.
+ * Suggestions first among the rest — they point at everything else — then meetings,
+ * then leads, then listings, then customers. Getting this wrong does not corrupt
+ * anything: Postgres refuses the delete and the whole clear rolls back. It is written
+ * down so it is obvious rather than discovered.
  */
 const DELETE_ORDER = [
+  'MortgageCase',
+  'BankerContact',
   'Suggestion',
   'CoBrokerageRequest',
   'Deal',
@@ -65,6 +77,17 @@ export class DemoService {
    * marked "add demo data". Clearing is how you get back to one copy.
    */
   async seed(agencyId: string, createdByUserId: string | null): Promise<DemoSummary> {
+    const agency = await this.prisma.agency.findUnique({
+      where: { id: agencyId },
+      select: { vertical: true },
+    });
+    // A mortgage office has no listings and no co-brokerage. Seeding the brokerage
+    // fixture into it fills screens that office does not have, and leaves the ones it
+    // does — the file board, the tender, the loan officers — empty.
+    if (agency?.vertical === 'mortgage_broker') {
+      return this.seedMortgage(agencyId, createdByUserId);
+    }
+
     const now = Date.now();
     const registered: { model: string; recordId: string }[] = [];
     const remember = (model: string, recordId: string) => registered.push({ model, recordId });
@@ -253,6 +276,199 @@ export class DemoService {
   }
 
   /**
+   * Customers, enquiries, files across every stage, the offers on the ones that went
+   * to banks, the loan officers, and the closings the commission chart is drawn from.
+   *
+   * A signed file also writes the `Deal` the dashboard reads — the same row
+   * `MortgageCasesService` creates when a case crosses into `signed` — with the fee
+   * filled in, which that path leaves blank for somebody to type afterwards.
+   */
+  private async seedMortgage(agencyId: string, createdByUserId: string | null): Promise<DemoSummary> {
+    const now = Date.now();
+    const registered: { model: string; recordId: string }[] = [];
+    const remember = (model: string, recordId: string) => registered.push({ model, recordId });
+
+    const customerIds: string[] = [];
+    for (const customer of MORTGAGE_CUSTOMERS) {
+      const row = await this.prisma.customer.create({
+        data: {
+          agencyId,
+          name: customer.name,
+          phone: customer.phone,
+          email: customer.email ?? null,
+          notes: customer.notes ?? null,
+          assignedToId: createdByUserId,
+        },
+        select: { id: true },
+      });
+      customerIds.push(row.id);
+      remember('Customer', row.id);
+    }
+
+    const leadIds: string[] = [];
+    for (const lead of MORTGAGE_LEADS) {
+      const row = await this.prisma.lead.create({
+        data: {
+          agencyId,
+          name: lead.name,
+          phone: lead.phone,
+          email: lead.email ?? null,
+          message: lead.message,
+          status: lead.status,
+          source: lead.source ?? 'manual',
+          assignedToId: lead.unassigned ? null : createdByUserId,
+        },
+        select: { id: true },
+      });
+      leadIds.push(row.id);
+      remember('Lead', row.id);
+
+      if (lead.quietDays > 0 || lead.agedDays) {
+        const quietSince = new Date(now - lead.quietDays * DAY);
+        const arrived = new Date(now - (lead.agedDays ?? lead.quietDays) * DAY);
+        await this.prisma
+          .$executeRaw`UPDATE "Lead" SET "updatedAt" = ${quietSince}, "createdAt" = ${arrived} WHERE id = ${row.id}`;
+      }
+    }
+
+    let deals = 0;
+    for (const item of MORTGAGE_CASES) {
+      const customerId =
+        item.customerIndex !== undefined ? (customerIds[item.customerIndex] ?? null) : null;
+      const leadId = item.leadIndex !== undefined ? (leadIds[item.leadIndex] ?? null) : null;
+      const displayName =
+        (item.customerIndex !== undefined ? MORTGAGE_CUSTOMERS[item.customerIndex]?.name : undefined) ??
+        (item.leadIndex !== undefined ? MORTGAGE_LEADS[item.leadIndex]?.name : undefined) ??
+        'תיק משכנתא';
+
+      const closedAt =
+        item.stage === 'signed'
+          ? new Date(new Date(now).setMonth(new Date(now).getMonth() - (item.closedMonthsAgo ?? 0)))
+          : null;
+
+      let dealId: string | null = null;
+      if (closedAt) {
+        const deal = await this.prisma.deal.create({
+          data: {
+            agencyId,
+            title: displayName,
+            stage: 'closed_won',
+            price: item.requestedAmount ?? null,
+            commission: item.commission ?? null,
+            customerId,
+            ownerId: createdByUserId,
+            notes: item.notes ?? null,
+            closedAt,
+            createdAt: closedAt,
+            updatedAt: closedAt,
+          },
+          select: { id: true },
+        });
+        dealId = deal.id;
+        remember('Deal', deal.id);
+        deals += 1;
+      }
+
+      const row = await this.prisma.mortgageCase.create({
+        data: {
+          agencyId,
+          stage: item.stage,
+          customerId,
+          leadId,
+          dealId,
+          assignedToId: createdByUserId,
+          requestedAmount: item.requestedAmount ?? null,
+          propertyValue: item.propertyValue ?? null,
+          equityAvailable: item.equityAvailable ?? null,
+          monthlyIncomePrimary: item.monthlyIncomePrimary ?? null,
+          monthlyIncomeSecondary: item.monthlyIncomeSecondary ?? null,
+          employmentType: item.employmentType ?? null,
+          propertyCity: item.propertyCity ?? null,
+          loanTermYears: item.loanTermYears ?? null,
+          riskPreference: item.riskPreference ?? null,
+          notes: item.notes ?? null,
+          deletedAt: item.archived ? (closedAt ?? new Date(now)) : null,
+          bankOffers: item.offers?.length
+            ? {
+                create: item.offers.map((offer) => ({
+                  bankName: offer.bankName,
+                  track: offer.track ?? null,
+                  interestRate: offer.interestRate ?? null,
+                  monthlyPayment: offer.monthlyPayment ?? null,
+                  receivedAt:
+                    offer.receivedDaysAgo !== undefined
+                      ? new Date(now - offer.receivedDaysAgo * DAY)
+                      : null,
+                  notes: offer.notes ?? null,
+                })),
+              }
+            : undefined,
+        },
+        select: { id: true },
+      });
+      remember('MortgageCase', row.id);
+    }
+
+    for (const meeting of MORTGAGE_MEETINGS) {
+      const startsAt = new Date(now + meeting.inDays * DAY);
+      const past = meeting.inDays < 0;
+
+      const row = await this.prisma.meeting.create({
+        data: {
+          agencyId,
+          title: meeting.title,
+          startsAt,
+          endsAt: new Date(startsAt.getTime() + meeting.durationMinutes * MINUTE),
+          customerId: customerIds[meeting.customerIndex] ?? null,
+          ownerId: createdByUserId,
+          status: meeting.outcome ? 'done' : 'scheduled',
+          outcome: meeting.outcome,
+          feedbackNotes: meeting.feedbackNotes ?? null,
+          feedbackAt: meeting.outcome ? new Date(startsAt.getTime() + DAY) : null,
+          feedbackById: meeting.outcome ? createdByUserId : null,
+          reminderSentAt: past ? new Date(startsAt.getTime() - DAY) : null,
+        },
+        select: { id: true },
+      });
+      remember('Meeting', row.id);
+    }
+
+    for (const banker of MORTGAGE_BANKERS) {
+      const row = await this.prisma.bankerContact.create({
+        data: {
+          agencyId,
+          bankName: banker.bankName,
+          branch: banker.branch ?? null,
+          name: banker.name,
+          phone: banker.phone ?? null,
+          email: banker.email ?? null,
+          notes: banker.notes ?? null,
+          deletedAt: banker.archived ? new Date(now) : null,
+        },
+        select: { id: true },
+      });
+      remember('BankerContact', row.id);
+    }
+
+    await this.prisma.demoRecord.createMany({
+      data: registered.map((r) => ({ agencyId, ...r })),
+      skipDuplicates: true,
+    });
+
+    this.logger.log(`Seeded ${registered.length} mortgage demo records for ${agencyId}.`);
+
+    return {
+      customers: MORTGAGE_CUSTOMERS.length,
+      listings: 0,
+      leads: MORTGAGE_LEADS.length,
+      meetings: MORTGAGE_MEETINGS.length,
+      deals,
+      mortgageCases: MORTGAGE_CASES.length,
+      bankerContacts: MORTGAGE_BANKERS.length,
+    };
+  }
+
+  /**
    * Requests in both directions, with whichever other agency is actually there.
    *
    * Both directions, because the two sides look nothing alike — one carries our
@@ -403,11 +619,24 @@ export class DemoService {
       suggestions: 0,
       coBrokerage: 0,
       deals: 0,
+      mortgageCases: 0,
+      bankerContacts: 0,
     };
 
     await this.prisma.$transaction(async (tx) => {
       const customerIds = idsOf('Customer');
       const listingIds = idsOf('Listing');
+
+      // Before the deal, the lead and the customer: the file points at all three.
+      // Offers hang off the file and go with it.
+      counted.mortgageCases = (
+        await tx.mortgageCase.deleteMany({ where: { agencyId, id: { in: idsOf('MortgageCase') } } })
+      ).count;
+      counted.bankerContacts = (
+        await tx.bankerContact.deleteMany({
+          where: { agencyId, id: { in: idsOf('BankerContact') } },
+        })
+      ).count;
 
       const suggestions = await tx.suggestion.deleteMany({
         where: {
@@ -458,6 +687,10 @@ export class DemoService {
 
   private countFor(model: (typeof DELETE_ORDER)[number], counted: DemoSummary): number {
     switch (model) {
+      case 'MortgageCase':
+        return counted.mortgageCases ?? 0;
+      case 'BankerContact':
+        return counted.bankerContacts ?? 0;
       case 'Suggestion':
         return counted.suggestions ?? 0;
       case 'CoBrokerageRequest':

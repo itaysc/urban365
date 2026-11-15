@@ -1,9 +1,10 @@
 import { useRef, useState } from 'react';
+import * as Dialog from '@radix-ui/react-dialog';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Download, Trash2, Upload } from 'lucide-react';
+import { Download, Trash2, Upload, X } from 'lucide-react';
 import { useAuth } from '@/auth/auth-context';
 import { Button } from '@/components/ui/Button';
-import { selectClass } from '@/components/ui/Field';
+import { Field, inputClass, selectClass } from '@/components/ui/Field';
 import { useToast } from '@/components/ui/Toast';
 import { errorMessageOf } from '@/lib/apiError';
 import { qk } from '@/queries/keys';
@@ -57,7 +58,150 @@ async function saveFile(doc: AgencyDocument) {
   URL.revokeObjectURL(url);
 }
 
-export async function recordOptions(subject: DocumentSubject): Promise<{ id: string; label: string }[]> {
+export interface RecordOption {
+  id: string;
+  label: string;
+}
+
+/**
+ * Pick one record by typing its name, the same way a customer is picked on a deal.
+ *
+ * The list is already loaded — a mortgage file, a lead, a customer — so the search
+ * filters that list rather than asking the server again. An empty field shows every
+ * option; typing narrows it.
+ */
+export function RecordPicker({
+  id,
+  options,
+  value,
+  onChange,
+  disabled = false,
+  loading = false,
+  placeholder,
+  label,
+  className = '',
+}: {
+  id: string;
+  options: RecordOption[];
+  value: string;
+  onChange: (id: string) => void;
+  disabled?: boolean;
+  /** The list has been asked for and has not come back yet. */
+  loading?: boolean;
+  placeholder: string;
+  /** Set when no `<label>` points at `id`. A labelled field must not also name itself. */
+  label?: string;
+  className?: string;
+}) {
+  const box = useRef<HTMLDivElement>(null);
+  const [text, setText] = useState('');
+  const [editing, setEditing] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [highlighted, setHighlighted] = useState(0);
+
+  const selected = options.find((option) => option.id === value);
+  // While they type, the field is the query. Otherwise it shows the record they
+  // picked — including once the options finish loading and the name becomes known.
+  const shown = editing ? text : (selected?.label ?? '');
+  const term = shown.trim().toLowerCase();
+  const browsing = !editing || term === '';
+  const matches = browsing
+    ? options
+    : options.filter((option) => option.label.toLowerCase().includes(term));
+
+  const choose = (option: RecordOption) => {
+    onChange(option.id);
+    setText(option.label);
+    setEditing(false);
+    setOpen(false);
+  };
+
+  return (
+    <div ref={box} className={`relative min-w-0 ${className}`}>
+      <input
+        id={id}
+        role="combobox"
+        aria-expanded={open && !disabled}
+        aria-autocomplete="list"
+        aria-controls={`${id}-list`}
+        aria-label={label}
+        autoComplete="off"
+        disabled={disabled}
+        placeholder={placeholder}
+        className={`${inputClass} w-full min-w-0`}
+        value={shown}
+        onChange={(e) => {
+          setText(e.target.value);
+          setEditing(true);
+          setHighlighted(0);
+          if (value) onChange('');
+          setOpen(true);
+        }}
+        onFocus={(e) => {
+          setOpen(true);
+          e.currentTarget.select();
+        }}
+        onBlur={() => {
+          // Wait out the click that chose a row. Blur fires first.
+          setTimeout(() => {
+            if (!box.current?.contains(document.activeElement)) setOpen(false);
+          }, 150);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            if (open && matches[highlighted]) choose(matches[highlighted]);
+            return;
+          }
+          if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            setOpen(true);
+            setHighlighted((i) => (matches.length === 0 ? 0 : (i + 1) % matches.length));
+          } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            setHighlighted((i) => (matches.length === 0 ? 0 : (i - 1 + matches.length) % matches.length));
+          } else if (e.key === 'Escape') {
+            setOpen(false);
+          }
+        }}
+      />
+
+      {open && !disabled && (
+        <ul
+          id={`${id}-list`}
+          role="listbox"
+          className="mt-1 max-h-52 overflow-y-auto rounded-lg border border-slate-200 bg-white py-1"
+        >
+          {loading && matches.length === 0 ? (
+            <li className="px-3 py-2 text-sm text-slate-500">טוען…</li>
+          ) : matches.length === 0 ? (
+            <li className="px-3 py-2 text-sm text-slate-500">לא נמצאו רשומות</li>
+          ) : (
+            matches.map((option, index) => (
+              <li key={option.id} role="option" aria-selected={index === highlighted}>
+                <button
+                  type="button"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    choose(option);
+                  }}
+                  onMouseEnter={() => setHighlighted(index)}
+                  className={`block w-full truncate px-3 py-2 text-right text-sm ${
+                    index === highlighted ? 'bg-slate-50' : ''
+                  }`}
+                >
+                  {option.label}
+                </button>
+              </li>
+            ))
+          )}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+export async function recordOptions(subject: DocumentSubject): Promise<RecordOption[]> {
   switch (subject) {
     case 'customer': {
       const page = await fetchCustomers({ pageSize: 100 });
@@ -102,6 +246,8 @@ export function RecordDocuments({ subject, subjectId }: { subject: DocumentSubje
   const queryClient = useQueryClient();
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  const [pending, setPending] = useState<File | null>(null);
+  const [description, setDescription] = useState('');
   const [busyId, setBusyId] = useState<string | null>(null);
   const [chosen, setChosen] = useState('');
 
@@ -115,22 +261,35 @@ export function RecordDocuments({ subject, subjectId }: { subject: DocumentSubje
   const attached = new Set((linked.data ?? []).map((doc) => doc.id));
   const available = (library.data ?? []).filter((doc) => !attached.has(doc.id));
 
-  const onFile = async (file: File | undefined) => {
+  const clearPending = () => {
+    setPending(null);
+    setDescription('');
+    if (inputRef.current) inputRef.current.value = '';
+  };
+
+  const onFile = (file: File | undefined) => {
     if (!file) return;
     if (file.size > MAX_DOCUMENT_BYTES) {
       toast.error('הקובץ גדול מ-10 מ״ב.');
+      if (inputRef.current) inputRef.current.value = '';
       return;
     }
+    setDescription('');
+    setPending(file);
+  };
+
+  const confirmUpload = async () => {
+    if (!pending) return;
     setUploading(true);
     try {
-      await uploadDocument(file, { subject, subjectId });
+      await uploadDocument(pending, { subject, subjectId, description });
+      clearPending();
       await reload();
       toast.success('המסמך הועלה וקושר.');
     } catch (e) {
       toast.error(errorMessageOf(e, 'ההעלאה נכשלה.'));
     } finally {
       setUploading(false);
-      if (inputRef.current) inputRef.current.value = '';
     }
   };
 
@@ -196,6 +355,9 @@ export function RecordDocuments({ subject, subjectId }: { subject: DocumentSubje
             >
               <div className="min-w-0">
                 <p className="truncate text-sm font-medium text-slate-900">{doc.fileName}</p>
+                {doc.description && (
+                  <p className="mt-0.5 whitespace-pre-wrap text-sm text-slate-600">{doc.description}</p>
+                )}
                 <p className="text-xs text-slate-500">{formatBytes(doc.byteSize)}</p>
               </div>
               <div className="flex shrink-0 items-center gap-1">
@@ -230,8 +392,62 @@ export function RecordDocuments({ subject, subjectId }: { subject: DocumentSubje
           accept={ACCEPT}
           className="sr-only"
           aria-label="בחירת מסמך"
-          onChange={(e) => void onFile(e.target.files?.[0])}
+          onChange={(e) => onFile(e.target.files?.[0])}
         />
+        <Dialog.Root open={pending !== null} onOpenChange={(next) => { if (!next && !uploading) clearPending(); }}>
+          <Dialog.Portal>
+            <Dialog.Overlay className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm" />
+            <Dialog.Content className="fixed start-1/2 top-1/2 z-50 w-[min(32rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-white p-6 shadow-xl rtl:translate-x-1/2">
+              <header className="mb-4 flex items-start justify-between gap-4">
+                <div>
+                  <Dialog.Title className="text-lg font-bold text-slate-900">העלאת מסמך</Dialog.Title>
+                  <Dialog.Description className="mt-0.5 text-sm text-slate-500">
+                    {pending?.name}
+                  </Dialog.Description>
+                </div>
+                <Dialog.Close
+                  aria-label="סגירה"
+                  disabled={uploading}
+                  className="rounded-lg p-1.5 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700 disabled:opacity-40"
+                >
+                  <X className="h-5 w-5" />
+                </Dialog.Close>
+              </header>
+              <form
+                className="flex flex-col gap-4"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  void confirmUpload();
+                }}
+              >
+                <Field label="הערה" htmlFor={`upload-note-${subjectId}`}>
+                  <textarea
+                    id={`upload-note-${subjectId}`}
+                    rows={3}
+                    maxLength={2000}
+                    className={`${inputClass} w-full`}
+                    placeholder="למשל: תלוש מרץ, הזמנת תיווך חתומה"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                  />
+                </Field>
+                <div className="flex items-center gap-3">
+                  <Button type="submit" disabled={uploading}>
+                    {uploading ? 'מעלה…' : 'העלאה'}
+                  </Button>
+                  <button
+                    type="button"
+                    disabled={uploading}
+                    className="text-sm text-slate-500 transition hover:text-slate-900 disabled:opacity-40"
+                    onClick={clearPending}
+                  >
+                    ביטול
+                  </button>
+                </div>
+              </form>
+            </Dialog.Content>
+          </Dialog.Portal>
+        </Dialog.Root>
         <Button
           type="button"
           variant="secondary"
@@ -287,10 +503,10 @@ export function RecordDocumentsToggle({ subject, subjectId }: { subject: Documen
 }
 
 /**
- * On the library page: where this file is attached, and a way to attach it to another
- * record. The record pages do the same thing from the other side.
+ * Where this file is attached. The library row only prints the badges. Adding one,
+ * or taking one off, happens in the edit dialog.
  */
-export function LibraryDocumentLinks({ doc }: { doc: AgencyDocument }) {
+export function LibraryDocumentLinks({ doc, editable = false }: { doc: AgencyDocument; editable?: boolean }) {
   const { user } = useAuth();
   const toast = useToast();
   const queryClient = useQueryClient();
@@ -345,23 +561,27 @@ export function LibraryDocumentLinks({ doc }: { doc: AgencyDocument }) {
         <ul className="flex flex-wrap gap-1.5">
           {doc.links.map((link) => (
             <li key={link.id}>
-              <button
-                type="button"
-                disabled={busy}
-                title="הסרת הקישור"
-                aria-label={`הסרת הקישור ${link.label}`}
-                className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-700 transition hover:bg-red-50 hover:text-red-700 disabled:opacity-40"
-                onClick={() => void detach(link)}
-              >
-                {link.label} ×
-              </button>
+              {editable ? (
+                <button
+                  type="button"
+                  disabled={busy}
+                  title="הסרת הקישור"
+                  aria-label={`הסרת הקישור ${link.label}`}
+                  className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-700 transition hover:bg-red-50 hover:text-red-700 disabled:opacity-40"
+                  onClick={() => void detach(link)}
+                >
+                  {link.label} ×
+                </button>
+              ) : (
+                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-700">{link.label}</span>
+              )}
             </li>
           ))}
         </ul>
       )}
 
-      {open ? (
-        <div className="flex flex-wrap items-center gap-2">
+      {editable && open ? (
+        <div className="flex flex-wrap items-start gap-2">
           <select
             className={selectClass}
             aria-label="סוג רשומה"
@@ -378,32 +598,30 @@ export function LibraryDocumentLinks({ doc }: { doc: AgencyDocument }) {
               </option>
             ))}
           </select>
-          <select
-            className={`${selectClass} max-w-xs`}
-            aria-label="רשומה"
+          <RecordPicker
+            key={subject || 'none'}
+            id={`link-record-${doc.id}`}
+            className="w-56"
+            options={choices}
             value={recordId}
-            disabled={!subject || records.isPending}
-            onChange={(e) => setRecordId(e.target.value)}
-          >
-            <option value="">{records.isPending ? 'טוען…' : 'בחירת רשומה'}</option>
-            {choices.map((record) => (
-              <option key={record.id} value={record.id}>
-                {record.label}
-              </option>
-            ))}
-          </select>
+            disabled={!subject}
+            loading={subject !== '' && records.isFetching}
+            placeholder={subject ? 'חיפוש רשומה' : 'בחרו סוג רשומה'}
+            label="רשומה"
+            onChange={setRecordId}
+          />
           <Button type="button" variant="secondary" disabled={!recordId || busy} onClick={() => void connect()}>
             קישור
           </Button>
-          <button type="button" className="text-xs text-slate-500 hover:underline" onClick={() => setOpen(false)}>
+          <button type="button" className="px-1 py-2 text-xs text-slate-500 hover:underline" onClick={() => setOpen(false)}>
             ביטול
           </button>
         </div>
-      ) : (
+      ) : editable ? (
         <button type="button" className="self-start text-xs font-medium text-blue-700 hover:underline" onClick={() => setOpen(true)}>
           קישור לרשומה
         </button>
-      )}
+      ) : null}
     </div>
   );
 }

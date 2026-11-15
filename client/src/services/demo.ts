@@ -6,6 +6,9 @@ export interface DemoSummary {
   leads: number;
   meetings: number;
   suggestions?: number;
+  deals?: number;
+  mortgageCases?: number;
+  bankerContacts?: number;
 }
 
 /**
