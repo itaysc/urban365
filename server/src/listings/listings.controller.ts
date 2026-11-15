@@ -144,6 +144,15 @@ export class ListingsController {
   }
 
   /**
+   * A street and the cities it exists in, for an address typed as one line.
+   * Declared before `:id`.
+   */
+  @Get('address-suggestions')
+  addressSuggestions(@Query('q') q: string | undefined, @Query('city') city: string | undefined) {
+    return this.listings.addressSuggestions(q ?? '', city ?? '');
+  }
+
+  /**
    * Neighbourhoods inside one city, for the box on the publish form.
    *
    * Declared before `:id` — Nest matches in declaration order.

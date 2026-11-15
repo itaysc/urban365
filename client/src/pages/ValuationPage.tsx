@@ -7,6 +7,7 @@ import { useAuth } from '@/auth/auth-context';
 import { SiteHeader } from '@/components/SiteHeader';
 import { CityBox } from '@/components/listing/CityBox';
 import { StreetBox } from '@/components/listing/StreetBox';
+import { splitHouseNumber } from '@/lib/house-number';
 import { NeighborhoodBox } from '@/components/listing/NeighborhoodBox';
 import { RoomsPicker } from '@/components/search/RoomsPicker';
 import { Field, inputClass, selectClass } from '@/components/ui/Field';
@@ -98,7 +99,10 @@ export function ValuationPage() {
    */
   const [typedStreet, setTypedStreet] = useState('');
   useEffect(() => {
-    const timer = window.setTimeout(() => setTypedStreet(form.street.trim()), 250);
+    const timer = window.setTimeout(
+      () => setTypedStreet(splitHouseNumber(form.street).name),
+      250,
+    );
     return () => window.clearTimeout(timer);
   }, [form.street]);
 
@@ -344,6 +348,7 @@ export function ValuationPage() {
                 city={form.city}
                 value={form.street}
                 onChange={(value) => set('street', value)}
+                onCity={(city) => set('city', city)}
               />
               {unplaced ? (
                 <p className="mt-1 text-xs text-amber-800">

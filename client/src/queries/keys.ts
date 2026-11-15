@@ -28,6 +28,8 @@ export const qk = {
     neighborhoods: (city: string, term: string) =>
       ['listings', 'neighborhoods', city, term] as const,
     streets: (city: string, term: string) => ['listings', 'streets', city, term] as const,
+    addressSuggestions: (term: string, city: string) =>
+      ['listings', 'address-suggestions', term, city] as const,
   },
 
   saved: {

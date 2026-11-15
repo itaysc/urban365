@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react';
+import * as Dialog from '@radix-ui/react-dialog';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
+import { X } from 'lucide-react';
 import { CalendarDays, ChevronLeft, ChevronRight, Handshake, MapPin, Plus, User } from 'lucide-react';
 import { useAuth } from '@/auth/auth-context';
 import { Button } from '@/components/ui/Button';
@@ -186,6 +188,7 @@ export function CalendarPage() {
       void refresh();
       toast.success('הפגישה בוטלה.');
       setDeleting(null);
+      closeForm();
     },
     onError: (e) => toast.error(errorMessageOf(e, 'לא הצלחנו לבטל את הפגישה.')),
   });
@@ -481,20 +484,43 @@ export function CalendarPage() {
         </section>
       )}
 
-      {editing !== null && (
-        <section className="rounded-xl border border-slate-200 bg-white p-4">
-          <h2 className="mb-4 font-semibold text-slate-900">
-            {editing === 'new' ? 'פגישה חדשה' : 'עריכת פגישה'}
-          </h2>
-          <MeetingForm
-            meeting={editing === 'new' ? null : editing}
-            defaultStart={newAt ?? undefined}
-            busy={save.isPending}
-            onCancel={closeForm}
-            onSubmit={(input) => save.mutate(input)}
-          />
-        </section>
-      )}
+      <Dialog.Root
+        open={editing !== null}
+        onOpenChange={(next) => {
+          if (!next && !save.isPending) closeForm();
+        }}
+      >
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm" />
+          <Dialog.Content className="fixed start-1/2 top-1/2 z-50 max-h-[min(44rem,calc(100vh-2rem))] w-[min(40rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl bg-white p-6 shadow-xl rtl:translate-x-1/2">
+            <header className="mb-4 flex items-start justify-between gap-4">
+              <Dialog.Title className="text-lg font-bold text-slate-900">
+                {editing === 'new' ? 'פגישה חדשה' : 'עריכת פגישה'}
+              </Dialog.Title>
+              <Dialog.Close
+                aria-label="סגירה"
+                disabled={save.isPending}
+                className="rounded-lg p-1.5 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700 disabled:opacity-40"
+              >
+                <X className="h-5 w-5" />
+              </Dialog.Close>
+            </header>
+            {editing !== null && (
+              <MeetingForm
+                key={editing === 'new' ? `new-${newAt}` : editing.id}
+                meeting={editing === 'new' ? null : editing}
+                defaultStart={newAt ?? undefined}
+                busy={save.isPending}
+                onCancel={closeForm}
+                onDelete={
+                  editing !== 'new' ? () => setDeleting(editing) : undefined
+                }
+                onSubmit={(input) => save.mutate(input)}
+              />
+            )}
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
 
       <section className="rounded-xl border border-slate-200 bg-white p-4">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-y-2">
@@ -569,16 +595,14 @@ export function CalendarPage() {
             const isToday = sameDay(day, today);
 
             return (
-              <button
+              <div
                 key={day.toISOString()}
-                type="button"
-                // A day with nothing in it is an invitation to book: there is nothing
-                // else clicking it could usefully mean. A day with meetings selects,
-                // so the list below can be read without a form opening over it.
+                // A day with nothing in it is an invitation to book. A day with
+                // meetings only selects — the meeting itself is what opens.
                 onClick={() =>
                   ours.length + theirs.length === 0 ? openNew(day) : go({ day: isoDay(day) })
                 }
-                className={`flex flex-col items-stretch gap-1 rounded-lg border p-1.5 text-start transition ${
+                className={`flex cursor-pointer flex-col items-stretch gap-1 rounded-lg border p-1.5 text-start transition ${
                   view === 'month' ? 'min-h-[4.5rem]' : 'min-h-[9rem]'
                 } ${
                   sameDay(day, selected)
@@ -586,11 +610,17 @@ export function CalendarPage() {
                     : 'border-slate-200 hover:border-slate-300'
                 } ${outside ? 'opacity-40' : ''}`}
               >
-                <span
-                  className={`text-xs ${isToday ? 'font-bold text-blue-700' : 'text-slate-500'}`}
+                <button
+                  type="button"
+                  className={`self-start text-xs ${isToday ? 'font-bold text-blue-700' : 'text-slate-500'}`}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    if (ours.length + theirs.length === 0) openNew(day);
+                    else go({ day: isoDay(day) });
+                  }}
                 >
                   {day.getDate()}
-                </span>
+                </button>
 
                 {/*
                   A phone gives a seven-column grid about forty-five pixels a cell,
@@ -612,12 +642,17 @@ export function CalendarPage() {
 
                 <span className="hidden flex-col gap-0.5 sm:flex">
                   {ours.slice(0, view === 'month' ? 2 : 8).map((m) => (
-                    <span
+                    <button
                       key={m.id}
-                      className="truncate rounded bg-blue-600 px-1 py-0.5 text-[0.65rem] text-white"
+                      type="button"
+                      className="truncate rounded bg-blue-600 px-1 py-0.5 text-start text-[0.65rem] text-white hover:bg-blue-700"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        go({ day: isoDay(day), edit: m.id }, true);
+                      }}
                     >
                       {time(m.startsAt)} {m.title}
-                    </span>
+                    </button>
                   ))}
 
                   {/* Google's own events, drawn differently because they are not ours
@@ -637,7 +672,7 @@ export function CalendarPage() {
                     </span>
                   )}
                 </span>
-              </button>
+              </div>
             );
           })}
         </div>

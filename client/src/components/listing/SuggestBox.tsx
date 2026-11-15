@@ -25,6 +25,11 @@ interface Props {
   term?: string;
   /** Said under the field — a warning about what was typed, say. */
   footer?: ReactNode;
+  /**
+   * Enter submits the form this sits in. A suggestion is taken only after the list
+   * has been stepped into — otherwise the key would never reach the form.
+   */
+  submits?: boolean;
 }
 
 /**
@@ -46,6 +51,7 @@ export function SuggestBox({
   required = false,
   term = '',
   footer,
+  submits = false,
 }: Props) {
   const [open, setOpen] = useState(false);
   const [highlighted, setHighlighted] = useState(0);
@@ -95,7 +101,7 @@ export function SuggestBox({
      * `onPick` says the field collects values; a single-value box leaves Enter alone,
      * so a listing form still submits on Enter the way every other form does.
      */
-    if (e.key === 'Enter' && onPick && value.trim() !== '') {
+    if (e.key === 'Enter' && onPick && !submits && value.trim() !== '') {
       e.preventDefault();
       choose(reached && options.length > 0 ? options[highlighted] : value.trim());
       return;

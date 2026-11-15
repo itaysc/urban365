@@ -1,13 +1,16 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { CustomerSelect, type PickedCustomer } from '@/components/agency/CustomerSelect';
 import { SuggestBox } from '@/components/listing/SuggestBox';
 import { Button } from '@/components/ui/Button';
 import { Field, inputClass, selectClass } from '@/components/ui/Field';
+import { ISRAELI_CITIES } from '@/data/cities';
+import { splitPlace } from '@/lib/address-line';
 import { MEETING_TITLES } from '@/lib/meetingTitles';
 import { qk } from '@/queries/keys';
 import { fetchMyListings } from '@/services/agency';
-import { fetchCustomers } from '@/services/crm';
 import type { Meeting, MeetingInput } from '@/services/calendar';
+import { fetchAddressSuggestions, fetchStreetsIn } from '@/services/search';
 
 /**
  * A `datetime-local` input wants `YYYY-MM-DDTHH:mm` in **local** time, while everything
@@ -22,6 +25,8 @@ function toLocalInput(iso: string): string {
 }
 
 const toIso = (local: string): string => new Date(local).toISOString();
+
+const MAX_PLACES = 8;
 
 /** The top of the next hour — the fallback when no day was chosen. */
 function nextHour(): string {
@@ -51,6 +56,8 @@ interface Props {
   defaultStart?: string;
   onSubmit: (input: MeetingInput) => void;
   onCancel: () => void;
+  /** Cancelling the meeting itself, as opposed to closing the form. */
+  onDelete?: () => void;
   busy?: boolean;
 }
 
@@ -60,6 +67,7 @@ export function MeetingForm({
   defaultStart,
   onSubmit,
   onCancel,
+  onDelete,
   busy = false,
 }: Props) {
   const opensAt = defaultStart ?? nextHour();
@@ -71,17 +79,13 @@ export function MeetingForm({
   );
   const [location, setLocation] = useState(meeting?.location ?? '');
   const [notes, setNotes] = useState(meeting?.notes ?? '');
-  const [customer, setCustomer] = useState(meeting?.customerId ?? customerId ?? '');
+  const [customer, setCustomer] = useState<PickedCustomer | null>(
+    meeting?.customer
+      ? { id: meeting.customer.id, name: meeting.customer.name, phone: meeting.customer.phone }
+      : null,
+  );
   const [listing, setListing] = useState(meeting?.listingId ?? '');
   const [error, setError] = useState<string | null>(null);
-
-  // Only when the customer is the agent's to choose. On a customer's own page it is
-  // already decided, and a list of everybody else would be noise.
-  const { data: customers } = useQuery({
-    queryKey: qk.customers.list('', undefined, undefined, 1),
-    queryFn: () => fetchCustomers({ page: 1 }),
-    enabled: customerId === undefined,
-  });
 
   // Naming the property is what turns a diary entry into a viewing: it is the only
   // reason the listing can later say who came to see it.
@@ -89,6 +93,93 @@ export function MeetingForm({
     queryKey: qk.listings.mine('published', 1),
     queryFn: () => fetchMyListings({ status: 'published', page: 1 }),
   });
+
+  const { street, house, city: cityTerm, separated, loose } = splitPlace(location);
+  const knownCity = (ISRAELI_CITIES as readonly string[]).includes(cityTerm) ? cityTerm : '';
+  // A bare word is tried as a street too. Once it is exactly a town, the streets of
+  // that town take over, which is a different query.
+  const streetLookup = separated || house !== '' ? street : knownCity ? '' : cityTerm;
+  // "הרצל" is the start of הרצליה, and it is also how "שדרות הרצל" is written.
+  const looseLookup = loose ? location.trim() : '';
+  const [streetQuery, setStreetQuery] = useState('');
+  const [looseQuery, setLooseQuery] = useState('');
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setStreetQuery(streetLookup), 200);
+    return () => window.clearTimeout(timer);
+  }, [streetLookup]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setLooseQuery(looseLookup), 200);
+    return () => window.clearTimeout(timer);
+  }, [looseLookup]);
+
+  const cityOptions = useMemo(() => {
+    if (cityTerm === '') return [];
+    const starts: string[] = [];
+    const contains: string[] = [];
+    for (const city of ISRAELI_CITIES) {
+      if (!separated && city === cityTerm) continue;
+      if (city.startsWith(cityTerm)) starts.push(city);
+      else if (city.includes(cityTerm)) contains.push(city);
+      if (starts.length >= MAX_PLACES) break;
+    }
+    return [...starts, ...contains].slice(0, MAX_PLACES);
+  }, [cityTerm, separated]);
+
+  const { data: streets } = useQuery({
+    queryKey: qk.listings.streets(knownCity, separated ? streetQuery : ''),
+    queryFn: () => fetchStreetsIn(knownCity, separated ? streetQuery : ''),
+    enabled: knownCity !== '' && (!separated || streetQuery !== ''),
+    staleTime: 5 * 60_000,
+  });
+
+  // The same street exists in a lot of towns, so each hit is the whole line.
+  const { data: anywhere } = useQuery({
+    queryKey: qk.listings.addressSuggestions(streetQuery, separated ? cityTerm : ''),
+    queryFn: () => fetchAddressSuggestions(streetQuery, separated ? cityTerm : ''),
+    enabled: streetQuery.length >= 2 && knownCity === '',
+    staleTime: 5 * 60_000,
+  });
+
+  const { data: asWritten } = useQuery({
+    queryKey: qk.listings.addressSuggestions(looseQuery, ''),
+    queryFn: () => fetchAddressSuggestions(looseQuery),
+    enabled: looseQuery.length >= 2,
+    staleTime: 5 * 60_000,
+  });
+
+  // A city, until the line is one — then the streets of that city, written back into
+  // the same line with the house number kept if it was already typed.
+  const places = useMemo(() => {
+    const fromStreets = (streets ?? [])
+      .filter((name) => name !== street)
+      .map((name) => {
+        const road = house ? `${name} ${house}` : name;
+        return `${road}, ${knownCity}`;
+      });
+    const fromAnywhere = (anywhere ?? []).map((row) => {
+      const road = house ? `${row.street} ${house}` : row.street;
+      return `${road}, ${row.city}`;
+    });
+    if (!separated && knownCity) return fromStreets.slice(0, MAX_PLACES);
+    if (!separated) {
+      // Towns first: "תל" is תל אביב long before it is a street. Whatever is left
+      // of the eight slots is streets, so "סוקולוב" — which is no town — still shows.
+      const towns = cityOptions.slice(0, 4);
+      const roads = fromAnywhere.filter((option) => !towns.includes(option));
+      return [...towns, ...roads].filter((option) => option !== location.trim()).slice(0, MAX_PLACES);
+    }
+    const head = house ? `${street} ${house}` : street;
+    const fromCities = cityOptions.map((city) => (head ? `${head}, ${city}` : city));
+    const fromWritten = (asWritten ?? []).map((row) => {
+      const road = house ? `${row.street} ${house}` : row.street;
+      return `${road}, ${row.city}`;
+    });
+    return [...fromAnywhere, ...fromStreets, ...fromCities, ...fromWritten]
+      .filter((option, index, all) => option !== location.trim() && all.indexOf(option) === index)
+      .slice(0, MAX_PLACES);
+  }, [separated, cityOptions, house, street, streets, anywhere, asWritten, knownCity, location]);
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -105,8 +196,8 @@ export function MeetingForm({
       endsAt: toIso(endsAt),
       location: location.trim(),
       notes: notes.trim(),
-      customerId: customer || undefined,
-      listingId: listing || undefined,
+      customerId: customerId ?? customer?.id ?? '',
+      listingId: listing,
     });
   };
 
@@ -163,19 +254,7 @@ export function MeetingForm({
 
       {customerId === undefined && (
         <Field label="לקוח" htmlFor="meeting-customer">
-          <select
-            id="meeting-customer"
-            className={selectClass}
-            value={customer}
-            onChange={(e) => setCustomer(e.target.value)}
-          >
-            <option value="">ללא לקוח</option>
-            {(customers?.items ?? []).map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
+          <CustomerSelect id="meeting-customer" value={customer} onChange={setCustomer} />
         </Field>
       )}
 
@@ -186,8 +265,8 @@ export function MeetingForm({
           value={listing}
           onChange={(e) => {
             setListing(e.target.value);
-            // The address is the location, nine times out of ten. Filled only when the
-            // field is still empty, so a correction is never overwritten.
+            // The property's address is the place, unless somebody has already written
+            // one — picking a flat should not overwrite a correction.
             const chosen = (listings?.items ?? []).find((l) => l.id === e.target.value);
             if (chosen && location.trim() === '') {
               setLocation([chosen.street, chosen.city].filter(Boolean).join(', '));
@@ -204,12 +283,13 @@ export function MeetingForm({
       </Field>
 
       <Field label="מיקום" htmlFor="meeting-location">
-        <input
+        <SuggestBox
           id="meeting-location"
-          className={inputClass}
           value={location}
-          onChange={(e) => setLocation(e.target.value)}
-          placeholder="כתובת הנכס, המשרד, טלפון"
+          onChange={setLocation}
+          options={places}
+          term={separated ? street || cityTerm : cityTerm}
+          placeholder="סוקולוב 12, חולון — או המשרד, שיחת וידאו"
         />
       </Field>
 
@@ -236,6 +316,16 @@ export function MeetingForm({
         >
           ביטול
         </button>
+        {meeting && onDelete && (
+          <button
+            type="button"
+            onClick={onDelete}
+            disabled={busy}
+            className="ms-auto text-sm text-slate-500 transition hover:text-red-700 disabled:opacity-40"
+          >
+            ביטול הפגישה
+          </button>
+        )}
       </div>
     </form>
   );

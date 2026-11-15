@@ -353,7 +353,8 @@ export class ListingsService {
     if (!trimmed) return [];
 
     const key = cityKey(trimmed);
-    const q = term.trim();
+    // "הרצל 15" is הרצל. The number is a building, and the register has none.
+    const q = term.trim().replace(/\s+\d{1,4}[א-ת]?(?:\/\d{1,4})?$/, '');
     const mode = Prisma.QueryMode.insensitive;
 
     const starts = await this.prisma.client.street.findMany({
@@ -376,6 +377,32 @@ export class ListingsService {
     });
 
     return [...starts, ...contains].map((row) => row.name);
+  }
+
+  /**
+   * Streets of that name in any city. "סוקולוב" is not a town, and neither is
+   * "סוקולוב 12" — both are a street, and the useful answer is which town's.
+   */
+  async addressSuggestions(
+    term: string,
+    cityPrefix = '',
+    limit = 8,
+  ): Promise<{ street: string; city: string }[]> {
+    const name = term.trim().replace(/\s+\d{1,4}[א-ת]?(?:\/\d{1,4})?$/, '');
+    if (name.length < 2) return [];
+
+    const city = cityPrefix.trim();
+    const rows = await this.prisma.client.street.findMany({
+      where: {
+        name: { startsWith: name, mode: 'insensitive' },
+        ...(city ? { city: { startsWith: city } } : {}),
+      },
+      select: { name: true, city: true },
+      orderBy: [{ name: 'asc' }, { city: 'asc' }],
+      take: limit,
+    });
+
+    return rows.map((row) => ({ street: row.name, city: row.city }));
   }
 
   /**

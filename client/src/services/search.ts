@@ -190,6 +190,19 @@ export async function fetchStreetsIn(city: string, q: string): Promise<string[]>
   return data;
 }
 
+/** "סוקולוב" in whichever towns have one, so a house number still has somewhere to land. */
+export async function fetchAddressSuggestions(
+  q: string,
+  city = '',
+): Promise<{ street: string; city: string }[]> {
+  const params = new URLSearchParams({ q });
+  if (city) params.set('city', city);
+  const { data } = await api.get<{ street: string; city: string }[]>(
+    `/listings/address-suggestions?${params}`,
+  );
+  return data;
+}
+
 // ── the site's cities, for the footer ────────────────────────────────────────
 
 export interface CityLink {

@@ -451,6 +451,8 @@ export function ListingEditorPage() {
             city={form.city}
             value={form.street}
             onChange={(value) => set('street', value)}
+            onHouseNumber={(house) => set('houseNumber', house)}
+            onCity={(city) => set('city', city)}
           />
         </Field>
         <Field label="מספר בית" htmlFor="houseNumber">
