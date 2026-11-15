@@ -18,7 +18,7 @@ export const qk = {
 
   listings: {
     all: ['listings'] as const,
-    mine: (status: ListingStatus, page: number) => ['listings', 'mine', status, page] as const,
+    mine: (status: ListingStatus, page: number, q = '') => ['listings', 'mine', status, page, q] as const,
     packages: ['listings', 'packages'] as const,
     detail: (id: string) => ['listings', 'detail', id] as const,
     search: (filters: SearchFilters) => ['listings', 'search', filters] as const,

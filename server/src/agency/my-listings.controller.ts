@@ -16,8 +16,9 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import type { Response } from 'express';
 import { Public } from '../auth/decorators/public.decorator.js';
-import { IsIn, IsInt, IsOptional, Max, Min } from 'class-validator';
+import { IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
 import { Type } from 'class-transformer';
+import { Prisma } from '@prisma/client';
 import { RequestContextService } from '../tenancy/request-context.service.js';
 import { TenantGuard } from '../tenancy/tenant.guard.js';
 import { TenantPrismaService } from '../tenancy/tenant-prisma.service.js';
@@ -28,6 +29,51 @@ class MyListingsQuery {
   @IsOptional() @IsIn(['draft', 'published', 'archived']) status?: string;
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) page?: number;
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(100) pageSize?: number;
+  /** Free text: a street, a city, a house number, a price. */
+  @IsOptional() @IsString() @MaxLength(120) q?: string;
+}
+
+const TEXT_FIELDS = [
+  'city',
+  'neighborhood',
+  'street',
+  'region',
+  'area',
+  'propertyType',
+  'propertyGroup',
+  'description',
+  'contactName',
+  'brokerName',
+  'token',
+] as const;
+
+/** Each word has to match somewhere. "הרצל 12" is the street הרצל and the number 12. */
+function searchWhere(raw: string | undefined): Prisma.ListingWhereInput | undefined {
+  const tokens = raw?.trim().split(/\s+/).filter(Boolean).slice(0, 8) ?? [];
+  if (tokens.length === 0) return undefined;
+  return { AND: tokens.map((token) => ({ OR: matchesFor(token) })) };
+}
+
+function matchesFor(token: string): Prisma.ListingWhereInput[] {
+  const text = TEXT_FIELDS.map((field) => ({
+    [field]: { contains: token, mode: 'insensitive' as const },
+  }));
+  return [...text, ...numericMatches(token)];
+}
+
+function numericMatches(token: string): Prisma.ListingWhereInput[] {
+  const normalized = token.replace(/,/g, '');
+  if (!/^\d+(\.\d+)?$/.test(normalized)) return [];
+  const value = Number(normalized);
+  if (!Number.isFinite(value)) return [];
+
+  const matches: Prisma.ListingWhereInput[] = [{ rooms: value }];
+  if (!Number.isInteger(value) || !Number.isSafeInteger(value)) return matches;
+
+  matches.push({ houseNumber: value }, { floor: value }, { squareMeter: value }, { price: value });
+  // Eighteen digits stays inside a Postgres bigint. A longer paste is text, not a number.
+  if (normalized.length <= 18) matches.push({ adNumber: BigInt(normalized) });
+  return matches;
 }
 
 /**
@@ -57,9 +103,10 @@ export class MyListingsController {
     const pageSize = query.pageSize ?? 24;
 
     const agencyId = this.context.requireAgencyId();
-    const where = {
+    const where: Prisma.ListingWhereInput = {
       agencyId,
       ...(query.status ? { status: query.status as 'draft' | 'published' | 'archived' } : {}),
+      ...searchWhere(query.q),
     };
 
     const [total, rows] = await Promise.all([

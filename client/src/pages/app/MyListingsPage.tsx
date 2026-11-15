@@ -1,8 +1,10 @@
+import { useEffect, useState } from 'react';
 import { Heart } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { qk } from '@/queries/keys';
 import { Pagination } from '@/components/Pagination';
+import { inputClass } from '@/components/ui/Field';
 import { useListingCredits } from '@/hooks/useListingCredits';
 import { formatPrice } from '@/lib/format';
 import { fetchMyListings, type ListingStatus } from '@/services/agency';
@@ -31,14 +33,33 @@ export function MyListingsPage() {
   const statusParam = params.get('status');
   const status: ListingStatus = isStatus(statusParam) ? statusParam : 'published';
   const page = Math.max(1, Number(params.get('page') ?? 1) || 1);
+  const query = params.get('q') ?? '';
+  const [draft, setDraft] = useState(query);
+
+  // The field updates immediately. The request waits, so a word typed quickly is one
+  // search rather than one per letter.
+  useEffect(() => {
+    setDraft(query);
+  }, [query]);
+
+  useEffect(() => {
+    const handle = window.setTimeout(() => {
+      const next = draft.trim();
+      if (next === query) return;
+      const nextParams: Record<string, string> = { status };
+      if (next) nextParams.q = next;
+      setParams(nextParams, { replace: true, preventScrollReset: true });
+    }, 300);
+    return () => window.clearTimeout(handle);
+  }, [draft, query, status, setParams]);
 
   // The key carries the filters, so switching tab or page is a different cache entry
   // rather than a refetch into shared state — and going back to one already fetched is
   // instant. The `cancelled` flag the effect needed is gone: Query ignores the result
   // of a query whose key is no longer mounted.
   const { data, isPending, isError } = useQuery({
-    queryKey: qk.listings.mine(status, page),
-    queryFn: () => fetchMyListings({ status, page }),
+    queryKey: qk.listings.mine(status, page, query),
+    queryFn: () => fetchMyListings({ status, page, ...(query ? { q: query } : {}) }),
   });
 
   const { data: credits } = useListingCredits();
@@ -51,11 +72,16 @@ export function MyListingsPage() {
   const error = isError ? 'לא הצלחנו לטעון את הנכסים.' : null;
 
   // Changing a tab resets paging; `replace` keeps Back out of a tab-by-tab history.
+  const withQuery = (next: Record<string, string>) => {
+    if (query) next.q = query;
+    return next;
+  };
+
   const selectStatus = (next: ListingStatus) =>
-    setParams({ status: next }, { replace: true, preventScrollReset: true });
+    setParams(withQuery({ status: next }), { replace: true, preventScrollReset: true });
 
   const goToPage = (next: number) =>
-    setParams({ status, page: String(next) }, { preventScrollReset: true });
+    setParams(withQuery({ status, page: String(next) }), { preventScrollReset: true });
 
   return (
     <div className="flex flex-col gap-4">
@@ -68,6 +94,14 @@ export function MyListingsPage() {
           נכס חדש
         </Link>
       </div>
+
+      <input
+        value={draft}
+        onChange={(event) => setDraft(event.target.value)}
+        placeholder="חיפוש לפי רחוב, עיר, מספר…"
+        aria-label="חיפוש נכסים"
+        className={`${inputClass} w-full`}
+      />
 
       <div className="flex gap-2">
         {TABS.map((tab) => (
@@ -94,7 +128,7 @@ export function MyListingsPage() {
 
       {!loading && data?.items.length === 0 && (
         <p className="rounded-xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500">
-          אין כאן נכסים עדיין.
+          {query ? 'אין נכסים שתואמים לחיפוש.' : 'אין כאן נכסים עדיין.'}
         </p>
       )}
 
@@ -102,48 +136,61 @@ export function MyListingsPage() {
         <>
           <ul className="flex flex-col gap-2">
             {data.items.map((listing) => (
-              <li key={listing.id}>
+              <li
+                key={listing.id}
+                className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 transition hover:border-slate-900"
+              >
                 <Link
                   to={`/app/listings/${listing.id}`}
-                  className="flex items-center gap-4 rounded-xl border border-slate-200 bg-white p-3 transition hover:border-slate-900"
+                  className="flex min-w-0 flex-1 items-center gap-4"
                 >
-                {listing.coverImageUrl ? (
-                  <img
-                    src={listing.coverImageUrl}
-                    alt=""
-                    className="h-16 w-20 shrink-0 rounded-lg object-cover"
-                  />
-                ) : (
-                  <div className="h-16 w-20 shrink-0 rounded-lg bg-slate-100" />
-                )}
+                  {listing.coverImageUrl ? (
+                    <img
+                      src={listing.coverImageUrl}
+                      alt=""
+                      className="h-16 w-20 shrink-0 rounded-lg object-cover"
+                    />
+                  ) : (
+                    <div className="h-16 w-20 shrink-0 rounded-lg bg-slate-100" />
+                  )}
 
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-slate-900">
-                    {[listing.street, listing.city].filter(Boolean).join(', ') || 'ללא כתובת'}
-                  </p>
-                  <p className="text-xs text-slate-500">
-                    {[
-                      listing.rooms && `${listing.rooms} חדרים`,
-                      listing.squareMeter && `${listing.squareMeter} מ״ר`,
-                    ]
-                      .filter(Boolean)
-                      .join(' · ')}
-                  </p>
-                  <p className="mt-1 flex items-center gap-1 text-xs text-slate-600">
-                    <Heart className="h-3.5 w-3.5" aria-hidden />
-                    {(listing.savedCount ?? 0).toLocaleString('he-IL')} שמרו
-                  </p>
-                </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-slate-900">
+                      {[listing.street, listing.city].filter(Boolean).join(', ') || 'ללא כתובת'}
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      {[
+                        listing.rooms && `${listing.rooms} חדרים`,
+                        listing.squareMeter && `${listing.squareMeter} מ״ר`,
+                      ]
+                        .filter(Boolean)
+                        .join(' · ')}
+                    </p>
+                    <p className="mt-1 flex items-center gap-1 text-xs text-slate-600">
+                      <Heart className="h-3.5 w-3.5" aria-hidden />
+                      {(listing.savedCount ?? 0).toLocaleString('he-IL')} שמרו
+                    </p>
+                  </div>
 
-                <p className="shrink-0 text-sm font-semibold text-slate-900">
-                  {formatPrice(listing.price)}
-                </p>
+                  <p className="shrink-0 text-sm font-semibold text-slate-900">
+                    {formatPrice(listing.price)}
+                  </p>
 
-                <span
-                  className={`shrink-0 rounded-md px-2 py-0.5 text-xs font-medium ${STATUS_BADGE[listing.status]}`}
+                  <span
+                    className={`shrink-0 rounded-md px-2 py-0.5 text-xs font-medium ${STATUS_BADGE[listing.status]}`}
+                  >
+                    {TABS.find((t) => t.value === listing.status)?.badge}
+                  </span>
+                </Link>
+
+                <Link
+                  to={`/app/listings/${listing.id}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label="פתיחה בחלון חדש"
+                  className="shrink-0 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:border-slate-900"
                 >
-                  {TABS.find((t) => t.value === listing.status)?.badge}
-                </span>
+                  פתיחה
                 </Link>
               </li>
             ))}

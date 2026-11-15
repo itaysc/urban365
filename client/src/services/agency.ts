@@ -30,6 +30,7 @@ export async function fetchMyListings(params: {
   status?: ListingStatus;
   page?: number;
   pageSize?: number;
+  q?: string;
 } = {}): Promise<MyListingsPage> {
   const { data } = await api.get<MyListingsPage>('/my/listings', { params });
   return data;
