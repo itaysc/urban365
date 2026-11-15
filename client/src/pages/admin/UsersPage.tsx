@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/auth/auth-context';
 import { Button } from '@/components/ui/Button';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
-import { selectClass } from '@/components/ui/Field';
+import { inputClass, selectClass } from '@/components/ui/Field';
 import { errorMessageOf } from '@/lib/apiError';
 import { formatDate } from '@/lib/format';
 import { qk } from '@/queries/keys';
@@ -94,14 +94,29 @@ export function UsersPage() {
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState<Pending>(null);
   const [officeTerm, setOfficeTerm] = useState('');
-  const [offices, setOffices] = useState<ManagedAgency[] | null>(null);
+  const [debouncedOffice, setDebouncedOffice] = useState('');
   const [chosenOffice, setChosenOffice] = useState<ManagedAgency | null>(null);
-  const [searchingOffices, setSearchingOffices] = useState(false);
+  const [officeOpen, setOfficeOpen] = useState(false);
+  const [officeHighlight, setOfficeHighlight] = useState(0);
 
   const { data: users = null } = useQuery({
     queryKey: qk.admin.users(submitted),
     queryFn: () => fetchUsers(submitted),
   });
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedOffice(officeTerm.trim()), 300);
+    return () => clearTimeout(timer);
+  }, [officeTerm]);
+
+  const officeQuery = useQuery({
+    queryKey: qk.admin.directory(debouncedOffice),
+    queryFn: () => fetchAgencyDirectory(debouncedOffice),
+    enabled: pending?.kind === 'assign' && !chosenOffice && debouncedOffice.length >= 2,
+  });
+  const officeOptions = (officeQuery.data ?? []).filter(
+    (office) => office.status !== 'deleted' && office.status !== 'suspended',
+  );
 
   const run = async (id: string, action: () => Promise<unknown>) => {
     setBusy(id);
@@ -205,8 +220,10 @@ export function UsersPage() {
                   disabled={busy !== null}
                   onClick={() => {
                     setOfficeTerm('');
-                    setOffices(null);
+                    setDebouncedOffice('');
                     setChosenOffice(null);
+                    setOfficeOpen(false);
+                    setOfficeHighlight(0);
                     setPending({ kind: 'assign', person });
                   }}
                 >
@@ -268,7 +285,7 @@ export function UsersPage() {
           const office = chosenOffice;
           setPending(null);
           setChosenOffice(null);
-          setOffices(null);
+          setOfficeOpen(false);
           if (!target) return;
           if (target.kind === 'disable') void run(target.person.id, () => disableUser(target.person.id));
           else if (target.kind === 'delete') void run(target.person.id, () => deleteUser(target.person.id));
@@ -282,54 +299,85 @@ export function UsersPage() {
           if (!open) {
             setPending(null);
             setChosenOffice(null);
-            setOffices(null);
+            setOfficeOpen(false);
           }
         }}
       >
         {pending?.kind === 'assign' && (
-          <div className="mt-4 flex flex-col gap-2">
-            <form
-              className="flex gap-2"
-              onSubmit={(event) => {
-                event.preventDefault();
-                setSearchingOffices(true);
-                void fetchAgencyDirectory(officeTerm.trim())
-                  .then((found) => {
-                    setOffices(found.filter((office) => office.status !== 'deleted' && office.status !== 'suspended'));
-                    setChosenOffice(null);
-                  })
-                  .catch(() => setOffices([]))
-                  .finally(() => setSearchingOffices(false));
+          <div className="relative mt-4">
+            <input
+              role="combobox"
+              aria-expanded={officeOpen && debouncedOffice.length >= 2}
+              aria-autocomplete="list"
+              aria-controls="assign-office-list"
+              autoComplete="off"
+              value={officeTerm}
+              onChange={(event) => {
+                setOfficeTerm(event.target.value);
+                setChosenOffice(null);
+                setOfficeOpen(true);
+                setOfficeHighlight(0);
               }}
-            >
-              <input
-                value={officeTerm}
-                onChange={(event) => setOfficeTerm(event.target.value)}
-                placeholder="חיפוש סוכנות לפי שם"
-                aria-label="חיפוש סוכנות"
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-              />
-              <Button type="submit" variant="secondary" disabled={searchingOffices}>
-                חיפוש
-              </Button>
-            </form>
-            {offices?.length === 0 && <p className="text-sm text-slate-500">אין סוכנויות להצגה.</p>}
-            {offices && offices.length > 0 && (
-              <div className="flex max-h-48 flex-col gap-1 overflow-y-auto">
-                {offices.map((office) => (
-                  <button
-                    key={office.id}
-                    type="button"
-                    onClick={() => setChosenOffice(office)}
-                    className={`rounded-lg px-3 py-2 text-start text-sm ${
-                      chosenOffice?.id === office.id ? 'bg-slate-900 text-white' : 'bg-slate-50 text-slate-800'
-                    }`}
-                  >
-                    {office.name}
-                    {office.yad2Id ? ` · יד2 ${office.yad2Id}` : ''}
-                  </button>
-                ))}
-              </div>
+              onFocus={() => setOfficeOpen(true)}
+              onKeyDown={(event) => {
+                if (!officeOpen || officeOptions.length === 0) return;
+                if (event.key === 'ArrowDown') {
+                  event.preventDefault();
+                  setOfficeHighlight((index) => (index + 1) % officeOptions.length);
+                } else if (event.key === 'ArrowUp') {
+                  event.preventDefault();
+                  setOfficeHighlight((index) => (index - 1 + officeOptions.length) % officeOptions.length);
+                } else if (event.key === 'Enter') {
+                  event.preventDefault();
+                  const office = officeOptions[officeHighlight];
+                  if (!office) return;
+                  setChosenOffice(office);
+                  setOfficeTerm(office.name);
+                  setOfficeOpen(false);
+                } else if (event.key === 'Escape') {
+                  setOfficeOpen(false);
+                }
+              }}
+              placeholder="הקלידו שם סוכנות"
+              aria-label="חיפוש סוכנות"
+              className={`${inputClass} w-full`}
+            />
+            {officeOpen && debouncedOffice.length >= 2 && (
+              <ul
+                id="assign-office-list"
+                role="listbox"
+                className="absolute z-10 mt-1 max-h-48 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white py-1 shadow-lg"
+              >
+                {officeQuery.isFetching && officeOptions.length === 0 ? (
+                  <li className="px-3 py-2 text-sm text-slate-500">מחפש…</li>
+                ) : officeOptions.length === 0 ? (
+                  <li className="px-3 py-2 text-sm text-slate-500">אין סוכנויות להצגה.</li>
+                ) : (
+                  officeOptions.map((office, index) => (
+                    <li key={office.id} role="option" aria-selected={index === officeHighlight}>
+                      <button
+                        type="button"
+                        onMouseDown={(event) => {
+                          event.preventDefault();
+                          setChosenOffice(office);
+                          setOfficeTerm(office.name);
+                          setOfficeOpen(false);
+                        }}
+                        onMouseEnter={() => setOfficeHighlight(index)}
+                        className={`flex w-full flex-col px-3 py-2 text-start text-sm ${
+                          index === officeHighlight ? 'bg-slate-100' : ''
+                        }`}
+                      >
+                        <span className="font-medium text-slate-900">{office.name}</span>
+                        <span className="text-xs text-slate-500">
+                          {office.status === 'unclaimed' ? 'לא שויכה' : 'פעילה'}
+                          {office.yad2Id ? ` · יד2 ${office.yad2Id}` : ''}
+                        </span>
+                      </button>
+                    </li>
+                  ))
+                )}
+              </ul>
             )}
           </div>
         )}
