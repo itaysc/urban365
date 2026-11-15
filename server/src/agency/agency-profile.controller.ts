@@ -25,7 +25,7 @@ import { TenantPrismaService } from '../tenancy/tenant-prisma.service.js';
 import { StorageService } from '../storage/storage.service.js';
 import { can } from '../auth/permissions.js';
 import { PrismaService } from '../prisma/prisma.service.js';
-import { agencyCoverUrl } from './image-url.js';
+import { agencyCoverUrl, agencyLogoUrl } from './image-url.js';
 import { Yad2Service } from '../yad2/yad2.service.js';
 import { ImportYad2Dto, UpdateAgencyProfileDto } from './dto/agency-profile.dto.js';
 
@@ -141,6 +141,59 @@ export class AgencyProfileController {
     // with no banner at all.
     if (existing.coverStorageKey) await this.storage.deleteObject(existing.coverStorageKey);
 
+    return updated;
+  }
+
+  /** The mark shown beside the agency's name. Same rules as the banner. */
+  @Post('logo')
+  @UseInterceptors(FileInterceptor('image', { limits: { fileSize: 4 * 1024 * 1024, files: 1 } }))
+  async uploadLogo(@UploadedFile() file: Express.Multer.File) {
+    this.assertCanManage();
+    const agencyId = this.context.requireAgencyId();
+
+    if (!file?.buffer?.length) throw new BadRequestException('לא התקבל קובץ.');
+
+    const contentType = this.storage.detectImageType(file.buffer);
+    if (!contentType || !this.storage.extensionFor(contentType)) {
+      throw new BadRequestException('הקובץ אינו תמונה נתמכת.');
+    }
+
+    const existing = await this.prisma.client.agency.findUniqueOrThrow({
+      where: { id: agencyId },
+      select: { logoStorageKey: true },
+    });
+
+    const storageKey = await this.storage.putObject(`agencies/${agencyId}/logo`, file.buffer, contentType);
+    const version = Date.now().toString(36);
+
+    const updated = await this.prisma.client.agency.update({
+      where: { id: agencyId },
+      data: { logoStorageKey: storageKey, logoUrl: agencyLogoUrl(agencyId, version) },
+      select: { id: true, logoUrl: true },
+    });
+
+    if (existing.logoStorageKey) await this.storage.deleteObject(existing.logoStorageKey);
+    return updated;
+  }
+
+  /** Clears the logo. A yad2 address with no stored object is simply forgotten. */
+  @Delete('logo')
+  async removeLogo() {
+    this.assertCanManage();
+    const agencyId = this.context.requireAgencyId();
+
+    const existing = await this.prisma.client.agency.findUniqueOrThrow({
+      where: { id: agencyId },
+      select: { logoStorageKey: true },
+    });
+
+    const updated = await this.prisma.client.agency.update({
+      where: { id: agencyId },
+      data: { logoUrl: null, logoStorageKey: null },
+      select: { id: true, logoUrl: true },
+    });
+
+    if (existing.logoStorageKey) await this.storage.deleteObject(existing.logoStorageKey);
     return updated;
   }
 

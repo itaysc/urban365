@@ -57,6 +57,20 @@ export class ImagesController {
     await this.send(agency.coverStorageKey, res);
   }
 
+  @Public()
+  @Get('agencies/:agencyId/logo')
+  @Header('Cache-Control', 'public, max-age=86400')
+  @Header('Cross-Origin-Resource-Policy', 'cross-origin')
+  async agencyLogo(@Param('agencyId') agencyId: string, @Res() res: Response) {
+    const agency = await this.prisma.client.agency.findUnique({
+      where: { id: agencyId },
+      select: { logoStorageKey: true },
+    });
+
+    if (!agency?.logoStorageKey) throw new NotFoundException('לא נמצא לוגו.');
+    await this.send(agency.logoStorageKey, res);
+  }
+
   /**
    * An agent's picture appears next to their listings, so this is public like the rest.
    * It reveals only that a given user id has a photo, which the listing already implies.

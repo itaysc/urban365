@@ -115,6 +115,14 @@ export class AgencyRepository {
     // five seconds expires partway through an office of this size.
     const timeout = Math.min(10 * 60_000, Math.max(60_000, assets.length * 250));
     await this.prisma.$transaction(async (tx) => {
+      // An office that uploaded its own mark keeps it. A scrape must not put the yad2
+      // logo back on top of that file.
+      const current = await tx.agency.findUnique({
+        where: { yad2Id: agencyId },
+        select: { logoStorageKey: true },
+      });
+      const logo = current?.logoStorageKey ? {} : { logoUrl: summary.logoUrl || null };
+
       const agency = await tx.agency.upsert({
         where: { yad2Id: agencyId },
         create: {
@@ -133,7 +141,7 @@ export class AgencyRepository {
           ...(opts.preserveProfile ? {} : { name: summary.name, description: summary.description || null }),
           licenseNumber: summary.licenseNumber || null,
           phone: summary.phone || null,
-          logoUrl: summary.logoUrl || null,
+          ...logo,
           openingHours: summary.openingHours as unknown as Prisma.InputJsonValue,
           assetsForSaleCount: summary.counts.forSale,
           assetsForRentCount: summary.counts.forRent,

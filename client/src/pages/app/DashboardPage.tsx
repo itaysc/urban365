@@ -87,11 +87,9 @@ function Figure({ label, value, hint }: { label: string; value: string; hint?: s
 /**
  * The first screen of the day.
  *
- * Ordered the way an agent's morning goes rather than the way the database is laid
- * out: what is waiting on me, then what the pipeline is worth, then whether the last
- * three months were better or worse than this one. Three listing counts — which is all
- * this page used to be — are at the bottom, because an agency knows how many listings
- * it has and none of them is a thing to do today.
+ * The listing counts come first: how many are published is the number an office
+ * looks for when it opens the day. What is waiting, what the pipeline is worth, and
+ * whether the last three months were better or worse come after it.
  *
  * One request behind all of it. Six cards from six hooks is six spinners arriving in
  * six different orders, and a page that flickers is one people stop reading.
@@ -123,6 +121,32 @@ export function DashboardPage() {
               : `אין ביקורים היום. ${today.viewingsThisWeek} השבוע`}
         </p>
       </div>
+
+      {data && (
+        <section className="flex flex-col gap-3">
+          <h2 className="text-sm font-semibold text-slate-900">הנכסים שלכם</h2>
+          <div className="grid gap-3 sm:grid-cols-3">
+            {(
+              [
+                ['published', 'פורסמו'],
+                ['draft', 'טיוטות'],
+                ['archived', 'בארכיון'],
+              ] as const
+            ).map(([status, label]) => (
+              <Link
+                key={status}
+                to={`/app/listings?status=${status}`}
+                className="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-slate-900"
+              >
+                <p className="text-sm text-slate-500">{label}</p>
+                <p className="mt-1 text-2xl font-bold text-slate-900">
+                  {data.listings[status]}
+                </p>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
 
       <section className="flex flex-col gap-3">
         <h2 className="text-sm font-semibold text-slate-900">מה מחכה לכם</h2>
@@ -235,32 +259,6 @@ export function DashboardPage() {
           )}
         </div>
       </section>
-
-      {data && (
-        <section className="flex flex-col gap-3">
-          <h2 className="text-sm font-semibold text-slate-900">הנכסים שלכם</h2>
-          <div className="grid gap-3 sm:grid-cols-3">
-            {(
-              [
-                ['published', 'פורסמו'],
-                ['draft', 'טיוטות'],
-                ['archived', 'בארכיון'],
-              ] as const
-            ).map(([status, label]) => (
-              <Link
-                key={status}
-                to={`/app/listings?status=${status}`}
-                className="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-slate-900"
-              >
-                <p className="text-sm text-slate-500">{label}</p>
-                <p className="mt-1 text-2xl font-bold text-slate-900">
-                  {data.listings[status]}
-                </p>
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
     </div>
   );
 }

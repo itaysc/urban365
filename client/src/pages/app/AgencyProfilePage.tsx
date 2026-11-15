@@ -14,7 +14,9 @@ import {
   fetchAgencyProfile,
   updateAgencyProfile,
   removeAgencyCover,
+  removeAgencyLogo,
   uploadAgencyCover,
+  uploadAgencyLogo,
   type AgencyProfile,
 } from '@/services/agency';
 import { OfficesPanel } from '@/components/agency/OfficesPanel';
@@ -43,6 +45,7 @@ export function AgencyProfilePage() {
   });
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -116,6 +119,36 @@ export function AgencyProfilePage() {
     }
   };
 
+  const uploadLogo = async (file: File) => {
+    setUploadingLogo(true);
+    setError(null);
+    try {
+      const updated = await uploadAgencyLogo(file);
+      setProfile((p) => (p ? { ...p, ...updated } : p));
+      await queryClient.invalidateQueries({ queryKey: qk.agency.all });
+      toast.success('הלוגו עודכן.');
+    } catch (e) {
+      const message = errorMessageOf(e, 'העלאת הלוגו נכשלה.');
+      setError(message);
+      toast.error(message);
+    } finally {
+      setUploadingLogo(false);
+    }
+  };
+
+  const clearLogo = async () => {
+    try {
+      const { data } = await removeAgencyLogo();
+      setProfile((p) => (p ? { ...p, ...data } : p));
+      await queryClient.invalidateQueries({ queryKey: qk.agency.all });
+      toast.success('הלוגו הוסר.');
+    } catch (e) {
+      const message = errorMessageOf(e, 'לא הצלחנו להסיר את הלוגו.');
+      setError(message);
+      toast.error(message);
+    }
+  };
+
   const clearCover = async () => {
     try {
       // Its own route rather than a field on the profile patch: the server also has to
@@ -176,6 +209,34 @@ export function AgencyProfilePage() {
           }}
         />
       )}
+
+      <section className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4">
+        <h2 className="text-sm font-semibold text-slate-900">לוגו</h2>
+
+        {profile.logoUrl && (
+          <img
+            src={profile.logoUrl}
+            alt=""
+            className="h-24 w-24 rounded-lg border border-slate-200 bg-white object-contain p-1"
+          />
+        )}
+
+        <Dropzone disabled={uploadingLogo || !canManage} onFiles={(files) => void uploadLogo(files[0])}>
+          {uploadingLogo
+            ? 'מעלה…'
+            : profile.logoUrl
+              ? 'גררו לוגו להחלפה או לחצו לבחירה'
+              : 'גררו לוגו לכאן או לחצו לבחירה'}
+        </Dropzone>
+
+        {profile.logoUrl && canManage && (
+          <div>
+            <Button variant="ghost" onClick={() => void clearLogo()}>
+              הסר לוגו
+            </Button>
+          </div>
+        )}
+      </section>
 
       <section className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4">
         <h2 className="text-sm font-semibold text-slate-900">תמונת נושא</h2>

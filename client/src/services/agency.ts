@@ -213,6 +213,15 @@ export async function updateAgencyProfile(
 
 export const removeAgencyCover = () => api.delete<{ id: string; coverImageUrl: string | null }>('/my/agency/cover');
 
+export const removeAgencyLogo = () => api.delete<{ id: string; logoUrl: string | null }>('/my/agency/logo');
+
+export async function uploadAgencyLogo(file: File): Promise<{ id: string; logoUrl: string | null }> {
+  const body = new FormData();
+  body.append('image', file);
+  const { data } = await api.post<{ id: string; logoUrl: string | null }>('/my/agency/logo', body);
+  return data;
+}
+
 /** Same single-request upload as listing photos, into the agency's own prefix. */
 export async function uploadAgencyCover(file: File): Promise<Partial<AgencyProfile>> {
   const body = new FormData();
