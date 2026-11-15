@@ -3,6 +3,7 @@ import type { AgencyVerticalValue } from '../auth/agency-vertical.js';
 import { MailService } from '../mail/mail.service.js';
 import { claimDecisionTemplate } from '../mail/templates.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { StorageService } from '../storage/storage.service.js';
 
 export interface ManagedAgency {
   id: string;
@@ -69,6 +70,7 @@ export class ModerationService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly mail: MailService,
+    private readonly storage: StorageService,
   ) {}
 
   async pending(): Promise<PendingAgency[]> {
@@ -484,6 +486,66 @@ export class ModerationService {
 
     await this.prisma.user.update({ where: { id: userId }, data: { disabledAt: null } });
     this.logger.log(`User ${userId} enabled by ${adminId}`);
+  }
+
+  /**
+   * Removes the account. Private listings and the enquiries on them go with it;
+   * an office they belonged to keeps its customers, deals and agency listings, with
+   * this person unassigned. The acting admin cannot delete their own account — it is
+   * the only door into this page.
+   */
+  async deleteUser(userId: string, adminId: string): Promise<void> {
+    if (userId === adminId) throw new BadRequestException('אי אפשר למחוק את החשבון שלך.');
+
+    const person = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        avatarStorageKey: true,
+        ownedListings: { select: { images: { select: { storageKey: true } } } },
+      },
+    });
+    if (!person) throw new NotFoundException('המשתמש לא נמצא.');
+
+    const saves = await this.prisma.savedListing.findMany({
+      where: { profile: { userId } },
+      select: { listingId: true },
+    });
+    const savesByListing = new Map<string, number>();
+    for (const row of saves) {
+      savesByListing.set(row.listingId, (savesByListing.get(row.listingId) ?? 0) + 1);
+    }
+
+    const savedListingIds = [...savesByListing.keys()];
+    await this.prisma.$transaction([
+      // Heart counts are denormalised. Dropping the shortlist without this leaves
+      // every listing they saved showing a heart that no longer has a person behind it.
+      ...[...savesByListing.entries()].map(([id, count]) =>
+        this.prisma.listing.updateMany({
+          where: { id },
+          data: { savedCount: { decrement: count } },
+        }),
+      ),
+      ...(savedListingIds.length > 0
+        ? [
+            this.prisma.listing.updateMany({
+              where: { id: { in: savedListingIds }, savedCount: { lt: 0 } },
+              data: { savedCount: 0 },
+            }),
+          ]
+        : []),
+      // A session points at the next one in its rotation. Clearing that link first
+      // lets the cascade delete the family without the chain holding a row back.
+      this.prisma.session.updateMany({ where: { userId }, data: { replacedById: null } }),
+      this.prisma.user.delete({ where: { id: userId } }),
+    ]);
+
+    const storageKeys = [
+      person.avatarStorageKey,
+      ...person.ownedListings.flatMap((listing) => listing.images.map((image) => image.storageKey)),
+    ].filter((key): key is string => key !== null);
+    await Promise.all(storageKeys.map((key) => this.storage.deleteObject(key)));
+
+    this.logger.log(`User ${userId} deleted by ${adminId}`);
   }
 
   private async requireUser(userId: string) {

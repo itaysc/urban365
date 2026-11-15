@@ -83,6 +83,12 @@ export class ModerationController {
     await this.moderation.enableUser(id, admin.userId);
   }
 
+  @HttpCode(204)
+  @Post('users/:id/delete')
+  async deleteUser(@Param('id') id: string, @CurrentUser() admin: Principal) {
+    await this.moderation.deleteUser(id, admin.userId);
+  }
+
   @Get('agencies')
   pending() {
     return this.moderation.pending();

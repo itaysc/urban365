@@ -97,6 +97,9 @@ export const disableUser = (userId: string) => api.post(`/admin/moderation/users
 
 export const enableUser = (userId: string) => api.post(`/admin/moderation/users/${userId}/enable`);
 
+/** Removes the account. Private listings go with it; an office they belonged to stays. */
+export const deleteUser = (userId: string) => api.post(`/admin/moderation/users/${userId}/delete`);
+
 export interface PendingListing {
   id: string;
   city: string | null;

@@ -8,6 +8,7 @@ import { errorMessageOf } from '@/lib/apiError';
 import { formatDate } from '@/lib/format';
 import { qk } from '@/queries/keys';
 import {
+  deleteUser,
   disableUser,
   enableUser,
   fetchUsers,
@@ -31,6 +32,7 @@ const VERTICAL_LABEL: Record<AgencyVertical, string> = {
 
 type Pending =
   | { kind: 'disable'; person: ManagedUser }
+  | { kind: 'delete'; person: ManagedUser }
   | { kind: 'role'; person: ManagedUser; role: ManagedUserRole }
   | null;
 
@@ -38,6 +40,9 @@ function describe(pending: Exclude<Pending, null>): string {
   const name = `${pending.person.firstName} ${pending.person.lastName}`.trim();
   if (pending.kind === 'disable') {
     return `${name} לא יוכל להיכנס, ונכסים שפרסם בעצמו לא יוצגו באתר. אפשר להפעיל את החשבון אחר כך.`;
+  }
+  if (pending.kind === 'delete') {
+    return `${name} יימחק לצמיתות ולא יוכל להיכנס. נכסים ופניות שפרסם בעצמו יימחקו. שיוך למשרד יוסר, ונתוני המשרד עצמם יישארו. אי אפשר לבטל את זה.`;
   }
 
   const next = ROLE_LABEL[pending.role];
@@ -50,12 +55,26 @@ function describe(pending: Exclude<Pending, null>): string {
   return `${name} יסומן כ${next}, ויתנתק כדי שהשינוי ייכנס לתוקף.`;
 }
 
+function titleOf(pending: Exclude<Pending, null>): string {
+  if (pending.kind === 'role') return 'לשנות את התפקיד?';
+  if (pending.kind === 'delete') return 'למחוק את החשבון?';
+  return 'להשבית את החשבון?';
+}
+
+function confirmLabelOf(pending: Exclude<Pending, null>): string {
+  if (pending.kind === 'role') return 'שינוי';
+  if (pending.kind === 'delete') return 'מחיקה';
+  return 'השבתה';
+}
+
 /**
  * Every account, and what it is allowed to be.
  *
  * Disabling blocks the next sign-in and hides listings this person published themselves.
- * Changing the role signs them out, so the next login is the one that carries it. An
- * agency with no office is asked to connect one; this page does not invent the office.
+ * Deleting removes the account: their own listings go with them, an office they belonged
+ * to does not. Changing the role signs them out, so the next login is the one that
+ * carries it. An agency with no office is asked to connect one; this page does not
+ * invent the office.
  */
 export function UsersPage() {
   const { user } = useAuth();
@@ -90,7 +109,7 @@ export function UsersPage() {
         <h2 className="text-xl font-bold text-slate-900">משתמשים</h2>
         <p className="mt-1 text-sm text-slate-500">
           אפשר לשנות חשבון למשתמש רגיל, לסוכנות או למנהל, ולסוכנות — גם את סוג העסק (נדל״ן או משכנתאות).
-          השבתה מונעת כניסה ומסתירה נכסים שהאדם פרסם בעצמו.
+          השבתה מונעת כניסה ומסתירה נכסים שהאדם פרסם בעצמו. מחיקה מוחקת את החשבון לצמיתות.
         </p>
       </div>
 
@@ -199,6 +218,11 @@ export function UsersPage() {
                   השבתה
                 </Button>
               )}
+              {person.id !== user?.id && (
+                <Button variant="danger" disabled={busy !== null} onClick={() => setPending({ kind: 'delete', person })}>
+                  מחיקה
+                </Button>
+              )}
             </div>
           </article>
         );
@@ -206,15 +230,16 @@ export function UsersPage() {
 
       <ConfirmDialog
         open={pending !== null}
-        title={pending?.kind === 'role' ? 'לשנות את התפקיד?' : 'להשבית את החשבון?'}
+        title={pending ? titleOf(pending) : ''}
         description={pending ? describe(pending) : ''}
-        confirmLabel={pending?.kind === 'role' ? 'שינוי' : 'השבתה'}
+        confirmLabel={pending ? confirmLabelOf(pending) : 'אישור'}
         busy={busy !== null}
         onConfirm={() => {
           const target = pending;
           setPending(null);
           if (!target) return;
           if (target.kind === 'disable') void run(target.person.id, () => disableUser(target.person.id));
+          else if (target.kind === 'delete') void run(target.person.id, () => deleteUser(target.person.id));
           else void run(target.person.id, () => setUserRole(target.person.id, target.role));
         }}
         onOpenChange={(open) => !open && setPending(null)}
