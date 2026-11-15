@@ -58,6 +58,10 @@ export const restoreAgency = (agencyId: string) =>
 export const deleteAgency = (agencyId: string) =>
   api.post(`/admin/moderation/agencies/${agencyId}/delete`);
 
+/** Drops the office's yad2 page. Listings already imported stay with the office. */
+export const unlinkAgencyYad2 = (agencyId: string) =>
+  api.post(`/admin/moderation/agencies/${agencyId}/unlink-yad2`);
+
 export type ManagedUserRole = 'buyer' | 'agency' | 'admin';
 
 export interface ManagedUser {

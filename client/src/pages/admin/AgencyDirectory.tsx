@@ -8,6 +8,7 @@ import {
   fetchAgencyDirectory,
   restoreAgency,
   suspendAgency,
+  unlinkAgencyYad2,
   type ManagedAgency,
 } from '@/services/admin';
 
@@ -19,7 +20,7 @@ const STATUS_LABEL: Record<ManagedAgency['status'], string> = {
 };
 
 type Pending =
-  | { kind: 'suspend' | 'delete' | 'restore'; agency: ManagedAgency }
+  | { kind: 'suspend' | 'delete' | 'restore' | 'unlink'; agency: ManagedAgency }
   | null;
 
 /**
@@ -61,6 +62,7 @@ export function AgencyDirectory() {
         <h2 className="text-xl font-bold text-slate-900">סוכנויות</h2>
         <p className="mt-1 text-sm text-slate-500">
           השעיה מסתירה את הנכסים מהאתר. מחיקה מסמנת אותם כנמחקים. אפשר להחזיר סוכנות שנמחקה.
+          ניתוק מיד2 מוריד את הקישור לעמוד, והנכסים שכבר יובאו נשארים.
         </p>
       </div>
 
@@ -108,6 +110,11 @@ export function AgencyDirectory() {
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
+            {agency.yad2Id && (
+              <Button variant="secondary" disabled={busy !== null} onClick={() => setPending({ kind: 'unlink', agency })}>
+                ניתוק מיד2
+              </Button>
+            )}
             {agency.status === 'deleted' ? (
               <Button variant="secondary" disabled={busy !== null} onClick={() => setPending({ kind: 'restore', agency })}>
                 החזרה
@@ -143,18 +150,30 @@ export function AgencyDirectory() {
             ? 'למחוק את הסוכנות?'
             : pending?.kind === 'restore'
               ? 'להחזיר את הסוכנות?'
-              : 'להשעות את הסוכנות?'
+              : pending?.kind === 'unlink'
+                ? 'לנתק את הקישור ליד2?'
+                : 'להשעות את הסוכנות?'
         }
         description={
           pending?.kind === 'delete'
             ? `הנכסים של ${pending.agency.name} יסומנו כנמחקים ולא יוצגו באתר. אפשר להחזיר אותה אחר כך.`
             : pending?.kind === 'restore'
               ? `הנכסים של ${pending.agency.name} שירדו עם המחיקה יחזרו לאתר. נכס שהסוכנות הסירה בעצמה יישאר מוסתר.`
-              : pending
-                ? `הנכסים של ${pending.agency.name} לא יוצגו באתר כל עוד ההשעיה בתוקף.`
-                : ''
+              : pending?.kind === 'unlink'
+                ? `${pending.agency.name} תפסיק להיות מקושרת לעמוד יד2 ${pending.agency.yad2Id}. הנכסים שכבר יובאו נשארים אצלה, וייבוא חדש של אותו עמוד לא יעדכן אותם.`
+                : pending
+                  ? `הנכסים של ${pending.agency.name} לא יוצגו באתר כל עוד ההשעיה בתוקף.`
+                  : ''
         }
-        confirmLabel={pending?.kind === 'delete' ? 'מחיקה' : pending?.kind === 'restore' ? 'החזרה' : 'השעיה'}
+        confirmLabel={
+          pending?.kind === 'delete'
+            ? 'מחיקה'
+            : pending?.kind === 'restore'
+              ? 'החזרה'
+              : pending?.kind === 'unlink'
+                ? 'ניתוק'
+                : 'השעיה'
+        }
         busy={busy !== null}
         onConfirm={() => {
           const target = pending;
@@ -165,7 +184,9 @@ export function AgencyDirectory() {
               ? deleteAgency(target.agency.id)
               : target.kind === 'restore'
                 ? restoreAgency(target.agency.id)
-                : suspendAgency(target.agency.id),
+                : target.kind === 'unlink'
+                  ? unlinkAgencyYad2(target.agency.id)
+                  : suspendAgency(target.agency.id),
           );
         }}
         onOpenChange={(open) => !open && setPending(null)}

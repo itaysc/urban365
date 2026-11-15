@@ -125,6 +125,12 @@ export class ModerationController {
   }
 
   @HttpCode(204)
+  @Post('agencies/:id/unlink-yad2')
+  async unlinkYad2(@Param('id') id: string, @CurrentUser() admin: Principal) {
+    await this.moderation.unlinkYad2(id, admin.userId);
+  }
+
+  @HttpCode(204)
   @Post('agencies/:id/approve')
   async approve(@Param('id') id: string, @Body() dto: ApproveDto, @CurrentUser() admin: Principal) {
     await this.moderation.approve(id, dto.userId, admin.userId);

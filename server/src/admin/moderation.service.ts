@@ -334,6 +334,31 @@ export class ModerationService {
   }
 
   /**
+   * Drops the link to a yad2 page. The office, its people and the listings already
+   * imported stay. The yad2 id is freed, so another office can connect that page,
+   * and the imported rows lose the token a later scrape would match on — otherwise
+   * that scrape would take the listings back.
+   */
+  async unlinkYad2(agencyId: string, adminId: string): Promise<void> {
+    const agency = await this.prisma.agency.findUnique({ where: { id: agencyId } });
+    if (!agency) throw new NotFoundException('הסוכנות לא נמצאה.');
+    if (!agency.yad2Id) throw new BadRequestException('הסוכנות אינה מקושרת ליד2.');
+
+    await this.prisma.$transaction([
+      this.prisma.listing.updateMany({
+        where: { agencyId, token: { not: null } },
+        data: { token: null },
+      }),
+      this.prisma.agency.update({
+        where: { id: agencyId },
+        data: { yad2Id: null },
+      }),
+    ]);
+
+    this.logger.log(`Agency ${agencyId} unlinked from yad2 ${agency.yad2Id} by ${adminId}`);
+  }
+
+  /**
    * Puts back a deleted agency and the listings that were taken down with it.
    *
    * A listing the agency removed itself — sold, rented, a change of mind — keeps
