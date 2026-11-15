@@ -5,7 +5,8 @@
  * computer. This process attaches to the local Chrome and writes the listings into the
  * office of a user you pick, through the same save path the site uses.
  *
- * Photos are left out. A listing already stored under the same Yad2 token is updated.
+ * Yad2 images are left out: no logo, no broker photo, no listing photos. A listing
+ * already stored under the same Yad2 token is updated.
  *
  * Chrome has to be listening on port 9222 and already showing yad2 (npm run chrome:debug
  * from the repo root). The database comes from server/.prod.env.
@@ -318,7 +319,7 @@ async function confirm(
 }
 
 async function runSection(yad2: Yad2Service, yad2Id: string, section: Section): Promise<void> {
-  const job = yad2.start(yad2Id, section, { preserveProfile: true, images: false });
+  const job = yad2.start(yad2Id, section, { preserveProfile: true });
   let shown = '';
 
   while (job.status === 'running') {
@@ -349,7 +350,7 @@ async function saveCached(repository: AgencyRepository, yad2Id: string, section:
   } catch {
     throw new Error(`No saved scrape at ${file}. Run without --from-cache to fetch it.`);
   }
-  await repository.saveDump(cached.dump, yad2Id, section, { preserveProfile: true, images: false });
+  await repository.saveDump(cached.dump, yad2Id, section, { preserveProfile: true });
   console.log(`${section}: wrote the saved scrape (${cached.dump.feed.length} cards).`);
 }
 

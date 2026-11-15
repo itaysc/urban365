@@ -48,7 +48,7 @@ export class Yad2Service {
   }
 
   /** Starts a scrape and returns immediately; poll `getJob` for progress. */
-  start(agencyId: string, section: Section, opts: { preserveProfile?: boolean; images?: boolean } = {}): Job {
+  start(agencyId: string, section: Section, opts: { preserveProfile?: boolean } = {}): Job {
     const job: Job = {
       id: randomUUID(),
       agencyId,
@@ -67,7 +67,7 @@ export class Yad2Service {
     return job;
   }
 
-  private async run(job: Job, opts: { preserveProfile?: boolean; images?: boolean } = {}): Promise<void> {
+  private async run(job: Job, opts: { preserveProfile?: boolean } = {}): Promise<void> {
     try {
       const dump = await this.scraper.scrape(
         job.agencyId,
@@ -75,7 +75,9 @@ export class Yad2Service {
         (p) => {
           job.progress = p;
         },
-        { images: opts.images },
+        // Photo files and their addresses stay on yad2. Listings, logos and broker
+        // pictures shown here are only the ones uploaded in the app.
+        { images: false },
       );
       // Keep the untouched payload on disk as well, so a mapping bug can be replayed
       // without re-scraping yad2.

@@ -380,7 +380,8 @@ model Listing {
 
   description   String?
   coverImageUrl String?
-  /// yad2 CDN urls, kept only until listings carry our own images.
+  /// Older scrapes stored yad2 addresses here. An import no longer writes them;
+  /// photos shown for a listing are the ones uploaded here.
   imageUrls     String[]
   imagesCount   Int      @default(0)
 

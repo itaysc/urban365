@@ -90,13 +90,13 @@ export class AgencyRepository {
    * `preserveProfile` is set when an agency imports its *own* yad2 page. The scraper
    * owns these fields for rows it discovered, but an agency that has written its own
    * name and description must not have them overwritten by what yad2 happens to hold.
-   * Counts, logo, phone and opening hours still come from yad2 either way.
+   * Phone, license and opening hours still come from yad2. Images never do.
    */
   async saveDump(
     dump: AgencyDump,
     agencyId: string,
     section: Section,
-    opts: { preserveProfile?: boolean; images?: boolean } = {},
+    opts: { preserveProfile?: boolean } = {},
   ): Promise<void> {
     const summary = toAgencySummary(dump, agencyId, section);
     const team = toTeam(dump);
@@ -115,13 +115,13 @@ export class AgencyRepository {
     // five seconds expires partway through an office of this size.
     const timeout = Math.min(10 * 60_000, Math.max(60_000, assets.length * 250));
     await this.prisma.$transaction(async (tx) => {
-      // An office that uploaded its own mark keeps it. A scrape must not put the yad2
-      // logo back on top of that file.
+      // An uploaded logo has a storage key and stays. Anything else is a yad2 address,
+      // including one an earlier import already saved, and is dropped.
       const current = await tx.agency.findUnique({
         where: { yad2Id: agencyId },
         select: { logoStorageKey: true },
       });
-      const logo = current?.logoStorageKey ? {} : { logoUrl: summary.logoUrl || null };
+      const logo = current?.logoStorageKey ? {} : { logoUrl: null };
 
       const agency = await tx.agency.upsert({
         where: { yad2Id: agencyId },
@@ -130,7 +130,7 @@ export class AgencyRepository {
           name: summary.name,
           licenseNumber: summary.licenseNumber || null,
           phone: summary.phone || null,
-          logoUrl: summary.logoUrl || null,
+          logoUrl: null,
           description: summary.description || null,
           openingHours: summary.openingHours as unknown as Prisma.InputJsonValue,
           assetsForSaleCount: summary.counts.forSale,
@@ -156,7 +156,7 @@ export class AgencyRepository {
           licenseNumber: member.licenseNumber || null,
           activeAssetsCount: member.activeAssetsCount,
           specialization: member.specialization || null,
-          avatarUrl: member.avatarUrl || null,
+          avatarUrl: null,
         };
 
         // The composite unique needs a yad2 id; the rare broker without one is matched
@@ -200,8 +200,9 @@ export class AgencyRepository {
       for (const { asset, item } of assets) {
         if (!asset.token) continue;
         const data = this.listingData(asset, item, agency.id, section);
-        // A run that is not collecting photos must not wipe photos already stored.
-        const row = opts.images === false ? listingWithoutImages(data) : data;
+        // Yad2 photo addresses are never stored. Leaving the columns off the update
+        // keeps photos the office uploaded here.
+        const row = listingWithoutImages(data);
         const was = before.get(asset.token);
         if (!was) created += 1;
         const change = was ? priceChange(was.id, was.price, data.price) : null;
@@ -211,7 +212,9 @@ export class AgencyRepository {
           create: {
             token: asset.token,
             ...row,
-            ...(opts.images === false ? { coverImageUrl: null, imageUrls: [], imagesCount: 0 } : {}),
+            coverImageUrl: null,
+            imageUrls: [],
+            imagesCount: 0,
             firstSeenAt: now,
             lastSeenAt: now,
           },
