@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { Archive, Trash2 } from 'lucide-react';
+import { Archive, FileUp, Plus, Trash2, X } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { qk } from '@/queries/keys';
 import { useSearchParams } from 'react-router-dom';
@@ -178,13 +178,21 @@ export function LeadsPage() {
             onChange={(e) => e.target.files?.[0] && void importFile(e.target.files[0])}
           />
           <Button variant="secondary" onClick={() => fileInput.current?.click()}>
+            <FileUp className="h-4 w-4 shrink-0" aria-hidden />
             יבוא מקובץ
           </Button>
           <Button variant="secondary" onClick={() => setArchiveOpen(true)}>
-            <Archive className="h-4 w-4" aria-hidden />
+            <Archive className="h-4 w-4 shrink-0" aria-hidden />
             ארכיון
           </Button>
-          <Button onClick={() => setAdding((a) => !a)}>{adding ? 'ביטול' : 'פנייה חדשה'}</Button>
+          <Button onClick={() => setAdding((a) => !a)}>
+            {adding ? (
+              <X className="h-4 w-4 shrink-0" aria-hidden />
+            ) : (
+              <Plus className="h-4 w-4 shrink-0" aria-hidden />
+            )}
+            {adding ? 'ביטול' : 'פנייה חדשה'}
+          </Button>
         </div>
       </div>
 

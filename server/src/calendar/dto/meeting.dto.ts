@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { IsDateString, IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
+import { IsBoolean, IsDateString, IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
 
 export const MEETING_STATUSES = ['scheduled', 'done', 'cancelled'] as const;
 export type MeetingStatusValue = (typeof MEETING_STATUSES)[number];
@@ -10,6 +10,9 @@ export class CreateMeetingDto {
   /** ISO 8601 with an offset — what the browser's clock means, not a wall time. */
   @IsDateString() startsAt!: string;
   @IsDateString() endsAt!: string;
+
+  /** The meeting fills the day. `endsAt` is the next midnight, so the day itself is included. */
+  @IsOptional() @IsBoolean() allDay?: boolean;
 
   @IsOptional() @IsString() @MaxLength(200) location?: string;
   @IsOptional() @IsString() @MaxLength(4000) notes?: string;

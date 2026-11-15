@@ -24,13 +24,12 @@ export const REMINDER_LEAD_MS = 24 * 60 * 60 * 1000;
  */
 const REMINDER_GRACE_MS = 60 * 60 * 1000;
 
-const when = (at: Date) =>
+const when = (at: Date, allDay = false) =>
   at.toLocaleString('he-IL', {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
-    hour: '2-digit',
-    minute: '2-digit',
+    ...(allDay ? {} : { hour: '2-digit' as const, minute: '2-digit' as const }),
     timeZone: 'Asia/Jerusalem',
   });
 
@@ -87,7 +86,7 @@ export class ConfirmationsService {
       ...viewingConfirmationTemplate({
         firstName: meeting.customer.name.split(' ')[0],
         agencyName: meeting.agency.name,
-        when: when(meeting.startsAt),
+        when: when(meeting.startsAt, meeting.allDay),
         location: meeting.location,
         confirmUrl: `${this.appUrl}/viewing/${token}`,
       }),
@@ -118,6 +117,7 @@ export class ConfirmationsService {
         title: true,
         startsAt: true,
         endsAt: true,
+        allDay: true,
         location: true,
         status: true,
         attendeeResponse: true,
@@ -131,6 +131,7 @@ export class ConfirmationsService {
       title: meeting.title,
       startsAt: meeting.startsAt,
       endsAt: meeting.endsAt,
+      allDay: meeting.allDay,
       location: meeting.location,
       cancelled: meeting.status === 'cancelled',
       response: meeting.attendeeResponse,
@@ -173,7 +174,7 @@ export class ConfirmationsService {
           ...viewingResponseTemplate({
             customerName: meeting.customer?.name ?? 'הלקוח',
             confirmed,
-            when: when(meeting.startsAt),
+            when: when(meeting.startsAt, meeting.allDay),
             appUrl: this.appUrl,
           }),
         })
@@ -241,7 +242,7 @@ export class ConfirmationsService {
       ...sellerViewingRequestTemplate({
         firstName: seller.name.split(' ')[0],
         agencyName: meeting.agency.name,
-        when: when(meeting.startsAt),
+        when: when(meeting.startsAt, meeting.allDay),
         propertyLabel: addressOf(meeting.listing),
         confirmUrl: `${this.appUrl}/viewing/seller/${token}`,
       }),
@@ -271,6 +272,7 @@ export class ConfirmationsService {
       select: {
         startsAt: true,
         endsAt: true,
+        allDay: true,
         status: true,
         sellerResponse: true,
         sellerNote: true,
@@ -294,6 +296,7 @@ export class ConfirmationsService {
     return {
       startsAt: meeting.startsAt,
       endsAt: meeting.endsAt,
+      allDay: meeting.allDay,
       cancelled: meeting.status === 'cancelled',
       response: meeting.sellerResponse,
       note: meeting.sellerNote,
@@ -348,7 +351,7 @@ export class ConfirmationsService {
               meeting.listing?.owner?.firstName ??
               'בעל הנכס',
             confirmed,
-            when: when(meeting.startsAt),
+            when: when(meeting.startsAt, meeting.allDay),
             note: trimmed === '' ? null : trimmed,
             appUrl: this.appUrl,
           }),
@@ -407,7 +410,7 @@ export class ConfirmationsService {
           ...viewingReminderTemplate({
             firstName: meeting.customer.name.split(' ')[0],
             agencyName: meeting.agency.name,
-            when: when(meeting.startsAt),
+            when: when(meeting.startsAt, meeting.allDay),
             location: meeting.location,
             confirmUrl: `${this.appUrl}/viewing/${token}`,
           }),

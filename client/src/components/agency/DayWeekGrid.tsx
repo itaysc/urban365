@@ -2,10 +2,14 @@ import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as Reac
 import {
   DAY_MINUTES,
   SNAP_MINUTES,
+  allDayCovers,
+  draggedStart,
+  eventDate,
   isSameDay,
   minutesOnDay,
   moveBy,
   placeEvents,
+  shiftDays,
   snapMinutes,
 } from '@/lib/dayGrid';
 import type { GoogleEvent, Meeting } from '@/services/calendar';
@@ -17,6 +21,22 @@ const clock = (minutes: number) => {
   const h = Math.floor(minutes / 60) % 24;
   const m = Math.floor(minutes % 60);
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+};
+
+/** How far to scroll this frame while the pointer rests in the edge of the day. */
+const scrollStep = (scroller: HTMLElement | null, clientY: number) => {
+  if (!scroller) return 0;
+  const bounds = scroller.getBoundingClientRect();
+  const zone = 48;
+  if (clientY > bounds.bottom - zone) {
+    const depth = Math.min((clientY - (bounds.bottom - zone)) / zone, 1);
+    return Math.round(6 + depth * 12);
+  }
+  if (clientY < bounds.top + zone) {
+    const depth = Math.min((bounds.top + zone - clientY) / zone, 1);
+    return -Math.round(6 + depth * 12);
+  }
+  return 0;
 };
 
 interface Drag {
@@ -66,6 +86,9 @@ export function DayWeekGrid({
   const columnsRef = useRef<(HTMLDivElement | null)[]>([]);
   const dragRef = useRef<Drag | null>(null);
   const [drag, setDrag] = useState<Drag | null>(null);
+  const [allDayDrag, setAllDayDrag] = useState<{ id: string; origin: number; dayIndex: number } | null>(
+    null,
+  );
   const [now, setNow] = useState(() => new Date());
 
   useEffect(() => {
@@ -122,22 +145,21 @@ export function DayWeekGrid({
       SNAP_MINUTES,
     );
     const originSlot = snapMinutes(start);
+    const originRect = columnsRef.current[dayIndex]?.getBoundingClientRect();
+    const grabMinutes = originRect ? ((originY - originRect.top) / HOUR_PX) * 60 - originSlot : 0;
+    let lastX = originX;
+    let lastY = originY;
     let pointerMoved = false;
     let slotChanged = false;
     let settled = false;
+    let frame = 0;
 
     const follow = (clientX: number, clientY: number) => {
-      const scroller = scrollerRef.current;
-      if (scroller) {
-        const bounds = scroller.getBoundingClientRect();
-        if (clientY < bounds.top + 28) scroller.scrollTop -= 18;
-        else if (clientY > bounds.bottom - 28) scroller.scrollTop += 18;
-      }
-      const delta = snapMinutes(((clientY - originY) / HOUR_PX) * 60);
-      let next = snapMinutes(start + delta);
-      const maxStart = Math.max(0, DAY_MINUTES - Math.min(duration, DAY_MINUTES - SNAP_MINUTES));
-      next = Math.max(0, Math.min(maxStart, next));
       const index = dayIndexAt(clientX, dayIndex);
+      const rect = columnsRef.current[index]?.getBoundingClientRect();
+      if (!rect) return;
+      const pointerMinutes = ((clientY - rect.top) / HOUR_PX) * 60;
+      const next = draggedStart(pointerMinutes, grabMinutes, duration);
       if (index !== dayIndex || next !== originSlot) slotChanged = true;
       const box = boxFor(index, next, duration);
       if (!box) return;
@@ -146,7 +168,24 @@ export function DayWeekGrid({
       setDrag(nextDrag);
     };
 
+    // The pointer can sit still at the edge while the day scrolls under it.
+    // Measuring the pointer against the column on each frame lets the meeting
+    // ride that scroll instead of freezing on the last hour that was in view.
+    const tick = () => {
+      if (settled) return;
+      frame = window.requestAnimationFrame(tick);
+      if (!pointerMoved) return;
+      const step = scrollStep(scrollerRef.current, lastY);
+      const scroller = scrollerRef.current;
+      if (!step || !scroller) return;
+      const before = scroller.scrollTop;
+      scroller.scrollTop += step;
+      if (scroller.scrollTop !== before) follow(lastX, lastY);
+    };
+
     const move = (ev: PointerEvent) => {
+      lastX = ev.clientX;
+      lastY = ev.clientY;
       if (Math.hypot(ev.clientX - originX, ev.clientY - originY) < 6) return;
       pointerMoved = true;
       document.body.style.cursor = 'grabbing';
@@ -156,6 +195,7 @@ export function DayWeekGrid({
     const up = () => {
       if (settled) return;
       settled = true;
+      window.cancelAnimationFrame(frame);
       node.removeEventListener('pointermove', move);
       node.removeEventListener('pointerup', up);
       node.removeEventListener('pointercancel', up);
@@ -174,9 +214,60 @@ export function DayWeekGrid({
       onMove(meeting, next.startsAt, next.endsAt);
     };
 
+    frame = window.requestAnimationFrame(tick);
     node.addEventListener('pointermove', move);
     node.addEventListener('pointerup', up);
     node.addEventListener('pointercancel', up);
+  };
+
+  const beginAllDayDrag = (
+    event: ReactPointerEvent<HTMLButtonElement>,
+    meeting: Meeting,
+    dayIndex: number,
+  ) => {
+    event.stopPropagation();
+    event.preventDefault();
+    const node = event.currentTarget;
+    node.setPointerCapture(event.pointerId);
+    const originX = event.clientX;
+    const originY = event.clientY;
+    let pointerMoved = false;
+    let target = dayIndex;
+    let settled = false;
+
+    const move = (ev: PointerEvent) => {
+      if (Math.hypot(ev.clientX - originX, ev.clientY - originY) < 6) return;
+      pointerMoved = true;
+      target = dayIndexAt(ev.clientX, dayIndex);
+      setAllDayDrag({ id: meeting.id, origin: dayIndex, dayIndex: target });
+    };
+
+    const up = () => {
+      if (settled) return;
+      settled = true;
+      node.removeEventListener('pointermove', move);
+      node.removeEventListener('pointerup', up);
+      node.removeEventListener('pointercancel', up);
+      setAllDayDrag(null);
+      if (!pointerMoved) {
+        onOpen(meeting);
+        return;
+      }
+      if (target === dayIndex) return;
+      const next = shiftDays(eventDate(meeting.startsAt), eventDate(meeting.endsAt), target - dayIndex);
+      onMove(meeting, next.startsAt, next.endsAt);
+    };
+
+    node.addEventListener('pointermove', move);
+    node.addEventListener('pointerup', up);
+    node.addEventListener('pointercancel', up);
+  };
+
+  const rangeOf = (meeting: Meeting) => {
+    const start = eventDate(meeting.startsAt);
+    const end = eventDate(meeting.endsAt);
+    if (allDayDrag?.id !== meeting.id) return { startsAt: start, endsAt: end };
+    return shiftDays(start, end, allDayDrag.dayIndex - allDayDrag.origin);
   };
 
   const beginCreate = (event: ReactPointerEvent<HTMLDivElement>, day: Date) => {
@@ -206,7 +297,8 @@ export function DayWeekGrid({
       className={`max-h-[calc(100vh-14rem)] overflow-auto ${days.length > 1 ? 'max-sm:min-w-0' : ''}`}
     >
       <div className={days.length > 1 ? 'min-w-[44rem]' : ''}>
-        <div className="sticky top-0 z-20 flex border-b border-slate-200 bg-white">
+        <div className="sticky top-0 z-20 bg-white">
+        <div className="flex border-b border-slate-200">
           <div className="sticky start-0 w-14 shrink-0 bg-white" />
           {days.map((day) => {
             const isToday = isSameDay(day, today);
@@ -235,6 +327,51 @@ export function DayWeekGrid({
               </button>
             );
           })}
+        </div>
+
+        {(meetings.some((meeting) => meeting.allDay) || googleEvents.some((event) => event.allDay)) && (
+          <div className="flex border-b border-slate-200 bg-white">
+            <div className="sticky start-0 flex w-14 shrink-0 items-center justify-center bg-white px-1 text-center text-[0.6rem] leading-tight text-slate-400">
+              כל היום
+            </div>
+            {days.map((day, dayIndex) => (
+              <div key={day.toDateString()} className="flex min-h-8 flex-1 flex-col gap-0.5 border-s border-slate-100 p-0.5">
+                {meetings.map((meeting) => {
+                  if (!meeting.allDay || !allDayCovers(rangeOf(meeting).startsAt, rangeOf(meeting).endsAt, day)) {
+                    return null;
+                  }
+                  return (
+                    <button
+                      key={meeting.id}
+                      type="button"
+                      title={meeting.title}
+                      onPointerDown={(event) => beginAllDayDrag(event, meeting, dayIndex)}
+                      className={`truncate rounded bg-blue-600 px-1 py-0.5 text-start text-[0.65rem] text-white touch-none hover:bg-blue-700 ${
+                        allDayDrag?.id === meeting.id ? 'opacity-70' : ''
+                      }`}
+                    >
+                      {meeting.title}
+                    </button>
+                  );
+                })}
+                {googleEvents.map((event) => {
+                  if (!event.allDay || !allDayCovers(eventDate(event.startsAt), eventDate(event.endsAt), day)) {
+                    return null;
+                  }
+                  return (
+                    <div
+                      key={event.id}
+                      title={event.title}
+                      className="truncate rounded bg-slate-200 px-1 py-0.5 text-[0.65rem] text-slate-700"
+                    >
+                      {event.title}
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        )}
         </div>
 
         <div className="relative flex">
@@ -355,12 +492,14 @@ type Block =
 function blocksOn(day: Date, meetings: Meeting[], googleEvents: GoogleEvent[]): Block[] {
   const blocks: Block[] = [];
   for (const meeting of meetings) {
+    if (meeting.allDay) continue;
     const span = minutesOnDay(new Date(meeting.startsAt), new Date(meeting.endsAt), day);
     if (!span) continue;
     blocks.push({ id: meeting.id, start: span.start, end: span.end, kind: 'meeting', meeting });
   }
   for (const event of googleEvents) {
-    const span = minutesOnDay(new Date(event.startsAt), new Date(event.endsAt), day);
+    if (event.allDay) continue;
+    const span = minutesOnDay(eventDate(event.startsAt), eventDate(event.endsAt), day);
     if (!span) continue;
     blocks.push({
       id: `google-${event.id}`,

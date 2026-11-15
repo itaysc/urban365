@@ -2,6 +2,37 @@
 export const DAY_MINUTES = 24 * 60;
 export const SNAP_MINUTES = 15;
 
+/**
+ * A timestamp, or a Google all-day `YYYY-MM-DD`.
+ *
+ * A date with no time is a calendar day, not midnight UTC — parsing it as UTC would
+ * land it on the previous evening in Israel.
+ */
+export function eventDate(value: string): Date {
+  const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (dateOnly) {
+    return new Date(Number(dateOnly[1]), Number(dateOnly[2]) - 1, Number(dateOnly[3]));
+  }
+  return new Date(value);
+}
+
+/** Whether an all-day meeting, whose end is the next midnight, falls on this day. */
+export function allDayCovers(startsAt: Date, endsAt: Date, day: Date): boolean {
+  const dayStart = new Date(day.getFullYear(), day.getMonth(), day.getDate());
+  const next = new Date(dayStart);
+  next.setDate(next.getDate() + 1);
+  return startsAt < next && endsAt > dayStart;
+}
+
+/** Move both ends by whole days. The length of an all-day meeting stays. */
+export function shiftDays(startsAt: Date, endsAt: Date, days: number): { startsAt: Date; endsAt: Date } {
+  const start = new Date(startsAt);
+  const end = new Date(endsAt);
+  start.setDate(start.getDate() + days);
+  end.setDate(end.getDate() + days);
+  return { startsAt: start, endsAt: end };
+}
+
 export const isSameDay = (a: Date, b: Date) =>
   a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 
@@ -23,6 +54,20 @@ export function minutesOnDay(
 }
 
 export const snapMinutes = (minutes: number) => Math.round(minutes / SNAP_MINUTES) * SNAP_MINUTES;
+
+/**
+ * Where a dragged meeting starts, in minutes from midnight.
+ *
+ * The pointer is measured on the column as the column stands now. A scroll that
+ * brings a later hour under a pointer held still at the edge therefore carries
+ * the meeting with it. The grab is how far into the meeting the pointer was
+ * when the drag began, so the meeting stays under the finger that picked it up.
+ */
+export function draggedStart(pointerMinutes: number, grabMinutes: number, duration: number): number {
+  const room = Math.min(duration, DAY_MINUTES - SNAP_MINUTES);
+  const maxStart = Math.max(0, DAY_MINUTES - room);
+  return Math.max(0, Math.min(maxStart, snapMinutes(pointerMinutes - grabMinutes)));
+}
 
 /**
  * The same meeting, starting at a new minute of a (possibly different) day.

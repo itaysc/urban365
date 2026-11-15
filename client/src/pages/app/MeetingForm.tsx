@@ -27,6 +27,26 @@ function toLocalInput(iso: string): string {
 
 const toIso = (local: string): string => new Date(local).toISOString();
 
+const pad = (n: number) => String(n).padStart(2, '0');
+
+const localDateString = (at: Date) =>
+  `${at.getFullYear()}-${pad(at.getMonth() + 1)}-${pad(at.getDate())}`;
+
+/** The last day of an all-day meeting, whose stored end is the next midnight. */
+const inclusiveEnd = (endsAt: string) => {
+  const at = new Date(endsAt);
+  if (at.getHours() === 0 && at.getMinutes() === 0) at.setDate(at.getDate() - 1);
+  return localDateString(at);
+};
+
+const midnightIso = (date: string) => new Date(`${date}T00:00`).toISOString();
+
+const exclusiveEndIso = (date: string) => {
+  const at = new Date(`${date}T00:00`);
+  at.setDate(at.getDate() + 1);
+  return at.toISOString();
+};
+
 const MAX_PLACES = 8;
 
 /** The top of the next hour — the fallback when no day was chosen. */
@@ -80,6 +100,9 @@ export const MeetingForm = forwardRef<MeetingFormHandle, Props>(function Meeting
     notes: meeting?.notes ?? '',
     customerId: customerId ?? meeting?.customer?.id ?? '',
     listingId: meeting?.listingId ?? '',
+    allDay: meeting?.allDay ?? false,
+    startDate: meeting ? localDateString(new Date(meeting.startsAt)) : opensAt.slice(0, 10),
+    endDate: meeting?.allDay ? inclusiveEnd(meeting.endsAt) : (meeting ? localDateString(new Date(meeting.startsAt)) : opensAt.slice(0, 10)),
   };
   // What the form held when it opened. Closing compares against this.
   const [baseline] = useState(seeded);
@@ -96,11 +119,30 @@ export const MeetingForm = forwardRef<MeetingFormHandle, Props>(function Meeting
       : null,
   );
   const [listing, setListing] = useState(seeded.listingId);
+  const [allDay, setAllDay] = useState(seeded.allDay);
+  const [startDate, setStartDate] = useState(seeded.startDate);
+  const [endDate, setEndDate] = useState(seeded.endDate);
+
+  const setWholeDay = (on: boolean) => {
+    if (on) {
+      setStartDate(startsAt.slice(0, 10));
+      setEndDate(startsAt.slice(0, 10));
+      setAllDay(true);
+      return;
+    }
+    setAllDay(false);
+    if (baseline.allDay) {
+      setStartsAt(`${startDate}T09:00`);
+      setEndsAt(`${startDate}T10:00`);
+    }
+  };
 
   const dirty =
     title !== baseline.title ||
-    startsAt !== baseline.startsAt ||
-    endsAt !== baseline.endsAt ||
+    allDay !== baseline.allDay ||
+    (allDay
+      ? startDate !== baseline.startDate || endDate !== baseline.endDate
+      : startsAt !== baseline.startsAt || endsAt !== baseline.endsAt) ||
     location !== baseline.location ||
     notes !== baseline.notes ||
     (customerId ?? customer?.id ?? '') !== baseline.customerId ||
@@ -212,7 +254,11 @@ export const MeetingForm = forwardRef<MeetingFormHandle, Props>(function Meeting
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (new Date(endsAt) <= new Date(startsAt)) {
+    if (allDay && endDate < startDate) {
+      setError('יום הסיום צריך להיות ביום ההתחלה או אחריו.');
+      return;
+    }
+    if (!allDay && new Date(endsAt) <= new Date(startsAt)) {
       setError('שעת הסיום צריכה להיות אחרי שעת ההתחלה.');
       return;
     }
@@ -220,8 +266,9 @@ export const MeetingForm = forwardRef<MeetingFormHandle, Props>(function Meeting
     setError(null);
     onSubmit({
       title: title.trim(),
-      startsAt: toIso(startsAt),
-      endsAt: toIso(endsAt),
+      allDay,
+      startsAt: allDay ? midnightIso(startDate) : toIso(startsAt),
+      endsAt: allDay ? exclusiveEndIso(endDate) : toIso(endsAt),
       location: location.trim(),
       notes: notes.trim(),
       customerId: customerId ?? customer?.id ?? '',
@@ -252,32 +299,68 @@ export const MeetingForm = forwardRef<MeetingFormHandle, Props>(function Meeting
         />
       </Field>
 
+      <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
+        <input
+          type="checkbox"
+          className="h-4 w-4 accent-slate-900"
+          checked={allDay}
+          onChange={(e) => setWholeDay(e.target.checked)}
+        />
+        כל היום
+      </label>
+
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="מתי" htmlFor="meeting-start" required>
-          <input
-            id="meeting-start"
-            type="datetime-local"
-            required
-            className={inputClass}
-            value={startsAt}
-            onChange={(e) => {
-              setStartsAt(e.target.value);
-              // Carry the end along, so moving a meeting does not silently make it
-              // negative and reject on submit.
-              if (new Date(endsAt) <= new Date(e.target.value)) setEndsAt(plusHour(e.target.value));
-            }}
-          />
+          {allDay ? (
+            <input
+              id="meeting-start"
+              type="date"
+              required
+              className={inputClass}
+              value={startDate}
+              onChange={(e) => {
+                setStartDate(e.target.value);
+                if (endDate < e.target.value) setEndDate(e.target.value);
+              }}
+            />
+          ) : (
+            <input
+              id="meeting-start"
+              type="datetime-local"
+              required
+              className={inputClass}
+              value={startsAt}
+              onChange={(e) => {
+                setStartsAt(e.target.value);
+                // Carry the end along, so moving a meeting does not silently make it
+                // negative and reject on submit.
+                if (new Date(endsAt) <= new Date(e.target.value)) setEndsAt(plusHour(e.target.value));
+              }}
+            />
+          )}
         </Field>
 
         <Field label="עד" htmlFor="meeting-end" required>
-          <input
-            id="meeting-end"
-            type="datetime-local"
-            required
-            className={inputClass}
-            value={endsAt}
-            onChange={(e) => setEndsAt(e.target.value)}
-          />
+          {allDay ? (
+            <input
+              id="meeting-end"
+              type="date"
+              required
+              min={startDate}
+              className={inputClass}
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+            />
+          ) : (
+            <input
+              id="meeting-end"
+              type="datetime-local"
+              required
+              className={inputClass}
+              value={endsAt}
+              onChange={(e) => setEndsAt(e.target.value)}
+            />
+          )}
         </Field>
       </div>
 

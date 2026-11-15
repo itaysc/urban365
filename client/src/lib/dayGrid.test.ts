@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { minutesOnDay, moveBy, placeEvents } from './dayGrid';
+import { allDayCovers, draggedStart, eventDate, minutesOnDay, moveBy, placeEvents, shiftDays } from './dayGrid';
 
 const day = new Date(2026, 10, 15);
 
@@ -34,6 +34,43 @@ describe('moveBy', () => {
     );
     expect(moved.startsAt).toEqual(new Date(2026, 10, 16, 14, 15));
     expect(moved.endsAt).toEqual(new Date(2026, 10, 16, 15, 15));
+  });
+});
+
+describe('allDayCovers', () => {
+  it('includes the start day and stops before the exclusive end', () => {
+    const start = new Date(2026, 10, 15);
+    const end = new Date(2026, 10, 17);
+    expect(allDayCovers(start, end, new Date(2026, 10, 15))).toBe(true);
+    expect(allDayCovers(start, end, new Date(2026, 10, 16))).toBe(true);
+    expect(allDayCovers(start, end, new Date(2026, 10, 17))).toBe(false);
+  });
+
+  it('reads a Google date as that calendar day', () => {
+    expect(eventDate('2026-11-15')).toEqual(new Date(2026, 10, 15));
+  });
+});
+
+describe('shiftDays', () => {
+  it('moves both ends and keeps the length', () => {
+    const moved = shiftDays(new Date(2026, 10, 15), new Date(2026, 10, 17), 2);
+    expect(moved.startsAt).toEqual(new Date(2026, 10, 17));
+    expect(moved.endsAt).toEqual(new Date(2026, 10, 19));
+  });
+});
+
+describe('draggedStart', () => {
+  it('keeps hold of the point that was grabbed', () => {
+    expect(draggedStart(10 * 60 + 30, 30, 60)).toBe(10 * 60);
+  });
+
+  it('moves with the hour that a scroll has brought under the pointer', () => {
+    expect(draggedStart(11 * 60, 0, 60)).toBe(11 * 60);
+  });
+
+  it('snaps to the quarter hour and stays inside the day', () => {
+    expect(draggedStart(10 * 60 + 7, 0, 60)).toBe(10 * 60);
+    expect(draggedStart(23 * 60 + 30, 0, 60)).toBe(23 * 60);
   });
 });
 

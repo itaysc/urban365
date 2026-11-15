@@ -1104,6 +1104,8 @@ model Meeting {
   title    String
   startsAt DateTime
   endsAt   DateTime
+  /// No hour: the meeting fills the day, the way an all-day event does in Google.
+  allDay   Boolean  @default(false)
   location String?
   notes    String?
 

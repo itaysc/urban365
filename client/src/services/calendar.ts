@@ -28,6 +28,8 @@ export interface Meeting {
   title: string;
   startsAt: string;
   endsAt: string;
+  /** Fills the day, with no hour. */
+  allDay: boolean;
   location: string | null;
   notes: string | null;
   status: MeetingStatus;
@@ -55,6 +57,8 @@ export interface GoogleEvent {
   title: string;
   startsAt: string;
   endsAt: string;
+  /** Google stored a date rather than a time. */
+  allDay?: boolean;
   location: string | null;
 }
 
@@ -62,6 +66,7 @@ export interface MeetingInput {
   title: string;
   startsAt: string;
   endsAt: string;
+  allDay?: boolean;
   location?: string;
   notes?: string;
   customerId?: string;
@@ -146,6 +151,7 @@ export interface ViewingInvite {
   title: string;
   startsAt: string;
   endsAt: string;
+  allDay?: boolean;
   location: string | null;
   cancelled: boolean;
   response: AttendeeResponse;
@@ -172,6 +178,7 @@ export async function respondToViewing(token: string, confirmed: boolean): Promi
 export interface SellerViewingInvite {
   startsAt: string;
   endsAt: string;
+  allDay?: boolean;
   cancelled: boolean;
   response: AttendeeResponse;
   note: string | null;

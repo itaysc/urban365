@@ -7,13 +7,12 @@ import { inputClass } from '@/components/ui/Field';
 import { errorMessageOf } from '@/lib/apiError';
 import { fetchSellerViewing, respondAsSeller } from '@/services/calendar';
 
-const when = (iso: string) =>
+const when = (iso: string, allDay?: boolean) =>
   new Date(iso).toLocaleString('he-IL', {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
-    hour: '2-digit',
-    minute: '2-digit',
+    ...(allDay ? {} : { hour: '2-digit' as const, minute: '2-digit' as const }),
   });
 
 /**
@@ -77,7 +76,7 @@ export function SellerViewingPage() {
             <dl className="mt-4 flex flex-col gap-2 rounded-xl bg-slate-50 p-4 text-sm">
               <div className="flex items-center gap-2 text-slate-800">
                 <Calendar className="h-4 w-4 shrink-0 text-slate-500" aria-hidden />
-                <span>{when(data.startsAt)}</span>
+                <span>{when(data.startsAt, data.allDay)}</span>
               </div>
               {data.address && (
                 <div className="flex items-center gap-2 text-slate-800">

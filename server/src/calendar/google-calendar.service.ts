@@ -10,12 +10,23 @@ const TOKEN_ENDPOINT = 'https://oauth2.googleapis.com/token';
 const AUTH_ENDPOINT = 'https://accounts.google.com/o/oauth2/v2/auth';
 const API = 'https://www.googleapis.com/calendar/v3';
 
+/** `YYYY-MM-DD` in Israel, which is the date Google wants for an all-day event. */
+const jerusalemDate = (at: Date) =>
+  new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Jerusalem',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(at);
+
 /** One meeting, as the two sides of the world describe it. */
 export interface CalendarEvent {
   id: string;
   title: string;
   startsAt: string;
   endsAt: string;
+  /** A Google event stored as a date, with no hour. */
+  allDay?: boolean;
   location?: string | null;
 }
 
@@ -175,15 +186,21 @@ export class GoogleCalendarService {
 
       return (body.items ?? [])
         .filter((item) => item.start?.dateTime ?? item.start?.date)
-        .map((item) => ({
-          id: item.id,
-          title: item.summary ?? '(ללא כותרת)',
-          // An all-day event has `date` rather than `dateTime`. Kept as-is: the client
-          // decides how to draw a day with no time in it.
-          startsAt: item.start?.dateTime ?? (item.start?.date as string),
-          endsAt: item.end?.dateTime ?? (item.end?.date as string),
-          location: item.location ?? null,
-        }));
+        .map((item) => {
+          const allDay = Boolean(item.start?.date && !item.start.dateTime);
+          return {
+            id: item.id,
+            title: item.summary ?? '(ללא כותרת)',
+            // An all-day event is a date. Sent as `YYYY-MM-DD` so the client treats it
+            // as that calendar day rather than midnight UTC.
+            allDay,
+            startsAt: allDay ? (item.start?.date as string) : (item.start?.dateTime as string),
+            endsAt: allDay
+              ? (item.end?.date ?? (item.start?.date as string))
+              : (item.end?.dateTime ?? (item.start?.dateTime as string)),
+            location: item.location ?? null,
+          };
+        });
     } catch (error) {
       await this.note(userId, `קריאת היומן נכשלה: ${(error as Error).message}`);
       return [];
@@ -195,6 +212,7 @@ export class GoogleCalendarService {
     title: string;
     startsAt: Date;
     endsAt: Date;
+    allDay?: boolean;
     location?: string | null;
     notes?: string | null;
     googleEventId?: string | null;
@@ -216,8 +234,15 @@ export class GoogleCalendarService {
           summary: meeting.title,
           location: meeting.location ?? undefined,
           description: meeting.notes ?? undefined,
-          start: { dateTime: meeting.startsAt.toISOString() },
-          end: { dateTime: meeting.endsAt.toISOString() },
+          ...(meeting.allDay
+            ? {
+                start: { date: jerusalemDate(meeting.startsAt) },
+                end: { date: jerusalemDate(meeting.endsAt) },
+              }
+            : {
+                start: { dateTime: meeting.startsAt.toISOString() },
+                end: { dateTime: meeting.endsAt.toISOString() },
+              }),
         }),
         signal: AbortSignal.timeout(10_000),
       });

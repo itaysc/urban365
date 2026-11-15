@@ -11,6 +11,7 @@ import { selectClass } from '@/components/ui/Field';
 import { useToast } from '@/components/ui/Toast';
 import { errorMessageOf } from '@/lib/apiError';
 import { gridFor, isoDay, VIEW_LABEL, VIEWS, type View } from '@/lib/calendarSpan';
+import { allDayCovers, eventDate } from '@/lib/dayGrid';
 import { qk } from '@/queries/keys';
 import { apiBaseUrl } from '@/services/api';
 import { fetchTeam } from '@/services/agency';
@@ -305,8 +306,11 @@ export function CalendarPage() {
     ? 'new'
     : (meetings.find((m) => m.id === editingId) ?? null);
 
-  const onDay = (day: Date) => meetings.filter((m) => sameDay(new Date(m.startsAt), day));
-  const googleOnDay = (day: Date) => googleEvents.filter((e) => sameDay(new Date(e.startsAt), day));
+  const onThisDay = (starts: string, ends: string, allDay: boolean | undefined, day: Date) =>
+    allDay ? allDayCovers(eventDate(starts), eventDate(ends), day) : sameDay(eventDate(starts), day);
+  const onDay = (day: Date) => meetings.filter((m) => onThisDay(m.startsAt, m.endsAt, m.allDay, day));
+  const googleOnDay = (day: Date) =>
+    googleEvents.filter((e) => onThisDay(e.startsAt, e.endsAt, e.allDay, day));
 
   const connected = params.get('googleConnected') === '1';
   const googleError = params.get('googleError');
@@ -717,7 +721,7 @@ export function CalendarPage() {
                         go({ day: isoDay(day), edit: m.id }, true);
                       }}
                     >
-                      {time(m.startsAt)} {m.title}
+                      {m.allDay ? 'כל היום' : time(m.startsAt)} {m.title}
                     </button>
                   ))}
 
@@ -766,7 +770,7 @@ export function CalendarPage() {
               <div className="min-w-0">
                 <p className="font-semibold text-slate-900">
                   <span className="text-blue-700">
-                    {time(meeting.startsAt)}–{time(meeting.endsAt)}
+                    {meeting.allDay ? 'כל היום' : `${time(meeting.startsAt)}–${time(meeting.endsAt)}`}
                   </span>{' '}
                   {meeting.title}
                 </p>
@@ -908,7 +912,7 @@ export function CalendarPage() {
           >
             <p className="font-medium text-slate-700">
               <span className="text-slate-500">
-                {time(event.startsAt)}–{time(event.endsAt)}
+                {event.allDay ? 'כל היום' : `${time(event.startsAt)}–${time(event.endsAt)}`}
               </span>{' '}
               {event.title}
             </p>
