@@ -23,6 +23,17 @@ const DETAIL_INCLUDE = {
   images: { orderBy: { position: 'asc' } },
 } satisfies Prisma.ListingInclude;
 
+/**
+ * `adNumber` is a BigInt because yad2's numbers do not fit a 32-bit int. JSON has no
+ * BigInt, so the editor's response would 500 on every scraped listing.
+ */
+function presentListing<T extends { adNumber: bigint | null }>(listing: T) {
+  return {
+    ...listing,
+    adNumber: listing.adNumber === null ? null : Number(listing.adNumber),
+  };
+}
+
 const MAX_IMAGES = 30;
 
 /** What the exclusivity sync needs off the stored row when a PATCH omits either half. */
@@ -58,7 +69,7 @@ export class MyListingsService {
     });
 
     if (!listing) throw new NotFoundException('הנכס לא נמצא.');
-    return listing;
+    return presentListing(listing);
   }
 
   /** The whole agency reads every listing; changing one is for whoever created it, or the owner. */
@@ -89,7 +100,7 @@ export class MyListingsService {
     // The extension fills `agencyId` in anyway; it is stated here because Prisma's
     // generated create type requires it. `source: 'manual'` and a null token are what
     // distinguish this from a scraped row for the rest of the system.
-    return this.prisma.client.listing.create({
+    return presentListing(await this.prisma.client.listing.create({
       data: {
         agencyId: this.context.requireAgencyId(),
         ...this.toData(dto),
@@ -105,7 +116,7 @@ export class MyListingsService {
         hasFullDetails: true,
       },
       include: DETAIL_INCLUDE,
-    });
+    }));
   }
 
   async update(id: string, dto: UpdateListingDto) {
@@ -133,7 +144,7 @@ export class MyListingsService {
       publishing: dto.status === 'published',
     });
 
-    return this.prisma.client.listing.update({
+    return presentListing(await this.prisma.client.listing.update({
       where: { id: existing.id },
       data: {
         ...this.toData(dto, existing),
@@ -147,7 +158,7 @@ export class MyListingsService {
         ...(charged ? { creditChargedAt: new Date() } : {}),
       },
       include: DETAIL_INCLUDE,
-    });
+    }));
   }
 
   /**
@@ -188,11 +199,13 @@ export class MyListingsService {
     this.assertCanWrite();
     const existing = await this.requireEditable(id);
 
-    return this.prisma.client.listing.update({
-      where: { id: existing.id },
-      data: { status: 'archived' },
-      include: DETAIL_INCLUDE,
-    });
+    return presentListing(
+      await this.prisma.client.listing.update({
+        where: { id: existing.id },
+        data: { status: 'archived' },
+        include: DETAIL_INCLUDE,
+      }),
+    );
   }
 
   // ── images ──────────────────────────────────────────────────────────────────
