@@ -5,13 +5,18 @@
  * computer. This process attaches to the local Chrome and writes the listings into the
  * office of a user you pick, through the same save path the site uses.
  *
- * Yad2 images are left out: no logo, no broker photo, no listing photos. A listing
- * already stored under the same Yad2 token is updated.
+ * Listing photos are left out unless `--images` is passed. With that flag, each
+ * photo is copied into the agency's own folder in storage. A logo is never copied.
+ * A listing already stored under the same Yad2 token is updated, and one that
+ * already has photos is left as it is.
  *
  * Chrome has to be listening on port 9222 and already showing yad2 (npm run chrome:debug
  * from the repo root). The database comes from server/.prod.env.
  *
- *   npm run import:yad2 --prefix server
+ *   npm run import:yad2
+ *   npm run import:yad2:images
+ *
+ * Both ask which user and which section. Neither picks a user for you.
  *   npm run import:yad2 --prefix server -- --email someone@example.com --section forsale --yes
  */
 import { readFileSync } from 'node:fs';
@@ -26,7 +31,10 @@ import { normalizeEmail } from '../auth/normalize-email.js';
 import configuration from '../config/configuration.js';
 import { PrismaModule } from '../prisma/prisma.module.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { StorageModule } from '../storage/storage.module.js';
+import { StorageService } from '../storage/storage.service.js';
 import { AgencyRepository } from '../yad2/agency.repository.js';
+import { copyYad2ListingImages } from '../yad2/import-listing-images.js';
 import { Yad2Module } from '../yad2/yad2.module.js';
 import { Yad2Service } from '../yad2/yad2.service.js';
 import { parseAgencyInput } from '../yad2/yad2.transform.js';
@@ -40,6 +48,7 @@ const serverRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '.
   imports: [
     ConfigModule.forRoot({ isGlobal: true, load: [configuration] }),
     PrismaModule,
+    StorageModule,
     Yad2Module,
   ],
 })
@@ -297,11 +306,15 @@ async function confirm(
   office: Office,
   yad2Id: string,
   sections: Section[],
+  withImages: boolean,
   skip: boolean,
 ): Promise<boolean> {
   console.log(
     `\nThis writes into PRODUCTION (${host}) for ${describe(person, { ...office, yad2Id })}.\n` +
-      `Sections: ${sections.join(', ')}. Listings that left that Yad2 page are marked delisted.`,
+      `Sections: ${sections.join(', ')}. Listings that left that Yad2 page are marked delisted.` +
+      (withImages
+        ? `\nPhotos are copied into agencies/${office.id}/listings/ in storage. Listings that already have photos are skipped.`
+        : ''),
   );
   if (skip) return true;
 
@@ -318,8 +331,13 @@ async function confirm(
   }
 }
 
-async function runSection(yad2: Yad2Service, yad2Id: string, section: Section): Promise<void> {
-  const job = yad2.start(yad2Id, section, { preserveProfile: true });
+async function runSection(
+  yad2: Yad2Service,
+  yad2Id: string,
+  section: Section,
+  withImages: boolean,
+): Promise<void> {
+  const job = yad2.start(yad2Id, section, { preserveProfile: true, retainImageUrls: withImages });
   let shown = '';
 
   while (job.status === 'running') {
@@ -361,6 +379,7 @@ async function main(): Promise<void> {
   const sections = parseSections(argValue(args, '--section'));
   const skipConfirm = args.includes('--yes');
   const fromCache = args.includes('--from-cache');
+  const withImages = args.includes('--images');
 
   if (args.includes('--section') && !sections) {
     logger.error('Section must be forsale, rent, commercial, or all.');
@@ -390,6 +409,12 @@ async function main(): Promise<void> {
     const prisma = app.get(PrismaService);
     const yad2 = app.get(Yad2Service);
     const repository = app.get(AgencyRepository);
+    const storage = app.get(StorageService);
+    if (withImages && !storage.isConfigured()) {
+      logger.error('Storage is not configured in server/.prod.env, so photos cannot be copied.');
+      process.exitCode = 1;
+      return;
+    }
     const candidates = await loadCandidates(prisma);
     if (candidates.length === 0) {
       logger.error('No user with an active office.');
@@ -402,12 +427,24 @@ async function main(): Promise<void> {
     const yad2Id = await ensureYad2Id(prisma, office);
     const chosen = await pickSections(sections);
     const host = dbHost(databaseUrl ?? '');
-    const proceed = await confirm(host, person, office, yad2Id, chosen, skipConfirm);
+    const proceed = await confirm(host, person, office, yad2Id, chosen, withImages, skipConfirm);
     if (!proceed) return;
 
     for (const section of chosen) {
       if (fromCache) await saveCached(repository, yad2Id, section);
-      else await runSection(yad2, yad2Id, section);
+      else await runSection(yad2, yad2Id, section, withImages);
+      if (!withImages) continue;
+
+      const cached = JSON.parse(
+        await readFile(path.join(serverRoot, 'data', 'agencies', `${yad2Id}-${section}.json`), 'utf8'),
+      ) as { dump: AgencyDump };
+      const photos = await copyYad2ListingImages(prisma, storage, cached.dump, yad2Id);
+      if (photos.uploaded + photos.skipped + photos.failed === 0) {
+        logger.warn(`${section}: the saved scrape has no photo addresses. Run a live import with --images.`);
+      }
+      logger.log(
+        `${section} photos: ${photos.uploaded} stored on ${photos.listings} listing(s), ${photos.skipped} already had photos, ${photos.failed} failed.`,
+      );
     }
     logger.log('Done.');
   } catch (e) {

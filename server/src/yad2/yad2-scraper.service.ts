@@ -50,7 +50,7 @@ export class Yad2ScraperService {
     agencyId: string,
     section: Section,
     onProgress: (p: ScrapeProgress) => void,
-    options: { limit?: number; delayMs?: number; images?: boolean } = {},
+    options: { limit?: number; delayMs?: number; images?: boolean; retainImageUrls?: boolean } = {},
   ): Promise<AgencyDump> {
     const delay = options.delayMs ?? this.config.get<number>('yad2.delayMs') ?? 150;
     const cdpUrl = this.config.get<string>('yad2.cdpUrl');
@@ -159,7 +159,9 @@ export class Yad2ScraperService {
         items,
         failed,
       };
-      return options.images === false ? withoutImageFields(dump) : dump;
+      // `images: false` refuses the photo files. The addresses stay only when a caller
+      // is about to copy those files into our own bucket.
+      return options.images === false && !options.retainImageUrls ? withoutImageFields(dump) : dump;
     } finally {
       if (imageBlock) await imageBlock.unroute('**/*').catch(() => undefined);
       if (cdpUrl) {
