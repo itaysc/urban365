@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { AgentExclude } from '../agents/core/agent-exclude.js';
 import {
   GoogleCalendarController,
   MeetingsController,
@@ -9,6 +10,7 @@ import { GoogleCalendarService } from './google-calendar.service.js';
 import { MeetingsService } from './meetings.service.js';
 import { ReminderScheduler } from './reminder.scheduler.js';
 
+@AgentExclude()
 @Module({
   controllers: [MeetingsController, GoogleCalendarController, ViewingConfirmationController],
   providers: [MeetingsService, GoogleCalendarService, ConfirmationsService, ReminderScheduler],

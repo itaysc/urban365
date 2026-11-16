@@ -32,6 +32,7 @@ import { MailModule } from './mail/mail.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 import { TenancyModule } from './tenancy/tenancy.module.js';
 import { TenantInterceptor } from './tenancy/tenant.interceptor.js';
+import { AgentsModule } from './agents/agents.module.js';
 import { Yad2Module } from './yad2/yad2.module.js';
 
 @Module({
@@ -68,6 +69,7 @@ import { Yad2Module } from './yad2/yad2.module.js';
     AdminModule,
     DealsModule,
     ValuationModule,
+    AgentsModule,
   ],
   // Order matters: rate limit, then CSRF, then identity, then authorization.
   // A global JwtAuthGuard makes authentication the default; open routes say @Public().

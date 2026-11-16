@@ -46,7 +46,13 @@ export class TenantInterceptor implements NestInterceptor {
         // with no agency at all, and their own rows — BuyerProfile, SavedListing — are
         // scoped by `app.current_user_id`. Skipping the transaction for them left that
         // unset, so every policy on those tables matched nothing.
-        if (!principal) {
+        //
+        // An assistant turn holds the request open for several model calls, far past
+        // the twenty seconds a transaction is allowed to live, and it would pin a
+        // connection the whole time. The agent's own writes go through the owner
+        // client and name the user themselves.
+        const url = req.originalUrl ?? req.url ?? '';
+        if (!principal || url.includes('/agents/')) {
           return firstValueOfHandler(next);
         }
 

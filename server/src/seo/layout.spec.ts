@@ -36,4 +36,10 @@ describe('session check', () => {
       "connect-src 'self' https://api.urban365.co.il",
     );
   });
+
+  it('lets every server page load the assistant', () => {
+    expect(seoCsp('https://api.urban365.co.il')).toContain("script-src 'self'");
+    expect(html()).toContain('id="u365-assistant"');
+    expect(html()).toContain('src="/assistant.js"');
+  });
 });

@@ -15,7 +15,19 @@ process.env.VITE_APP_URL ??= '';
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    {
+      // The front door asks for /assistant.js. In dev that file is this module.
+      name: 'home-assistant',
+      configureServer(server) {
+        server.middlewares.use((req, _res, next) => {
+          if (req.url?.split('?')[0] === '/assistant.js') req.url = '/src/home-assistant.ts';
+          next();
+        });
+      },
+    },
+  ],
   resolve: {
     // Picks up the "@/*" -> "./src/*" mapping from tsconfig.app.json.
     tsconfigPaths: true,
@@ -73,6 +85,16 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     emptyOutDir: true,
+    rollupOptions: {
+      input: {
+        main: path.resolve(import.meta.dirname, 'index.html'),
+        assistant: path.resolve(import.meta.dirname, 'src/home-assistant.ts'),
+      },
+      output: {
+        entryFileNames: (chunk) =>
+          chunk.name === 'assistant' ? 'assistant.js' : 'assets/[name]-[hash].js',
+      },
+    },
   },
   test: {
     // Node, not jsdom: what is worth testing here is logic — the Hebrew a heading is

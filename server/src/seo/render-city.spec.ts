@@ -191,15 +191,20 @@ describe('renderCityPage', () => {
     expect(data.itemListElement.map((i) => i.name)).toEqual(['ערים', 'חולון']);
   });
 
-  it('carries nothing but the session check and its structured data', () => {
-    // Every word a reader or a crawler needs is in the HTML. The one script swaps a
+  it('carries the session check, its structured data, and the assistant', () => {
+    // Every word a reader or a crawler needs is in the HTML. The inline script swaps a
     // sign-in link for an account link, which is the half no cached page can render.
     const html = renderCityPage(build(healthy()), APP);
     const scripts = [...html.matchAll(/<script([^>]*)>/gu)].map((m) => m[1]);
+    const external = [...html.matchAll(/<script[^>]*src="([^"]+)"/gu)].map((m) => m[1]);
 
     expect(scripts.filter((a) => a.includes('ld+json'))).toHaveLength(1);
     expect(scripts.filter((a) => a.trim() === '')).toHaveLength(1);
-    expect(html).not.toMatch(/<script[^>]*src=/u);
+    expect(external).toEqual(
+      process.env.NODE_ENV === 'development'
+        ? ['/src/assistant-preamble.js', '/assistant.js']
+        : ['/assistant.js'],
+    );
   });
 
   it('states that the prices are asking prices', () => {

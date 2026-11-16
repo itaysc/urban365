@@ -24,6 +24,9 @@ describe('renderHomePage', () => {
     expect(html).toContain(`<link rel="alternate" hreflang="he" href="${APP}/">`);
     expect(html).toContain(`<link rel="alternate" hreflang="x-default" href="${APP}/">`);
     expect(html).toContain('content="index,follow"');
+    expect(html).toContain('id="u365-assistant"');
+    expect(html).toContain('<script type="module" src="/assistant.js"></script>');
+    if (process.env.NODE_ENV !== 'development') expect(html).not.toContain('assistant-preamble');
     expect(html).toContain('class="hero"');
     expect(html).toContain('/home/cover-1600.webp');
     expect(html).toContain('rel="preload"');

@@ -574,6 +574,7 @@ model User {
   assignedMortgageCases MortgageCase[]         @relation("MortgageCaseAssignee")
   uploadedDocuments     AgencyDocument[]
   impersonatedSessions  Session[]              @relation("SessionImpersonation")
+  agentConversations    AgentConversation[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -2054,4 +2055,59 @@ model Valuation {
   @@index([userId, createdAt])
   /// Quality reporting: how we do per town, and where we refuse.
   @@index([settlementCode, verdict])
+}
+
+/// One chat with an assistant.
+///
+/// `userId` when we know who it is, `visitorId` when we only know the browser. A row
+/// may gain a user later, when that browser signs in and the conversation is claimed.
+/// The summary is the part of the transcript that no longer fits in the window sent
+/// to the model, so the model keeps the thread without being sent the whole of it.
+model AgentConversation {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  agentId String
+
+  user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String?
+
+  /// The anonymous browser, when there is no account. Not a foreign key: a visitor row
+  /// is merged and deleted, and the transcript should outlive that bookkeeping.
+  visitorId String?
+
+  summary String @default("")
+  /// How many messages the summary already covers, so it is not rewritten every turn.
+  summaryCovers Int @default(0)
+
+  tokensUsed Int @default(0)
+
+  messages AgentMessage[]
+
+  @@index([userId, agentId, updatedAt])
+  @@index([visitorId, agentId, updatedAt])
+}
+
+/// One turn, or one tool result.
+///
+/// Tool rows keep the cards the browser drew (`toolPayload`) separately from the short
+/// text the model was shown (`content`), so resuming a chat can redraw the cards
+/// without putting them back into the prompt.
+model AgentMessage {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  conversation   AgentConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  conversationId String
+
+  /// 'user' | 'assistant' | 'tool'
+  role    String
+  content String @default("")
+
+  toolName   String?
+  toolCallId String?
+  toolPayload Json?
+
+  @@index([conversationId, createdAt])
 }

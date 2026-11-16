@@ -12,6 +12,6 @@ import { ValuationService } from './valuation.service.js';
   imports: [PrismaModule, GeocodeModule],
   controllers: [ValuationController],
   providers: [ValuationService, MarketContextService, PlaceService],
-  exports: [ValuationService],
+  exports: [ValuationService, MarketContextService, PlaceService],
 })
 export class ValuationModule {}

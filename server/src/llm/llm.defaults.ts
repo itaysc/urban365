@@ -42,3 +42,23 @@ export const OUTREACH_DRAFT_LLM = {
   maxTokens: 300,
   temperature: 0.8,
 } satisfies LlmPreset;
+
+/**
+ * The end-user assistant.
+ *
+ * Cool enough that a price it repeats is the price a tool returned, warm enough that
+ * two people asking the same thing do not get a form letter. The cap is a chat bubble,
+ * not an article: the tools carry the detail.
+ */
+export const END_USER_AGENT_LLM = {
+  ...GPT_4O_MINI,
+  maxTokens: 600,
+  temperature: 0.3,
+} satisfies LlmPreset;
+
+/** Folding the part of a conversation that has scrolled out of the window. Cold, and short. */
+export const CONVERSATION_SUMMARY_LLM = {
+  ...GPT_4O_MINI,
+  maxTokens: 200,
+  temperature: 0,
+} satisfies LlmPreset;

@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { AgentExclude } from '../agents/core/agent-exclude.js';
 import { JwtModule } from '@nestjs/jwt';
 import { AuthController } from './auth.controller.js';
 import { AuthService } from './auth.service.js';
@@ -15,6 +16,7 @@ import { VisitorModule } from '../visitor/visitor.module.js';
  * Deliberately uses the privileged PrismaService: login looks a user up by email before
  * any agency context exists, so these queries cannot be tenant-scoped.
  */
+@AgentExclude()
 @Module({
   imports: [JwtModule.register({}), SavesModule, VisitorModule],
   controllers: [AuthController],

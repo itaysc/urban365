@@ -5,8 +5,11 @@ import { OpenAIIntegration } from './providers/openai.integration.js';
 import {
   LLMIntegration,
   type LLMAskParams,
+  type LLMChatParams,
+  type LLMChatResponse,
   type LLMIntegrationInterface,
   type LLMResponse,
+  type LLMStreamEvent,
 } from './llm.types.js';
 
 /**
@@ -62,5 +65,28 @@ export class LlmService {
     );
 
     return response;
+  }
+
+  /**
+   * A conversation, with tools.
+   *
+   * `ask` stays the one-shot path — moderation, a draft. Anything that has to call a
+   * tool or remember the previous turn comes through here.
+   */
+  async chat(params: LLMChatParams): Promise<LLMChatResponse> {
+    const integration = params.integration ?? LLMIntegration.OPENAI;
+    const started = Date.now();
+    const response = await this.integrationFor(integration).chat({ ...params, integration });
+
+    this.logger.debug(
+      `${integration}/${response.model} chat ${response.usage.totalTokens} tokens in ${Date.now() - started}ms`,
+    );
+
+    return response;
+  }
+
+  chatStream(params: LLMChatParams): AsyncGenerator<LLMStreamEvent> {
+    const integration = params.integration ?? LLMIntegration.OPENAI;
+    return this.integrationFor(integration).chatStream({ ...params, integration });
   }
 }

@@ -1,5 +1,58 @@
 import path from 'node:path';
 
+const splitList = (value: string | undefined): string[] =>
+  (value ?? '')
+    .split(',')
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+/**
+ * `AGENT_END_USER_ACCESS=signed-in` and `AGENT_END_USER_EXCLUDED_MODULES=CrmModule`.
+ *
+ * The id in the env name is the agent id with hyphens turned to underscores, so a new
+ * agent picks the same switch up without a new config key. Unset means the agent's
+ * own default, which for the end-user assistant is anonymous.
+ */
+function agentsFromEnv(): AgentsConfig {
+  const byAgent: Record<string, AgentOverride> = {};
+
+  const override = (id: string): AgentOverride => {
+    byAgent[id] ??= { access: 'anonymous', excludedModules: [] };
+    return byAgent[id];
+  };
+
+  for (const [key, value] of Object.entries(process.env)) {
+    if (!value) continue;
+
+    const access = /^AGENT_([A-Z0-9_]+)_ACCESS$/.exec(key);
+    if (access && (value === 'anonymous' || value === 'signed-in')) {
+      override(access[1].toLowerCase().replace(/_/g, '-')).access = value;
+    }
+
+    const excluded = /^AGENT_([A-Z0-9_]+)_EXCLUDED_MODULES$/.exec(key);
+    if (excluded) override(excluded[1].toLowerCase().replace(/_/g, '-')).excludedModules = splitList(value);
+  }
+
+  return {
+    excludedModules: splitList(process.env.AGENT_EXCLUDED_MODULES),
+    byAgent,
+    historyDays: historyDaysFromEnv(),
+  };
+}
+
+/**
+ * How many days of actual use to keep.
+ *
+ * A day counts only when the person sent something. Three quiet days in between
+ * do not push an older conversation out. Unset or unreadable means 3.
+ */
+function historyDaysFromEnv(): number {
+  const raw = process.env.AGENT_HISTORY_DAYS;
+  if (raw === undefined || raw.trim() === '') return 3;
+  const parsed = Number(raw);
+  return Number.isInteger(parsed) && parsed >= 1 ? parsed : 3;
+}
+
 /** Typed view of the environment. Keep every `process.env` read in this file. */
 export interface AppConfig {
   nodeEnv: 'development' | 'production' | 'test';
@@ -89,6 +142,27 @@ export interface LlmConfig {
   openaiBaseUrl: string;
 }
 
+/** Who may open a chat. `anonymous` still refuses the tools that ask for an account. */
+export type AgentAccessMode = 'anonymous' | 'signed-in';
+
+export interface AgentOverride {
+  access: AgentAccessMode;
+  /** Nest module class names this one agent must not see, on top of the global list. */
+  excludedModules: string[];
+}
+
+export interface AgentsConfig {
+  /**
+   * Nest modules whose tools no agent may call, whatever an env file says.
+   * `CrmModule,CalendarModule`. A module marked `@AgentExclude()` is already out.
+   */
+  excludedModules: string[];
+  /** Keyed by agent id (`end-user`). Only agents named in the environment appear. */
+  byAgent: Record<string, AgentOverride>;
+  /** `AGENT_HISTORY_DAYS`. Days the person actually chatted, not calendar days. */
+  historyDays: number;
+}
+
 export interface GoogleConfig {
   clientId: string;
   clientSecret: string;
@@ -128,6 +202,7 @@ export default (): {
   mail: MailConfig;
   google: GoogleConfig;
   llm: LlmConfig;
+  agents: AgentsConfig;
   storage: StorageConfig;
   captcha: CaptchaConfig;
   yad2: Yad2Config;
@@ -173,6 +248,7 @@ export default (): {
     openaiApiKey: process.env.OPENAI_API_KEY ?? '',
     openaiBaseUrl: process.env.OPENAI_BASE_URL ?? '',
   },
+  agents: agentsFromEnv(),
   storage: {
     keyId: process.env.B2_KEY_ID ?? '',
     applicationKey: process.env.B2_APPLICATION_KEY ?? '',

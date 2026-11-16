@@ -47,6 +47,7 @@ import { AccountPage } from '@/pages/account/AccountPage';
 import { MySalePage } from '@/pages/sell/MySalePage';
 import { PublishPage } from '@/pages/sell/PublishPage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
+import { AssistantWidget } from '@/components/assistant/AssistantWidget';
 import { PageTitle } from '@/components/PageTitle';
 import { PreviewBanner } from '@/components/PreviewBanner';
 
@@ -70,6 +71,7 @@ export const router = createBrowserRouter([
       <>
         <PreviewBanner />
         <PageTitle />
+        <AssistantWidget />
         <Outlet />
       </>
     ),

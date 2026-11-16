@@ -111,9 +111,11 @@ export const SESSION_SCRIPT_HASH = `sha256-${createHash('sha256').update(SESSION
  * origin is the app and the API is a subdomain of it.
  */
 export function seoCsp(apiOrigin: string, extraScriptHash?: string): string {
+  // Every one of these pages loads /assistant.js, a same-origin module.
+  // The extra hash is only the front door's place box.
   const scripts = extraScriptHash
-    ? `'${SESSION_SCRIPT_HASH}' '${extraScriptHash}'`
-    : `'${SESSION_SCRIPT_HASH}'`;
+    ? `'self' '${SESSION_SCRIPT_HASH}' '${extraScriptHash}'`
+    : `'self' '${SESSION_SCRIPT_HASH}'`;
 
   return [
     "default-src 'none'",
@@ -180,7 +182,8 @@ export interface PageOptions {
  * crawler budgets time per site, and a landing page that needs a second request before
  * it means anything spends that budget on a round trip.
  *
- * No JavaScript at all. Everything on the page is text and links.
+ * The front door adds one more script, /assistant.js, loaded from the site rather
+ * than inlined. Everything a crawler needs is still text and links.
  */
 const STYLES = `
 *,*::before,*::after{box-sizing:border-box}
@@ -645,6 +648,8 @@ ${blocks}
 <main class="${options.door ? 'door' : 'wrap'}" id="main">${options.body}</main>
 <script>${SESSION_SCRIPT}</script>
 ${options.extraScript ? `<script>${options.extraScript}</script>` : ''}
+<div id="u365-assistant"></div>
+${process.env.NODE_ENV === 'development' ? '<script type="module" src="/src/assistant-preamble.js"></script>\n' : ''}<script type="module" src="/assistant.js"></script>
 <footer class="site"><div class="${frame}">
 ${options.links ?? ''}
 <!--

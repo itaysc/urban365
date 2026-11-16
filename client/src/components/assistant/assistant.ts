@@ -1,0 +1,143 @@
+import { apiBaseUrl } from '@/services/api';
+
+export type AssistantCard =
+  | {
+      type: 'listing';
+      id: string;
+      href: string;
+      title: string;
+      price: number | null;
+      rooms: number | null;
+      sqm: number | null;
+      city: string | null;
+    }
+  | { type: 'mortgage'; monthly: number; loan: number; years: number; note: string }
+  | { type: 'valuation'; low: number | null; high: number | null; verdict: string; city: string }
+  | { type: 'link'; href: string; label: string };
+
+export interface AssistantMessage {
+  role: 'user' | 'assistant';
+  content: string;
+  cards: AssistantCard[];
+  needsSignIn: boolean;
+}
+
+const STORAGE_KEY = 'nadlan:assistant:end-user';
+const OPEN_KEY = 'nadlan:assistant:open';
+
+export function storedConversationId(): string | null {
+  try {
+    return window.localStorage.getItem(STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function rememberConversation(id: string): void {
+  try {
+    window.localStorage.setItem(STORAGE_KEY, id);
+  } catch {
+    // A chat that cannot be resumed is still a chat.
+  }
+}
+
+export function storedAssistantOpen(): boolean {
+  try {
+    return window.localStorage.getItem(OPEN_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+export function rememberAssistantOpen(open: boolean): void {
+  try {
+    window.localStorage.setItem(OPEN_KEY, open ? '1' : '0');
+  } catch {
+    // The panel still opens. It just will not be open on the next page.
+  }
+}
+
+export function forgetConversation(): void {
+  try {
+    window.localStorage.removeItem(STORAGE_KEY);
+  } catch {
+    // Nothing to clear is not a failure.
+  }
+}
+
+export async function loadConversation(id: string): Promise<AssistantMessage[] | null> {
+  const response = await fetch(`${apiBaseUrl}/agents/end-user/conversations/${id}`, {
+    credentials: 'include',
+    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+  });
+  if (!response.ok) return null;
+  const body = (await response.json()) as { messages: AssistantMessage[] };
+  return body.messages;
+}
+
+export interface AssistantEvents {
+  onReady: (conversationId: string) => void;
+  onText: (delta: string) => void;
+  onCards: (cards: AssistantCard[]) => void;
+  onSignIn: () => void;
+  onError: (message: string) => void;
+}
+
+/** Sends one message and reads the event stream until the server closes it. */
+export async function sendMessage(
+  message: string,
+  conversationId: string | null,
+  events: AssistantEvents,
+  signal?: AbortSignal,
+): Promise<void> {
+  const response = await fetch(`${apiBaseUrl}/agents/end-user/chat`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Requested-With': 'XMLHttpRequest',
+    },
+    body: JSON.stringify({ message, ...(conversationId ? { conversationId } : {}) }),
+    signal,
+  });
+
+  if (response.status === 401) {
+    events.onSignIn();
+    return;
+  }
+  if (!response.ok || !response.body) {
+    events.onError('משהו השתבש. נסה שוב.');
+    return;
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const chunks = buffer.split('\n\n');
+    buffer = chunks.pop() ?? '';
+    for (const chunk of chunks) dispatch(chunk, events);
+  }
+  if (buffer.trim()) dispatch(buffer, events);
+}
+
+function dispatch(chunk: string, events: AssistantEvents): void {
+  let event = 'message';
+  const data: string[] = [];
+  for (const line of chunk.split('\n')) {
+    if (line.startsWith('event:')) event = line.slice(6).trim();
+    else if (line.startsWith('data:')) data.push(line.slice(5).trim());
+  }
+  if (data.length === 0) return;
+
+  const payload = JSON.parse(data.join('\n')) as Record<string, unknown>;
+  if (event === 'ready' && typeof payload.conversationId === 'string') events.onReady(payload.conversationId);
+  else if (event === 'text' && typeof payload.delta === 'string') events.onText(payload.delta);
+  else if (event === 'cards' && Array.isArray(payload.cards)) events.onCards(payload.cards as AssistantCard[]);
+  else if (event === 'sign_in') events.onSignIn();
+  else if (event === 'error' && typeof payload.message === 'string') events.onError(payload.message);
+}

@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { AgentExclude } from '../agents/core/agent-exclude.js';
 import { AuthModule } from '../auth/auth.module.js';
 import {
   AdminUsersController,
@@ -10,6 +11,7 @@ import { ListingApprovalService } from './listing-approval.service.js';
 import { ModerationController } from './moderation.controller.js';
 import { ModerationService } from './moderation.service.js';
 
+@AgentExclude()
 @Module({
   imports: [AuthModule],
   controllers: [ModerationController, PlatformInviteController, AdminUsersController, JoinController],

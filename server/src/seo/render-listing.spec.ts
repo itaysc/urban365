@@ -220,13 +220,18 @@ describe('renderListingPage', () => {
     expect(html).not.toContain('מי מוכר');
   });
 
-  it('loads no script of its own beyond the session check', () => {
+  it('adds the assistant beside the session check', () => {
     const html = renderListingPage(listing(), similar, APP);
     const scripts = [...html.matchAll(/<script([^>]*)>/gu)].map((m) => m[1]);
+    const external = [...html.matchAll(/<script[^>]*src="([^"]+)"/gu)].map((m) => m[1]);
 
     expect(scripts.filter((a) => a.includes('ld+json'))).toHaveLength(2);
     expect(scripts.filter((a) => a.trim() === '')).toHaveLength(1);
-    expect(html).not.toMatch(/<script[^>]*src=/u);
+    expect(external).toEqual(
+      process.env.NODE_ENV === 'development'
+        ? ['/src/assistant-preamble.js', '/assistant.js']
+        : ['/assistant.js'],
+    );
   });
 
   it('keeps the snippet short enough to be shown whole', () => {
