@@ -21,6 +21,9 @@ export type AgentEvent =
 
 const FULL_TOOL_TURNS = 2;
 
+/** Cards from this many recent messages are shown to tools, so a link is not repeated immediately. */
+export const RECENT_CARD_MESSAGES = 8;
+
 /**
  * The loop every agent runs: model, tools, model again.
  *
@@ -127,9 +130,12 @@ export class AgentRuntime {
         toolCalls: response.toolCalls,
       };
       const toolMessages: TranscriptMessage[] = [];
+      const shown = recentCards(transcript.messages);
 
       for (const call of response.toolCalls) {
+        ctx.recentCards = shown;
         const result = await this.callTool(agent, ctx, call, enabledGroups);
+        if (result.cards?.length) shown.push(...result.cards);
         if (call.name !== ENABLE_GROUPS) yield { event: 'tool', data: { name: call.name } };
         if (result.cards?.length) yield { event: 'cards', data: { cards: result.cards } };
         if (result.needsSignIn) yield { event: 'sign_in', data: { conversationId: transcript.id } };
@@ -251,6 +257,10 @@ function splitTurns(messages: TranscriptMessage[]): TranscriptMessage[][] {
     else turns[turns.length - 1].push(message);
   }
   return turns;
+}
+
+function recentCards(messages: TranscriptMessage[]): AgentCard[] {
+  return messages.slice(-RECENT_CARD_MESSAGES).flatMap((message) => message.cards ?? []);
 }
 
 function toModelMessages(agent: AgentDefinition, transcript: Transcript): LLMMessage[] {

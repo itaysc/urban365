@@ -11,6 +11,8 @@ import { listingPath } from '../../seo/listing-slug.js';
 import { blogPost } from '../../seo/blog.js';
 import { HOME_GUIDE } from '../../seo/home-guide.js';
 import { summarise, byRooms, type StatRow } from '../../seo/stats.js';
+import { cellRangeWithin } from '../../cadastre/parcel-index.js';
+import { metresBetween } from '../../valuation/geo.js';
 import { PlaceService } from '../../valuation/place.service.js';
 import { MarketContextService } from '../../valuation/market-context.service.js';
 import { ValuationService, type ValuationRequest } from '../../valuation/valuation.service.js';
@@ -42,7 +44,18 @@ import {
   MortgagePlanDto,
   OpenPageDto,
   ResolvePlaceDto,
+  StreetHistoryDto,
 } from './end-user.dto.js';
+import {
+  RESIDENTIAL_GROUPS,
+  STREET_HISTORY_LIMIT,
+  STREET_HISTORY_RADIUS_METRES,
+  STREET_HISTORY_YEARS,
+  pickStreet,
+  streetHistorySummary,
+  streetQueryName,
+} from './street-history.js';
+import { attachMortgageCalculator } from './mortgage-link.js';
 import { pageHref, PAGE_LINKS } from './pages.js';
 
 const SEARCH_OMIT = [
@@ -252,6 +265,96 @@ export class EndUserToolsService {
   }
 
   @AgentTool({
+    name: 'street_price_history',
+    description:
+      'היסטוריית מחירי עסקאות מגורים שנרשמו ליד רחוב בעיר, חציון שנתי ומחיר למ"ר. לשאלה כמו היסטוריית מחירים ברחוב. לא מחירי מודעות.',
+    audiences: ['end-user'],
+    group: 'pricing',
+    dto: StreetHistoryDto,
+  })
+  async streetPriceHistory(dto: StreetHistoryDto): Promise<ToolResult> {
+    const asked = streetQueryName(dto.street);
+    const matches = await this.listings.streetsIn(dto.city, asked);
+    const picked = pickStreet(asked, matches);
+    if (!('name' in picked)) {
+      const list = picked.choices.join(', ');
+      return {
+        summary: list
+          ? `כמה רחובות מתאימים ב${dto.city}: ${list}. צריך את השם המדויק.`
+          : `אין רחוב בשם ${asked} ב${dto.city} ברשימת הרחובות.`,
+      };
+    }
+
+    const place = await this.places.find(dto.city);
+    if (!place) return { summary: `לא מצאתי את ${dto.city} במרשם העסקאות.` };
+
+    const point = await this.places.locateStreet(dto.city, picked.name);
+    if (!point) {
+      return { summary: `הרחוב ${picked.name} ב${dto.city} קיים, אבל אין לו נקודה, אז אי אפשר לבחור את העסקאות שסביבו.` };
+    }
+
+    const years = dto.years ?? STREET_HISTORY_YEARS;
+    const since = new Date();
+    since.setUTCFullYear(since.getUTCFullYear() - years);
+
+    const cells = cellRangeWithin(point.latitude, point.longitude, STREET_HISTORY_RADIUS_METRES);
+    const latSpan = STREET_HISTORY_RADIUS_METRES / 111_320;
+    const lngSpan =
+      STREET_HISTORY_RADIUS_METRES / (111_320 * Math.max(0.1, Math.cos((point.latitude * Math.PI) / 180)));
+
+    const rows = await this.prisma.marketDeal.findMany({
+      where: {
+        settlementCode: place.settlementCode,
+        cellLat: { gte: cells.minCellLat, lte: cells.maxCellLat },
+        cellLng: { gte: cells.minCellLng, lte: cells.maxCellLng },
+        latitude: { gte: point.latitude - latSpan, lte: point.latitude + latSpan },
+        longitude: { gte: point.longitude - lngSpan, lte: point.longitude + lngSpan },
+        dealDate: { gte: since },
+        propertyGroup: { in: [...RESIDENTIAL_GROUPS] },
+        inStats: true,
+        isFullDeal: true,
+        ...(dto.rooms !== undefined ? { rooms: dto.rooms } : {}),
+      },
+      orderBy: { dealDate: 'desc' },
+      take: STREET_HISTORY_LIMIT,
+      select: {
+        dealDate: true,
+        dealAmount: true,
+        rooms: true,
+        area: true,
+        pricePerSqm: true,
+        latitude: true,
+        longitude: true,
+      },
+    });
+
+    const deals = rows
+      .filter(
+        (row) =>
+          row.latitude !== null &&
+          row.longitude !== null &&
+          metresBetween(point, { latitude: row.latitude, longitude: row.longitude }) <= STREET_HISTORY_RADIUS_METRES,
+      )
+      .map((row) => ({
+        dealDate: row.dealDate,
+        amount: Number(row.dealAmount),
+        rooms: row.rooms,
+        area: row.area,
+        pricePerSqm: row.pricePerSqm,
+      }));
+
+    return {
+      summary: streetHistorySummary({
+        city: place.settlement,
+        street: picked.name,
+        years,
+        deals,
+        truncated: rows.length === STREET_HISTORY_LIMIT,
+      }),
+    };
+  }
+
+  @AgentTool({
     name: 'estimate_value',
     description: 'טווח שווי לדירה לפי עסקאות דומות. מחזיר טווח, לא מספר אחד, ואינו שמאות. דורש התחברות.',
     audiences: ['end-user'],
@@ -310,7 +413,7 @@ export class EndUserToolsService {
     group: 'mortgage',
     dto: MortgagePlanDto,
   })
-  mortgagePlan(dto: MortgagePlanDto): ToolResult {
+  mortgagePlan(dto: MortgagePlanDto, ctx: AgentContext): ToolResult {
     const years = dto.years ?? DEFAULT_YEARS;
     const result = plan({
       price: dto.price,
@@ -325,8 +428,8 @@ export class EndUserToolsService {
     const priced = mix(preset.build(result.loan, years));
     const monthly = Math.round(priced.monthly);
 
-    return {
-      summary: [
+    return attachMortgageCalculator(
+      [
         `הלוואה ${shekel(result.loan)}, החזר ${shekel(monthly)} לחודש ל-${years} שנים.`,
         `התמהיל: ${preset.name} — ${preset.blurb}.`,
         result.equityShortfall > 0
@@ -336,7 +439,7 @@ export class EndUserToolsService {
       ]
         .filter(Boolean)
         .join(' '),
-      cards: [
+      [
         {
           type: 'mortgage',
           monthly,
@@ -345,7 +448,9 @@ export class EndUserToolsService {
           note: `תמהיל ${preset.name}: ${preset.blurb}. להמחשה, לא הצעה`,
         },
       ],
-    };
+      ctx.recentCards,
+      dto.price,
+    );
   }
 
   @AgentTool({
@@ -355,7 +460,7 @@ export class EndUserToolsService {
     group: 'mortgage',
     dto: AffordabilityDto,
   })
-  affordability(dto: AffordabilityDto): ToolResult {
+  affordability(dto: AffordabilityDto, ctx: AgentContext): ToolResult {
     const years = dto.years ?? DEFAULT_YEARS;
     const rate = dto.rate ?? DEFAULT_RATE;
     const priced = budget({
@@ -385,12 +490,12 @@ export class EndUserToolsService {
       bufferShare: DEFAULT_BUFFER_SHARE,
     });
 
-    return {
-      summary: [
+    return attachMortgageCalculator(
+      [
         `לפי תקרת המימון, דירה של עד ${shekel(priced.price)} (הלוואה ${shekel(priced.loan)}, החזר ${shekel(priced.monthly)}).`,
         `אחרי הוצאות הבית נשאר להחזר כ-${shekel(household.recommended)} לחודש. זה חישוב, לא אישור עקרוני.`,
       ].join(' '),
-      cards: [
+      [
         {
           type: 'mortgage',
           monthly: priced.monthly,
@@ -399,7 +504,9 @@ export class EndUserToolsService {
           note: `דירה עד ${shekel(priced.price)}`,
         },
       ],
-    };
+      ctx.recentCards,
+      priced.price,
+    );
   }
 
   @AgentTool({
@@ -409,13 +516,13 @@ export class EndUserToolsService {
     group: 'mortgage',
     dto: CompareMixDto,
   })
-  compareMix(dto: CompareMixDto): ToolResult {
+  compareMix(dto: CompareMixDto, ctx: AgentContext): ToolResult {
     const years = dto.years ?? DEFAULT_YEARS;
     const preset = dto.preset ? MIX_PRESETS.find((item) => item.id === dto.preset) : undefined;
 
     if (!dto.parts?.length && !(preset && dto.loan)) {
       const list = MIX_PRESETS.map((item) => `${item.id}: ${item.name} — ${item.blurb}`).join('\n');
-      return { summary: `אין מה להשוות עדיין. תמהילים מוכנים:\n${list}` };
+      return attachMortgageCalculator(`אין מה להשוות עדיין. תמהילים מוכנים:\n${list}`, [], ctx.recentCards);
     }
 
     const parts: MixPart[] = dto.parts?.length
@@ -424,15 +531,15 @@ export class EndUserToolsService {
     const summary = mix(parts);
     const problems = mixProblems(parts, dto.loan ?? summary.amount);
 
-    return {
-      summary: [
+    return attachMortgageCalculator(
+      [
         `תמהיל ${preset?.name ?? 'מותאם'}${preset ? ` — ${preset.blurb}` : ''}.`,
         `החזר ${shekel(Math.round(summary.monthly))} לחודש, סה״כ ריבית ${shekel(Math.round(summary.totalInterest))}.`,
         `חלק משתנה ${(summary.variableShare * 100).toFixed(0)}%, חלק צמוד ${(summary.linkedShare * 100).toFixed(0)}%.`,
         problems.length ? `חריגות: ${problems.map(describeProblem).join(', ')}.` : 'עומד בכללי התמהיל.',
         'הריביות להמחשה ואינן הצעה.',
       ].join(' '),
-      cards: [
+      [
         {
           type: 'mortgage',
           monthly: Math.round(summary.monthly),
@@ -441,7 +548,8 @@ export class EndUserToolsService {
           note: preset?.name ?? 'תמהיל',
         },
       ],
-    };
+      ctx.recentCards,
+    );
   }
 
   @AgentTool({

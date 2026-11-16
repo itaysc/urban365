@@ -34,6 +34,13 @@ export class AreaPricesDto {
   @IsOptional() @Type(() => Number) @IsNumber() @Min(1) @Max(15) rooms?: number;
 }
 
+export class StreetHistoryDto {
+  @IsString() @MinLength(2) @MaxLength(80) city!: string;
+  @IsString() @MinLength(2) @MaxLength(80) street!: string;
+  @IsOptional() @Type(() => Number) @IsNumber() @Min(1) @Max(15) rooms?: number;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(25) years?: number;
+}
+
 export class EstimateValueDto {
   @IsString() @MinLength(2) @MaxLength(80) city!: string;
   @IsOptional() @IsString() @MaxLength(120) street?: string;

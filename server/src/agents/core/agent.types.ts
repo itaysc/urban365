@@ -11,6 +11,11 @@ export interface AgentContext {
   agentId: string;
   principal: Principal | null;
   visitorId: string | null;
+  /**
+   * Cards already drawn in the last few messages, including earlier tools in this
+   * turn. A tool uses them to avoid sending the same link again.
+   */
+  recentCards?: AgentCard[];
 }
 
 /**

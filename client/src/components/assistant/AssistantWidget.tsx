@@ -147,7 +147,7 @@ export function AssistantPanel({ pathname, onSignIn, signInHref }: {
         <section className="u365-asst-panel" aria-label="עוזר">
           <header className="u365-asst-head">
             <div>
-              <div className="u365-asst-title">עוזר Urban365</div>
+              <div className="u365-asst-title">עוזר AI</div>
               <div className="u365-asst-note">חיפוש, מחירים ומשכנתא. לא ייעוץ.</div>
             </div>
             <button type="button" onClick={() => setOpen(false)} aria-label="סגירה" className="u365-asst-x">

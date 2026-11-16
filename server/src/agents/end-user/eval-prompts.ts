@@ -13,6 +13,7 @@ export const EVAL_PROMPTS: { prompt: string; tool: string }[] = [
   { prompt: 'איך כותבים את שם השכונה פלורנטין', tool: 'resolve_place' },
   { prompt: 'יש רחוב הרצל בחולון?', tool: 'resolve_place' },
   { prompt: 'כמה עולה דירה בנתניה', tool: 'area_prices' },
+  { prompt: 'מה היסטוריית המחירים ברחוב ויצמן בחולון', tool: 'street_price_history' },
   { prompt: 'מה המחיר למטר בבאר שבע', tool: 'area_prices' },
   { prompt: 'תעריך דירת 4 חדרים, 100 מטר, ברחובות', tool: 'estimate_value' },
   { prompt: 'מה השווי של 3 חדרים 80 מטר בגבעתיים', tool: 'estimate_value' },
