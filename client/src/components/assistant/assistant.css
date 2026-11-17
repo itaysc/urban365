@@ -73,11 +73,54 @@
   font-size: 0.75rem;
 }
 
+.u365-asst-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
 .u365-asst-x {
   border: 0;
   background: transparent;
   color: #94a3b8;
   cursor: pointer;
+}
+
+.u365-asst-x:disabled {
+  cursor: default;
+  opacity: 0.4;
+}
+
+.u365-asst-confirm {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-bottom: 1px solid #f1f5f9;
+  padding: 0.5rem 1rem;
+  color: #334155;
+  font-size: 0.875rem;
+}
+
+.u365-asst-confirm span {
+  flex: 1;
+}
+
+.u365-asst-confirm button {
+  border: 0;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+  font: inherit;
+}
+
+.u365-asst-confirm button.is-danger {
+  color: #b91c1c;
+  font-weight: 600;
+}
+
+.u365-asst-confirm button:disabled {
+  cursor: default;
+  opacity: 0.4;
 }
 
 .u365-asst-x svg {
@@ -90,6 +133,7 @@
   flex: 1;
   flex-direction: column;
   gap: 0.75rem;
+  min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
   padding: 0.75rem 1rem;
@@ -225,7 +269,7 @@ a.u365-asst-signin {
 
 .u365-asst-history-row {
   display: grid;
-  grid-template-columns: 2.4rem minmax(0, 1fr) auto;
+  grid-template-columns: 3.2rem minmax(0, 1fr) auto;
   grid-template-areas:
     'year bar price'
     'year detail detail';
@@ -274,6 +318,10 @@ a.u365-asst-signin {
 
 .u365-asst-history-bar.is-latest {
   background: #1d4ed8;
+}
+
+.u365-asst-history-bar.is-now {
+  background: #0f766e;
 }
 
 .u365-asst-history-sales {

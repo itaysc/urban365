@@ -11,7 +11,7 @@ import { cityKey } from '../../listings/city-name.js';
 import { listingPath } from '../../seo/listing-slug.js';
 import { blogPost } from '../../seo/blog.js';
 import { HOME_GUIDE } from '../../seo/home-guide.js';
-import { summarise, byRooms, type StatRow } from '../../seo/stats.js';
+import { summarise, byRooms, median, type StatRow } from '../../seo/stats.js';
 import { cellRangeWithin } from '../../cadastre/parcel-index.js';
 import { metresBetween } from '../../valuation/geo.js';
 import { PlaceService } from '../../valuation/place.service.js';
@@ -52,9 +52,11 @@ import {
   STREET_HISTORY_LIMIT,
   STREET_HISTORY_RADIUS_METRES,
   STREET_HISTORY_YEARS,
+  listingOnStreet,
   pickStreet,
   streetHistoryCard,
   streetHistorySummary,
+  type AskingPrices,
 } from './street-history.js';
 import { attachMortgageCalculator } from './mortgage-link.js';
 import { pageHref, PAGE_LINKS } from './pages.js';
@@ -209,7 +211,7 @@ export class EndUserToolsService {
 
   @AgentTool({
     name: 'area_prices',
-    description: 'מחיר אופייני למכירה בעיר או בשכונה, לפי המודעות שמוצגות עכשיו. לא מחיר עסקה.',
+    description: 'מחיר אופייני למכירה בעיר או בשכונה, לפי המודעות שמוצגות עכשיו. לא רחוב ולא מחיר עסקה.',
     audiences: ['end-user'],
     group: 'pricing',
     dto: AreaPricesDto,
@@ -268,7 +270,7 @@ export class EndUserToolsService {
   @AgentTool({
     name: 'street_price_history',
     description:
-      'היסטוריית מחירי עסקאות מגורים שנרשמו ליד רחוב בעיר, חציון שנתי ומחיר למ"ר. לשאלה כמו היסטוריית מחירים ברחוב. לא מחירי מודעות.',
+      'מחיר ברחוב: חציון שנתי של עסקאות שנרשמו ליד הרחוב, וגם חציון המודעות שמוצגות עכשיו. להיסטוריה ולשאלה על מחיר ממוצע לדירת מספר חדרים ברחוב. העבר rooms כשצוינו חדרים.',
     audiences: ['end-user'],
     group: 'pricing',
     dto: StreetHistoryDto,
@@ -347,17 +349,57 @@ export class EndUserToolsService {
         pricePerSqm: row.pricePerSqm,
       }));
 
+    const asking = await this.askingOnStreet(place.settlement, dto.city, picked.name, dto.rooms);
     const history = {
       city: place.settlement,
       street: picked.name,
       years,
       deals,
       truncated: rows.length === STREET_HISTORY_LIMIT,
+      rooms: dto.rooms,
+      asking,
     };
     const card = streetHistoryCard(history);
     return {
       summary: streetHistorySummary(history),
       ...(card ? { cards: [card] } : {}),
+    };
+  }
+
+  /** Published for-sale listings on this street, matched the way a person names it. */
+  private async askingOnStreet(
+    settlement: string,
+    city: string,
+    street: string,
+    rooms?: number,
+  ): Promise<AskingPrices | null> {
+    const cities = [...new Set([settlement.trim(), city.trim()].filter((name) => name.length > 0))];
+    const rows = await this.prisma.listing.findMany({
+      where: {
+        status: 'published',
+        delistedAt: null,
+        section: 'forsale',
+        OR: cities.map((name) => ({ city: { equals: name, mode: 'insensitive' as const } })),
+        price: { gt: 0 },
+        ...(rooms !== undefined ? { rooms } : {}),
+        AND: [FROM_A_VISIBLE_AGENCY],
+      },
+      select: { street: true, price: true, pricePerSquareMeter: true },
+      take: 400,
+    });
+
+    const onStreet = rows.filter(
+      (row) => row.street && row.price !== null && row.price > 0 && listingOnStreet(row.street, street),
+    );
+    if (onStreet.length === 0) return null;
+
+    const perSqm = onStreet
+      .map((row) => row.pricePerSquareMeter)
+      .filter((value): value is number => value !== null && value > 0);
+    return {
+      count: onStreet.length,
+      median: median(onStreet.map((row) => row.price as number)) ?? 0,
+      perSqm: perSqm.length > 0 ? median(perSqm) : null,
     };
   }
 

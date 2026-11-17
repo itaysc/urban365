@@ -37,6 +37,13 @@ export interface RecordedDeal {
   pricePerSqm: number | null;
 }
 
+/** Asking prices of listings on the street that are on the site right now. */
+export interface AskingPrices {
+  count: number;
+  median: number;
+  perSqm: number | null;
+}
+
 /** "רחוב ויצמן 15" is the street ויצמן. The register has no house numbers. */
 export function streetQueryName(text: string): string {
   return text.trim().replace(HOUSE_NUMBER, '').trim();
@@ -75,6 +82,21 @@ export function pickStreet(query: string, names: string[]): { name: string } | {
   return { choices: starts.slice(0, 8) };
 }
 
+/**
+ * Whether a listing's street line is the register's street.
+ *
+ * Same test as a person's question, but only the exact name or the same words:
+ * a listing on ויצמן is not a listing on ככר ויצמן.
+ */
+export function listingOnStreet(written: string, registered: string): boolean {
+  const asked = streetQueryName(written);
+  if (!asked) return false;
+  if (cityKey(asked) === cityKey(registered)) return true;
+  const left = streetWords(asked);
+  const right = streetWords(registered);
+  return left.length > 0 && sameWords(left, right);
+}
+
 /** The name, without quotes and without the word that only names the kind of road. */
 function streetWords(name: string): string[] {
   return cityKey(name)
@@ -96,13 +118,23 @@ export function streetHistorySummary(input: {
   years: number;
   deals: RecordedDeal[];
   truncated: boolean;
+  rooms?: number;
+  asking?: AskingPrices | null;
 }): string {
   const { city, street, years, deals, truncated } = input;
   const where = `רחוב ${street}, ${city}`;
   const window = `ב־${years} השנים האחרונות`;
+  const subject = input.rooms ? `המספרים הם לדירות ${input.rooms} חדרים.` : '';
+  const ads = askingLine(input.rooms, input.asking);
 
   if (deals.length === 0) {
-    return `לא נמצאו עסקאות מגורים שנרשמו בטווח ${STREET_HISTORY_RADIUS_METRES} מטר מ${where} ${window}.`;
+    return [
+      subject,
+      `לא נמצאו עסקאות מגורים שנרשמו בטווח ${STREET_HISTORY_RADIUS_METRES} מטר מ${where} ${window}.`,
+      ads,
+    ]
+      .filter(Boolean)
+      .join('\n');
   }
 
   const byYear = new Map<number, RecordedDeal[]>();
@@ -138,8 +170,10 @@ export function streetHistorySummary(input: {
     );
 
   return [
+    subject,
     `עסקאות מגורים שנרשמו בטווח ${STREET_HISTORY_RADIUS_METRES} מטר מ${where}, ${window}.`,
     'למרשם אין שם רחוב, אז אלה עסקאות בסביבת הרחוב ולא רק בבניינים שעליו. עסקה מופיעה כשלושה חודשים אחרי החתימה, וזה אינו שמאות.',
+    ads,
     truncated ? `המדגם חתוך ל-${STREET_HISTORY_LIMIT.toLocaleString('he-IL')} העסקאות האחרונות.` : '',
     lines.join('\n'),
     recent.length ? `אחרונות:\n${recent.join('\n')}` : '',
@@ -156,8 +190,10 @@ export function streetHistoryCard(input: {
   city: string;
   street: string;
   deals: RecordedDeal[];
+  rooms?: number;
+  asking?: AskingPrices | null;
 }): Extract<AgentCard, { type: 'price-history' }> | null {
-  if (input.deals.length === 0) return null;
+  if (input.deals.length === 0 && !input.asking) return null;
 
   const byYear = new Map<number, RecordedDeal[]>();
   for (const deal of input.deals) {
@@ -192,9 +228,22 @@ export function streetHistoryCard(input: {
     city: input.city,
     street: input.street,
     radiusMetres: STREET_HISTORY_RADIUS_METRES,
+    rooms: input.rooms ?? null,
     years,
     recent,
+    asking: input.asking ?? null,
   };
+}
+
+function askingLine(rooms: number | undefined, asking: AskingPrices | null | undefined): string {
+  if (asking && asking.count > 0) {
+    const per = asking.perSqm !== null ? `, ${shekel(asking.perSqm)} למ"ר` : '';
+    const what = rooms ? `לדירת ${rooms} חדרים ` : '';
+    const count = asking.count === 1 ? 'מודעה אחת' : `${asking.count} מודעות`;
+    return `מודעות שמוצגות עכשיו ${what}ברחוב: ${count}, חציון ${shekel(asking.median)}${per}. זה מחיר ביקוש, לא מחיר עסקה.`;
+  }
+  if (rooms) return `אין כרגע מודעה עם מחיר לדירת ${rooms} חדרים ברחוב.`;
+  return 'אין כרגע מודעה עם מחיר ברחוב.';
 }
 
 /** `01/06/2024`. The calendar day of the sale, not the hour it was stored. */

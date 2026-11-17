@@ -86,6 +86,18 @@ export class ConversationStore {
   }
 
   /**
+   * Deletes this caller's transcripts for the agent, messages included.
+   *
+   * A signed-in person also loses the anonymous chats still sitting on this browser,
+   * so clearing the panel does not leave a copy that the next visit would claim.
+   */
+  async clear(caller: Caller): Promise<void> {
+    const where = historyWhere(caller);
+    if (!where) return;
+    await this.prisma.agentConversation.deleteMany({ where });
+  }
+
+  /**
    * Drops messages outside the last `AGENT_HISTORY_DAYS` days this person used the chat.
    *
    * The conversation being opened is kept even when that leaves it empty, so a
@@ -134,6 +146,17 @@ export class ConversationStore {
     });
     return toTranscript(row);
   }
+}
+
+/** Every conversation this caller is allowed to read. Nobody else's rows match. */
+export function historyWhere(caller: Caller): Prisma.AgentConversationWhereInput | null {
+  const owned: Prisma.AgentConversationWhereInput[] = [];
+  if (caller.userId) owned.push({ agentId: caller.agentId, userId: caller.userId });
+  if (caller.visitorId) {
+    owned.push({ agentId: caller.agentId, userId: null, visitorId: caller.visitorId });
+  }
+  if (owned.length === 0) return null;
+  return owned.length === 1 ? owned[0] : { OR: owned };
 }
 
 function ownerWhere(caller: Caller): Prisma.AgentConversationWhereInput | null {

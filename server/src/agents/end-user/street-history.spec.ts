@@ -1,4 +1,10 @@
-import { pickStreet, streetHistoryCard, streetHistorySummary, streetQueryName } from './street-history.js';
+import {
+  listingOnStreet,
+  pickStreet,
+  streetHistoryCard,
+  streetHistorySummary,
+  streetQueryName,
+} from './street-history.js';
 
 describe('street price history', () => {
   it('drops a house number', () => {
@@ -64,5 +70,65 @@ describe('street price history', () => {
       deals: [],
     });
     expect(summary).toContain('לא נמצאו עסקאות מגורים');
+    expect(summary).toContain('אין כרגע מודעה עם מחיר ברחוב');
+  });
+
+  it('treats a listing written surname-last as the same street', () => {
+    expect(listingOnStreet('צבי שיץ', 'שיץ צבי')).toBe(true);
+    expect(listingOnStreet("שד' דב הוז", 'שד הוז דב')).toBe(true);
+    expect(listingOnStreet('ויצמן', 'ככר ויצמן')).toBe(false);
+  });
+
+  it('reports current asking prices next to the yearly sales, including when nothing is for sale', () => {
+    const summary = streetHistorySummary({
+      city: 'חולון',
+      street: 'שיץ צבי',
+      years: 10,
+      truncated: false,
+      rooms: 4,
+      asking: { count: 2, median: 1_700_000, perSqm: 21_000 },
+      deals: [
+        { dealDate: new Date('2024-06-01T00:00:00Z'), amount: 1_800_000, rooms: 4, area: 90, pricePerSqm: 20_000 },
+      ],
+    });
+
+    expect(summary).toContain('המספרים הם לדירות 4 חדרים');
+    expect(summary).toContain('2024: עסקה אחת, חציון 1,800,000 ₪');
+    expect(summary).toContain('מודעות שמוצגות עכשיו לדירת 4 חדרים ברחוב: 2 מודעות, חציון 1,700,000 ₪');
+
+    const card = streetHistoryCard({
+      city: 'חולון',
+      street: 'שיץ צבי',
+      rooms: 4,
+      asking: { count: 2, median: 1_700_000, perSqm: 21_000 },
+      deals: [
+        { dealDate: new Date('2024-06-01T00:00:00Z'), amount: 1_800_000, rooms: 4, area: 90, pricePerSqm: 20_000 },
+      ],
+    });
+    expect(card?.rooms).toBe(4);
+    expect(card?.asking).toMatchObject({ count: 2, median: 1_700_000 });
+    expect(card?.years[0]).toMatchObject({ year: 2024, median: 1_800_000 });
+  });
+
+  it('still draws the current ads when no sale was recorded', () => {
+    const card = streetHistoryCard({
+      city: 'חולון',
+      street: 'שיץ צבי',
+      rooms: 4,
+      asking: { count: 1, median: 1_600_000, perSqm: null },
+      deals: [],
+    });
+    expect(card?.years).toEqual([]);
+    expect(card?.asking?.count).toBe(1);
+
+    const summary = streetHistorySummary({
+      city: 'חולון',
+      street: 'שיץ צבי',
+      years: 10,
+      truncated: false,
+      rooms: 4,
+      deals: [],
+    });
+    expect(summary).toContain('אין כרגע מודעה עם מחיר לדירת 4 חדרים ברחוב');
   });
 });

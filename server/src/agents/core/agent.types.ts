@@ -42,10 +42,14 @@ export type AgentCard =
       city: string;
       street: string;
       radiusMetres: number;
+      /** Set when the question was about one size, for example 4 rooms. */
+      rooms?: number | null;
       /** Newest year first. `median` and `perSqm` are shekels. */
       years: { year: number; count: number; median: number; perSqm: number | null }[];
       /** Newest sale first. `date` is `YYYY-MM-DD`. */
       recent: { date: string; amount: number; rooms: number | null; area: number | null; perSqm: number | null }[];
+      /** Median asking price of listings on the street that are published now. */
+      asking?: { count: number; median: number; perSqm: number | null } | null;
     };
 
 /** What a tool hands back. `summary` is for the model, `cards` are for the screen. */

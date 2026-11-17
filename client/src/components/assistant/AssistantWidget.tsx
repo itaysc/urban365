@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { MessageCircle, X } from 'lucide-react';
+import { MessageCircle, Trash2, X } from 'lucide-react';
 import { LoginDialog } from '@/components/auth/LoginDialog';
 import { formatPrice, formatShekel } from '@/lib/format';
 import sheet from './assistant.css?inline';
 import {
+  clearHistory,
   displayChatText,
+  stickAfterScroll,
   forgetConversation,
   formatChatDate,
   loadConversation,
@@ -79,10 +81,14 @@ export function AssistantPanel({ pathname, onSignIn, signInHref }: {
     });
   };
   const [pending, setPending] = useState(false);
+  const [confirmingClear, setConfirmingClear] = useState(false);
+  const [clearing, setClearing] = useState(false);
   const [draft, setDraft] = useState('');
   const [messages, setMessages] = useState<AssistantMessage[]>([]);
   const conversationId = useRef<string | null>(storedConversationId());
   const scroller = useRef<HTMLDivElement>(null);
+  const stickToBottom = useRef(true);
+  const touchY = useRef<number | null>(null);
 
   useEffect(() => {
     const id = conversationId.current;
@@ -103,14 +109,33 @@ export function AssistantPanel({ pathname, onSignIn, signInHref }: {
   }, []);
 
   useEffect(() => {
-    scroller.current?.scrollTo({ top: scroller.current.scrollHeight });
+    const node = scroller.current;
+    if (!node || !stickToBottom.current) return;
+    node.scrollTop = node.scrollHeight;
   }, [messages, open]);
 
   if (HIDDEN.some((pattern) => pattern.test(pathname))) return null;
 
+  const clear = async () => {
+    if (pending || clearing) return;
+    setClearing(true);
+    try {
+      const cleared = await clearHistory();
+      if (!cleared) return;
+      conversationId.current = null;
+      forgetConversation();
+      setMessages([]);
+      setConfirmingClear(false);
+    } finally {
+      setClearing(false);
+    }
+  };
+
   const send = async () => {
     const text = draft.trim();
     if (!text || pending) return;
+    stickToBottom.current = true;
+    setConfirmingClear(false);
     setDraft('');
     setPending(true);
     setMessages((current) => [...current, { role: 'user', content: text, cards: [], needsSignIn: false }, emptyAssistant()]);
@@ -152,12 +177,61 @@ export function AssistantPanel({ pathname, onSignIn, signInHref }: {
               <div className="u365-asst-title">עוזר AI</div>
               <div className="u365-asst-note">חיפוש, מחירים ומשכנתא. לא ייעוץ.</div>
             </div>
-            <button type="button" onClick={() => setOpen(false)} aria-label="סגירה" className="u365-asst-x">
-              <X />
-            </button>
+            <div className="u365-asst-actions">
+              {messages.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setConfirmingClear(true)}
+                  disabled={pending || clearing}
+                  aria-label="מחיקת השיחה"
+                  className="u365-asst-x"
+                >
+                  <Trash2 />
+                </button>
+              )}
+              <button type="button" onClick={() => setOpen(false)} aria-label="סגירה" className="u365-asst-x">
+                <X />
+              </button>
+            </div>
           </header>
+          {confirmingClear && (
+            <div className="u365-asst-confirm">
+              <span>למחוק את השיחה?</span>
+              <button type="button" onClick={() => setConfirmingClear(false)} disabled={clearing}>
+                ביטול
+              </button>
+              <button type="button" className="is-danger" onClick={() => void clear()} disabled={clearing}>
+                מחיקה
+              </button>
+            </div>
+          )}
 
-          <div ref={scroller} className="u365-asst-log">
+          <div
+            ref={scroller}
+            className="u365-asst-log"
+            onWheel={(event) => {
+              if (event.deltaY < 0 && event.currentTarget.scrollTop > 0) stickToBottom.current = false;
+            }}
+            onTouchStart={(event) => {
+              touchY.current = event.touches[0]?.clientY ?? null;
+            }}
+            onTouchMove={(event) => {
+              const y = event.touches[0]?.clientY;
+              if (y != null && touchY.current != null && y > touchY.current && event.currentTarget.scrollTop > 0) {
+                stickToBottom.current = false;
+              }
+              if (y != null) touchY.current = y;
+            }}
+            onScroll={(event) => {
+              const node = event.currentTarget;
+              stickToBottom.current = stickAfterScroll(
+                node.scrollTop,
+                node.scrollHeight,
+                node.clientHeight,
+                stickToBottom.current,
+              );
+            }}
+          >
             {messages.length === 0 && (
               <p className="u365-asst-empty">שאל אותי על דירות, מחירים, משכנתא ועוד... למשל: אני מחפש דירת 4 חדרים בנתניה</p>
             )}
@@ -284,8 +358,31 @@ function CardView({ card }: { card: AssistantCard }) {
 }
 
 function PriceHistoryCard({ card }: { card: Extract<AssistantCard, { type: 'price-history' }> }) {
-  const peak = Math.max(...card.years.map((year) => year.median), 1);
-  const latest = card.years[0]?.year;
+  const years = card.years ?? [];
+  const latest = years[0]?.year;
+  const bars = [
+    ...(card.asking
+      ? [
+          {
+            key: 'now',
+            label: 'עכשיו',
+            median: card.asking.median,
+            perSqm: card.asking.perSqm,
+            countLabel: card.asking.count === 1 ? 'מודעה אחת' : `${card.asking.count} מודעות`,
+            kind: 'now' as const,
+          },
+        ]
+      : []),
+    ...years.map((year) => ({
+      key: String(year.year),
+      label: String(year.year),
+      median: year.median,
+      perSqm: year.perSqm,
+      countLabel: year.count === 1 ? 'עסקה אחת' : `${year.count} עסקאות`,
+      kind: year.year === latest ? ('latest' as const) : ('year' as const),
+    })),
+  ];
+  const peak = Math.max(...bars.map((bar) => bar.median), 1);
 
   return (
     <section className="u365-asst-history">
@@ -293,26 +390,38 @@ function PriceHistoryCard({ card }: { card: Extract<AssistantCard, { type: 'pric
       <h3 className="u365-asst-history-title">
         {card.street}, {card.city}
       </h3>
-      <p className="u365-asst-meta">חציון שנתי · {card.radiusMetres} מטר מהרחוב</p>
+      <p className="u365-asst-meta">
+        {[card.rooms ? `${card.rooms} חדרים` : '', `חציון שנתי · ${card.radiusMetres} מטר מהרחוב`]
+          .filter(Boolean)
+          .join(' · ')}
+      </p>
 
-      <ul className="u365-asst-history-years">
-        {card.years.map((year) => (
-          <li key={year.year} className="u365-asst-history-row">
-            <span className="u365-asst-history-label">{year.year}</span>
-            <span className="u365-asst-history-track">
-              <span
-                className={year.year === latest ? 'u365-asst-history-bar is-latest' : 'u365-asst-history-bar'}
-                style={{ width: `${Math.max(8, Math.round((year.median / peak) * 100))}%` }}
-              />
-            </span>
-            <span className="u365-asst-history-figure">{formatShekel(year.median)}</span>
-            <span className="u365-asst-meta u365-asst-history-detail">
-              {year.count === 1 ? 'עסקה אחת' : `${year.count} עסקאות`}
-              {year.perSqm !== null ? ` · ${formatShekel(year.perSqm)} למ"ר` : ''}
-            </span>
-          </li>
-        ))}
-      </ul>
+      {bars.length > 0 && (
+        <ul className="u365-asst-history-years">
+          {bars.map((bar) => (
+            <li key={bar.key} className="u365-asst-history-row">
+              <span className="u365-asst-history-label">{bar.label}</span>
+              <span className="u365-asst-history-track">
+                <span
+                  className={
+                    bar.kind === 'now'
+                      ? 'u365-asst-history-bar is-now'
+                      : bar.kind === 'latest'
+                        ? 'u365-asst-history-bar is-latest'
+                        : 'u365-asst-history-bar'
+                  }
+                  style={{ width: `${Math.max(8, Math.round((bar.median / peak) * 100))}%` }}
+                />
+              </span>
+              <span className="u365-asst-history-figure">{formatShekel(bar.median)}</span>
+              <span className="u365-asst-meta u365-asst-history-detail">
+                {bar.countLabel}
+                {bar.perSqm !== null ? ` · ${formatShekel(bar.perSqm)} למ"ר` : ''}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
 
       {card.recent.length > 0 && (
         <div className="u365-asst-history-sales">

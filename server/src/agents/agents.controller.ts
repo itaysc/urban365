@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Post,
@@ -62,6 +63,24 @@ export class AgentsController {
       id,
     );
     return { id: transcript.id, messages: transcriptView(transcript.messages) };
+  }
+
+  @Delete(':agentId/conversations')
+  async clear(
+    @Param('agentId') agentId: string,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+    @CurrentUser() principal?: Principal,
+  ) {
+    const agent = this.catalog.get(agentId);
+    this.assertAccess(agent.id, principal);
+    const caller = await this.caller(agent.id, req, res, principal);
+    await this.store.clear({
+      agentId,
+      userId: caller.principal?.userId ?? null,
+      visitorId: caller.visitorId ?? null,
+    });
+    return { cleared: true };
   }
 
   @Post(':agentId/chat')

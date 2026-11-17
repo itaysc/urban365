@@ -19,8 +19,10 @@ export type AssistantCard =
       city: string;
       street: string;
       radiusMetres: number;
+      rooms?: number | null;
       years: { year: number; count: number; median: number; perSqm: number | null }[];
       recent: { date: string; amount: number; rooms: number | null; area: number | null; perSqm: number | null }[];
+      asking?: { count: number; median: number; perSqm: number | null } | null;
     };
 
 export interface AssistantMessage {
@@ -38,6 +40,25 @@ export function displayChatText(text: string): string {
     if (monthNumber < 1 || monthNumber > 12 || dayNumber < 1 || dayNumber > 31) return match;
     return `${day}/${month}/${year}`;
   });
+}
+
+/**
+ * Whether new text should keep pulling the log down.
+ *
+ * Far from the bottom means the reader moved up and must be left there. Back at the
+ * bottom means they want to follow again. A small gap keeps the previous choice, so
+ * a layout rounding does not cancel a scroll that has already let go.
+ */
+export function stickAfterScroll(
+  scrollTop: number,
+  scrollHeight: number,
+  clientHeight: number,
+  currentlyStuck: boolean,
+): boolean {
+  const distance = scrollHeight - scrollTop - clientHeight;
+  if (distance > 48) return false;
+  if (distance <= 1) return true;
+  return currentlyStuck;
 }
 
 /** The day of an ISO date, as `DD/MM/YYYY`, without shifting it across a timezone. */
@@ -88,6 +109,16 @@ export function forgetConversation(): void {
   } catch {
     // Nothing to clear is not a failure.
   }
+}
+
+/** Deletes this browser's transcript on the server. The panel forgets its id only after this succeeds. */
+export async function clearHistory(): Promise<boolean> {
+  const response = await fetch(`${apiBaseUrl}/agents/end-user/conversations`, {
+    method: 'DELETE',
+    credentials: 'include',
+    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+  });
+  return response.ok;
 }
 
 export async function loadConversation(id: string): Promise<AssistantMessage[] | null> {
