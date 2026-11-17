@@ -101,6 +101,35 @@
   font-size: 0.875rem;
 }
 
+.u365-asst-thinking {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  background: linear-gradient(90deg, #94a3b8 0%, #94a3b8 40%, #0f172a 50%, #94a3b8 60%, #94a3b8 100%);
+  background-size: 200% 100%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  animation: u365-asst-shimmer 1.4s linear infinite;
+}
+
+@keyframes u365-asst-shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .u365-asst-thinking {
+    animation: none;
+    background: none;
+    color: #64748b;
+  }
+}
+
 .u365-asst-user,
 .u365-asst-bot {
   margin: 0;
@@ -165,6 +194,102 @@
 a.u365-asst-signin {
   display: inline-block;
   text-decoration: none;
+}
+
+.u365-asst-history {
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  background: linear-gradient(180deg, #f8fafc 0%, #fff 2.5rem);
+  padding: 0.75rem;
+}
+
+.u365-asst-history-kicker {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.u365-asst-history-title {
+  margin: 0.15rem 0 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.u365-asst-history-years,
+.u365-asst-history-sales ul {
+  margin: 0.75rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.u365-asst-history-row {
+  display: grid;
+  grid-template-columns: 2.4rem minmax(0, 1fr) auto;
+  grid-template-areas:
+    'year bar price'
+    'year detail detail';
+  align-items: center;
+  gap: 0.15rem 0.4rem;
+  margin-top: 0.55rem;
+}
+
+.u365-asst-history-label {
+  grid-area: year;
+}
+
+.u365-asst-history-figure {
+  grid-area: price;
+}
+
+.u365-asst-history-detail {
+  grid-area: detail;
+}
+
+.u365-asst-history-label,
+.u365-asst-history-figure {
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.u365-asst-history-figure {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.u365-asst-history-track {
+  grid-area: bar;
+  height: 0.45rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e2e8f0;
+}
+
+.u365-asst-history-bar {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: #94a3b8;
+}
+
+.u365-asst-history-bar.is-latest {
+  background: #1d4ed8;
+}
+
+.u365-asst-history-sales {
+  margin-top: 0.75rem;
+  border-top: 1px solid #f1f5f9;
+  padding-top: 0.65rem;
+}
+
+.u365-asst-history-sales li {
+  display: grid;
+  grid-template-columns: 5.2rem minmax(0, 1fr) auto;
+  gap: 0.35rem;
+  align-items: baseline;
+  margin-top: 0.35rem;
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
 }
 
 .u365-asst-form {

@@ -1,3 +1,4 @@
+import type { AgentCard } from '../core/agent.types.js';
 import { cityKey } from '../../listings/city-name.js';
 import { median } from '../../seo/stats.js';
 
@@ -126,7 +127,7 @@ export function streetHistorySummary(input: {
     .slice(0, 5)
     .map((deal) =>
       [
-        deal.dealDate.toISOString().slice(0, 10),
+        dayMonthYear(deal.dealDate),
         deal.rooms !== null ? `${deal.rooms} חד'` : '',
         deal.area !== null ? `${deal.area} מ"ר` : '',
         shekel(deal.amount),
@@ -145,6 +146,61 @@ export function streetHistorySummary(input: {
   ]
     .filter(Boolean)
     .join('\n');
+}
+
+/**
+ * The chart the chat draws. The model still reads `streetHistorySummary`; this is
+ * only for the screen, so a year of sales is a bar rather than a line of text.
+ */
+export function streetHistoryCard(input: {
+  city: string;
+  street: string;
+  deals: RecordedDeal[];
+}): Extract<AgentCard, { type: 'price-history' }> | null {
+  if (input.deals.length === 0) return null;
+
+  const byYear = new Map<number, RecordedDeal[]>();
+  for (const deal of input.deals) {
+    const year = deal.dealDate.getUTCFullYear();
+    const list = byYear.get(year) ?? [];
+    list.push(deal);
+    byYear.set(year, list);
+  }
+
+  const years = [...byYear.entries()]
+    .sort((a, b) => b[0] - a[0])
+    .map(([year, rows]) => ({
+      year,
+      count: rows.length,
+      median: median(rows.map((row) => row.amount)) ?? 0,
+      perSqm: median(rows.map((row) => row.pricePerSqm).filter((value): value is number => value !== null && value > 0)),
+    }));
+
+  const recent = [...input.deals]
+    .sort((a, b) => b.dealDate.getTime() - a.dealDate.getTime())
+    .slice(0, 5)
+    .map((deal) => ({
+      date: deal.dealDate.toISOString().slice(0, 10),
+      amount: deal.amount,
+      rooms: deal.rooms,
+      area: deal.area,
+      perSqm: deal.pricePerSqm,
+    }));
+
+  return {
+    type: 'price-history',
+    city: input.city,
+    street: input.street,
+    radiusMetres: STREET_HISTORY_RADIUS_METRES,
+    years,
+    recent,
+  };
+}
+
+/** `01/06/2024`. The calendar day of the sale, not the hour it was stored. */
+function dayMonthYear(date: Date): string {
+  const [year, month, day] = date.toISOString().slice(0, 10).split('-');
+  return `${day}/${month}/${year}`;
 }
 
 function dealCount(count: number): string {

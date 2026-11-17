@@ -5,7 +5,9 @@ import { LoginDialog } from '@/components/auth/LoginDialog';
 import { formatPrice, formatShekel } from '@/lib/format';
 import sheet from './assistant.css?inline';
 import {
+  displayChatText,
   forgetConversation,
+  formatChatDate,
   loadConversation,
   rememberAssistantOpen,
   rememberConversation,
@@ -159,30 +161,47 @@ export function AssistantPanel({ pathname, onSignIn, signInHref }: {
             {messages.length === 0 && (
               <p className="u365-asst-empty">שאל אותי על דירות, מחירים, משכנתא ועוד... למשל: אני מחפש דירת 4 חדרים בנתניה</p>
             )}
-            {messages.map((message, index) => (
-              <article key={index} className={message.role === 'user' ? 'u365-asst-mine' : undefined}>
-                {message.content && (
-                  <p className={message.role === 'user' ? 'u365-asst-user' : 'u365-asst-bot'}>{message.content}</p>
-                )}
-                {message.cards.length > 0 && (
-                  <div className="u365-asst-cards">
-                    {message.cards.map((card, cardIndex) => (
-                      <CardView key={cardIndex} card={card} />
-                    ))}
-                  </div>
-                )}
-                {message.needsSignIn &&
-                  (signInHref ? (
-                    <a className="u365-asst-signin" href={signInHref}>
-                      התחברות
-                    </a>
+            {messages.map((message, index) => {
+              const thinking =
+                pending &&
+                index === messages.length - 1 &&
+                message.role === 'assistant' &&
+                message.content === '' &&
+                message.cards.length === 0 &&
+                !message.needsSignIn;
+              return (
+                <article key={index} className={message.role === 'user' ? 'u365-asst-mine' : undefined}>
+                  {thinking ? (
+                    <p className="u365-asst-thinking" role="status">
+                      חושב...
+                    </p>
                   ) : (
-                    <button type="button" className="u365-asst-signin" onClick={onSignIn}>
-                      התחברות
-                    </button>
-                  ))}
-              </article>
-            ))}
+                    message.content && (
+                      <p className={message.role === 'user' ? 'u365-asst-user' : 'u365-asst-bot'}>
+                        {displayChatText(message.content)}
+                      </p>
+                    )
+                  )}
+                  {message.cards.length > 0 && (
+                    <div className="u365-asst-cards">
+                      {message.cards.map((card, cardIndex) => (
+                        <CardView key={cardIndex} card={card} />
+                      ))}
+                    </div>
+                  )}
+                  {message.needsSignIn &&
+                    (signInHref ? (
+                      <a className="u365-asst-signin" href={signInHref}>
+                        התחברות
+                      </a>
+                    ) : (
+                      <button type="button" className="u365-asst-signin" onClick={onSignIn}>
+                        התחברות
+                      </button>
+                    ))}
+                </article>
+              );
+            })}
           </div>
 
           <form
@@ -239,6 +258,8 @@ function CardView({ card }: { card: AssistantCard }) {
     );
   }
 
+  if (card.type === 'price-history') return <PriceHistoryCard card={card} />;
+
   if (card.type === 'mortgage') {
     return (
       <div className="u365-asst-card">
@@ -259,5 +280,58 @@ function CardView({ card }: { card: AssistantCard }) {
       </div>
       <div className="u365-asst-meta">{card.city} · טווח, לא שמאות</div>
     </div>
+  );
+}
+
+function PriceHistoryCard({ card }: { card: Extract<AssistantCard, { type: 'price-history' }> }) {
+  const peak = Math.max(...card.years.map((year) => year.median), 1);
+  const latest = card.years[0]?.year;
+
+  return (
+    <section className="u365-asst-history">
+      <p className="u365-asst-history-kicker">היסטוריית מחירי עסקאות</p>
+      <h3 className="u365-asst-history-title">
+        {card.street}, {card.city}
+      </h3>
+      <p className="u365-asst-meta">חציון שנתי · {card.radiusMetres} מטר מהרחוב</p>
+
+      <ul className="u365-asst-history-years">
+        {card.years.map((year) => (
+          <li key={year.year} className="u365-asst-history-row">
+            <span className="u365-asst-history-label">{year.year}</span>
+            <span className="u365-asst-history-track">
+              <span
+                className={year.year === latest ? 'u365-asst-history-bar is-latest' : 'u365-asst-history-bar'}
+                style={{ width: `${Math.max(8, Math.round((year.median / peak) * 100))}%` }}
+              />
+            </span>
+            <span className="u365-asst-history-figure">{formatShekel(year.median)}</span>
+            <span className="u365-asst-meta u365-asst-history-detail">
+              {year.count === 1 ? 'עסקה אחת' : `${year.count} עסקאות`}
+              {year.perSqm !== null ? ` · ${formatShekel(year.perSqm)} למ"ר` : ''}
+            </span>
+          </li>
+        ))}
+      </ul>
+
+      {card.recent.length > 0 && (
+        <div className="u365-asst-history-sales">
+          <p className="u365-asst-history-kicker">עסקאות אחרונות</p>
+          <ul>
+            {card.recent.map((sale) => (
+              <li key={`${sale.date}-${sale.amount}-${sale.area ?? 0}`}>
+                <span>{formatChatDate(sale.date)}</span>
+                <span className="u365-asst-meta">
+                  {[sale.rooms !== null ? `${sale.rooms} חד'` : '', sale.area !== null ? `${sale.area} מ"ר` : '']
+                    .filter(Boolean)
+                    .join(' · ')}
+                </span>
+                <span>{formatShekel(sale.amount)}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </section>
   );
 }

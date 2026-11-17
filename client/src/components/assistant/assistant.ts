@@ -13,13 +13,38 @@ export type AssistantCard =
     }
   | { type: 'mortgage'; monthly: number; loan: number; years: number; note: string }
   | { type: 'valuation'; low: number | null; high: number | null; verdict: string; city: string }
-  | { type: 'link'; href: string; label: string };
+  | { type: 'link'; href: string; label: string }
+  | {
+      type: 'price-history';
+      city: string;
+      street: string;
+      radiusMetres: number;
+      years: { year: number; count: number; median: number; perSqm: number | null }[];
+      recent: { date: string; amount: number; rooms: number | null; area: number | null; perSqm: number | null }[];
+    };
 
 export interface AssistantMessage {
   role: 'user' | 'assistant';
   content: string;
   cards: AssistantCard[];
   needsSignIn: boolean;
+}
+
+/** `2024-06-01` becomes `01/06/2024`. Anything that is not a calendar day is left as written. */
+export function displayChatText(text: string): string {
+  return text.replace(/\b(\d{4})-(\d{2})-(\d{2})\b/g, (match, year: string, month: string, day: string) => {
+    const monthNumber = Number(month);
+    const dayNumber = Number(day);
+    if (monthNumber < 1 || monthNumber > 12 || dayNumber < 1 || dayNumber > 31) return match;
+    return `${day}/${month}/${year}`;
+  });
+}
+
+/** The day of an ISO date, as `DD/MM/YYYY`, without shifting it across a timezone. */
+export function formatChatDate(iso: string): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
+  if (!match) return iso;
+  return `${match[3]}/${match[2]}/${match[1]}`;
 }
 
 const STORAGE_KEY = 'nadlan:assistant:end-user';

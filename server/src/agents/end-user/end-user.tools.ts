@@ -53,6 +53,7 @@ import {
   STREET_HISTORY_RADIUS_METRES,
   STREET_HISTORY_YEARS,
   pickStreet,
+  streetHistoryCard,
   streetHistorySummary,
 } from './street-history.js';
 import { attachMortgageCalculator } from './mortgage-link.js';
@@ -346,14 +347,17 @@ export class EndUserToolsService {
         pricePerSqm: row.pricePerSqm,
       }));
 
+    const history = {
+      city: place.settlement,
+      street: picked.name,
+      years,
+      deals,
+      truncated: rows.length === STREET_HISTORY_LIMIT,
+    };
+    const card = streetHistoryCard(history);
     return {
-      summary: streetHistorySummary({
-        city: place.settlement,
-        street: picked.name,
-        years,
-        deals,
-        truncated: rows.length === STREET_HISTORY_LIMIT,
-      }),
+      summary: streetHistorySummary(history),
+      ...(card ? { cards: [card] } : {}),
     };
   }
 

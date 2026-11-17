@@ -36,7 +36,17 @@ export type AgentCard =
     }
   | { type: 'mortgage'; monthly: number; loan: number; years: number; note: string }
   | { type: 'valuation'; low: number | null; high: number | null; verdict: string; city: string }
-  | { type: 'link'; href: string; label: string };
+  | { type: 'link'; href: string; label: string }
+  | {
+      type: 'price-history';
+      city: string;
+      street: string;
+      radiusMetres: number;
+      /** Newest year first. `median` and `perSqm` are shekels. */
+      years: { year: number; count: number; median: number; perSqm: number | null }[];
+      /** Newest sale first. `date` is `YYYY-MM-DD`. */
+      recent: { date: string; amount: number; rooms: number | null; area: number | null; perSqm: number | null }[];
+    };
 
 /** What a tool hands back. `summary` is for the model, `cards` are for the screen. */
 export interface ToolResult {

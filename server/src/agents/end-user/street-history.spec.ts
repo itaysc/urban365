@@ -1,4 +1,4 @@
-import { pickStreet, streetHistorySummary, streetQueryName } from './street-history.js';
+import { pickStreet, streetHistoryCard, streetHistorySummary, streetQueryName } from './street-history.js';
 
 describe('street price history', () => {
   it('drops a house number', () => {
@@ -36,7 +36,23 @@ describe('street price history', () => {
     expect(summary).toContain('למרשם אין שם רחוב');
     expect(summary).toContain('2024: 2 עסקאות, חציון 1,900,000 ₪');
     expect(summary).toContain('2023: עסקה אחת, חציון 1,500,000 ₪');
-    expect(summary).toContain('2024-06-01 | 3 חד\' | 80 מ"ר');
+    expect(summary).toContain('01/06/2024 | 3 חד\' | 80 מ"ר');
+  });
+
+  it('builds a chart of yearly medians and keeps sale dates as calendar days', () => {
+    const card = streetHistoryCard({
+      city: 'חולון',
+      street: 'ויצמן',
+      deals: [
+        { dealDate: new Date('2024-03-01T00:00:00Z'), amount: 2_000_000, rooms: 4, area: 100, pricePerSqm: 20_000 },
+        { dealDate: new Date('2024-06-01T00:00:00Z'), amount: 1_800_000, rooms: 3, area: 80, pricePerSqm: 22_500 },
+        { dealDate: new Date('2023-01-15T00:00:00Z'), amount: 1_500_000, rooms: 3, area: 75, pricePerSqm: 20_000 },
+      ],
+    });
+
+    expect(card?.years.map((year) => year.year)).toEqual([2024, 2023]);
+    expect(card?.years[0]).toMatchObject({ count: 2, median: 1_900_000 });
+    expect(card?.recent[0]?.date).toBe('2024-06-01');
   });
 
   it('says so when nothing was recorded nearby', () => {
