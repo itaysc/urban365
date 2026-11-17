@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { MessageCircle, Trash2, X } from 'lucide-react';
+import { Trash2, X } from 'lucide-react';
 import { LoginDialog } from '@/components/auth/LoginDialog';
 import { formatPrice, formatShekel } from '@/lib/format';
 import sheet from './assistant.css?inline';
@@ -73,6 +73,10 @@ export function AssistantPanel({ pathname, onSignIn, signInHref }: {
 }) {
   useAssistantStyles();
   const [open, setOpenState] = useState(storedAssistantOpen);
+  // `present` keeps the panel mounted through the slide out. `entered` is the
+  // frame after it is in the document, so the browser can animate from off-screen.
+  const [present, setPresent] = useState(open);
+  const [entered, setEntered] = useState(open);
   const setOpen = (next: boolean | ((value: boolean) => boolean)) => {
     setOpenState((current) => {
       const value = typeof next === 'function' ? next(current) : next;
@@ -89,6 +93,36 @@ export function AssistantPanel({ pathname, onSignIn, signInHref }: {
   const scroller = useRef<HTMLDivElement>(null);
   const stickToBottom = useRef(true);
   const touchY = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (open) {
+      setPresent(true);
+      return;
+    }
+    setEntered(false);
+  }, [open]);
+
+  useEffect(() => {
+    if (!open || !present || entered) return;
+    let second = 0;
+    const first = requestAnimationFrame(() => {
+      second = requestAnimationFrame(() => setEntered(true));
+    });
+    return () => {
+      cancelAnimationFrame(first);
+      if (second) cancelAnimationFrame(second);
+    };
+  }, [open, present, entered]);
+
+  useEffect(() => {
+    if (open || entered || !present) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      setPresent(false);
+      return;
+    }
+    const backup = window.setTimeout(() => setPresent(false), 320);
+    return () => window.clearTimeout(backup);
+  }, [open, entered, present]);
 
   useEffect(() => {
     const id = conversationId.current;
@@ -170,12 +204,20 @@ export function AssistantPanel({ pathname, onSignIn, signInHref }: {
 
   return (
     <>
-      {open && (
-        <section className="u365-asst-panel" aria-label="עוזר">
+      {present && (
+        <section
+          className={entered ? 'u365-asst-panel is-open' : 'u365-asst-panel'}
+          aria-label="עוזר"
+          aria-hidden={!entered}
+          onTransitionEnd={(event) => {
+            if (event.target !== event.currentTarget || event.propertyName !== 'transform' || open) return;
+            setPresent(false);
+          }}
+        >
           <header className="u365-asst-head">
             <div>
               <div className="u365-asst-title">עוזר AI</div>
-              <div className="u365-asst-note">חיפוש, מחירים ומשכנתא. לא ייעוץ.</div>
+              <div className="u365-asst-note">חיפוש דירות, מחירים, משכנתא ועוד...</div>
             </div>
             <div className="u365-asst-actions">
               {messages.length > 0 && (
@@ -299,12 +341,14 @@ export function AssistantPanel({ pathname, onSignIn, signInHref }: {
 
       <button
         type="button"
-        onClick={() => setOpen((value) => !value)}
-        aria-expanded={open}
-        aria-label={open ? 'סגירת העוזר' : 'פתיחת העוזר'}
-        className="u365-asst-button"
+        onClick={() => setOpen(true)}
+        aria-expanded={entered}
+        aria-label="פתיחת העוזר"
+        aria-hidden={entered}
+        tabIndex={entered ? -1 : 0}
+        className={entered ? 'u365-asst-button is-away' : 'u365-asst-button'}
       >
-        {open ? <X /> : <MessageCircle />}
+        <span className="u365-asst-mark">AI</span>
       </button>
     </>
   );
