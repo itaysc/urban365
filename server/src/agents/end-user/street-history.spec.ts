@@ -1,14 +1,22 @@
 import { pickStreet, streetHistorySummary, streetQueryName } from './street-history.js';
 
 describe('street price history', () => {
-  it('drops the word street and a house number', () => {
-    expect(streetQueryName('רחוב ויצמן 15')).toBe('ויצמן');
-    expect(streetQueryName('שדרות הרצל')).toBe('הרצל');
+  it('drops a house number', () => {
+    expect(streetQueryName('רחוב ויצמן 15')).toBe('רחוב ויצמן');
   });
 
   it('keeps the street that was named when a square shares the name', () => {
     expect(pickStreet('ויצמן', ['ויצמן', 'ככר ויצמן'])).toEqual({ name: 'ויצמן' });
     expect(pickStreet('ויצ', ['ויצמן', 'ככר ויצמן'])).toEqual({ choices: ['ויצמן', 'ככר ויצמן'] });
+  });
+
+  it('recognises a boulevard said the way people say it', () => {
+    const register = ['שד הוז דב', 'ויצמן', "נג'ארה ישראל"];
+    expect(pickStreet('דב הוז', register)).toEqual({ name: 'שד הוז דב' });
+    expect(pickStreet("שד' דב הוז", register)).toEqual({ name: 'שד הוז דב' });
+    expect(pickStreet('שד׳ דב הוז', register)).toEqual({ name: 'שד הוז דב' });
+    expect(pickStreet("ישראל נג'ארה", register)).toEqual({ name: "נג'ארה ישראל" });
+    expect(pickStreet('נג׳ארה', register)).toEqual({ name: "נג'ארה ישראל" });
   });
 
   it('summarises recorded sales by year and says they are near the street', () => {

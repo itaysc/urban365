@@ -7,6 +7,7 @@ import { SearchListingsDto } from '../../listings/dto/search-listings.dto.js';
 import { SavesService } from '../../saves/saves.service.js';
 import { SellerListingsService } from '../../seller/seller-listings.service.js';
 import { SaveSearchDto } from '../../alerts/dto/saved-search.dto.js';
+import { cityKey } from '../../listings/city-name.js';
 import { listingPath } from '../../seo/listing-slug.js';
 import { blogPost } from '../../seo/blog.js';
 import { HOME_GUIDE } from '../../seo/home-guide.js';
@@ -53,7 +54,6 @@ import {
   STREET_HISTORY_YEARS,
   pickStreet,
   streetHistorySummary,
-  streetQueryName,
 } from './street-history.js';
 import { attachMortgageCalculator } from './mortgage-link.js';
 import { pageHref, PAGE_LINKS } from './pages.js';
@@ -273,9 +273,12 @@ export class EndUserToolsService {
     dto: StreetHistoryDto,
   })
   async streetPriceHistory(dto: StreetHistoryDto): Promise<ToolResult> {
-    const asked = streetQueryName(dto.street);
-    const matches = await this.listings.streetsIn(dto.city, asked);
-    const picked = pickStreet(asked, matches);
+    const names = await this.prisma.street.findMany({
+      where: { cityKey: cityKey(dto.city) },
+      select: { name: true },
+    });
+    const picked = pickStreet(dto.street, names.map((row) => row.name));
+    const asked = dto.street.trim();
     if (!('name' in picked)) {
       const list = picked.choices.join(', ');
       return {

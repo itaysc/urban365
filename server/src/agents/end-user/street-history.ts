@@ -18,8 +18,15 @@ export const STREET_HISTORY_YEARS = 10;
 /** Homes. Land, shops and parking would make a street's apartment history unreadably mixed. */
 export const RESIDENTIAL_GROUPS = ['apartment', 'garden_apartment', 'penthouse', 'house'] as const;
 
-const STREET_PREFIX = /^(?:רחוב|רח'|שדרות|שד'|שדרה|דרך|סמטת|סמטה)\s+/u;
 const HOUSE_NUMBER = /\s+\d{1,4}[א-ת]?(?:\/\d{1,4})?$/u;
+
+/**
+ * Words that say what kind of road it is, not which road.
+ *
+ * The register writes `שד הוז דב` for the boulevard people call `דב הוז` or
+ * `שד' דב הוז`. Dropping these leaves the name. ככר stays: ככר ויצמן is not ויצמן.
+ */
+const ROAD_WORDS = new Set(['רחוב', 'רח', 'שדרות', 'שד', 'שדרה', 'דרך', 'סמטת', 'סמטה', 'מעלה', 'משעול', 'מבוי', 'שביל']);
 
 export interface RecordedDeal {
   dealDate: Date;
@@ -31,22 +38,54 @@ export interface RecordedDeal {
 
 /** "רחוב ויצמן 15" is the street ויצמן. The register has no house numbers. */
 export function streetQueryName(text: string): string {
-  return text.trim().replace(STREET_PREFIX, '').replace(HOUSE_NUMBER, '').trim();
+  return text.trim().replace(HOUSE_NUMBER, '').trim();
 }
 
 /**
- * The register's own spelling, when the question names one street.
+ * The register's own spelling of the street someone named.
  *
- * "ויצמן" also matches "ככר ויצמן". Taking the first hit would answer about the
- * square. An exact spelling wins; a single remaining candidate is safe; several
- * candidates go back to the model to ask which one.
+ * Exact spelling wins. Otherwise the same words, in any order, without the word
+ * that only says "boulevard" or "street": `דב הוז` and `שד' דב הוז` are `שד הוז דב`
+ * in the register, and `ישראל נג'ארה` is `נג'ארה ישראל`. A quote and a geresh are
+ * the same mark. Several remaining candidates go back to the model.
  */
-export function pickStreet(query: string, matches: string[]): { name: string } | { choices: string[] } {
-  const key = cityKey(query);
-  const exact = matches.filter((name) => cityKey(name) === key);
+export function pickStreet(query: string, names: string[]): { name: string } | { choices: string[] } {
+  const asked = streetQueryName(query);
+  const key = cityKey(asked);
+  const exact = names.filter((name) => cityKey(name) === key);
   if (exact.length === 1) return { name: exact[0] };
-  if (matches.length === 1) return { name: matches[0] };
-  return { choices: matches };
+  if (exact.length > 1) return { choices: exact };
+
+  const wanted = streetWords(asked);
+  if (wanted.length === 0) return { choices: [] };
+
+  const same = names.filter((name) => sameWords(streetWords(name), wanted));
+  if (same.length === 1) return { name: same[0] };
+  if (same.length > 1) return { choices: same };
+
+  const covers = names.filter((name) => wanted.every((word) => streetWords(name).includes(word)));
+  if (covers.length === 1) return { name: covers[0] };
+  if (covers.length > 1) return { choices: covers.slice(0, 8) };
+
+  const prefix = wanted.filter((word) => word.length >= 3);
+  const starts = names.filter((name) =>
+    prefix.some((word) => streetWords(name).some((streetWord) => streetWord.startsWith(word))),
+  );
+  return { choices: starts.slice(0, 8) };
+}
+
+/** The name, without quotes and without the word that only names the kind of road. */
+function streetWords(name: string): string[] {
+  return cityKey(name)
+    .split(' ')
+    .filter((word) => word !== '' && !ROAD_WORDS.has(word));
+}
+
+function sameWords(a: string[], b: string[]): boolean {
+  if (a.length !== b.length) return false;
+  const left = [...a].sort();
+  const right = [...b].sort();
+  return left.every((word, index) => word === right[index]);
 }
 
 /** What the model is shown. Yearly medians, then a few of the latest sales. */
