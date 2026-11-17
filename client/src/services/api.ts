@@ -1,5 +1,6 @@
 import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios';
 import { config } from '@/config';
+import { decideWake, markWakeGaveUp, responseMessage } from '@/services/wake';
 
 /**
  * The CSRF guard requires this header on every mutating request. A cross-site HTML form
@@ -56,12 +57,42 @@ export const setSessionLostHandler = (fn: (() => void) | null) => {
 
 let notifying = false;
 
-type RetriableConfig = InternalAxiosRequestConfig & { _retry?: boolean };
+type RetriableConfig = InternalAxiosRequestConfig & {
+  _retry?: boolean;
+  _wakeStarted?: number;
+  _wakeAttempts?: number;
+};
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
     const original = error.config as RetriableConfig | undefined;
+
+    if (original) {
+      const startedAt = original._wakeStarted ?? Date.now();
+      const attempt = (original._wakeAttempts ?? 0) + 1;
+      const decision = decideWake({
+        method: original.method,
+        status: error.response?.status,
+        message: responseMessage(error.response?.data),
+        code: error.code,
+        startedAt,
+        now: Date.now(),
+        attempt,
+      });
+
+      if (decision.action === 'retry') {
+        original._wakeStarted = startedAt;
+        original._wakeAttempts = attempt;
+        await sleep(decision.delayMs);
+        return api(original);
+      }
+
+      if (decision.action === 'give-up') markWakeGaveUp(error);
+    }
+
     const status = error.response?.status;
 
     /**

@@ -4,6 +4,7 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@prisma/client';
 import { ClsService } from 'nestjs-cls';
 import type { DatabaseConfig } from '../config/configuration.js';
+import { connectWhenReady, POSTGRES_WAKE_BUDGET_MS } from '../prisma/connect-when-ready.js';
 import type { TenantClsStore } from './cls.store.js';
 
 /** The transaction the interceptor opened for this request, stashed in CLS. */
@@ -25,6 +26,7 @@ type TxClient = Omit<PrismaClient, '$transaction' | '$connect' | '$disconnect' |
 export class TenantPrismaService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(TenantPrismaService.name);
   private readonly base: PrismaClient;
+  private readonly nodeEnv: string;
 
   constructor(
     config: ConfigService,
@@ -41,6 +43,7 @@ export class TenantPrismaService implements OnModuleInit, OnModuleDestroy {
     }
 
     this.base = new PrismaClient({ adapter: new PrismaPg({ connectionString }) });
+    this.nodeEnv = config.get<string>('app.nodeEnv') ?? 'development';
   }
 
   /** Use this everywhere instead of touching the client directly. */
@@ -55,7 +58,15 @@ export class TenantPrismaService implements OnModuleInit, OnModuleDestroy {
   }
 
   async onModuleInit(): Promise<void> {
+    await connectWhenReady(() => this.ping(), {
+      budgetMs: this.nodeEnv === 'test' ? 0 : POSTGRES_WAKE_BUDGET_MS,
+      warn: (message) => this.logger.warn(message),
+    });
+  }
+
+  private async ping(): Promise<void> {
     await this.base.$connect();
+    await this.base.$queryRawUnsafe('SELECT 1');
   }
 
   async onModuleDestroy(): Promise<void> {

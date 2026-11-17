@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '@/auth/auth-context';
 import { useSiteClosed } from '@/hooks/useSiteClosed';
@@ -5,8 +6,17 @@ import { canUseCrm } from '@/lib/access';
 import { guestMayBrowse, isSignupPath } from '@/lib/closedSite';
 
 function Booting() {
+  const [slow, setSlow] = useState(false);
+
+  useEffect(() => {
+    const id = setTimeout(() => setSlow(true), 2_000);
+    return () => clearTimeout(id);
+  }, []);
+
   return (
-    <div className="flex min-h-screen items-center justify-center text-slate-500">טוען…</div>
+    <div className="flex min-h-screen items-center justify-center text-slate-500">
+      {slow ? 'השרת מתעורר, עוד רגע…' : 'טוען…'}
+    </div>
   );
 }
 

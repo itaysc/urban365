@@ -1,5 +1,6 @@
 import { QueryClient } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
+import { wakeGaveUp } from '@/services/wake';
 
 /**
  * One client for the app.
@@ -7,10 +8,12 @@ import { AxiosError } from 'axios';
  * `retry` is deliberately narrow. The axios interceptor already refreshes once on a 401
  * and replays the request, so a retry here would re-run something that has already been
  * handled — and retrying a 403 or a 404 just delays showing the user the truth. Only
- * genuine transport failures and 5xx are worth a second attempt.
+ * genuine transport failures and 5xx are worth a second attempt. A cold start has
+ * already been waited out inside the axios client; repeating that wait here would
+ * hold the page for another half minute after the service has failed to wake.
  */
 const isWorthRetrying = (error: unknown): boolean => {
-  if (!(error instanceof AxiosError)) return false;
+  if (!(error instanceof AxiosError) || wakeGaveUp(error)) return false;
   const status = error.response?.status;
   // No response at all means the network or the server dropped it.
   return status === undefined || status >= 500;
