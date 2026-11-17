@@ -117,6 +117,17 @@ export class CustomersService {
     return { items, total, page, pageSize, totalPages: Math.max(1, Math.ceil(total / pageSize)) };
   }
 
+  /** One person, still in the ordinary list. A miss is "not found", not "forbidden". */
+  async get(id: string) {
+    const agencyId = this.context.requireAgencyId();
+    const customer = await this.prisma.client.customer.findFirst({
+      where: { id, agencyId, deletedAt: null, ...this.scope() },
+      select: LIST_SELECT,
+    });
+    if (!customer) throw new NotFoundException('הלקוח לא נמצא.');
+    return customer;
+  }
+
   async create(dto: CreateCustomerDto) {
     this.assertCanWrite();
     const agencyId = this.context.requireAgencyId();

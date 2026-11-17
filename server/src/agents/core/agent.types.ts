@@ -4,13 +4,24 @@ import type { LlmPreset } from '../../llm/llm.types.js';
 /** Which assistant a tool is willing to serve. A tool may serve more than one. */
 export type AgentAudience = 'end-user' | 'agency' | 'broker';
 
-export type AgentAccess = 'anonymous' | 'signed-in';
+/**
+ * Who may open a chat.
+ *
+ * `agency-member` is the CRM assistant: signed in, with an approved agency. It cannot
+ * be relaxed to anonymous or signed-in by the environment.
+ */
+export type AgentAccess = 'anonymous' | 'signed-in' | 'agency-member';
 
 /** Who is talking. Tools that need an account read `principal`; the rest must not. */
 export interface AgentContext {
   agentId: string;
   principal: Principal | null;
   visitorId: string | null;
+  /**
+   * The agency this chat belongs to. Set for the CRM assistant so a person who moves
+   * offices does not reopen a transcript that named the previous office's customers.
+   */
+  agencyId?: string | null;
   /**
    * Cards already drawn in the last few messages, including earlier tools in this
    * turn. A tool uses them to avoid sending the same link again.
@@ -50,6 +61,43 @@ export type AgentCard =
       recent: { date: string; amount: number; rooms: number | null; area: number | null; perSqm: number | null }[];
       /** Median asking price of listings on the street that are published now. */
       asking?: { count: number; median: number; perSqm: number | null } | null;
+    }
+  | {
+      type: 'customer';
+      id: string;
+      href: string;
+      name: string;
+      kind: string | null;
+      phone: string | null;
+      email: string | null;
+    }
+  | {
+      type: 'deal';
+      id: string;
+      href: string;
+      title: string;
+      stage: string;
+      price: number | null;
+      customerName: string | null;
+    }
+  | {
+      type: 'meeting';
+      id: string;
+      href: string;
+      title: string;
+      startsAt: string;
+      customerName: string | null;
+      location: string | null;
+    }
+  | {
+      type: 'lead';
+      id: string;
+      href: string;
+      name: string;
+      status: string;
+      phone: string | null;
+      email: string | null;
+      listingLabel: string | null;
     };
 
 /** What a tool hands back. `summary` is for the model, `cards` are for the screen. */

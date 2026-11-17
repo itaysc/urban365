@@ -25,9 +25,10 @@ function Booting() {
  * and nothing else.
  *
  * The home page is one of those, so it stays readable: blurring it would hide the
- * only indexable page this app renders. The agency directory is one too: the bar
- * on the home page links to it. City and listing pages never reach here — the API
- * serves them as HTML. Search, the CRM and publishing still send a guest back home.
+ * only indexable page this app renders. The agency directory and the mortgage
+ * calculator stay too: the bar on the home page links to them. City and listing
+ * pages never reach here — the API serves them as HTML. Search, the CRM and
+ * publishing still send a guest back home.
  * Signing in, an invite and a password reset stay reachable, because those are how
  * someone who was asked to come in actually gets in.
  */

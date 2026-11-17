@@ -1,7 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
 import { validateSync, type ValidationError } from 'class-validator';
+import type { Action } from '../../auth/permissions.js';
 import type { AgentAudience, AgentContext, AgentDefinition, ToolResult } from './agent.types.js';
+import type { AgentToolScope } from './agent-tool.decorator.js';
 import type { JsonSchema } from './dto-schema.js';
 
 export interface RegisteredTool {
@@ -10,6 +12,8 @@ export interface RegisteredTool {
   audiences: AgentAudience[];
   group: string;
   auth: boolean;
+  scope?: AgentToolScope;
+  requires?: Action;
   moduleName: string;
   parameters: JsonSchema;
   invoke(args: unknown, ctx: AgentContext): Promise<ToolResult>;

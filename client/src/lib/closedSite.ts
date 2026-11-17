@@ -1,8 +1,9 @@
 /**
  * Paths a guest may still open while `SITE_CLOSED` is on.
  *
- * The home page stays open because it is in the sitemap. The agency directory stays
- * open because the bar on that page links to it. Signing in, recovering a password,
+ * The home page stays open because it is in the sitemap. The agency directory and
+ * the mortgage calculator stay open because the bar on that page links to them.
+ * Signing in, recovering a password,
  * accepting an invite, and answering a viewing email all have to work or the closed
  * site has no way in. The legal pages stay because the login form links to them.
  * Everything else goes back to the home page.
@@ -27,6 +28,8 @@ export function guestMayBrowse(pathname: string): boolean {
   if (pathname.startsWith('/viewing/')) return true;
   // The public list of offices, and each office. Linked from the home page.
   if (pathname === '/agencies' || pathname.startsWith('/agencies/')) return true;
+  // The calculator in the same bar.
+  if (pathname === '/mortgage' || pathname.startsWith('/mortgage/')) return true;
   return false;
 }
 

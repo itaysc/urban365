@@ -109,7 +109,7 @@ export class EndUserToolsService {
   @AgentTool({
     name: 'search_listings',
     description: 'חיפוש נכסים שמוצגים עכשיו, לפי עיר, שכונה, מחיר, חדרים, שטח וסוג.',
-    audiences: ['end-user'],
+    audiences: ['end-user', 'agency'],
     group: 'search',
     dto: SearchListingsDto,
     omit: SEARCH_OMIT,
@@ -212,7 +212,7 @@ export class EndUserToolsService {
   @AgentTool({
     name: 'area_prices',
     description: 'מחיר אופייני למכירה בעיר או בשכונה, לפי המודעות שמוצגות עכשיו. לא רחוב ולא מחיר עסקה.',
-    audiences: ['end-user'],
+    audiences: ['end-user', 'agency'],
     group: 'pricing',
     dto: AreaPricesDto,
   })
@@ -271,7 +271,7 @@ export class EndUserToolsService {
     name: 'street_price_history',
     description:
       'מחיר ברחוב: חציון שנתי של עסקאות שנרשמו ליד הרחוב, וגם חציון המודעות שמוצגות עכשיו. להיסטוריה ולשאלה על מחיר ממוצע לדירת מספר חדרים ברחוב. העבר rooms כשצוינו חדרים.',
-    audiences: ['end-user'],
+    audiences: ['end-user', 'agency'],
     group: 'pricing',
     dto: StreetHistoryDto,
   })
@@ -458,7 +458,7 @@ export class EndUserToolsService {
     name: 'mortgage_plan',
     description:
       'החזר חודשי לפי תמהיל השלישים (שליש קבועה, שליש פריים, שליש משתנה), גודל ההלוואה ותקרת המימון. חישוב להמחשה, לא הצעה.',
-    audiences: ['end-user'],
+    audiences: ['end-user', 'agency'],
     group: 'mortgage',
     dto: MortgagePlanDto,
   })

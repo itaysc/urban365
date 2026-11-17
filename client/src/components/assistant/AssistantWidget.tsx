@@ -16,6 +16,7 @@ import {
   sendMessage,
   storedAssistantOpen,
   storedConversationId,
+  type AssistantAgentId,
   type AssistantCard,
   type AssistantMessage,
 } from './assistant';
@@ -40,11 +41,7 @@ function useAssistantStyles(): void {
 }
 
 /**
- * The end-user assistant, on the app.
- *
- * Agency and admin screens have their own work and will get their own assistants.
- * This one stays out of their way. The front door is not this app — it mounts
- * `AssistantPanel` on its own.
+ * The public assistant. Stays off CRM and admin screens — those mount their own panel.
  */
 export function AssistantWidget() {
   const { pathname } = useLocation();
@@ -53,9 +50,23 @@ export function AssistantWidget() {
 
   return (
     <>
-      <AssistantPanel pathname={pathname} onSignIn={() => setSignIn(true)} />
+      <AssistantPanel agentId="end-user" pathname={pathname} onSignIn={() => setSignIn(true)} />
       <LoginDialog open={signIn} onOpenChange={setSignIn} description="כדי לשמור נכס, חיפוש או מודעה צריך להתחבר." />
     </>
+  );
+}
+
+/** The CRM assistant. Mounted inside the agency shell, not on public pages. */
+export function AgencyAssistantWidget() {
+  const { pathname } = useLocation();
+  return (
+    <AssistantPanel
+      agentId="agency"
+      pathname={pathname}
+      hideOnPublic={false}
+      emptyPrompt="שאל אותי על לקוחות, פניות, עסקאות או היומן. למשל: מי הפגישות שלי השבוע?"
+      note="לקוחות, עסקאות, יומן ומחירים..."
+    />
   );
 }
 
@@ -66,13 +77,25 @@ export function AssistantWidget() {
  * Links are real anchors either way: a search, a listing and a blog post are not
  * all routes of this router, and a click has to land on the page that serves them.
  */
-export function AssistantPanel({ pathname, onSignIn, signInHref }: {
+export function AssistantPanel({
+  agentId = 'end-user',
+  pathname,
+  onSignIn,
+  signInHref,
+  hideOnPublic = true,
+  emptyPrompt = 'שאל אותי על דירות, מחירים, משכנתא ועוד... למשל: אני מחפש דירת 4 חדרים בנתניה',
+  note = 'חיפוש דירות, מחירים, משכנתא ועוד...',
+}: {
+  agentId?: AssistantAgentId;
   pathname: string;
   onSignIn?: () => void;
   signInHref?: string;
+  hideOnPublic?: boolean;
+  emptyPrompt?: string;
+  note?: string;
 }) {
   useAssistantStyles();
-  const [open, setOpenState] = useState(storedAssistantOpen);
+  const [open, setOpenState] = useState(() => storedAssistantOpen(agentId));
   // `present` keeps the panel mounted through the slide out. `entered` is the
   // frame after it is in the document, so the browser can animate from off-screen.
   const [present, setPresent] = useState(open);
@@ -80,7 +103,7 @@ export function AssistantPanel({ pathname, onSignIn, signInHref }: {
   const setOpen = (next: boolean | ((value: boolean) => boolean)) => {
     setOpenState((current) => {
       const value = typeof next === 'function' ? next(current) : next;
-      rememberAssistantOpen(value);
+      rememberAssistantOpen(value, agentId);
       return value;
     });
   };
@@ -89,7 +112,7 @@ export function AssistantPanel({ pathname, onSignIn, signInHref }: {
   const [clearing, setClearing] = useState(false);
   const [draft, setDraft] = useState('');
   const [messages, setMessages] = useState<AssistantMessage[]>([]);
-  const conversationId = useRef<string | null>(storedConversationId());
+  const conversationId = useRef<string | null>(storedConversationId(agentId));
   const scroller = useRef<HTMLDivElement>(null);
   const stickToBottom = useRef(true);
   const touchY = useRef<number | null>(null);
@@ -128,11 +151,11 @@ export function AssistantPanel({ pathname, onSignIn, signInHref }: {
     const id = conversationId.current;
     if (!id) return;
     let cancelled = false;
-    void loadConversation(id).then((loaded) => {
+    void loadConversation(id, agentId).then((loaded) => {
       if (cancelled) return;
       if (!loaded) {
         conversationId.current = null;
-        forgetConversation();
+        forgetConversation(agentId);
         return;
       }
       setMessages(loaded);
@@ -140,7 +163,7 @@ export function AssistantPanel({ pathname, onSignIn, signInHref }: {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [agentId]);
 
   useEffect(() => {
     const node = scroller.current;
@@ -148,16 +171,16 @@ export function AssistantPanel({ pathname, onSignIn, signInHref }: {
     node.scrollTop = node.scrollHeight;
   }, [messages, open]);
 
-  if (HIDDEN.some((pattern) => pattern.test(pathname))) return null;
+  if (hideOnPublic && HIDDEN.some((pattern) => pattern.test(pathname))) return null;
 
   const clear = async () => {
     if (pending || clearing) return;
     setClearing(true);
     try {
-      const cleared = await clearHistory();
+      const cleared = await clearHistory(agentId);
       if (!cleared) return;
       conversationId.current = null;
-      forgetConversation();
+      forgetConversation(agentId);
       setMessages([]);
       setConfirmingClear(false);
     } finally {
@@ -185,16 +208,22 @@ export function AssistantPanel({ pathname, onSignIn, signInHref }: {
     };
 
     try {
-      await sendMessage(text, conversationId.current, {
-        onReady: (id) => {
-          conversationId.current = id;
-          rememberConversation(id);
+      await sendMessage(
+        text,
+        conversationId.current,
+        {
+          onReady: (id) => {
+            conversationId.current = id;
+            rememberConversation(id, agentId);
+          },
+          onText: (delta) => patch((message) => ({ ...message, content: message.content + delta })),
+          onCards: (cards) => patch((message) => ({ ...message, cards: [...message.cards, ...cards] })),
+          onSignIn: () => patch((message) => ({ ...message, needsSignIn: true })),
+          onError: (message) => patch((current) => ({ ...current, content: current.content || message })),
         },
-        onText: (delta) => patch((message) => ({ ...message, content: message.content + delta })),
-        onCards: (cards) => patch((message) => ({ ...message, cards: [...message.cards, ...cards] })),
-        onSignIn: () => patch((message) => ({ ...message, needsSignIn: true })),
-        onError: (message) => patch((current) => ({ ...current, content: current.content || message })),
-      });
+        undefined,
+        agentId,
+      );
     } catch {
       patch((current) => ({ ...current, content: current.content || 'משהו השתבש. נסה שוב.' }));
     } finally {
@@ -217,7 +246,7 @@ export function AssistantPanel({ pathname, onSignIn, signInHref }: {
           <header className="u365-asst-head">
             <div>
               <div className="u365-asst-title">עוזר AI</div>
-              <div className="u365-asst-note">חיפוש דירות, מחירים, משכנתא ועוד...</div>
+              <div className="u365-asst-note">{note}</div>
             </div>
             <div className="u365-asst-actions">
               {messages.length > 0 && (
@@ -274,9 +303,7 @@ export function AssistantPanel({ pathname, onSignIn, signInHref }: {
               );
             }}
           >
-            {messages.length === 0 && (
-              <p className="u365-asst-empty">שאל אותי על דירות, מחירים, משכנתא ועוד... למשל: אני מחפש דירת 4 חדרים בנתניה</p>
-            )}
+            {messages.length === 0 && <p className="u365-asst-empty">{emptyPrompt}</p>}
             {messages.map((message, index) => {
               const thinking =
                 pending &&
@@ -386,6 +413,50 @@ function CardView({ card }: { card: AssistantCard }) {
           הלוואה {formatShekel(card.loan)} · {card.years} שנים · {card.note}
         </div>
       </div>
+    );
+  }
+
+  if (card.type === 'customer') {
+    return (
+      <a href={card.href} className="u365-asst-card">
+        <div>{card.name}</div>
+        <div className="u365-asst-meta">
+          {[card.kind, card.phone, card.email].filter(Boolean).join(' · ')}
+        </div>
+      </a>
+    );
+  }
+
+  if (card.type === 'lead') {
+    return (
+      <a href={card.href} className="u365-asst-card">
+        <div>{card.name}</div>
+        <div className="u365-asst-meta">
+          {[card.status, card.listingLabel, card.phone, card.email].filter(Boolean).join(' · ')}
+        </div>
+      </a>
+    );
+  }
+
+  if (card.type === 'deal') {
+    return (
+      <a href={card.href} className="u365-asst-card">
+        <div>{card.title}</div>
+        <div className="u365-asst-meta">
+          {[card.stage, card.customerName, formatPrice(card.price)].filter(Boolean).join(' · ')}
+        </div>
+      </a>
+    );
+  }
+
+  if (card.type === 'meeting') {
+    return (
+      <a href={card.href} className="u365-asst-card">
+        <div>{card.title}</div>
+        <div className="u365-asst-meta">
+          {[formatChatDate(card.startsAt), card.customerName, card.location].filter(Boolean).join(' · ')}
+        </div>
+      </a>
     );
   }
 

@@ -18,8 +18,13 @@ describe('guestMayBrowse', () => {
     expect(guestMayBrowse('/agencies/some-office')).toBe(true);
   });
 
+  it('keeps the mortgage calculator, which the home page links to', () => {
+    expect(guestMayBrowse('/mortgage')).toBe(true);
+    expect(guestMayBrowse('/mortgage/')).toBe(true);
+  });
+
   it('sends the rest of the site back to the home page', () => {
-    for (const path of ['/search', '/signup', '/agency/signup', '/mortgage', '/sell']) {
+    for (const path of ['/search', '/signup', '/agency/signup', '/valuation', '/sell']) {
       expect(guestMayBrowse(path), path).toBe(false);
     }
   });

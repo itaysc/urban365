@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Delete,
+  ForbiddenException,
   Get,
   Param,
   Post,
@@ -19,7 +20,7 @@ import type { Principal } from '../auth/types/principal.js';
 import { VISITOR_COOKIE, VisitorService, setVisitorCookie } from '../visitor/visitor.service.js';
 import { AgentCatalog } from './agent-catalog.js';
 import { AgentRuntime } from './core/agent-runtime.js';
-import type { AgentContext } from './core/agent.types.js';
+import type { AgentAccess, AgentContext } from './core/agent.types.js';
 import { ConversationStore, transcriptView } from './core/conversation.store.js';
 
 class ChatDto {
@@ -57,9 +58,14 @@ export class AgentsController {
   ) {
     const agent = this.catalog.get(agentId);
     this.assertAccess(agent.id, principal);
-    const caller = await this.caller(agent.id, req, res, principal);
+    const caller = await this.caller(agent.id, this.runtime.access(agent), req, res, principal);
     const transcript = await this.store.open(
-      { agentId, userId: caller.principal?.userId ?? null, visitorId: caller.visitorId },
+      {
+        agentId,
+        userId: caller.principal?.userId ?? null,
+        visitorId: caller.visitorId,
+        agencyId: caller.agencyId ?? null,
+      },
       id,
     );
     return { id: transcript.id, messages: transcriptView(transcript.messages) };
@@ -74,11 +80,12 @@ export class AgentsController {
   ) {
     const agent = this.catalog.get(agentId);
     this.assertAccess(agent.id, principal);
-    const caller = await this.caller(agent.id, req, res, principal);
+    const caller = await this.caller(agent.id, this.runtime.access(agent), req, res, principal);
     await this.store.clear({
       agentId,
       userId: caller.principal?.userId ?? null,
       visitorId: caller.visitorId ?? null,
+      agencyId: caller.agencyId ?? null,
     });
     return { cleared: true };
   }
@@ -94,7 +101,7 @@ export class AgentsController {
   ) {
     const agent = this.catalog.get(agentId);
     this.assertAccess(agent.id, principal);
-    const caller = await this.caller(agent.id, req, res, principal);
+    const caller = await this.caller(agent.id, this.runtime.access(agent), req, res, principal);
 
     res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
     res.setHeader('Cache-Control', 'no-cache, no-transform');
@@ -114,27 +121,57 @@ export class AgentsController {
 
   private assertAccess(agentId: string, principal: Principal | undefined): void {
     const agent = this.catalog.get(agentId);
-    if (this.runtime.access(agent) === 'signed-in' && !principal) {
+    const access = this.runtime.access(agent);
+
+    if (access === 'agency-member') {
+      if (!principal) throw new UnauthorizedException('נדרשת התחברות.');
+      if (!principal.agencyId) {
+        throw new ForbiddenException('החשבון עדיין לא משויך לסוכנות מאושרת.');
+      }
+      return;
+    }
+
+    if (access === 'signed-in' && !principal) {
       throw new UnauthorizedException('נדרשת התחברות.');
     }
   }
 
-  /** A signed-in user, or the browser we have already named. A new browser gets a cookie. */
+  /**
+   * A signed-in user, or the browser we have already named. The CRM assistant never
+   * gets a visitor cookie: it is for an agency member only.
+   */
   private async caller(
     agentId: string,
+    access: AgentAccess,
     req: Request,
     res: Response,
     principal: Principal | undefined,
   ): Promise<AgentContext> {
-    if (principal) return { agentId, principal, visitorId: await this.visitorId(req) };
+    if (access === 'agency-member') {
+      return {
+        agentId,
+        principal: principal ?? null,
+        visitorId: null,
+        agencyId: principal?.agencyId ?? null,
+      };
+    }
+
+    if (principal) {
+      return {
+        agentId,
+        principal,
+        visitorId: await this.visitorId(req),
+        agencyId: null,
+      };
+    }
 
     const existing = (req.cookies as Record<string, string> | undefined)?.[VISITOR_COOKIE];
     const known = await this.visitors.existing(existing);
-    if (known) return { agentId, principal: null, visitorId: known.visitorId };
+    if (known) return { agentId, principal: null, visitorId: known.visitorId, agencyId: null };
 
     const created = await this.visitors.create();
     setVisitorCookie(res, created.visitorId, this.isProduction);
-    return { agentId, principal: null, visitorId: created.visitorId };
+    return { agentId, principal: null, visitorId: created.visitorId, agencyId: null };
   }
 
   private async visitorId(req: Request): Promise<string | null> {

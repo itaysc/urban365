@@ -10,6 +10,8 @@ interface Caller {
   agentId: string;
   userId: string | null;
   visitorId: string | null;
+  /** Set for the CRM assistant. Null or absent for the public one. */
+  agencyId?: string | null;
 }
 
 interface ToolPayload {
@@ -141,7 +143,12 @@ export class ConversationStore {
 
   private async create(caller: Caller): Promise<Transcript> {
     const row = await this.prisma.agentConversation.create({
-      data: { agentId: caller.agentId, userId: caller.userId, visitorId: caller.visitorId },
+      data: {
+        agentId: caller.agentId,
+        userId: caller.userId,
+        visitorId: caller.visitorId,
+        agencyId: caller.agencyId ?? null,
+      },
       include: { messages: true },
     });
     return toTranscript(row);
@@ -150,22 +157,35 @@ export class ConversationStore {
 
 /** Every conversation this caller is allowed to read. Nobody else's rows match. */
 export function historyWhere(caller: Caller): Prisma.AgentConversationWhereInput | null {
+  const agency = agencyClause(caller);
   const owned: Prisma.AgentConversationWhereInput[] = [];
-  if (caller.userId) owned.push({ agentId: caller.agentId, userId: caller.userId });
+  if (caller.userId) owned.push({ agentId: caller.agentId, userId: caller.userId, ...agency });
   if (caller.visitorId) {
-    owned.push({ agentId: caller.agentId, userId: null, visitorId: caller.visitorId });
+    owned.push({ agentId: caller.agentId, userId: null, visitorId: caller.visitorId, ...agency });
   }
   if (owned.length === 0) return null;
   return owned.length === 1 ? owned[0] : { OR: owned };
 }
 
 function ownerWhere(caller: Caller): Prisma.AgentConversationWhereInput | null {
-  if (caller.userId) return { agentId: caller.agentId, userId: caller.userId };
-  if (caller.visitorId) return { agentId: caller.agentId, userId: null, visitorId: caller.visitorId };
+  const agency = agencyClause(caller);
+  if (caller.userId) return { agentId: caller.agentId, userId: caller.userId, ...agency };
+  if (caller.visitorId) {
+    return { agentId: caller.agentId, userId: null, visitorId: caller.visitorId, ...agency };
+  }
   return null;
 }
 
-function owns(row: { userId: string | null; visitorId: string | null }, caller: Caller): boolean {
+function agencyClause(caller: Caller): { agencyId: string | null } | Record<string, never> {
+  if (caller.agencyId === undefined) return {};
+  return { agencyId: caller.agencyId };
+}
+
+function owns(
+  row: { userId: string | null; visitorId: string | null; agencyId: string | null },
+  caller: Caller,
+): boolean {
+  if (caller.agencyId !== undefined && (caller.agencyId ?? null) !== row.agencyId) return false;
   if (caller.userId && row.userId === caller.userId) return true;
   if (!caller.visitorId || row.visitorId !== caller.visitorId) return false;
   return row.userId === null || row.userId === caller.userId;

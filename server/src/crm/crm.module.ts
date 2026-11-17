@@ -11,5 +11,8 @@ import { LeadsService } from './leads.service.js';
 @Module({
   controllers: [LeadsController, PublicEnquiryController, DealsController, CustomersController],
   providers: [LeadsService, DealsService, CustomersService],
+  // The agency assistant calls these under TenantScope; the module itself stays excluded
+  // so a tool must not be registered from here by accident.
+  exports: [LeadsService, DealsService, CustomersService],
 })
 export class CrmModule {}

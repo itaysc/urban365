@@ -2,7 +2,6 @@ import {
   CallHandler,
   ExecutionContext,
   Injectable,
-  Logger,
   NestInterceptor,
 } from '@nestjs/common';
 import type { Request } from 'express';
@@ -10,22 +9,20 @@ import { ClsService } from 'nestjs-cls';
 import { from, Observable } from 'rxjs';
 import type { Principal } from '../auth/types/principal.js';
 import type { TenantClsStore } from './cls.store.js';
-import { TENANT_TX, TenantPrismaService } from './tenant-prisma.service.js';
+import { TENANT_TX } from './tenant-prisma.service.js';
+import { TenantScope } from './tenant-scope.js';
 
 /**
- * Puts the caller in context and, for an authenticated request with an agency, runs the
- * whole handler inside one transaction with `app.current_agency_id` set on it.
- *
- * The handler has to run *inside* the transaction callback: `SET LOCAL` lives on a single
- * connection, so a query issued on the pool outside it would not be scoped at all.
+ * Puts the caller in context and, for an authenticated request, runs the handler
+ * inside one tenant transaction. Assistant routes are the exception: a chat turn
+ * lasts longer than the transaction budget, so those tools open their own short
+ * scopes when they need the CRM.
  */
 @Injectable()
 export class TenantInterceptor implements NestInterceptor {
-  private readonly logger = new Logger(TenantInterceptor.name);
-
   constructor(
     private readonly cls: ClsService<TenantClsStore & { [TENANT_TX]?: unknown }>,
-    private readonly prisma: TenantPrismaService,
+    private readonly scope: TenantScope,
   ) {}
 
   intercept(ctx: ExecutionContext, next: CallHandler): Observable<unknown> {
@@ -33,50 +30,25 @@ export class TenantInterceptor implements NestInterceptor {
 
     const req = ctx.switchToHttp().getRequest<Request & { principal?: Principal }>();
     const principal = req.principal;
+    const url = req.originalUrl ?? req.url ?? '';
 
-    return from(
-      this.cls.run(async () => {
-        this.cls.set('principal', principal);
-        this.cls.set('agencyId', principal?.agencyId ?? undefined);
-
-        // Anonymous requests need no transaction. The public search is the hot path and
-        // must not pay for BEGIN/COMMIT it cannot use.
-        //
-        // Note the condition is the *principal*, not the agency. A buyer is signed in
-        // with no agency at all, and their own rows — BuyerProfile, SavedListing — are
-        // scoped by `app.current_user_id`. Skipping the transaction for them left that
-        // unset, so every policy on those tables matched nothing.
-        //
-        // An assistant turn holds the request open for several model calls, far past
-        // the twenty seconds a transaction is allowed to live, and it would pin a
-        // connection the whole time. The agent's own writes go through the owner
-        // client and name the user themselves.
-        const url = req.originalUrl ?? req.url ?? '';
-        if (!principal || url.includes('/agents/')) {
+    // An assistant turn holds the request open for several model calls. The agent's
+    // CRM tools open a TenantScope of their own; the end-user tools use the owner
+    // client and name the user themselves.
+    if (url.includes('/agents/')) {
+      return from(
+        this.cls.run(async () => {
+          this.cls.set('principal', principal);
+          this.cls.set('agencyId', principal?.agencyId ?? undefined);
           return firstValueOfHandler(next);
-        }
+        }),
+      );
+    }
 
-        return this.prisma.root.$transaction(
-          async (tx) => {
-            // set_config parameterises; `SET LOCAL x = $1` is not valid SQL, which is
-            // how this ends up as string interpolation and then as an injection.
-            //
-            // The agency is an empty string for a buyer, which `app_agency_id()` turns
-            // back into NULL — so no tenant policy matches, which is exactly right.
-            await tx.$executeRaw`SELECT set_config('app.current_agency_id', ${principal.agencyId ?? ''}, true)`;
-            await tx.$executeRaw`SELECT set_config('app.current_user_id', ${principal.userId}, true)`;
-            await tx.$executeRaw`SELECT set_config('app.current_role', ${principal.role ?? ''}, true)`;
-            await tx.$executeRaw`SELECT set_config('app.is_platform_admin', ${
-              principal.platformRole === 'admin' ? 'on' : 'off'
-            }, true)`;
-
-            this.cls.set(TENANT_TX, tx);
-            return firstValueOfHandler(next);
-          },
-          { timeout: 20_000, maxWait: 5_000 },
-        );
-      }),
-    );
+    // Anonymous requests need no transaction. The public search is the hot path and
+    // must not pay for BEGIN/COMMIT it cannot use. A signed-in buyer still gets a
+    // transaction: their own rows are scoped by `app.current_user_id`.
+    return from(this.scope.run(principal, () => firstValueOfHandler(next)));
   }
 }
 

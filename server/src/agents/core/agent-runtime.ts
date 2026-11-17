@@ -78,7 +78,12 @@ export class AgentRuntime {
     }
 
     const transcript = await this.store.open(
-      { agentId: agent.id, userId: ctx.principal?.userId ?? null, visitorId: ctx.visitorId },
+      {
+        agentId: agent.id,
+        userId: ctx.principal?.userId ?? null,
+        visitorId: ctx.visitorId,
+        agencyId: ctx.agencyId ?? null,
+      },
       conversationId,
     );
     yield { event: 'ready', data: { conversationId: transcript.id } };

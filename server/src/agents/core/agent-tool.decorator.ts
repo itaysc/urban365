@@ -1,6 +1,9 @@
+import type { Action } from '../../auth/permissions.js';
 import type { AgentAudience } from './agent.types.js';
 
 export const AGENT_TOOLS = 'agent:tools';
+
+export type AgentToolScope = 'agency';
 
 export interface AgentToolOptions {
   /** Defaults to the method name. Say it when the method name is not what the model should see. */
@@ -11,6 +14,13 @@ export interface AgentToolOptions {
   group?: string;
   /** The caller must be signed in. An anonymous call is answered, not executed. */
   auth?: boolean;
+  /**
+   * The tool reads or writes one agency's CRM. Discovery refuses a tool that carries
+   * this and also lists `end-user`. The call runs inside a short tenant transaction.
+   */
+  scope?: AgentToolScope;
+  /** An `Action` from permissions.ts. Checked before the method runs, and again inside the service. */
+  requires?: Action;
   /** The class-validator class the arguments are checked against, and described by. */
   dto?: new () => object;
   /** Fields of `dto` the model is not told about. The handler still receives them if sent. */
@@ -22,6 +32,8 @@ export interface StoredAgentTool extends Required<Pick<AgentToolOptions, 'descri
   method: string;
   group: string;
   auth: boolean;
+  scope?: AgentToolScope;
+  requires?: Action;
   dto?: new () => object;
   omit: string[];
 }
@@ -44,6 +56,8 @@ export function AgentTool(options: AgentToolOptions): MethodDecorator {
       method: String(propertyKey),
       group: options.group ?? 'general',
       auth: options.auth ?? false,
+      scope: options.scope,
+      requires: options.requires,
       dto: options.dto,
       omit: options.omit ?? [],
     });

@@ -1,5 +1,7 @@
 import { apiBaseUrl } from '@/services/api';
 
+export type AssistantAgentId = 'end-user' | 'agency';
+
 export type AssistantCard =
   | {
       type: 'listing';
@@ -23,6 +25,43 @@ export type AssistantCard =
       years: { year: number; count: number; median: number; perSqm: number | null }[];
       recent: { date: string; amount: number; rooms: number | null; area: number | null; perSqm: number | null }[];
       asking?: { count: number; median: number; perSqm: number | null } | null;
+    }
+  | {
+      type: 'customer';
+      id: string;
+      href: string;
+      name: string;
+      kind: string | null;
+      phone: string | null;
+      email: string | null;
+    }
+  | {
+      type: 'deal';
+      id: string;
+      href: string;
+      title: string;
+      stage: string;
+      price: number | null;
+      customerName: string | null;
+    }
+  | {
+      type: 'meeting';
+      id: string;
+      href: string;
+      title: string;
+      startsAt: string;
+      customerName: string | null;
+      location: string | null;
+    }
+  | {
+      type: 'lead';
+      id: string;
+      href: string;
+      name: string;
+      status: string;
+      phone: string | null;
+      email: string | null;
+      listingLabel: string | null;
     };
 
 export interface AssistantMessage {
@@ -68,52 +107,57 @@ export function formatChatDate(iso: string): string {
   return `${match[3]}/${match[2]}/${match[1]}`;
 }
 
-const STORAGE_KEY = 'nadlan:assistant:end-user';
-const OPEN_KEY = 'nadlan:assistant:open';
+function conversationKey(agentId: AssistantAgentId): string {
+  return `nadlan:assistant:${agentId}`;
+}
 
-export function storedConversationId(): string | null {
+function openKey(agentId: AssistantAgentId): string {
+  return `nadlan:assistant:open:${agentId}`;
+}
+
+export function storedConversationId(agentId: AssistantAgentId = 'end-user'): string | null {
   try {
-    return window.localStorage.getItem(STORAGE_KEY);
+    return window.localStorage.getItem(conversationKey(agentId));
   } catch {
     return null;
   }
 }
 
-export function rememberConversation(id: string): void {
+export function rememberConversation(id: string, agentId: AssistantAgentId = 'end-user'): void {
   try {
-    window.localStorage.setItem(STORAGE_KEY, id);
+    window.localStorage.setItem(conversationKey(agentId), id);
   } catch {
     // A chat that cannot be resumed is still a chat.
   }
 }
 
-export function storedAssistantOpen(): boolean {
+export function storedAssistantOpen(agentId: AssistantAgentId = 'end-user'): boolean {
   try {
-    return window.localStorage.getItem(OPEN_KEY) === '1';
+    return window.localStorage.getItem(openKey(agentId)) === '1';
   } catch {
     return false;
   }
 }
 
-export function rememberAssistantOpen(open: boolean): void {
+export function rememberAssistantOpen(open: boolean, agentId: AssistantAgentId = 'end-user'): void {
   try {
-    window.localStorage.setItem(OPEN_KEY, open ? '1' : '0');
+    window.localStorage.setItem(openKey(agentId), open ? '1' : '0');
   } catch {
     // The panel still opens. It just will not be open on the next page.
   }
 }
 
-export function forgetConversation(): void {
+export function forgetConversation(agentId: AssistantAgentId = 'end-user'): void {
   try {
-    window.localStorage.removeItem(STORAGE_KEY);
+    window.localStorage.removeItem(conversationKey(agentId));
   } catch {
     // Nothing to clear is not a failure.
   }
 }
 
 /** Deletes this browser's transcript on the server. The panel forgets its id only after this succeeds. */
-export async function clearHistory(): Promise<boolean> {
-  const response = await fetch(`${apiBaseUrl}/agents/end-user/conversations`, {
+export async function clearHistory(agentId: AssistantAgentId = 'end-user'): Promise<boolean> {
+  const response = await fetch(`${apiBaseUrl}/agents/${agentId}/conversations`, {
     method: 'DELETE',
     credentials: 'include',
     headers: { 'X-Requested-With': 'XMLHttpRequest' },
@@ -121,8 +165,11 @@ export async function clearHistory(): Promise<boolean> {
   return response.ok;
 }
 
-export async function loadConversation(id: string): Promise<AssistantMessage[] | null> {
-  const response = await fetch(`${apiBaseUrl}/agents/end-user/conversations/${id}`, {
+export async function loadConversation(
+  id: string,
+  agentId: AssistantAgentId = 'end-user',
+): Promise<AssistantMessage[] | null> {
+  const response = await fetch(`${apiBaseUrl}/agents/${agentId}/conversations/${id}`, {
     credentials: 'include',
     headers: { 'X-Requested-With': 'XMLHttpRequest' },
   });
@@ -145,8 +192,9 @@ export async function sendMessage(
   conversationId: string | null,
   events: AssistantEvents,
   signal?: AbortSignal,
+  agentId: AssistantAgentId = 'end-user',
 ): Promise<void> {
-  const response = await fetch(`${apiBaseUrl}/agents/end-user/chat`, {
+  const response = await fetch(`${apiBaseUrl}/agents/${agentId}/chat`, {
     method: 'POST',
     credentials: 'include',
     headers: {
@@ -157,7 +205,7 @@ export async function sendMessage(
     signal,
   });
 
-  if (response.status === 401) {
+  if (response.status === 401 || response.status === 403) {
     events.onSignIn();
     return;
   }

@@ -14,5 +14,6 @@ import { ReminderScheduler } from './reminder.scheduler.js';
 @Module({
   controllers: [MeetingsController, GoogleCalendarController, ViewingConfirmationController],
   providers: [MeetingsService, GoogleCalendarService, ConfirmationsService, ReminderScheduler],
+  exports: [MeetingsService],
 })
 export class CalendarModule {}

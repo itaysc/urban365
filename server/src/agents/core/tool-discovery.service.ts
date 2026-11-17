@@ -2,8 +2,10 @@ import { Injectable, Logger, type OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DiscoveryService } from '@nestjs/core';
 import type { AgentsConfig } from '../../config/configuration.js';
+import { can } from '../../auth/permissions.js';
+import { TenantScope } from '../../tenancy/tenant-scope.js';
 import { isAgentExcluded } from './agent-exclude.js';
-import { toolsOn } from './agent-tool.decorator.js';
+import { toolsOn, type StoredAgentTool } from './agent-tool.decorator.js';
 import type { AgentContext, ToolResult } from './agent.types.js';
 import { dtoToJsonSchema } from './dto-schema.js';
 import { readDto, ToolRegistry } from './tool-registry.js';
@@ -28,6 +30,7 @@ export class ToolDiscoveryService implements OnModuleInit {
   constructor(
     private readonly discovery: DiscoveryService,
     private readonly registry: ToolRegistry,
+    private readonly tenantScope: TenantScope,
     config: ConfigService,
   ) {
     this.excluded = new Set(config.getOrThrow<AgentsConfig>('agents').excludedModules);
@@ -51,6 +54,8 @@ export class ToolDiscoveryService implements OnModuleInit {
       }
 
       for (const tool of found) {
+        assertToolShape(tool, moduleName);
+
         if (!tool.description.trim()) {
           throw new Error(`${moduleName}.${tool.method} is an @AgentTool with no description.`);
         }
@@ -68,9 +73,12 @@ export class ToolDiscoveryService implements OnModuleInit {
           audiences: tool.audiences,
           group: tool.group,
           auth: tool.auth,
+          scope: tool.scope,
+          requires: tool.requires,
           moduleName,
           parameters,
-          invoke: (args, ctx) => invokeTool(call, tool.dto, tool.auth, args, ctx),
+          invoke: (args, ctx) =>
+            invokeTool(call, tool, args, ctx, this.tenantScope),
         });
       }
     }
@@ -92,33 +100,67 @@ function excludedHost(wrapper: { host?: HostModule }): boolean {
   return metatype ? isAgentExcluded(metatype) : false;
 }
 
+/**
+ * An agency-scoped tool must never reach the public assistant, and an agency-audience
+ * tool without a scope would run without a tenant transaction.
+ */
+function assertToolShape(tool: StoredAgentTool, moduleName: string): void {
+  if (tool.scope === 'agency' && tool.audiences.includes('end-user')) {
+    throw new Error(
+      `${moduleName}.${tool.method} (${tool.name}) is scope:agency and also tagged for end-user.`,
+    );
+  }
+  if (tool.audiences.includes('agency') && tool.scope !== 'agency' && !tool.audiences.includes('end-user')) {
+    // Public tools reused for the agency agent list both audiences and have no scope.
+    // A tool that is agency-only must carry scope:agency.
+    throw new Error(
+      `${moduleName}.${tool.method} (${tool.name}) is agency-only and must set scope: 'agency'.`,
+    );
+  }
+}
+
 async function invokeTool(
   call: (dto: object | undefined, ctx: AgentContext) => Promise<unknown>,
-  dto: (new () => object) | undefined,
-  auth: boolean,
+  tool: StoredAgentTool,
   args: unknown,
   ctx: AgentContext,
+  tenantScope: TenantScope,
 ): Promise<ToolResult> {
-  if (auth && !ctx.principal) {
+  if ((tool.auth || tool.scope === 'agency') && !ctx.principal) {
     return {
       summary: 'המשתמש לא מחובר. בקש ממנו להתחבר כדי להמשיך, ואל תטען שהפעולה בוצעה.',
       needsSignIn: true,
     };
   }
 
+  if (tool.scope === 'agency' && !ctx.principal?.agencyId) {
+    return { summary: 'אין סוכנות מאושרת בחשבון. אי אפשר לבצע את הפעולה.' };
+  }
+
+  if (tool.requires && !can(ctx.principal ?? undefined, tool.requires)) {
+    return { summary: 'אין לך הרשאה לבצע את הפעולה הזו.' };
+  }
+
   let value: object | undefined;
-  if (dto) {
-    const read = readDto(dto, args);
+  if (tool.dto) {
+    const read = readDto(tool.dto, args);
     if ('error' in read) return { summary: read.error };
     value = read.value;
   }
 
-  try {
-    return asResult(await call(value, ctx));
-  } catch (error) {
-    const message = error instanceof Error && error.message ? error.message : 'הפעולה נכשלה.';
-    return { summary: message };
+  const run = async (): Promise<ToolResult> => {
+    try {
+      return asResult(await call(value, ctx));
+    } catch (error) {
+      const message = error instanceof Error && error.message ? error.message : 'הפעולה נכשלה.';
+      return { summary: message };
+    }
+  };
+
+  if (tool.scope === 'agency') {
+    return tenantScope.run(ctx.principal ?? undefined, run, { asAgent: true });
   }
+  return run();
 }
 
 function asResult(value: unknown): ToolResult {

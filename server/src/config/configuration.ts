@@ -25,7 +25,10 @@ function agentsFromEnv(): AgentsConfig {
     if (!value) continue;
 
     const access = /^AGENT_([A-Z0-9_]+)_ACCESS$/.exec(key);
-    if (access && (value === 'anonymous' || value === 'signed-in')) {
+    if (
+      access &&
+      (value === 'anonymous' || value === 'signed-in' || value === 'agency-member')
+    ) {
       override(access[1].toLowerCase().replace(/_/g, '-')).access = value;
     }
 
@@ -142,8 +145,13 @@ export interface LlmConfig {
   openaiBaseUrl: string;
 }
 
-/** Who may open a chat. `anonymous` still refuses the tools that ask for an account. */
-export type AgentAccessMode = 'anonymous' | 'signed-in';
+/**
+ * Who may open a chat.
+ *
+ * `anonymous` still refuses the tools that ask for an account. `agency-member` is the
+ * CRM assistant: a signed-in person with an approved agency, never a visitor.
+ */
+export type AgentAccessMode = 'anonymous' | 'signed-in' | 'agency-member';
 
 export interface AgentOverride {
   access: AgentAccessMode;

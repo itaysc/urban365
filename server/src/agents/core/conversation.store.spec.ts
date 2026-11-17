@@ -21,4 +21,10 @@ describe('historyWhere', () => {
   it('matches nothing when the caller cannot be told apart', () => {
     expect(historyWhere({ agentId: 'end-user', userId: null, visitorId: null })).toBeNull();
   });
+
+  it('keeps a CRM chat inside one office', () => {
+    expect(
+      historyWhere({ agentId: 'agency', userId: 'user-1', visitorId: null, agencyId: 'office-1' }),
+    ).toEqual({ agentId: 'agency', userId: 'user-1', agencyId: 'office-1' });
+  });
 });

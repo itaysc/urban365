@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { DiscoveryModule } from '@nestjs/core';
 import { Test } from '@nestjs/testing';
 import { AdminModule } from '../../admin/admin.module.js';
+import { TenantScope } from '../../tenancy/tenant-scope.js';
 import { AgentExclude, isAgentExcluded } from './agent-exclude.js';
 import { AgentTool } from './agent-tool.decorator.js';
 import type { ToolResult } from './agent.types.js';
@@ -32,16 +33,52 @@ class ShownTools {
 @Module({ providers: [ShownTools] })
 class ShownModule {}
 
+@Injectable()
+class BadAgencyTools {
+  @AgentTool({
+    name: 'leak',
+    description: 'לא אמור להירשם',
+    audiences: ['end-user', 'agency'],
+    scope: 'agency',
+  })
+  leak(): ToolResult {
+    return { summary: 'לא' };
+  }
+}
+
+@Module({ providers: [BadAgencyTools] })
+class BadAgencyModule {}
+
+@Injectable()
+class AgencyOnlyNoScope {
+  @AgentTool({
+    name: 'orphan',
+    description: 'חסר scope',
+    audiences: ['agency'],
+  })
+  orphan(): ToolResult {
+    return { summary: 'לא' };
+  }
+}
+
+@Module({ providers: [AgencyOnlyNoScope] })
+class AgencyOnlyNoScopeModule {}
+
 const config = (excludedModules: string[]) => ({
   provide: ConfigService,
   useValue: { getOrThrow: () => ({ excludedModules, byAgent: {} }) },
 });
 
+const tenantScope = {
+  provide: TenantScope,
+  useValue: { run: async (_principal: unknown, work: () => Promise<unknown>) => work() },
+};
+
 describe('tool discovery', () => {
   it('keeps an excluded module out of the registry', async () => {
     const moduleRef = await Test.createTestingModule({
       imports: [DiscoveryModule, HiddenModule, ShownModule],
-      providers: [ToolRegistry, ToolDiscoveryService, config([])],
+      providers: [ToolRegistry, ToolDiscoveryService, config([]), tenantScope],
     }).compile();
 
     await moduleRef.init();
@@ -52,7 +89,7 @@ describe('tool discovery', () => {
   it('also skips a module named in the environment', async () => {
     const moduleRef = await Test.createTestingModule({
       imports: [DiscoveryModule, ShownModule],
-      providers: [ToolRegistry, ToolDiscoveryService, config(['ShownModule'])],
+      providers: [ToolRegistry, ToolDiscoveryService, config(['ShownModule']), tenantScope],
     }).compile();
 
     await moduleRef.init();
@@ -62,5 +99,23 @@ describe('tool discovery', () => {
 
   it('does not let the admin module contribute a tool', () => {
     expect(isAgentExcluded(AdminModule)).toBe(true);
+  });
+
+  it('refuses an agency-scoped tool that is also tagged for end-user', async () => {
+    const moduleRef = Test.createTestingModule({
+      imports: [DiscoveryModule, BadAgencyModule],
+      providers: [ToolRegistry, ToolDiscoveryService, config([]), tenantScope],
+    });
+
+    await expect(moduleRef.compile().then((ref) => ref.init())).rejects.toThrow(/scope:agency/);
+  });
+
+  it('refuses an agency-only tool without scope', async () => {
+    const moduleRef = Test.createTestingModule({
+      imports: [DiscoveryModule, AgencyOnlyNoScopeModule],
+      providers: [ToolRegistry, ToolDiscoveryService, config([]), tenantScope],
+    });
+
+    await expect(moduleRef.compile().then((ref) => ref.init())).rejects.toThrow(/scope: 'agency'/);
   });
 });

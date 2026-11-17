@@ -2077,6 +2077,10 @@ model AgentConversation {
   /// is merged and deleted, and the transcript should outlive that bookkeeping.
   visitorId String?
 
+  /// The office this CRM chat belongs to. Null for the public assistant. A person who
+  /// moves agencies must not reopen a transcript that named the previous office.
+  agencyId String?
+
   summary String @default("")
   /// How many messages the summary already covers, so it is not rewritten every turn.
   summaryCovers Int @default(0)
@@ -2087,6 +2091,7 @@ model AgentConversation {
 
   @@index([userId, agentId, updatedAt])
   @@index([visitorId, agentId, updatedAt])
+  @@index([agencyId, userId, agentId, updatedAt])
 }
 
 /// One turn, or one tool result.
