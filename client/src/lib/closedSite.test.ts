@@ -13,8 +13,13 @@ describe('guestMayBrowse', () => {
     expect(guestMayBrowse('/viewing/seller/abc')).toBe(true);
   });
 
+  it('keeps the agency directory, which the home page links to', () => {
+    expect(guestMayBrowse('/agencies')).toBe(true);
+    expect(guestMayBrowse('/agencies/some-office')).toBe(true);
+  });
+
   it('sends the rest of the site back to the home page', () => {
-    for (const path of ['/search', '/agencies', '/signup', '/agency/signup', '/mortgage', '/sell']) {
+    for (const path of ['/search', '/signup', '/agency/signup', '/mortgage', '/sell']) {
       expect(guestMayBrowse(path), path).toBe(false);
     }
   });

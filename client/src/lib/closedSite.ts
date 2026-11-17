@@ -1,10 +1,11 @@
 /**
  * Paths a guest may still open while `SITE_CLOSED` is on.
  *
- * The home page stays open because it is in the sitemap. Signing in, recovering a
- * password, accepting an invite, and answering a viewing email all have to work or
- * the closed site has no way in. The legal pages stay because the login form links
- * to them. Everything else goes back to the home page.
+ * The home page stays open because it is in the sitemap. The agency directory stays
+ * open because the bar on that page links to it. Signing in, recovering a password,
+ * accepting an invite, and answering a viewing email all have to work or the closed
+ * site has no way in. The legal pages stay because the login form links to them.
+ * Everything else goes back to the home page.
  */
 const OPEN_WHEN_CLOSED = new Set([
   '/',
@@ -24,6 +25,8 @@ export function guestMayBrowse(pathname: string): boolean {
   if (OPEN_WHEN_CLOSED.has(pathname)) return true;
   // Token in the path is the authorisation. The customer has never signed in.
   if (pathname.startsWith('/viewing/')) return true;
+  // The public list of offices, and each office. Linked from the home page.
+  if (pathname === '/agencies' || pathname.startsWith('/agencies/')) return true;
   return false;
 }
 
