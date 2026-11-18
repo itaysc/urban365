@@ -43,6 +43,19 @@ describe('crmPageContext', () => {
     });
   });
 
+  it('reads mortgage case and banker screens', () => {
+    expect(crmPageContext('/app/mortgage-cases/c1', '')).toEqual({
+      kind: 'mortgage_case',
+      id: 'c1',
+      path: '/app/mortgage-cases/c1',
+    });
+    expect(crmPageContext('/app/banker-contacts', '?id=b1')).toEqual({
+      kind: 'banker',
+      id: 'b1',
+      path: '/app/banker-contacts?id=b1',
+    });
+  });
+
   it('names a generic CRM screen when there is no entity', () => {
     expect(crmPageContext('/app/customers', '')).toEqual({
       kind: 'customer',

@@ -1,10 +1,13 @@
 import {
+  bankerContactCard,
+  bankerContactSummary,
   customerCard,
   customerSummary,
   dealSummary,
   leadCard,
   leadSummary,
   meetingSummary,
+  mortgageCaseSummary,
 } from './agency-present.js';
 
 const PHONE = /0\d[\d\-\s]{7,}/;
@@ -46,6 +49,38 @@ describe('agency summaries keep phones and emails off the model', () => {
     const card = leadCard(row);
     expect(card.type).toBe('lead');
     if (card.type === 'lead') expect(card.phone).toBe('052-9998877');
+  });
+
+  it('leaves banker phones off the summary and on the card', () => {
+    const row = {
+      id: 'b1',
+      bankName: 'לאומי',
+      branch: 'חולון',
+      name: 'רונית',
+      phone: '03-1234567',
+      email: 'ronit@bank.co.il',
+    };
+    expect(bankerContactSummary(row)).not.toMatch(PHONE);
+    expect(bankerContactSummary(row)).not.toMatch(EMAIL);
+    const card = bankerContactCard(row);
+    expect(card.type).toBe('banker_contact');
+    if (card.type === 'banker_contact') expect(card.phone).toBe('03-1234567');
+  });
+
+  it('names a mortgage case without contact details', () => {
+    const summary = mortgageCaseSummary({
+      id: 'm1',
+      stage: 'sent_to_banks',
+      requestedAmount: 1_200_000,
+      propertyValue: 2_000_000,
+      propertyCity: 'רמת גן',
+      loanTermYears: 25,
+      customer: { id: 'c1', name: 'ישראל' },
+      bankOffers: [{ bankName: 'הפועלים', monthlyPayment: 6_500, interestRate: 4.2 }],
+    });
+    expect(summary).toContain('ישראל');
+    expect(summary).toContain('מכרז');
+    expect(summary).not.toMatch(PHONE);
   });
 
   it('names a deal and a meeting without a phone', () => {

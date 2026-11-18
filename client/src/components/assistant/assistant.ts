@@ -3,7 +3,7 @@ import { apiBaseUrl } from '@/services/api';
 export type AssistantAgentId = 'end-user' | 'agency';
 
 export interface AgentPageContext {
-  kind: 'customer' | 'lead' | 'deal' | 'listing' | 'calendar' | 'page';
+  kind: 'customer' | 'lead' | 'deal' | 'listing' | 'calendar' | 'mortgage_case' | 'banker' | 'page';
   id?: string;
   path: string;
 }
@@ -68,6 +68,25 @@ export type AssistantCard =
       phone: string | null;
       email: string | null;
       listingLabel: string | null;
+    }
+  | {
+      type: 'mortgage_case';
+      id: string;
+      href: string;
+      title: string;
+      stage: string;
+      requestedAmount: number | null;
+      propertyCity: string | null;
+    }
+  | {
+      type: 'banker_contact';
+      id: string;
+      href: string;
+      name: string;
+      bankName: string;
+      branch: string | null;
+      phone: string | null;
+      email: string | null;
     }
   | {
       type: 'confirm';

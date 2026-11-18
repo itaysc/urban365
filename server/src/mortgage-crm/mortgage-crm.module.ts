@@ -12,5 +12,6 @@ import { MortgageCasesService } from './mortgage-cases.service.js';
 @Module({
   controllers: [MortgageCasesController, BankOffersController, BankerContactsController],
   providers: [MortgageCasesService, BankOffersService, BankerContactsService],
+  exports: [MortgageCasesService, BankOffersService, BankerContactsService],
 })
 export class MortgageCrmModule {}

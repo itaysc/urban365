@@ -554,6 +554,31 @@ function CardView({
     );
   }
 
+  if (card.type === 'mortgage_case') {
+    return (
+      <a href={card.href} className="u365-asst-card">
+        <div>{card.title}</div>
+        <div className="u365-asst-meta">
+          {[card.stage, card.propertyCity, formatPrice(card.requestedAmount)].filter(Boolean).join(' · ')}
+        </div>
+      </a>
+    );
+  }
+
+  if (card.type === 'banker_contact') {
+    return (
+      <a href={card.href} className="u365-asst-card">
+        <div>
+          {card.name}
+          <span className="u365-asst-meta"> · {card.bankName}</span>
+        </div>
+        <div className="u365-asst-meta">
+          {[card.branch, card.phone, card.email].filter(Boolean).join(' · ')}
+        </div>
+      </a>
+    );
+  }
+
   if (card.type === 'meeting') {
     return (
       <a href={card.href} className="u365-asst-card">

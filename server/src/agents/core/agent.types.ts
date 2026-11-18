@@ -17,7 +17,7 @@ export type AgentAccess = 'anonymous' | 'signed-in' | 'agency-member';
  * the open one, not a guess.
  */
 export interface AgentPageContext {
-  kind: 'customer' | 'lead' | 'deal' | 'listing' | 'calendar' | 'page';
+  kind: 'customer' | 'lead' | 'deal' | 'listing' | 'calendar' | 'mortgage_case' | 'banker' | 'page';
   id?: string;
   path: string;
 }
@@ -114,6 +114,25 @@ export type AgentCard =
       phone: string | null;
       email: string | null;
       listingLabel: string | null;
+    }
+  | {
+      type: 'mortgage_case';
+      id: string;
+      href: string;
+      title: string;
+      stage: string;
+      requestedAmount: number | null;
+      propertyCity: string | null;
+    }
+  | {
+      type: 'banker_contact';
+      id: string;
+      href: string;
+      name: string;
+      bankName: string;
+      branch: string | null;
+      phone: string | null;
+      email: string | null;
     }
   | {
       type: 'confirm';

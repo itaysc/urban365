@@ -203,3 +203,102 @@ export function meetingCard(row: MeetingRow): AgentCard {
     location: row.location,
   };
 }
+
+const MORTGAGE_STAGE: Record<string, string> = {
+  new_request: 'בקשה חדשה',
+  consultation: 'בשיחת ייעוץ',
+  documents: 'השלמת מסמכים',
+  sent_to_banks: 'במכרז בין בנקים',
+  approved_in_principle: 'אושרה עקרונית',
+  signed: 'נחתמה',
+  lost: 'לא יצא לפועל',
+};
+
+export function mortgageCaseStageLabel(stage: string): string {
+  return MORTGAGE_STAGE[stage] ?? stage;
+}
+
+type MortgageCaseRow = {
+  id: string;
+  stage: string;
+  requestedAmount: number | null;
+  propertyValue: number | null;
+  propertyCity: string | null;
+  loanTermYears: number | null;
+  customer?: { id: string; name: string } | null;
+  lead?: { id: string; name: string } | null;
+  bankOffers?: { bankName: string; monthlyPayment: number | null; interestRate: number | null }[];
+};
+
+export function mortgageCaseWho(row: MortgageCaseRow): string {
+  return row.customer?.name ?? row.lead?.name ?? 'ללא שם';
+}
+
+/** Model-facing: names and money, never a phone. */
+export function mortgageCaseSummary(row: MortgageCaseRow): string {
+  const offers =
+    row.bankOffers && row.bankOffers.length > 0
+      ? `הצעות: ${row.bankOffers
+          .slice(0, 3)
+          .map((offer) => {
+            const bits = [offer.bankName];
+            if (offer.interestRate != null) bits.push(`${offer.interestRate}%`);
+            if (offer.monthlyPayment != null) bits.push(`${shekel(offer.monthlyPayment)} לחודש`);
+            return bits.join(' ');
+          })
+          .join(' ; ')}`
+      : '';
+  return [
+    `תיק ${mortgageCaseWho(row)} (${mortgageCaseStageLabel(row.stage)}, מזהה ${row.id})`,
+    row.requestedAmount != null ? `סכום מבוקש ${shekel(row.requestedAmount)}` : '',
+    row.propertyValue != null ? `שווי נכס ${shekel(row.propertyValue)}` : '',
+    row.propertyCity ? `עיר ${row.propertyCity}` : '',
+    row.loanTermYears != null ? `${row.loanTermYears} שנים` : '',
+    offers,
+  ]
+    .filter(Boolean)
+    .join('. ');
+}
+
+export function mortgageCaseCard(row: MortgageCaseRow): AgentCard {
+  return {
+    type: 'mortgage_case',
+    id: row.id,
+    href: `/app/mortgage-cases/${encodeURIComponent(row.id)}`,
+    title: mortgageCaseWho(row),
+    stage: mortgageCaseStageLabel(row.stage),
+    requestedAmount: row.requestedAmount,
+    propertyCity: row.propertyCity,
+  };
+}
+
+type BankerRow = {
+  id: string;
+  bankName: string;
+  branch: string | null;
+  name: string;
+  phone: string | null;
+  email: string | null;
+};
+
+export function bankerContactSummary(row: BankerRow): string {
+  return [
+    `${row.name} ב${row.bankName} (מזהה ${row.id})`,
+    row.branch ? `סניף ${row.branch}` : '',
+  ]
+    .filter(Boolean)
+    .join('. ');
+}
+
+export function bankerContactCard(row: BankerRow): AgentCard {
+  return {
+    type: 'banker_contact',
+    id: row.id,
+    href: `/app/banker-contacts?id=${encodeURIComponent(row.id)}`,
+    name: row.name,
+    bankName: row.bankName,
+    branch: row.branch,
+    phone: row.phone,
+    email: row.email,
+  };
+}

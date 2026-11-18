@@ -33,7 +33,7 @@ import type { AgentAccess, AgentContext, AgentPageContext } from './core/agent.t
 import { ConversationStore, transcriptView } from './core/conversation.store.js';
 
 class PageContextDto {
-  @IsIn(['customer', 'lead', 'deal', 'listing', 'calendar', 'page'])
+  @IsIn(['customer', 'lead', 'deal', 'listing', 'calendar', 'mortgage_case', 'banker', 'page'])
   kind!: AgentPageContext['kind'];
 
   @IsOptional() @IsString() @MaxLength(40) id?: string;

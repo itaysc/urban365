@@ -444,6 +444,8 @@ function pageContextLine(page?: AgentPageContext | null): string | null {
     deal: 'עסקה',
     listing: 'נכס',
     calendar: 'יומן',
+    mortgage_case: 'תיק משכנתא',
+    banker: 'אנשי קשר בבנקים',
     page: 'מסך',
   };
   const label = KIND[page.kind] ?? page.kind;

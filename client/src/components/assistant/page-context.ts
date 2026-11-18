@@ -25,6 +25,17 @@ export function crmPageContext(pathname: string, search: string): AgentPageConte
     return { kind: 'calendar', id: edit, path };
   }
 
+  const mortgageCase = /^\/app\/mortgage-cases\/([^/]+)$/.exec(pathname);
+  if (mortgageCase) {
+    return { kind: 'mortgage_case', id: mortgageCase[1], path: pathname };
+  }
+  if (pathname === '/app/mortgage-cases') {
+    return { kind: 'mortgage_case', id, path };
+  }
+  if (pathname === '/app/banker-contacts' || pathname.startsWith('/app/banker-contacts/')) {
+    return { kind: 'banker', id, path };
+  }
+
   const listing = /^\/app\/listings\/([^/]+)$/.exec(pathname);
   if (listing && listing[1] !== 'new') {
     return { kind: 'listing', id: listing[1], path: pathname };

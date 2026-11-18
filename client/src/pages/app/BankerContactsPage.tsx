@@ -1,5 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useSearchParams } from 'react-router-dom';
 import { Archive, Plus, Trash2 } from 'lucide-react';
 import { ArchivePanel } from '@/components/agency/ArchivePanel';
 import { SuggestBox } from '@/components/listing/SuggestBox';
@@ -28,12 +29,19 @@ const EMPTY: BankerContactInput = { bankName: '', branch: '', name: '', phone: '
 export function BankerContactsPage() {
   const toast = useToast();
   const queryClient = useQueryClient();
+  const [params] = useSearchParams();
+  const focusId = params.get('id');
   const { data, isPending } = useQuery({ queryKey: qk.bankerContacts.list, queryFn: fetchBankerContacts });
 
   const [form, setForm] = useState<BankerContactInput>(EMPTY);
   const [bankCode, setBankCode] = useState('');
   const [saving, setSaving] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
+
+  useEffect(() => {
+    if (!focusId || !data) return;
+    document.getElementById(`banker-${focusId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [focusId, data]);
 
   const bank = ISRAELI_BANKS.find((item) => String(item.code) === bankCode);
   const bankOptions = useMemo(() => {
@@ -225,7 +233,10 @@ export function BankerContactsPage() {
             {data.map((contact) => (
               <li
                 key={contact.id}
-                className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 p-2.5"
+                id={`banker-${contact.id}`}
+                className={`flex items-center justify-between gap-3 rounded-lg border p-2.5 ${
+                  focusId === contact.id ? 'border-blue-400 ring-2 ring-blue-100' : 'border-slate-200'
+                }`}
               >
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium text-slate-900">
