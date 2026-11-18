@@ -43,6 +43,12 @@ export interface AgentContext {
   pendingToolCallId?: string;
   /** When set, a confirm-gated tool with this id may run instead of waiting. */
   confirmedToolCallId?: string;
+  /** Everything the person has written in this chat. Tools use it so they do not invent. */
+  said?: string;
+  /** The message that opened this turn. */
+  latestUserMessage?: string;
+  /** The details question was already shown, so a later tool call prices with what was said. */
+  detailsAnswered?: boolean;
 }
 
 /**
@@ -62,7 +68,17 @@ export type AgentCard =
       city: string | null;
     }
   | { type: 'mortgage'; monthly: number; loan: number; years: number; note: string }
-  | { type: 'valuation'; low: number | null; high: number | null; verdict: string; city: string }
+  | {
+      type: 'valuation';
+      low: number | null;
+      high: number | null;
+      expected?: number | null;
+      asking?: number | null;
+      verdict: string;
+      city: string;
+      street?: string | null;
+      parts?: { label: string; factor: number }[];
+    }
   | { type: 'link'; href: string; label: string }
   | {
       type: 'price-history';
@@ -161,6 +177,11 @@ export interface ToolResult {
   /** The write is ready but not run — the browser must show אשר / בטל. */
   needsConfirm?: boolean;
   pendingConfirm?: PendingConfirm;
+  /**
+   * Spoken to the person as-is, and the turn stops. The model does not get another
+   * chance to answer past it.
+   */
+  reply?: string;
 }
 
 export interface AgentBudget {

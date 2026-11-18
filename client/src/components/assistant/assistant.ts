@@ -20,7 +20,17 @@ export type AssistantCard =
       city: string | null;
     }
   | { type: 'mortgage'; monthly: number; loan: number; years: number; note: string }
-  | { type: 'valuation'; low: number | null; high: number | null; verdict: string; city: string }
+  | {
+      type: 'valuation';
+      low: number | null;
+      high: number | null;
+      expected?: number | null;
+      asking?: number | null;
+      verdict: string;
+      city: string;
+      street?: string | null;
+      parts?: { label: string; factor: number }[];
+    }
   | { type: 'link'; href: string; label: string }
   | {
       type: 'price-history';

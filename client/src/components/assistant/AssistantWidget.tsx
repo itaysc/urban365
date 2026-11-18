@@ -590,14 +590,49 @@ function CardView({
     );
   }
 
+  if (card.type === 'valuation') return <ValuationCard card={card} />;
+
+  const unreachable: never = card;
+  return unreachable;
+}
+
+function ValuationCard({ card }: { card: Extract<AssistantCard, { type: 'valuation' }> }) {
+  const parts = card.parts ?? [];
+  const where = [card.street, card.city].filter(Boolean).join(', ');
   return (
     <div className="u365-asst-card">
-      <div>
+      <div className="u365-asst-meta">טווח השווי · {where}</div>
+      <div className="u365-asst-val-range">
         {card.low !== null && card.high !== null
           ? `${formatShekel(card.low)} – ${formatShekel(card.high)}`
           : 'אין טווח'}
       </div>
-      <div className="u365-asst-meta">{card.city} · טווח, לא שמאות</div>
+      {card.expected != null && (
+        <div className="u365-asst-val-row">
+          <span>צפוי להימכר סביב</span>
+          <span>{formatShekel(card.expected)}</span>
+        </div>
+      )}
+      {card.asking != null && (
+        <div className="u365-asst-val-row">
+          <span>מחיר פרסום מומלץ</span>
+          <span>{formatShekel(card.asking)}</span>
+        </div>
+      )}
+      {parts.length > 0 && (
+        <div className="u365-asst-val-parts">
+          {parts.map((part) => (
+            <div key={part.label} className="u365-asst-val-row">
+              <span>{part.label}</span>
+              <span className={part.factor >= 1 ? 'u365-asst-val-up' : 'u365-asst-val-down'}>
+                {part.factor >= 1 ? '+' : '−'}
+                {Math.abs((part.factor - 1) * 100).toFixed(1)}%
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="u365-asst-meta">טווח, לא שמאות</div>
     </div>
   );
 }

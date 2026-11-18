@@ -46,6 +46,8 @@ export class EstimateValueDto {
   @IsOptional() @IsString() @MaxLength(120) street?: string;
   @Type(() => Number) @IsNumber() @Min(1) @Max(15) rooms!: number;
   @Type(() => Number) @IsInt() @Min(20) @Max(400) area!: number;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) gush?: number;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) chelka?: number;
   @IsOptional() @ValidateNested() @Type(() => AttributesDto) attributes?: AttributesDto;
 }
 

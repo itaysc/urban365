@@ -34,6 +34,7 @@ import {
 import { advise, DEFAULT_BUFFER_SHARE, DEFAULT_COST_GROWTH, NO_OUTGOINGS } from '../../mortgage/household.js';
 import { AgentTool } from '../core/agent-tool.decorator.js';
 import type { AgentCard, AgentContext, ToolResult } from '../core/agent.types.js';
+import { asksForOneFlat, describeInfluence, readValuation, userSkipped, valuationQuestion } from './valuation-from-text.js';
 import {
   AffordabilityDto,
   AreaPricesDto,
@@ -271,12 +272,24 @@ export class EndUserToolsService {
   @AgentTool({
     name: 'street_price_history',
     description:
-      'מחיר ברחוב: חציון שנתי של עסקאות שנרשמו ליד הרחוב, וגם חציון המודעות שמוצגות עכשיו. להיסטוריה ולשאלה על מחיר ממוצע לדירת מספר חדרים ברחוב. העבר rooms כשצוינו חדרים. מספר בית בסוף השם, כמו 9, הוא אותו רחוב.',
+      'היסטוריית עסקאות ליד רחוב, לא שווי של דירה מסוימת. חציון שנתי וחציון המודעות שמוצגות עכשיו. העבר rooms כשצוינו חדרים. מספר בית בסוף השם, כמו 9, הוא אותו רחוב.',
     audiences: ['end-user', 'agency'],
     group: 'pricing',
     dto: StreetHistoryDto,
   })
-  async streetPriceHistory(dto: StreetHistoryDto): Promise<ToolResult> {
+  async streetPriceHistory(dto: StreetHistoryDto, ctx: AgentContext): Promise<ToolResult> {
+    if (asksForOneFlat(`${ctx.said ?? ''}\n${ctx.latestUserMessage ?? ''}`)) {
+      const stated = readValuation(ctx.said ?? '');
+      if (stated.missing.length > 0 && !userSkipped(ctx.latestUserMessage ?? '') && !ctx.detailsAnswered) {
+        const question = valuationQuestion(stated.missing);
+        return {
+          summary: `זו הערכת שווי לדירה אחת, לא היסטוריית רחוב. השאלה נשלחה למשתמש. אל תעריך עד שיענה.\n${question}`,
+          reply: question,
+        };
+      }
+      return { summary: 'זו הערכת שווי לדירה אחת. קרא ל-estimate_value עם הפרטים שנאמרו.' };
+    }
+
     const picked = await this.pickRegisteredStreet(dto.city, dto.street);
     const asked = dto.street.trim();
     if (!('name' in picked)) {
@@ -422,8 +435,9 @@ export class EndUserToolsService {
 
   @AgentTool({
     name: 'estimate_value',
-    description: 'טווח שווי לדירה לפי עסקאות דומות. מחזיר טווח, לא מספר אחד, ואינו שמאות. דורש התחברות.',
-    audiences: ['end-user'],
+    description:
+      'הערכת שווי לדירה אחת, אותו חישוב כמו בדף הערכת השווי. חניה, ממ"ד, מרפסת, מחסן, מעלית, קומה ומתוך כמה קומות, מצב ונוף מזיזים את המחיר רק אם המשתמש אמר אותם. מלא רק ממה שנאמר: hasParking hasMamad hasBalcony hasStorage hasLift הם true או false; condition הוא renovated (משופצת), good (טוב), fair (סביר או שיפוץ קל), needs-renovation (שיפוץ יסודי); aspect הוא open, ordinary, blocked; buildingState הוא well-kept, ordinary, neglected; renewal הוא approved (תמ"א שאושרה ועוד לא בוצעה), in-works, none (כולל בניין שכבר עבר תמ"א). אל תנחש. אם חסר פרט, הכלי עצמו שואל את המשתמש והתור נעצר.',
+    audiences: ['end-user', 'agency'],
     group: 'pricing',
     auth: true,
     dto: EstimateValueDto,
@@ -431,8 +445,30 @@ export class EndUserToolsService {
   async estimateValue(dto: EstimateValueDto, ctx: AgentContext): Promise<ToolResult> {
     const place = await this.places.find(dto.city);
     const registered = dto.street ? await this.pickRegisteredStreet(dto.city, dto.street) : null;
-    const streetName = registered && 'name' in registered ? registered.name : dto.street;
+    if (registered && !('name' in registered)) {
+      const list = registered.choices.join(', ');
+      return {
+        summary: list
+          ? `כמה רחובות מתאימים ב${dto.city}: ${list}. צריך את השם המדויק.`
+          : `אין רחוב בשם ${dto.street?.trim()} ב${dto.city}.`,
+      };
+    }
+    const streetName = registered && 'name' in registered ? registered.name : undefined;
     const street = streetName ? await this.places.locateStreet(dto.city, streetName) : null;
+    if (dto.street && !street) {
+      return { summary: `הרחוב ${streetName ?? dto.street} ב${dto.city} לא מוקם, אז אין נקודה להערכת שווי.` };
+    }
+
+    const said = ctx.said ?? '';
+    const stated = readValuation(said);
+    if (stated.missing.length > 0 && !userSkipped(ctx.latestUserMessage ?? '') && !ctx.detailsAnswered) {
+      const question = valuationQuestion(stated.missing);
+      return {
+        summary: `השאלה נשלחה למשתמש. אל תעריך ואל תמלא ניחוש עד שיענה.\n${question}`,
+        reply: question,
+      };
+    }
+
     const latitude = street?.latitude ?? place?.latitude;
     const longitude = street?.longitude ?? place?.longitude;
     if (latitude === undefined || longitude === undefined) {
@@ -444,12 +480,12 @@ export class EndUserToolsService {
       city: dto.city,
       latitude,
       longitude,
-      gush: null,
-      chelka: null,
+      gush: stated.gush,
+      chelka: stated.chelka,
       settlementCode: place?.settlementCode ?? null,
       rooms: dto.rooms,
       area: dto.area,
-      attributes: toSubject(dto.attributes),
+      attributes: toSubject(stated),
       market: context.verdict.state,
     };
 
@@ -457,17 +493,37 @@ export class EndUserToolsService {
     await this.valuation.record(request, result, ctx.principal?.userId ?? null);
 
     const range = result.range;
+    const parts = result.workings.quality?.parts ?? [];
+    const where = streetName ? `${streetName}, ${dto.city}` : dto.city;
+    const adjustments = parts.map((part) => `${part.label} ${signedPercent(part.factor)}`).join(', ');
+    const previous = [...(ctx.recentCards ?? [])].reverse().find((card) => card.type === 'valuation');
+    const influence = previous
+      ? describeInfluence(previous, { low: range?.low ?? null, high: range?.high ?? null, parts })
+      : '';
     return {
       summary: range
-        ? `טווח שווי ב${dto.city}: ${shekel(range.low)}–${shekel(range.high)} (${VERDICT[result.verdict] ?? result.verdict}). זו אינה שמאות.`
+        ? [
+            `טווח שווי ל${where}: ${shekel(range.low)}–${shekel(range.high)}.`,
+            `צפוי להימכר סביב ${shekel(range.expected)}. מחיר פרסום מומלץ ${shekel(range.asking)}.`,
+            adjustments ? `מה הזיז את המחיר: ${adjustments}.` : 'אף פרט שנמסר לא הזיז את המחיר מול הדירות שהושוו.',
+            influence,
+            street ? '' : 'בלי רחוב, הנקודה היא מרכז העיר.',
+            'זה אותו חישוב כמו בדף הערכת השווי, ואינו שמאות. צטט את המספרים האלה, ואם יש משפט על ההפרש מההערכה הקודמת צטט גם אותו.',
+          ]
+            .filter(Boolean)
+            .join('\n')
         : `אין טווח שווי: ${VERDICT[result.verdict] ?? result.verdict}.`,
       cards: [
         {
           type: 'valuation',
           low: range?.low ?? null,
           high: range?.high ?? null,
+          expected: range?.expected ?? null,
+          asking: range?.asking ?? null,
           verdict: result.verdict,
           city: dto.city,
+          street: streetName ?? null,
+          parts: parts.map((part) => ({ label: part.label, factor: part.factor })),
         },
       ],
     };
@@ -798,19 +854,24 @@ function buyerLabel(buyer: BuyerKind): string {
   return 'דירה להשקעה';
 }
 
-function toSubject(dto: EstimateValueDto['attributes']): Subject {
+function signedPercent(factor: number): string {
+  const points = Math.abs((factor - 1) * 100).toFixed(1);
+  return `${factor >= 1 ? '+' : '−'}${points}%`;
+}
+
+function toSubject(dto: Subject): Subject {
   return {
-    floor: dto?.floor ?? null,
-    topFloor: dto?.topFloor ?? null,
-    hasLift: dto?.hasLift ?? null,
-    condition: dto?.condition ?? null,
-    hasParking: dto?.hasParking ?? null,
-    hasStorage: dto?.hasStorage ?? null,
-    hasBalcony: dto?.hasBalcony ?? null,
-    hasMamad: dto?.hasMamad ?? null,
-    aspect: dto?.aspect ?? null,
-    buildingState: dto?.buildingState ?? null,
-    renewal: dto?.renewal ?? null,
+    floor: dto.floor,
+    topFloor: dto.topFloor,
+    hasLift: dto.hasLift,
+    condition: dto.condition,
+    hasParking: dto.hasParking,
+    hasStorage: dto.hasStorage,
+    hasBalcony: dto.hasBalcony,
+    hasMamad: dto.hasMamad,
+    aspect: dto.aspect,
+    buildingState: dto.buildingState,
+    renewal: dto.renewal,
   };
 }
 

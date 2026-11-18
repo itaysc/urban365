@@ -58,6 +58,152 @@ describe('AgentRuntime', () => {
     expect(transcript.messages[2]?.content).toBe('נמצאו 2');
   });
 
+  it('says a tool reply itself and does not let the model continue', async () => {
+    const registry = new ToolRegistry();
+    registry.add({
+      name: 'estimate_value',
+      description: 'שווי',
+      audiences: ['end-user'],
+      group: 'pricing',
+      auth: false,
+      confirm: false,
+      moduleName: 'TestModule',
+      parameters: { type: 'object', properties: {} },
+      invoke: async () => ({ summary: 'שאל', reply: 'באיזו קומה?' }),
+    });
+
+    const transcript = blank();
+    const runtime = runtimeWith(registry, transcript, [
+      { content: null, toolCalls: [{ id: 'call-1', name: 'estimate_value', arguments: '{}' }] },
+      { content: 'הנה מחיר.', toolCalls: [] },
+    ]);
+
+    const events = [];
+    for await (const event of runtime.chat(agent, caller(), 'שלום')) {
+      events.push(event);
+    }
+
+    const text = events
+      .filter((event) => event.event === 'text')
+      .map((event) => (event.event === 'text' ? event.data.delta : ''))
+      .join('');
+    expect(text).toBe('באיזו קומה?');
+    expect(transcript.messages.at(-1)?.content).toBe('באיזו קומה?');
+  });
+
+  it('asks for the missing valuation details before the model can price the flat', async () => {
+    const registry = new ToolRegistry();
+    const transcript = blank();
+    const runtime = runtimeWith(registry, transcript, [{ content: 'הטווח הוא 2,200,000.', toolCalls: [] }]);
+    const said =
+      'אני רוצה למכור דירת 4 חדרים ברחוב דב הוז בחולון. זה בניין שעבר תמ״ לפני 10 שנים. יש מרפסת 10 מטר. ממ״ד וחניה פרטית חצי מקורה. גודל הדירה 97 מ״ר. הדירה במצב סביר, דורשת שיפוץ קל. מה מחיר הדירה?';
+
+    const events = [];
+    for await (const event of runtime.chat(agent, caller(), said)) {
+      events.push(event);
+    }
+
+    const text = events
+      .filter((event) => event.event === 'text')
+      .map((event) => (event.event === 'text' ? event.data.delta : ''))
+      .join('');
+    expect(text).toContain('קומה');
+    expect(text).toContain('מתוך כמה קומות הבניין');
+    expect(text).toContain('מעלית (כן או לא)');
+    expect(text).toContain('מחסן (כן או לא)');
+    expect(text).not.toContain('2,200,000');
+    expect(transcript.messages.map((message) => message.role)).toEqual(['user', 'assistant']);
+  });
+
+  it('asks the office assistant for the same missing details', async () => {
+    const registry = new ToolRegistry();
+    const transcript = blank();
+    const runtime = runtimeWith(registry, transcript, [{ content: 'הטווח הוא 2,150,000.', toolCalls: [] }]);
+    const said =
+      'אני רוצה למכור דירת 4 חדרים ברחוב דב הוז בחולון. יש מרפסת 10 מטר. ממ״ד וחניה. 97 מ״ר. מצב סביר. מה מחיר הדירה?';
+
+    const events = [];
+    for await (const event of runtime.chat({ ...agent, id: 'agency' }, caller(), said)) {
+      events.push(event);
+    }
+
+    const text = events
+      .filter((event) => event.event === 'text')
+      .map((event) => (event.event === 'text' ? event.data.delta : ''))
+      .join('');
+    expect(text).toContain('קומה');
+    expect(text).toContain('מעלית (כן או לא)');
+    expect(text).not.toContain('2,150,000');
+  });
+
+  it('reprices the last valuation when a detail arrives after the answer', async () => {
+    const seen: string[] = [];
+    const registry = new ToolRegistry();
+    registry.add({
+      name: 'estimate_value',
+      description: 'שווי',
+      audiences: ['end-user', 'agency'],
+      group: 'pricing',
+      auth: false,
+      confirm: false,
+      moduleName: 'TestModule',
+      parameters: { type: 'object', properties: {} },
+      invoke: async (_args, ctx) => {
+        seen.push(ctx.said ?? '');
+        return {
+          summary: 'לעומת ההערכה הקודמת (2,320,000 ₪–2,670,000 ₪), הטווח עכשיו 2,280,000 ₪–2,620,000 ₪. נוף −4.0%, הבניין +2.5%.',
+          cards: [{ type: 'valuation', low: 2_280_000, high: 2_620_000, verdict: 'steady', city: 'חולון' }],
+        };
+      },
+    });
+
+    const transcript = blank();
+    transcript.messages.push(
+      { role: 'user', content: 'מה מחיר הדירה?' },
+      {
+        role: 'assistant',
+        content: '',
+        toolCalls: [{ id: 'call-1', name: 'estimate_value', arguments: '{"city":"חולון","rooms":4,"area":97}' }],
+      },
+      {
+        role: 'tool',
+        content: 'טווח',
+        toolName: 'estimate_value',
+        toolCallId: 'call-1',
+        cards: [
+          {
+            type: 'valuation',
+            low: 2_320_000,
+            high: 2_670_000,
+            expected: 2_490_000,
+            asking: 2_540_000,
+            verdict: 'steady',
+            city: 'חולון',
+            parts: [{ label: 'חניה', factor: 1.03 }],
+          },
+        ],
+      },
+      { role: 'assistant', content: 'הטווח הוא 2,320,000 עד 2,670,000.' },
+    );
+    const runtime = runtimeWith(registry, transcript, [{ content: 'הטווח הוא 9,999,999.', toolCalls: [] }]);
+
+    const events = [];
+    for await (const event of runtime.chat(agent, caller(), 'נוף חסום, בניין במצב טוב')) {
+      events.push(event);
+    }
+
+    const text = events
+      .filter((event) => event.event === 'text')
+      .map((event) => (event.event === 'text' ? event.data.delta : ''))
+      .join('');
+    expect(seen[0]).toContain('נוף חסום, בניין במצב טוב');
+    expect(text).toContain('לעומת ההערכה הקודמת');
+    expect(text).toContain('נוף −4.0%');
+    expect(text).toContain('הבניין +2.5%');
+    expect(text).not.toContain('כדי לתת הערכת מחיר');
+    expect(text).not.toContain('9,999,999');
+  });
+
   it('stops a conversation that has already spent its token budget', async () => {
     const registry = new ToolRegistry();
     const transcript = blank();

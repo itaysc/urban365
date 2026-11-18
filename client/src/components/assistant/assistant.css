@@ -279,6 +279,32 @@
   border-color: #94a3b8;
 }
 
+.u365-asst-val-range {
+  margin-top: 0.15rem;
+  font-weight: 600;
+}
+
+.u365-asst-val-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 0.25rem;
+}
+
+.u365-asst-val-parts {
+  margin-top: 0.35rem;
+  border-top: 1px solid #e2e8f0;
+  padding-top: 0.15rem;
+}
+
+.u365-asst-val-up {
+  color: #047857;
+}
+
+.u365-asst-val-down {
+  color: #be123c;
+}
+
 .u365-asst-link {
   font-weight: 500;
   text-decoration: underline;

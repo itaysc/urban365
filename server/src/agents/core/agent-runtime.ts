@@ -17,6 +17,7 @@ import { ConversationStore } from './conversation.store.js';
 import { estimateTokens } from './tokens.js';
 import { ENABLE_GROUPS, toolSchemaTokens, visibleToolSpecs } from './tool-selection.js';
 import { ToolRegistry } from './tool-registry.js';
+import { addsValuationDetail, asksForOneFlat, pendingValuationQuestion, VALUATION_QUESTION_LEAD } from '../end-user/valuation-from-text.js';
 
 export type AgentEvent =
   | { event: 'ready'; data: { conversationId: string } }
@@ -106,7 +107,59 @@ export class AgentRuntime {
     transcript.messages.push(user);
     await this.store.append(transcript.id, [user]);
 
-    const enabledGroups: string[] = [];
+    const users = transcript.messages.filter((item) => item.role === 'user').map((item) => item.content);
+    const lastAssistant = [...transcript.messages].reverse().find((item) => item.role === 'assistant' && item.content)?.content;
+    const alreadyPriced = transcript.messages.some((item) => item.cards?.some((card) => card.type === 'valuation'));
+    const question = pendingValuationQuestion(users, lastAssistant, alreadyPriced);
+    if (question) {
+      yield { event: 'text', data: { delta: question } };
+      const spoken: TranscriptMessage = { role: 'assistant', content: question };
+      transcript.messages.push(spoken);
+      await this.store.append(transcript.id, [spoken]);
+      yield { event: 'done', data: { conversationId: transcript.id } };
+      return;
+    }
+
+    const latest = users.at(-1) ?? '';
+    if (alreadyPriced && !asksForOneFlat(latest) && addsValuationDetail(latest)) {
+      const previousCall = [...transcript.messages]
+        .reverse()
+        .flatMap((item) => item.toolCalls ?? [])
+        .find((call) => call.name === 'estimate_value');
+      if (previousCall) {
+        ctx.said = users.join('\n');
+        ctx.latestUserMessage = latest;
+        ctx.detailsAnswered = true;
+        ctx.recentCards = recentCards(transcript.messages);
+        const callId = `reprice-${transcript.messages.length}`;
+        const result = await this.callTool(agent, ctx, { id: callId, name: 'estimate_value', arguments: previousCall.arguments }, ['pricing']);
+        if (result.cards?.some((card) => card.type === 'valuation')) {
+          const rows: TranscriptMessage[] = [
+            {
+              role: 'assistant',
+              content: '',
+              toolCalls: [{ id: callId, name: 'estimate_value', arguments: previousCall.arguments }],
+            },
+            {
+              role: 'tool',
+              content: result.summary,
+              toolName: 'estimate_value',
+              toolCallId: callId,
+              cards: result.cards,
+            },
+            { role: 'assistant', content: result.summary },
+          ];
+          transcript.messages.push(...rows);
+          await this.store.append(transcript.id, rows);
+          if (result.cards?.length) yield { event: 'cards', data: { cards: result.cards } };
+          yield { event: 'text', data: { delta: result.summary } };
+          yield { event: 'done', data: { conversationId: transcript.id } };
+          return;
+        }
+      }
+    }
+
+    const enabledGroups: string[] = asksForOneFlat(users.join('\n')) ? ['pricing'] : [];
 
     for (let round = 0; round < agent.budget.maxRounds; round++) {
       await this.compact(agent, transcript);
@@ -145,13 +198,22 @@ export class AgentRuntime {
       const toolMessages: TranscriptMessage[] = [];
       const shown = recentCards(transcript.messages);
 
+      const said = transcript.messages.filter((message) => message.role === 'user').map((message) => message.content);
+      ctx.said = said.join('\n');
+      ctx.latestUserMessage = said.at(-1) ?? '';
+      ctx.detailsAnswered = transcript.messages.some(
+        (message) => message.role === 'assistant' && message.content.startsWith(VALUATION_QUESTION_LEAD),
+      );
+
       let waitingConfirm = false;
+      const replies: string[] = [];
       for (const call of response.toolCalls) {
         ctx.recentCards = shown;
         ctx.pendingToolCallId = call.id;
         ctx.confirmedToolCallId = undefined;
         const result = await this.callTool(agent, ctx, call, enabledGroups);
         if (result.cards?.length) shown.push(...result.cards);
+        if (result.reply) replies.push(result.reply);
         if (call.name !== ENABLE_GROUPS) yield { event: 'tool', data: { name: call.name } };
         if (result.cards?.length) yield { event: 'cards', data: { cards: result.cards } };
         if (result.needsSignIn) yield { event: 'sign_in', data: { conversationId: transcript.id } };
@@ -170,6 +232,18 @@ export class AgentRuntime {
 
       transcript.messages.push(assistant, ...toolMessages);
       await this.store.append(transcript.id, [assistant, ...toolMessages]);
+
+      // The tool already asked the person. Another model round would answer past the
+      // question, which is how a valuation used to skip the floor and the lift.
+      if (!waitingConfirm && replies.length > 0) {
+        const reply = [...new Set(replies)].join('\n\n');
+        yield { event: 'text', data: { delta: reply } };
+        const spoken: TranscriptMessage = { role: 'assistant', content: reply };
+        transcript.messages.push(spoken);
+        await this.store.append(transcript.id, [spoken]);
+        yield { event: 'done', data: { conversationId: transcript.id } };
+        return;
+      }
 
       // A write is parked on a confirm card. Do not ask the model again until אשר runs —
       // otherwise it invents a success the database never saw.
@@ -414,6 +488,9 @@ function toModelMessages(
     messages.push({ role: 'system', content: `סיכום השיחה עד כאן:\n${transcript.summary}` });
   }
 
+  const update = valuationUpdateLine(transcript);
+  if (update) messages.push({ role: 'system', content: update });
+
   recent.forEach((turn, index) => {
     const full = index >= recent.length - FULL_TOOL_TURNS;
     for (const message of turn) {
@@ -434,6 +511,14 @@ function toModelMessages(
   });
 
   return messages;
+}
+
+function valuationUpdateLine(transcript: Transcript): string | null {
+  const priced = transcript.messages.some((message) => message.cards?.some((card) => card.type === 'valuation'));
+  if (!priced) return null;
+  const latest = [...transcript.messages].reverse().find((message) => message.role === 'user')?.content ?? '';
+  if (!addsValuationDetail(latest)) return null;
+  return 'כבר ניתנה הערכת שווי בשיחה. המשתמש הוסיף פרט. קרא ל-estimate_value עם כל מה שנאמר עד עכשיו. אמור אם הפרט מזיז את הטווח הקודם ובכמה, לפי המשפט שהכלי החזיר על ההפרש. אל תשאל שוב את רשימת הפרטים.';
 }
 
 function pageContextLine(page?: AgentPageContext | null): string | null {
