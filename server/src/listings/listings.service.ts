@@ -5,6 +5,7 @@ import { TenantPrismaService } from '../tenancy/tenant-prisma.service.js';
 import { listingRowToAsset } from '../yad2/listing-row.js';
 import { type Section } from '../yad2/yad2.types.js';
 import { cityKey } from './city-name.js';
+import { rankStreets, streetLookupWords, streetQueryIsFlexible, streetQueryName } from './street-match.js';
 import { FROM_A_VISIBLE_AGENCY, onTheMarket } from './on-the-market.js';
 import { pointInGeometry } from './point-in-polygon.js';
 import { GeocodeService } from '../geocode/geocode.service.js';
@@ -99,6 +100,24 @@ export const ORDER_BY_FOR_TEST = () => ORDER_BY;
  * Nulls sort last so listings missing the sorted field do not take over page one.
  */
 const TIEBREAK: Prisma.ListingOrderByWithRelationInput = { id: 'asc' };
+
+/** Prefix hits stay first. The folded matches fill whatever room is left. */
+function mergeStreetRows(
+  first: { street: string; city: string }[],
+  rest: { street: string; city: string }[],
+  limit: number,
+): { street: string; city: string }[] {
+  const seen = new Set(first.map((row) => `${row.street}\0${row.city}`));
+  const out = [...first];
+  for (const row of rest) {
+    const id = `${row.street}\0${row.city}`;
+    if (seen.has(id)) continue;
+    seen.add(id);
+    out.push(row);
+    if (out.length >= limit) break;
+  }
+  return out.slice(0, limit);
+}
 
 const ORDER_BY: Record<Sort, Prisma.ListingOrderByWithRelationInput[]> = {
   newest: [{ listedAt: { sort: 'desc', nulls: 'last' } }, { lastSeenAt: 'desc' }, TIEBREAK],
@@ -347,14 +366,17 @@ export class ListingsService {
    *
    * Prefix first, then anywhere in the name: typing `הרצ` should offer הרצל before
    * דרך הרצליה, because the thing you are most likely to have meant belongs at the top.
+   * When that still misses — the words are stored the other way around, or a geresh
+   * stands in for an apostrophe — the city's names are ranked the same way a question
+   * is: `ישראל נג'ארה` is `נג'ארה ישראל`.
    */
   async streetsIn(city: string, term = '', limit = 8): Promise<string[]> {
     const trimmed = city.trim();
     if (!trimmed) return [];
 
     const key = cityKey(trimmed);
-    // "הרצל 15" is הרצל. The number is a building, and the register has none.
-    const q = term.trim().replace(/\s+\d{1,4}[א-ת]?(?:\/\d{1,4})?$/, '');
+    // "הרצל 15" and "ישראל נג'ארה 9" are the street. The number is a building.
+    const q = streetQueryName(term);
     const mode = Prisma.QueryMode.insensitive;
 
     const starts = await this.prisma.client.street.findMany({
@@ -376,7 +398,18 @@ export class ListingsService {
       take: limit - starts.length,
     });
 
-    return [...starts, ...contains].map((row) => row.name);
+    const direct = [...starts, ...contains].map((row) => row.name);
+    if (direct.length >= limit) return direct;
+
+    const all = await this.prisma.client.street.findMany({
+      where: { cityKey: key },
+      select: { name: true },
+    });
+    const seen = new Set(direct);
+    const more = rankStreets(q, all, limit)
+      .map((row) => row.name)
+      .filter((name) => !seen.has(name));
+    return [...direct, ...more].slice(0, limit);
   }
 
   /**
@@ -388,7 +421,7 @@ export class ListingsService {
     cityPrefix = '',
     limit = 8,
   ): Promise<{ street: string; city: string }[]> {
-    const name = term.trim().replace(/\s+\d{1,4}[א-ת]?(?:\/\d{1,4})?$/, '');
+    const name = streetQueryName(term);
     if (name.length < 2) return [];
 
     const city = cityPrefix.trim();
@@ -402,7 +435,43 @@ export class ListingsService {
       take: limit,
     });
 
-    return rows.map((row) => ({ street: row.name, city: row.city }));
+    const direct = rows.map((row) => ({ street: row.name, city: row.city }));
+    if (direct.length >= limit || !streetQueryIsFlexible(name)) return direct;
+
+    const found = await this.streetsMatchingWords(streetLookupWords(name), city, 200);
+    const ranked = rankStreets(name, found, limit).map((row) => ({
+      street: row.name,
+      city: row.city ?? '',
+    }));
+    return mergeStreetRows(direct, ranked, limit);
+  }
+
+  /**
+   * Streets whose name contains every word, quotes ignored, in either order.
+   *
+   * The prefix index cannot see `ישראל נג'ארה` inside `נג'ארה ישראל`. Folding the
+   * geresh in SQL keeps this to the rows that actually share the words, instead of
+   * reading all 62,000 streets into the process.
+   */
+  private async streetsMatchingWords(
+    words: string[],
+    cityPrefix: string,
+    take: number,
+  ): Promise<{ name: string; city: string }[]> {
+    if (words.length === 0) return [];
+
+    const wordClauses = words.map(
+      (word) => Prisma.sql`regexp_replace(name, '[''׳״"’‘]', '', 'g') ILIKE ${'%' + word + '%'}`,
+    );
+    const cityClause = cityPrefix ? Prisma.sql`AND city ILIKE ${cityPrefix + '%'}` : Prisma.empty;
+
+    return this.prisma.client.$queryRaw<{ name: string; city: string }[]>`
+      SELECT name, city FROM "Street"
+      WHERE ${Prisma.join(wordClauses, ' AND ')}
+      ${cityClause}
+      ORDER BY name ASC, city ASC
+      LIMIT ${take}
+    `;
   }
 
   /**

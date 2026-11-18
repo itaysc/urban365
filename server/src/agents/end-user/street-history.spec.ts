@@ -1,6 +1,7 @@
 import {
   listingOnStreet,
   pickStreet,
+  rankStreets,
   streetHistoryCard,
   streetHistorySummary,
   streetQueryName,
@@ -9,6 +10,19 @@ import {
 describe('street price history', () => {
   it('drops a house number', () => {
     expect(streetQueryName('רחוב ויצמן 15')).toBe('רחוב ויצמן');
+    expect(streetQueryName('ישראל נג׳ארה 9')).toBe('ישראל נג׳ארה');
+    expect(streetQueryName("ישראל נג'ארה, 9")).toBe("ישראל נג'ארה");
+  });
+
+  it('finds the street when a house number is part of the address', () => {
+    const register = ["נג'ארה ישראל", 'ברזילי ישראל'];
+    expect(pickStreet('ישראל נג׳ארה 9', register)).toEqual({ name: "נג'ארה ישראל" });
+    expect(pickStreet("ישראל נג'ארה 9א", register)).toEqual({ name: "נג'ארה ישראל" });
+    expect(pickStreet('ישראל 9 נג׳ארה', register)).toEqual({ name: "נג'ארה ישראל" });
+    expect(rankStreets('ישראל נג׳ארה 9', register.map((name) => ({ name }))).map((row) => row.name)[0]).toBe(
+      "נג'ארה ישראל",
+    );
+    expect(listingOnStreet('ישראל נג׳ארה 9', "נג'ארה ישראל")).toBe(true);
   });
 
   it('keeps the street that was named when a square shares the name', () => {
@@ -23,6 +37,26 @@ describe('street price history', () => {
     expect(pickStreet('שד׳ דב הוז', register)).toEqual({ name: 'שד הוז דב' });
     expect(pickStreet("ישראל נג'ארה", register)).toEqual({ name: "נג'ארה ישראל" });
     expect(pickStreet('נג׳ארה', register)).toEqual({ name: "נג'ארה ישראל" });
+  });
+
+  it('offers a surname-first street first when the words were typed the other way', () => {
+    const rows = [
+      { name: 'ברזילי ישראל' },
+      { name: "נג'ארה ישראל" },
+      { name: 'ויצמן' },
+      { name: 'דרך הרצליה' },
+      { name: 'הרצל' },
+    ];
+    expect(rankStreets("ישראל נג'ארה", rows).map((row) => row.name)[0]).toBe("נג'ארה ישראל");
+    expect(rankStreets('נג׳ארה', rows).map((row) => row.name)[0]).toBe("נג'ארה ישראל");
+    expect(rankStreets('דב הוז', [{ name: 'שד הוז דב' }, { name: 'ויצמן' }]).map((row) => row.name)).toEqual([
+      'שד הוז דב',
+    ]);
+    expect(rankStreets('הרצ', rows).map((row) => row.name)).toEqual(['הרצל', 'דרך הרצליה']);
+    expect(rankStreets('ויצמן', [{ name: 'ככר ויצמן' }, { name: 'ויצמן' }]).map((row) => row.name)).toEqual([
+      'ויצמן',
+      'ככר ויצמן',
+    ]);
   });
 
   it('summarises recorded sales by year and says they are near the street', () => {

@@ -1,6 +1,14 @@
 import type { AgentCard } from '../core/agent.types.js';
-import { cityKey } from '../../listings/city-name.js';
 import { median } from '../../seo/stats.js';
+
+export {
+  listingOnStreet,
+  pickStreet,
+  rankStreets,
+  streetLookupWords,
+  streetQueryIsFlexible,
+  streetQueryName,
+} from '../../listings/street-match.js';
 
 /**
  * How far from a point on the street a sale still counts.
@@ -19,16 +27,6 @@ export const STREET_HISTORY_YEARS = 10;
 /** Homes. Land, shops and parking would make a street's apartment history unreadably mixed. */
 export const RESIDENTIAL_GROUPS = ['apartment', 'garden_apartment', 'penthouse', 'house'] as const;
 
-const HOUSE_NUMBER = /\s+\d{1,4}[א-ת]?(?:\/\d{1,4})?$/u;
-
-/**
- * Words that say what kind of road it is, not which road.
- *
- * The register writes `שד הוז דב` for the boulevard people call `דב הוז` or
- * `שד' דב הוז`. Dropping these leaves the name. ככר stays: ככר ויצמן is not ויצמן.
- */
-const ROAD_WORDS = new Set(['רחוב', 'רח', 'שדרות', 'שד', 'שדרה', 'דרך', 'סמטת', 'סמטה', 'מעלה', 'משעול', 'מבוי', 'שביל']);
-
 export interface RecordedDeal {
   dealDate: Date;
   amount: number;
@@ -42,73 +40,6 @@ export interface AskingPrices {
   count: number;
   median: number;
   perSqm: number | null;
-}
-
-/** "רחוב ויצמן 15" is the street ויצמן. The register has no house numbers. */
-export function streetQueryName(text: string): string {
-  return text.trim().replace(HOUSE_NUMBER, '').trim();
-}
-
-/**
- * The register's own spelling of the street someone named.
- *
- * Exact spelling wins. Otherwise the same words, in any order, without the word
- * that only says "boulevard" or "street": `דב הוז` and `שד' דב הוז` are `שד הוז דב`
- * in the register, and `ישראל נג'ארה` is `נג'ארה ישראל`. A quote and a geresh are
- * the same mark. Several remaining candidates go back to the model.
- */
-export function pickStreet(query: string, names: string[]): { name: string } | { choices: string[] } {
-  const asked = streetQueryName(query);
-  const key = cityKey(asked);
-  const exact = names.filter((name) => cityKey(name) === key);
-  if (exact.length === 1) return { name: exact[0] };
-  if (exact.length > 1) return { choices: exact };
-
-  const wanted = streetWords(asked);
-  if (wanted.length === 0) return { choices: [] };
-
-  const same = names.filter((name) => sameWords(streetWords(name), wanted));
-  if (same.length === 1) return { name: same[0] };
-  if (same.length > 1) return { choices: same };
-
-  const covers = names.filter((name) => wanted.every((word) => streetWords(name).includes(word)));
-  if (covers.length === 1) return { name: covers[0] };
-  if (covers.length > 1) return { choices: covers.slice(0, 8) };
-
-  const prefix = wanted.filter((word) => word.length >= 3);
-  const starts = names.filter((name) =>
-    prefix.some((word) => streetWords(name).some((streetWord) => streetWord.startsWith(word))),
-  );
-  return { choices: starts.slice(0, 8) };
-}
-
-/**
- * Whether a listing's street line is the register's street.
- *
- * Same test as a person's question, but only the exact name or the same words:
- * a listing on ויצמן is not a listing on ככר ויצמן.
- */
-export function listingOnStreet(written: string, registered: string): boolean {
-  const asked = streetQueryName(written);
-  if (!asked) return false;
-  if (cityKey(asked) === cityKey(registered)) return true;
-  const left = streetWords(asked);
-  const right = streetWords(registered);
-  return left.length > 0 && sameWords(left, right);
-}
-
-/** The name, without quotes and without the word that only names the kind of road. */
-function streetWords(name: string): string[] {
-  return cityKey(name)
-    .split(' ')
-    .filter((word) => word !== '' && !ROAD_WORDS.has(word));
-}
-
-function sameWords(a: string[], b: string[]): boolean {
-  if (a.length !== b.length) return false;
-  const left = [...a].sort();
-  const right = [...b].sort();
-  return left.every((word, index) => word === right[index]);
 }
 
 /** What the model is shown. Yearly medians, then a few of the latest sales. */

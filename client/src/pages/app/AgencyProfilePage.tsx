@@ -1,12 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { Camera } from 'lucide-react';
 import { qk } from '@/queries/keys';
 import { useAuth } from '@/auth/auth-context';
 import { Yad2ImportPanel } from '@/components/agency/Yad2ImportPanel';
 import { useYad2Visible } from '@/hooks/useYad2Visible';
 import { Button } from '@/components/ui/Button';
-import { Dropzone } from '@/components/ui/Dropzone';
+import { Dropzone, IMAGE_TYPES } from '@/components/ui/Dropzone';
 import { Field, inputClass } from '@/components/ui/Field';
 import { useToast } from '@/components/ui/Toast';
 import { errorMessageOf } from '@/lib/apiError';
@@ -48,6 +49,7 @@ export function AgencyProfilePage() {
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const logoInput = useRef<HTMLInputElement>(null);
 
   const apply = (p: AgencyProfile) => {
     setProfile(p);
@@ -210,32 +212,67 @@ export function AgencyProfilePage() {
         />
       )}
 
-      <section className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4">
+      <section className="flex flex-col gap-3">
         <h2 className="text-sm font-semibold text-slate-900">לוגו</h2>
 
-        {profile.logoUrl && (
-          <img
-            src={profile.logoUrl}
-            alt=""
-            className="h-24 w-24 rounded-lg border border-slate-200 bg-white object-contain p-1"
+        <div className="flex items-center gap-4">
+          <input
+            ref={logoInput}
+            type="file"
+            accept={IMAGE_TYPES.join(',')}
+            hidden
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              // Cleared so choosing the same file twice still fires a change event.
+              e.target.value = '';
+              if (file) void uploadLogo(file);
+            }}
           />
-        )}
 
-        <Dropzone disabled={uploadingLogo || !canManage} onFiles={(files) => void uploadLogo(files[0])}>
-          {uploadingLogo
-            ? 'מעלה…'
-            : profile.logoUrl
-              ? 'גררו לוגו להחלפה או לחצו לבחירה'
-              : 'גררו לוגו לכאן או לחצו לבחירה'}
-        </Dropzone>
+          {/* The logo is the control. A dropzone the width of the card was a lot of
+              chrome for one small mark. */}
+          <button
+            type="button"
+            disabled={uploadingLogo || !canManage}
+            onClick={() => logoInput.current?.click()}
+            aria-label={profile.logoUrl ? 'החלפת הלוגו' : 'העלאת לוגו'}
+            className={`group relative h-24 w-24 shrink-0 overflow-hidden rounded-lg border border-slate-200 bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-offset-2 disabled:cursor-default ${uploadingLogo ? 'opacity-60' : ''}`}
+          >
+            {profile.logoUrl ? (
+              <img src={profile.logoUrl} alt="" className="h-full w-full object-contain p-1" />
+            ) : (
+              <span className="flex h-full w-full items-center justify-center text-slate-300">
+                <Camera size={22} aria-hidden />
+              </span>
+            )}
 
-        {profile.logoUrl && canManage && (
-          <div>
-            <Button variant="ghost" onClick={() => void clearLogo()}>
-              הסר לוגו
-            </Button>
-          </div>
-        )}
+            {canManage && (
+              <span className="absolute inset-0 flex items-center justify-center bg-black/50 text-white opacity-0 transition group-hover:opacity-100 group-focus-visible:opacity-100">
+                <Camera size={22} aria-hidden />
+              </span>
+            )}
+          </button>
+
+          {(uploadingLogo || profile.logoUrl || !canManage) && (
+            <div className="flex flex-col gap-1">
+              <p className="text-xs text-slate-500">
+                {uploadingLogo
+                  ? 'מעלה…'
+                  : !canManage
+                    ? 'רק בעלים של הסוכנות יכול להחליף את הלוגו.'
+                    : 'לחצו על הלוגו כדי להחליף.'}
+              </p>
+
+              {profile.logoUrl && canManage && (
+                <div>
+                  <Button variant="ghost" className="px-0" onClick={() => void clearLogo()}>
+                    הסר לוגו
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </section>
 
       <section className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4">

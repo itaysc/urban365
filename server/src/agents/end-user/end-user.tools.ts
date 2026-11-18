@@ -188,14 +188,15 @@ export class EndUserToolsService {
 
   @AgentTool({
     name: 'resolve_place',
-    description: 'מאתר את שם העיר, השכונה או הרחוב כפי שהם רשומים באתר. השתמש לפני חיפוש.',
+    description:
+      'מאתר את שם העיר, השכונה או הרחוב כפי שהם רשומים. רחוב נמצא גם כשסדר המילים הפוך, וגם עם מספר בית כמו ישראל נג׳ארה 9. השתמש לפני חיפוש, והמשך עם השם שהוחזר.',
     audiences: ['end-user'],
     group: 'search',
     dto: ResolvePlaceDto,
   })
   async resolvePlace(dto: ResolvePlaceDto): Promise<ToolResult> {
     const suggested = await this.listings.suggest(dto.text.trim());
-    const streets = dto.city ? await this.listings.streetsIn(dto.city, dto.text) : [];
+    const streets = dto.city ? await this.namedStreets(dto.city, dto.text) : [];
     const neighborhoods = dto.city ? await this.listings.neighborhoodsIn(dto.city, dto.text) : [];
 
     const cities = suggested.cities.map((city) => city.value).join(', ') || 'אין';
@@ -270,17 +271,13 @@ export class EndUserToolsService {
   @AgentTool({
     name: 'street_price_history',
     description:
-      'מחיר ברחוב: חציון שנתי של עסקאות שנרשמו ליד הרחוב, וגם חציון המודעות שמוצגות עכשיו. להיסטוריה ולשאלה על מחיר ממוצע לדירת מספר חדרים ברחוב. העבר rooms כשצוינו חדרים.',
+      'מחיר ברחוב: חציון שנתי של עסקאות שנרשמו ליד הרחוב, וגם חציון המודעות שמוצגות עכשיו. להיסטוריה ולשאלה על מחיר ממוצע לדירת מספר חדרים ברחוב. העבר rooms כשצוינו חדרים. מספר בית בסוף השם, כמו 9, הוא אותו רחוב.',
     audiences: ['end-user', 'agency'],
     group: 'pricing',
     dto: StreetHistoryDto,
   })
   async streetPriceHistory(dto: StreetHistoryDto): Promise<ToolResult> {
-    const names = await this.prisma.street.findMany({
-      where: { cityKey: cityKey(dto.city) },
-      select: { name: true },
-    });
-    const picked = pickStreet(dto.street, names.map((row) => row.name));
+    const picked = await this.pickRegisteredStreet(dto.city, dto.street);
     const asked = dto.street.trim();
     if (!('name' in picked)) {
       const list = picked.choices.join(', ');
@@ -366,6 +363,26 @@ export class EndUserToolsService {
     };
   }
 
+  /**
+   * The register's spelling of a street someone named.
+   *
+   * The same test the address box uses: exact, then the same words in any order,
+   * so `ישראל נג'ארה` is the row stored as `נג'ארה ישראל`.
+   */
+  private async pickRegisteredStreet(city: string, street: string) {
+    const names = await this.prisma.street.findMany({
+      where: { cityKey: cityKey(city) },
+      select: { name: true },
+    });
+    return pickStreet(street, names.map((row) => row.name));
+  }
+
+  /** One registered street, or the few the name could still be. */
+  private async namedStreets(city: string, text: string): Promise<string[]> {
+    const picked = await this.pickRegisteredStreet(city, text);
+    return 'name' in picked ? [picked.name] : picked.choices;
+  }
+
   /** Published for-sale listings on this street, matched the way a person names it. */
   private async askingOnStreet(
     settlement: string,
@@ -413,7 +430,9 @@ export class EndUserToolsService {
   })
   async estimateValue(dto: EstimateValueDto, ctx: AgentContext): Promise<ToolResult> {
     const place = await this.places.find(dto.city);
-    const street = dto.street ? await this.places.locateStreet(dto.city, dto.street) : null;
+    const registered = dto.street ? await this.pickRegisteredStreet(dto.city, dto.street) : null;
+    const streetName = registered && 'name' in registered ? registered.name : dto.street;
+    const street = streetName ? await this.places.locateStreet(dto.city, streetName) : null;
     const latitude = street?.latitude ?? place?.latitude;
     const longitude = street?.longitude ?? place?.longitude;
     if (latitude === undefined || longitude === undefined) {

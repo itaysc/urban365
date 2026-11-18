@@ -16,8 +16,8 @@ export function cityKey(name: string | null | undefined): string {
     .normalize('NFKC')
     // Maqaf, en dash, em dash, hyphen — all of them join words in a place name.
     .replace(/[־‐-―-]/g, ' ')
-    // Geresh and gershayim, and the ASCII quotes people type instead.
-    .replace(/[׳״'"׳״]/g, '')
+    // Geresh and gershayim, and the quotes people type instead, straight or curled.
+    .replace(/[׳״'"’‘]/g, '')
     .replace(/\s+/g, ' ')
     .trim()
     .toLowerCase();
