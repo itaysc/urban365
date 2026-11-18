@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useSearchParams } from 'react-router-dom';
 import { Archive, Plus } from 'lucide-react';
 import { ArchivePanel } from '@/components/agency/ArchivePanel';
 import { DealCard } from '@/components/agency/DealCard';
@@ -42,6 +43,8 @@ export function DealsPage() {
   const toast = useToast();
   const queryClient = useQueryClient();
   const board = useMediaQuery(BOARD_FROM);
+  const [params] = useSearchParams();
+  const focusId = params.get('id');
 
   const [adding, setAdding] = useState(false);
   const [addingTo, setAddingTo] = useState<DealStage | undefined>();
@@ -51,6 +54,11 @@ export function DealsPage() {
   const [archiveOpen, setArchiveOpen] = useState(false);
 
   const { data, isPending } = useQuery({ queryKey: qk.deals.board, queryFn: fetchDealBoard });
+
+  useEffect(() => {
+    if (!focusId || !data) return;
+    document.getElementById(`deal-${focusId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [focusId, data]);
 
   const reload = () => queryClient.invalidateQueries({ queryKey: qk.deals.all });
 
@@ -99,6 +107,7 @@ export function DealsPage() {
       key={deal.id}
       deal={deal}
       draggable={draggable}
+      focused={focusId === deal.id}
       lifted={lifted === deal.id}
       onDragStart={() => setLifted(deal.id)}
       onDragEnd={() => {

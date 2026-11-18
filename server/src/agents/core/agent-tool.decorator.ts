@@ -21,6 +21,11 @@ export interface AgentToolOptions {
   scope?: AgentToolScope;
   /** An `Action` from permissions.ts. Checked before the method runs, and again inside the service. */
   requires?: Action;
+  /**
+   * The tool changes CRM data. It does not run until the person presses אשר on the
+   * card the browser draws. Reads stay immediate.
+   */
+  confirm?: boolean;
   /** The class-validator class the arguments are checked against, and described by. */
   dto?: new () => object;
   /** Fields of `dto` the model is not told about. The handler still receives them if sent. */
@@ -34,6 +39,7 @@ export interface StoredAgentTool extends Required<Pick<AgentToolOptions, 'descri
   auth: boolean;
   scope?: AgentToolScope;
   requires?: Action;
+  confirm: boolean;
   dto?: new () => object;
   omit: string[];
 }
@@ -58,6 +64,7 @@ export function AgentTool(options: AgentToolOptions): MethodDecorator {
       auth: options.auth ?? false,
       scope: options.scope,
       requires: options.requires,
+      confirm: options.confirm ?? false,
       dto: options.dto,
       omit: options.omit ?? [],
     });

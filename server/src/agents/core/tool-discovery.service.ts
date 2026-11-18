@@ -4,6 +4,7 @@ import { DiscoveryService } from '@nestjs/core';
 import type { AgentsConfig } from '../../config/configuration.js';
 import { can } from '../../auth/permissions.js';
 import { TenantScope } from '../../tenancy/tenant-scope.js';
+import { confirmDetail, confirmLabel } from './confirm-labels.js';
 import { isAgentExcluded } from './agent-exclude.js';
 import { toolsOn, type StoredAgentTool } from './agent-tool.decorator.js';
 import type { AgentContext, ToolResult } from './agent.types.js';
@@ -75,6 +76,7 @@ export class ToolDiscoveryService implements OnModuleInit {
           auth: tool.auth,
           scope: tool.scope,
           requires: tool.requires,
+          confirm: tool.confirm,
           moduleName,
           parameters,
           invoke: (args, ctx) =>
@@ -142,10 +144,27 @@ async function invokeTool(
   }
 
   let value: object | undefined;
+  const validatedArgs = args ?? {};
   if (tool.dto) {
     const read = readDto(tool.dto, args);
     if ('error' in read) return { summary: read.error };
     value = read.value;
+  }
+
+  // A write waits for אשר in the browser. Validation already ran, so a bad payload
+  // never reaches the person as a confirm card.
+  if (tool.confirm && ctx.confirmedToolCallId !== ctx.pendingToolCallId) {
+    const label = confirmLabel(tool.name);
+    const detail = confirmDetail(tool.name, value ?? validatedArgs);
+    const toolCallId = ctx.pendingToolCallId ?? '';
+    return {
+      summary: `ממתין לאישור: ${label}. אל תטען שהפעולה בוצעה.`,
+      needsConfirm: true,
+      pendingConfirm: { toolName: tool.name, args: value ?? validatedArgs, label, detail },
+      cards: toolCallId
+        ? [{ type: 'confirm', toolCallId, toolName: tool.name, label, detail, status: 'pending' }]
+        : [],
+    };
   }
 
   const run = async (): Promise<ToolResult> => {

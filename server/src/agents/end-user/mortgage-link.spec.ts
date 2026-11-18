@@ -21,6 +21,8 @@ describe('mortgage calculator link', () => {
 
   it('still sends the calculator when a different link was shown', () => {
     const search: AgentCard = { type: 'link', href: '/search?city=נתניה', label: 'כל התוצאות' };
-    expect(mortgageCalculatorLink(undefined, [search])?.href).toBe('/mortgage');
+    const card = mortgageCalculatorLink(undefined, [search]);
+    expect(card?.type).toBe('link');
+    if (card?.type === 'link') expect(card.href).toBe('/mortgage');
   });
 });

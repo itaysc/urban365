@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { DiscoveryModule } from '@nestjs/core';
+import { AgencyModule } from '../agency/agency.module.js';
 import { CalendarModule } from '../calendar/calendar.module.js';
 import { CrmModule } from '../crm/crm.module.js';
 import { ListingsModule } from '../listings/listings.module.js';
@@ -26,6 +27,7 @@ import { EndUserToolsService } from './end-user/end-user.tools.js';
     VisitorModule,
     CrmModule,
     CalendarModule,
+    AgencyModule,
   ],
   controllers: [AgentsController],
   providers: [

@@ -6,6 +6,7 @@ import { formatPrice, formatShekel } from '@/lib/format';
 import sheet from './assistant.css?inline';
 import {
   clearHistory,
+  confirmTool,
   displayChatText,
   stickAfterScroll,
   forgetConversation,
@@ -20,6 +21,7 @@ import {
   type AssistantCard,
   type AssistantMessage,
 } from './assistant';
+import { crmPageContext } from './page-context';
 
 const HIDDEN = [/^\/app(?:\/|$)/, /^\/admin(?:\/|$)/, /^\/login(?:\/|$)/, /^\/signup(?:\/|$)/, /^\/join(?:\/|$)/];
 
@@ -207,6 +209,8 @@ export function AssistantPanel({
       });
     };
 
+    const page = agentId === 'agency' ? crmPageContext(pathname, window.location.search) : null;
+
     try {
       await sendMessage(
         text,
@@ -223,6 +227,68 @@ export function AssistantPanel({
         },
         undefined,
         agentId,
+        page,
+      );
+    } catch {
+      patch((current) => ({ ...current, content: current.content || 'משהו השתבש. נסה שוב.' }));
+    } finally {
+      setPending(false);
+    }
+  };
+
+  const onConfirm = async (toolCallId: string, accept: boolean) => {
+    if (pending || !conversationId.current) return;
+    setPending(true);
+    stickToBottom.current = true;
+    setMessages((current) => [...current, emptyAssistant()]);
+
+    const patch = (update: (message: AssistantMessage) => AssistantMessage) => {
+      setMessages((current) => {
+        const next = [...current];
+        const last = next[next.length - 1];
+        if (!last || last.role !== 'assistant') return current;
+        next[next.length - 1] = update(last);
+        return next;
+      });
+    };
+
+    const page = agentId === 'agency' ? crmPageContext(pathname, window.location.search) : null;
+
+    try {
+      await confirmTool(
+        conversationId.current,
+        toolCallId,
+        accept,
+        {
+          onReady: (id) => {
+            conversationId.current = id;
+            rememberConversation(id, agentId);
+          },
+          onText: (delta) => patch((message) => ({ ...message, content: message.content + delta })),
+          onCards: (cards) => {
+            setMessages((current) =>
+              current.map((message) => ({
+                ...message,
+                cards: message.cards.map((card) => {
+                  if (card.type !== 'confirm' || card.toolCallId !== toolCallId) return card;
+                  const next = cards.find((item) => item.type === 'confirm' && item.toolCallId === toolCallId);
+                  return next ?? card;
+                }),
+              })),
+            );
+            patch((message) => ({
+              ...message,
+              cards: [
+                ...message.cards,
+                ...cards.filter((card) => card.type !== 'confirm' || card.toolCallId !== toolCallId),
+              ],
+            }));
+          },
+          onSignIn: () => patch((message) => ({ ...message, needsSignIn: true })),
+          onError: (message) => patch((current) => ({ ...current, content: current.content || message })),
+        },
+        agentId,
+        page,
       );
     } catch {
       patch((current) => ({ ...current, content: current.content || 'משהו השתבש. נסה שוב.' }));
@@ -328,7 +394,12 @@ export function AssistantPanel({
                   {message.cards.length > 0 && (
                     <div className="u365-asst-cards">
                       {message.cards.map((card, cardIndex) => (
-                        <CardView key={cardIndex} card={card} />
+                        <CardView
+                          key={cardIndex}
+                          card={card}
+                          pending={pending}
+                          onConfirm={onConfirm}
+                        />
                       ))}
                     </div>
                   )}
@@ -381,7 +452,41 @@ export function AssistantPanel({
   );
 }
 
-function CardView({ card }: { card: AssistantCard }) {
+function CardView({
+  card,
+  pending,
+  onConfirm,
+}: {
+  card: AssistantCard;
+  pending: boolean;
+  onConfirm: (toolCallId: string, accept: boolean) => void;
+}) {
+  if (card.type === 'confirm') {
+    return (
+      <div className="u365-asst-card u365-asst-confirm-card">
+        <div>{card.label}</div>
+        <div className="u365-asst-meta">{card.detail}</div>
+        {card.status === 'pending' ? (
+          <div className="u365-asst-confirm-actions">
+            <button type="button" disabled={pending} onClick={() => onConfirm(card.toolCallId, false)}>
+              ביטול
+            </button>
+            <button
+              type="button"
+              className="is-ok"
+              disabled={pending}
+              onClick={() => onConfirm(card.toolCallId, true)}
+            >
+              אשר
+            </button>
+          </div>
+        ) : (
+          <div className="u365-asst-meta">{card.status === 'done' ? 'בוצע' : 'בוטל'}</div>
+        )}
+      </div>
+    );
+  }
+
   if (card.type === 'listing') {
     return (
       <a href={card.href} className="u365-asst-card">

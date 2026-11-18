@@ -115,3 +115,9 @@ export class MyListingsToolDto {
   @IsOptional() @IsIn(['draft', 'published', 'archived']) status?: 'draft' | 'published' | 'archived';
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(50) pageSize?: number;
 }
+
+/** Match one customer's brief against the agency's published listings. */
+export class MatchCustomerListingsDto {
+  @IsString() @MaxLength(40) customerId!: string;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(20) limit?: number;
+}

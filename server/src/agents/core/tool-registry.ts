@@ -14,6 +14,7 @@ export interface RegisteredTool {
   auth: boolean;
   scope?: AgentToolScope;
   requires?: Action;
+  confirm: boolean;
   moduleName: string;
   parameters: JsonSchema;
   invoke(args: unknown, ctx: AgentContext): Promise<ToolResult>;

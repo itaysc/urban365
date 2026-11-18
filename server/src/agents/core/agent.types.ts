@@ -12,6 +12,16 @@ export type AgentAudience = 'end-user' | 'agency' | 'broker';
  */
 export type AgentAccess = 'anonymous' | 'signed-in' | 'agency-member';
 
+/**
+ * What CRM screen the person is looking at. Sent with each turn so "הלקוח" means
+ * the open one, not a guess.
+ */
+export interface AgentPageContext {
+  kind: 'customer' | 'lead' | 'deal' | 'listing' | 'calendar' | 'page';
+  id?: string;
+  path: string;
+}
+
 /** Who is talking. Tools that need an account read `principal`; the rest must not. */
 export interface AgentContext {
   agentId: string;
@@ -22,11 +32,17 @@ export interface AgentContext {
    * offices does not reopen a transcript that named the previous office's customers.
    */
   agencyId?: string | null;
+  /** The open CRM screen, when the chat is mounted inside the agency shell. */
+  page?: AgentPageContext | null;
   /**
    * Cards already drawn in the last few messages, including earlier tools in this
    * turn. A tool uses them to avoid sending the same link again.
    */
   recentCards?: AgentCard[];
+  /** The tool call id being invoked right now — used to stamp confirm cards. */
+  pendingToolCallId?: string;
+  /** When set, a confirm-gated tool with this id may run instead of waiting. */
+  confirmedToolCallId?: string;
 }
 
 /**
@@ -98,13 +114,34 @@ export type AgentCard =
       phone: string | null;
       email: string | null;
       listingLabel: string | null;
+    }
+  | {
+      type: 'confirm';
+      toolCallId: string;
+      toolName: string;
+      /** Short Hebrew sentence of what will happen, for the button strip. */
+      label: string;
+      /** One-line detail without phones or emails. */
+      detail: string;
+      status: 'pending' | 'done' | 'cancelled';
     };
+
+/** Args held until the person presses אשר on a confirm card. */
+export interface PendingConfirm {
+  toolName: string;
+  args: unknown;
+  label: string;
+  detail: string;
+}
 
 /** What a tool hands back. `summary` is for the model, `cards` are for the screen. */
 export interface ToolResult {
   summary: string;
   cards?: AgentCard[];
   needsSignIn?: boolean;
+  /** The write is ready but not run — the browser must show אשר / בטל. */
+  needsConfirm?: boolean;
+  pendingConfirm?: PendingConfirm;
 }
 
 export interface AgentBudget {
@@ -155,6 +192,7 @@ export interface TranscriptMessage {
   toolCalls?: StoredToolCall[];
   cards?: AgentCard[];
   needsSignIn?: boolean;
+  pendingConfirm?: PendingConfirm;
 }
 
 export interface Transcript {

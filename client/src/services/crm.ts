@@ -53,6 +53,8 @@ export interface LeadInput {
   status?: LeadStatus;
 }
 
+export const fetchLead = (id: string) => api.get<Lead>(`/my/leads/${id}`).then((r) => r.data);
+
 export const createLead = (input: LeadInput) => api.post<Lead>('/my/leads', input);
 export const updateLead = (id: string, input: Partial<LeadInput>) =>
   api.patch<Lead>(`/my/leads/${id}`, input);
@@ -276,6 +278,8 @@ export async function fetchCustomers(params: {
   const { data } = await api.get<CustomerPage>(`/my/customers?${search}`);
   return data;
 }
+
+export const fetchCustomer = (id: string) => api.get<Customer>(`/my/customers/${id}`).then((r) => r.data);
 
 export const createCustomer = (input: CustomerInput) => api.post<Customer>('/my/customers', input);
 export const updateCustomer = (id: string, input: Partial<CustomerInput>) =>

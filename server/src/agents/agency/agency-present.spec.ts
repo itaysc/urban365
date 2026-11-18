@@ -23,8 +23,12 @@ describe('agency summaries keep phones and emails off the model', () => {
     };
     expect(customerSummary(row)).not.toMatch(PHONE);
     expect(customerSummary(row)).not.toMatch(EMAIL);
-    expect(customerCard(row).phone).toBe('050-1234567');
-    expect(customerCard(row).email).toBe('israel@example.com');
+    const card = customerCard(row);
+    expect(card.type).toBe('customer');
+    if (card.type === 'customer') {
+      expect(card.phone).toBe('050-1234567');
+      expect(card.email).toBe('israel@example.com');
+    }
   });
 
   it('leaves contact details out of the lead summary', () => {
@@ -39,7 +43,9 @@ describe('agency summaries keep phones and emails off the model', () => {
     };
     expect(leadSummary(row)).not.toMatch(PHONE);
     expect(leadSummary(row)).not.toMatch(EMAIL);
-    expect(leadCard(row).phone).toBe('052-9998877');
+    const card = leadCard(row);
+    expect(card.type).toBe('lead');
+    if (card.type === 'lead') expect(card.phone).toBe('052-9998877');
   });
 
   it('names a deal and a meeting without a phone', () => {

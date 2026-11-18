@@ -1,9 +1,15 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import type { Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import type { AgentsConfig } from '../../config/configuration.js';
-import type { AgentCard, StoredToolCall, Transcript, TranscriptMessage } from './agent.types.js';
+import type {
+  AgentCard,
+  PendingConfirm,
+  StoredToolCall,
+  Transcript,
+  TranscriptMessage,
+} from './agent.types.js';
 import { dayKey, retainedDays } from './history-window.js';
 
 interface Caller {
@@ -18,6 +24,7 @@ interface ToolPayload {
   toolCalls?: StoredToolCall[];
   cards?: AgentCard[];
   needsSignIn?: boolean;
+  pendingConfirm?: PendingConfirm;
 }
 
 /**
@@ -85,6 +92,51 @@ export class ConversationStore {
       where: { id },
       data: { tokensUsed: { increment: tokens } },
     });
+  }
+
+  /**
+   * Replaces one tool row's text and cards after a confirm (or cancel). The pending
+   * payload is cleared so the same אשר cannot run twice.
+   */
+  async replaceToolMessage(
+    conversationId: string,
+    toolCallId: string,
+    next: { content: string; cards?: AgentCard[]; pendingConfirm?: PendingConfirm | null },
+  ): Promise<void> {
+    const row = await this.prisma.agentMessage.findFirst({
+      where: { conversationId, toolCallId, role: 'tool' },
+    });
+    if (!row) throw new NotFoundException('הפעולה לא נמצאה.');
+
+    const previous = (row.toolPayload ?? {}) as ToolPayload;
+    const payload: ToolPayload = {
+      ...previous,
+      cards: next.cards,
+      pendingConfirm: next.pendingConfirm === null ? undefined : (next.pendingConfirm ?? previous.pendingConfirm),
+    };
+    if (next.pendingConfirm === null) delete payload.pendingConfirm;
+
+    await this.prisma.agentMessage.update({
+      where: { id: row.id },
+      data: {
+        content: next.content,
+        toolPayload: Object.keys(payload).length > 0 ? (payload as Prisma.InputJsonValue) : Prisma.DbNull,
+      },
+    });
+  }
+
+  /** The pending write behind a confirm card, if it is still waiting. */
+  async pendingConfirm(
+    conversationId: string,
+    toolCallId: string,
+  ): Promise<PendingConfirm | null> {
+    const row = await this.prisma.agentMessage.findFirst({
+      where: { conversationId, toolCallId, role: 'tool' },
+      select: { toolPayload: true },
+    });
+    if (!row) return null;
+    const payload = (row.toolPayload ?? {}) as ToolPayload;
+    return payload.pendingConfirm ?? null;
   }
 
   /**
@@ -196,6 +248,7 @@ function payloadOf(message: TranscriptMessage): ToolPayload | undefined {
   if (message.toolCalls?.length) payload.toolCalls = message.toolCalls;
   if (message.cards?.length) payload.cards = message.cards;
   if (message.needsSignIn) payload.needsSignIn = true;
+  if (message.pendingConfirm) payload.pendingConfirm = message.pendingConfirm;
   return Object.keys(payload).length > 0 ? payload : undefined;
 }
 
@@ -263,6 +316,7 @@ function toTranscript(row: {
         toolCalls: payload.toolCalls,
         cards: payload.cards,
         needsSignIn: payload.needsSignIn,
+        pendingConfirm: payload.pendingConfirm,
       };
     }),
   };

@@ -12,7 +12,16 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Throttle } from '@nestjs/throttler';
-import { IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import {
+  IsBoolean,
+  IsIn,
+  IsOptional,
+  IsString,
+  MaxLength,
+  MinLength,
+  ValidateNested,
+} from 'class-validator';
+import { Type } from 'class-transformer';
 import type { Request, Response } from 'express';
 import { CurrentUser } from '../auth/decorators/current-user.decorator.js';
 import { Public } from '../auth/decorators/public.decorator.js';
@@ -20,12 +29,29 @@ import type { Principal } from '../auth/types/principal.js';
 import { VISITOR_COOKIE, VisitorService, setVisitorCookie } from '../visitor/visitor.service.js';
 import { AgentCatalog } from './agent-catalog.js';
 import { AgentRuntime } from './core/agent-runtime.js';
-import type { AgentAccess, AgentContext } from './core/agent.types.js';
+import type { AgentAccess, AgentContext, AgentPageContext } from './core/agent.types.js';
 import { ConversationStore, transcriptView } from './core/conversation.store.js';
+
+class PageContextDto {
+  @IsIn(['customer', 'lead', 'deal', 'listing', 'calendar', 'page'])
+  kind!: AgentPageContext['kind'];
+
+  @IsOptional() @IsString() @MaxLength(40) id?: string;
+
+  @IsString() @MaxLength(200) path!: string;
+}
 
 class ChatDto {
   @IsString() @MinLength(1) @MaxLength(2000) message!: string;
   @IsOptional() @IsString() @MaxLength(40) conversationId?: string;
+  @IsOptional() @ValidateNested() @Type(() => PageContextDto) page?: PageContextDto;
+}
+
+class ConfirmDto {
+  @IsString() @MaxLength(40) conversationId!: string;
+  @IsString() @MaxLength(80) toolCallId!: string;
+  @IsBoolean() accept!: boolean;
+  @IsOptional() @ValidateNested() @Type(() => PageContextDto) page?: PageContextDto;
 }
 
 /**
@@ -101,7 +127,7 @@ export class AgentsController {
   ) {
     const agent = this.catalog.get(agentId);
     this.assertAccess(agent.id, principal);
-    const caller = await this.caller(agent.id, this.runtime.access(agent), req, res, principal);
+    const caller = await this.caller(agent.id, this.runtime.access(agent), req, res, principal, body.page);
 
     res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
     res.setHeader('Cache-Control', 'no-cache, no-transform');
@@ -110,6 +136,42 @@ export class AgentsController {
 
     try {
       for await (const event of this.runtime.chat(agent, caller, body.message, body.conversationId)) {
+        res.write(`event: ${event.event}\ndata: ${JSON.stringify(event.data)}\n\n`);
+      }
+    } catch {
+      res.write(`event: error\ndata: ${JSON.stringify({ message: 'משהו השתבש. נסה שוב.' })}\n\n`);
+    } finally {
+      res.end();
+    }
+  }
+
+  /** אשר / בטל on a write the model proposed but did not run yet. */
+  @Post(':agentId/confirm')
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
+  async confirm(
+    @Param('agentId') agentId: string,
+    @Body() body: ConfirmDto,
+    @Req() req: Request,
+    @Res() res: Response,
+    @CurrentUser() principal?: Principal,
+  ) {
+    const agent = this.catalog.get(agentId);
+    this.assertAccess(agent.id, principal);
+    const caller = await this.caller(agent.id, this.runtime.access(agent), req, res, principal, body.page);
+
+    res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-cache, no-transform');
+    res.setHeader('Connection', 'keep-alive');
+    res.flushHeaders();
+
+    try {
+      for await (const event of this.runtime.confirm(
+        agent,
+        caller,
+        body.conversationId,
+        body.toolCallId,
+        body.accept,
+      )) {
         res.write(`event: ${event.event}\ndata: ${JSON.stringify(event.data)}\n\n`);
       }
     } catch {
@@ -146,6 +208,7 @@ export class AgentsController {
     req: Request,
     res: Response,
     principal: Principal | undefined,
+    page?: AgentPageContext,
   ): Promise<AgentContext> {
     if (access === 'agency-member') {
       return {
@@ -153,6 +216,7 @@ export class AgentsController {
         principal: principal ?? null,
         visitorId: null,
         agencyId: principal?.agencyId ?? null,
+        page: page ?? null,
       };
     }
 
@@ -162,16 +226,19 @@ export class AgentsController {
         principal,
         visitorId: await this.visitorId(req),
         agencyId: null,
+        page: page ?? null,
       };
     }
 
     const existing = (req.cookies as Record<string, string> | undefined)?.[VISITOR_COOKIE];
     const known = await this.visitors.existing(existing);
-    if (known) return { agentId, principal: null, visitorId: known.visitorId, agencyId: null };
+    if (known) {
+      return { agentId, principal: null, visitorId: known.visitorId, agencyId: null, page: page ?? null };
+    }
 
     const created = await this.visitors.create();
     setVisitorCookie(res, created.visitorId, this.isProduction);
-    return { agentId, principal: null, visitorId: created.visitorId, agencyId: null };
+    return { agentId, principal: null, visitorId: created.visitorId, agencyId: null, page: page ?? null };
   }
 
   private async visitorId(req: Request): Promise<string | null> {

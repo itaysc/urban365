@@ -94,6 +94,17 @@ export class LeadsService {
     return { items, total, page, pageSize, totalPages: Math.max(1, Math.ceil(total / pageSize)) };
   }
 
+  /** One enquiry still in the inbox. A miss is "not found", not "forbidden". */
+  async get(id: string) {
+    const agencyId = this.context.requireAgencyId();
+    const lead = await this.prisma.client.lead.findFirst({
+      where: { id, agencyId, deletedAt: null, ...this.scope() },
+      select: LIST_SELECT,
+    });
+    if (!lead) throw new NotFoundException('הפנייה לא נמצאה.');
+    return lead;
+  }
+
   /** Counts per status, for the inbox tabs. */
   async counts() {
     const agencyId = this.context.requireAgencyId();

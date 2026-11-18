@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
+import { OverviewService } from '../../agency/overview.service.js';
 import { MeetingsService } from '../../calendar/meetings.service.js';
 import { CustomersService } from '../../crm/customers.service.js';
 import type { UpdateCustomerDto } from '../../crm/dto/customer.dto.js';
@@ -7,10 +8,11 @@ import type { UpdateDealDto } from '../../crm/dto/deal.dto.js';
 import type { UpdateLeadDto } from '../../crm/dto/lead.dto.js';
 import { DealsService } from '../../crm/deals.service.js';
 import { LeadsService } from '../../crm/leads.service.js';
+import { matchBrief, type Brief, type Candidate } from '../../matching/match.js';
 import { RequestContextService } from '../../tenancy/request-context.service.js';
 import { TenantPrismaService } from '../../tenancy/tenant-prisma.service.js';
 import { AgentTool } from '../core/agent-tool.decorator.js';
-import type { ToolResult } from '../core/agent.types.js';
+import type { AgentCard, ToolResult } from '../core/agent.types.js';
 import {
   CreateCustomerToolDto,
   CreateDealToolDto,
@@ -19,6 +21,7 @@ import {
   CustomerIdDto,
   FindCustomersDto,
   FindLeadsDto,
+  MatchCustomerListingsDto,
   MeetingIdDto,
   MyListingsToolDto,
   RecordFeedbackToolDto,
@@ -53,9 +56,57 @@ export class AgencyToolsService {
     private readonly leads: LeadsService,
     private readonly deals: DealsService,
     private readonly meetings: MeetingsService,
+    private readonly overview: OverviewService,
     private readonly prisma: TenantPrismaService,
     private readonly context: RequestContextService,
   ) {}
+
+  @AgentTool({
+    name: 'today_overview',
+    description:
+      'סקירת היום בסוכנות: סיורים היום, מעקבים שממתינים, משוב חסר, פניות פתוחות ועסקאות בפייפליין.',
+    audiences: ['agency'],
+    group: 'overview',
+    scope: 'agency',
+    auth: true,
+    requires: 'lead:write',
+  })
+  async todayOverview(): Promise<ToolResult> {
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 1);
+
+    const [stats, todayMeetings, followUps, awaiting] = await Promise.all([
+      this.overview.get(),
+      this.meetings.list({ from: start.toISOString(), to: end.toISOString() }),
+      this.meetings.followUps(),
+      this.meetings.awaitingFeedback(),
+    ]);
+
+    const { today, listings, pipeline } = stats;
+    const parts = [
+      `היום: ${today.viewingsToday} סיורים, ${today.viewingsThisWeek} השבוע`,
+      `${today.awaitingFeedback} ממתינים למשוב`,
+      `${today.openLeads} פניות פתוחות`,
+      `${today.openSuggestions} התאמות במכ״ם`,
+      today.coBrokerageWaiting > 0 ? `${today.coBrokerageWaiting} בקשות שיתוף ממתינות` : null,
+      `פייפליין: ${pipeline.openCount} עסקאות פתוחות (${shekel(pipeline.openValue)})`,
+      `נכסים: ${listings.published} מפורסמים, ${listings.draft} טיוטות`,
+      followUps.length > 0 ? `${followUps.length} מעקבים לטיפול` : null,
+    ].filter(Boolean);
+
+    const cards: AgentCard[] = [
+      ...todayMeetings.items.slice(0, 5).map(meetingCard),
+      ...followUps.slice(0, 5).map(meetingCard),
+      ...awaiting.slice(0, 5).map(meetingCard),
+    ];
+
+    return {
+      summary: parts.join('. ') + '.',
+      cards: cards.length > 0 ? cards : undefined,
+    };
+  }
 
   @AgentTool({
     name: 'find_customers',
@@ -117,12 +168,13 @@ export class AgencyToolsService {
 
   @AgentTool({
     name: 'create_customer',
-    description: 'יצירת לקוח חדש בסוכנות. לפני הקריאה אשר עם הפונה את השם ואמצעי הקשר.',
+    description: 'יצירת לקוח חדש בסוכנות. הכלי ממתין לאישור במסך לפני השמירה.',
     audiences: ['agency'],
     group: 'customers',
     scope: 'agency',
     auth: true,
     requires: 'lead:write',
+    confirm: true,
     dto: CreateCustomerToolDto,
   })
   async createCustomer(dto: CreateCustomerToolDto): Promise<ToolResult> {
@@ -135,12 +187,13 @@ export class AgencyToolsService {
 
   @AgentTool({
     name: 'update_customer',
-    description: 'עדכון לקוח קיים לפי מזהה. אשר את השינוי לפני הקריאה.',
+    description: 'עדכון לקוח קיים לפי מזהה. ממתין לאישור במסך לפני השמירה.',
     audiences: ['agency'],
     group: 'customers',
     scope: 'agency',
     auth: true,
     requires: 'lead:write',
+    confirm: true,
     dto: UpdateCustomerToolDto,
   })
   async updateCustomer(dto: UpdateCustomerToolDto): Promise<ToolResult> {
@@ -178,12 +231,13 @@ export class AgencyToolsService {
 
   @AgentTool({
     name: 'create_lead',
-    description: 'יצירת פנייה חדשה. אשר פרטים לפני השמירה.',
+    description: 'יצירת פנייה חדשה. ממתין לאישור במסך לפני השמירה.',
     audiences: ['agency'],
     group: 'leads',
     scope: 'agency',
     auth: true,
     requires: 'lead:write',
+    confirm: true,
     dto: CreateLeadToolDto,
   })
   async createLead(dto: CreateLeadToolDto): Promise<ToolResult> {
@@ -196,12 +250,13 @@ export class AgencyToolsService {
 
   @AgentTool({
     name: 'update_lead',
-    description: 'עדכון פנייה לפי מזהה, כולל שינוי סטטוס.',
+    description: 'עדכון פנייה לפי מזהה, כולל שינוי סטטוס. ממתין לאישור במסך.',
     audiences: ['agency'],
     group: 'leads',
     scope: 'agency',
     auth: true,
     requires: 'lead:write',
+    confirm: true,
     dto: UpdateLeadToolDto,
   })
   async updateLead(dto: UpdateLeadToolDto): Promise<ToolResult> {
@@ -240,12 +295,13 @@ export class AgencyToolsService {
 
   @AgentTool({
     name: 'create_deal',
-    description: 'יצירת עסקה חדשה. אשר כותרת, לקוח ומחיר לפני השמירה.',
+    description: 'יצירת עסקה חדשה. ממתין לאישור במסך לפני השמירה.',
     audiences: ['agency'],
     group: 'deals',
     scope: 'agency',
     auth: true,
     requires: 'deal:write',
+    confirm: true,
     dto: CreateDealToolDto,
   })
   async createDeal(dto: CreateDealToolDto): Promise<ToolResult> {
@@ -258,12 +314,13 @@ export class AgencyToolsService {
 
   @AgentTool({
     name: 'update_deal_stage',
-    description: 'העברת עסקה לשלב אחר בלוח. אשר את השלב החדש לפני הקריאה.',
+    description: 'העברת עסקה לשלב אחר בלוח. ממתין לאישור במסך.',
     audiences: ['agency'],
     group: 'deals',
     scope: 'agency',
     auth: true,
     requires: 'deal:write',
+    confirm: true,
     dto: UpdateDealStageDto,
   })
   async updateDealStage(dto: UpdateDealStageDto): Promise<ToolResult> {
@@ -326,12 +383,13 @@ export class AgencyToolsService {
 
   @AgentTool({
     name: 'create_meeting',
-    description: 'קביעת פגישה או סיור ביומן. אשר תאריך, שעה ולקוח לפני השמירה.',
+    description: 'קביעת פגישה או סיור ביומן. ממתין לאישור במסך לפני השמירה.',
     audiences: ['agency'],
     group: 'calendar',
     scope: 'agency',
     auth: true,
     requires: 'lead:write',
+    confirm: true,
     dto: CreateMeetingToolDto,
   })
   async createMeeting(dto: CreateMeetingToolDto): Promise<ToolResult> {
@@ -344,12 +402,13 @@ export class AgencyToolsService {
 
   @AgentTool({
     name: 'record_viewing_feedback',
-    description: 'רישום סיכום סיור: מעוניין, שוקל, לא מעוניין או לא הגיע.',
+    description: 'רישום סיכום סיור: מעוניין, שוקל, לא מעוניין או לא הגיע. ממתין לאישור במסך.',
     audiences: ['agency'],
     group: 'calendar',
     scope: 'agency',
     auth: true,
     requires: 'lead:write',
+    confirm: true,
     dto: RecordFeedbackToolDto,
   })
   async recordViewingFeedback(dto: RecordFeedbackToolDto): Promise<ToolResult> {
@@ -366,12 +425,13 @@ export class AgencyToolsService {
 
   @AgentTool({
     name: 'complete_follow_up',
-    description: 'סימון מעקב אחרי סיור כבוצע.',
+    description: 'סימון מעקב אחרי סיור כבוצע. ממתין לאישור במסך.',
     audiences: ['agency'],
     group: 'calendar',
     scope: 'agency',
     auth: true,
     requires: 'lead:write',
+    confirm: true,
     dto: MeetingIdDto,
   })
   async completeFollowUp(dto: MeetingIdDto): Promise<ToolResult> {
@@ -379,6 +439,101 @@ export class AgencyToolsService {
     return {
       summary: `המעקב סומן כבוצע: ${meetingSummary(row)}.`,
       cards: [meetingCard(row)],
+    };
+  }
+
+  @AgentTool({
+    name: 'match_customer_listings',
+    description:
+      'התאמת נכסים מפורסמים של הסוכנות לתיק לקוח (עיר, חדרים, תקציב וכו׳). לשאלות כמו "מה מתאים לישראל".',
+    audiences: ['agency'],
+    group: 'matching',
+    scope: 'agency',
+    auth: true,
+    requires: 'lead:write',
+    dto: MatchCustomerListingsDto,
+  })
+  async matchCustomerListings(dto: MatchCustomerListingsDto): Promise<ToolResult> {
+    const customer = await this.customers.get(dto.customerId);
+    if (customer.kind === 'seller') {
+      return {
+        summary: `${customer.name} רשום כמוכר בלבד — אין תיק חיפוש להתאים אליו נכסים.`,
+        cards: [customerCard(customer)],
+      };
+    }
+
+    const brief: Brief = {
+      lookingSection: customer.lookingSection,
+      lookingCities: customer.lookingCities,
+      lookingTypes: customer.lookingTypes,
+      minRooms: customer.minRooms,
+      maxRooms: customer.maxRooms,
+      minPrice: customer.minPrice,
+      maxPrice: customer.maxPrice,
+      minSquareMeter: customer.minSquareMeter,
+    };
+
+    const agencyId = this.context.requireAgencyId();
+    const listings = await this.prisma.client.listing.findMany({
+      where: { agencyId, status: 'published', delistedAt: null },
+      select: {
+        id: true,
+        section: true,
+        city: true,
+        propertyType: true,
+        rooms: true,
+        price: true,
+        squareMeter: true,
+        street: true,
+      },
+      take: 500,
+    });
+
+    if (listings.length === 0) {
+      return {
+        summary: `אין נכסים מפורסמים בסוכנות להתאים ל-${customer.name}.`,
+        cards: [customerCard(customer)],
+      };
+    }
+
+    const limit = dto.limit ?? 5;
+    const matches = listings
+      .map((listing) => {
+        const match = matchBrief(brief, listing as Candidate);
+        if (!match) return null;
+        return { listing, ...match };
+      })
+      .filter((row): row is NonNullable<typeof row> => row !== null)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, limit);
+
+    if (matches.length === 0) {
+      return {
+        summary: `לא נמצא נכס מפורסם שתואם את התיק של ${customer.name}.`,
+        cards: [customerCard(customer)],
+      };
+    }
+
+    const lines = matches.map((row) => {
+      const place = [row.listing.street, row.listing.city].filter(Boolean).join(', ') || 'נכס';
+      return `${place} (ציון ${row.score}, מזהה ${row.listing.id}): ${row.reason}`;
+    });
+
+    return {
+      summary: `ל-${customer.name} נמצאו ${matches.length} התאמות: ${lines.join(' | ')}`,
+      cards: [
+        customerCard(customer),
+        ...matches.map((row) => ({
+          type: 'listing' as const,
+          id: row.listing.id,
+          href: `/app/listings/${row.listing.id}`,
+          title: [row.listing.street, row.listing.city].filter(Boolean).join(', ') || 'נכס',
+          price: row.listing.price,
+          rooms: row.listing.rooms,
+          sqm: row.listing.squareMeter,
+          city: row.listing.city,
+        })),
+      ],
     };
   }
 

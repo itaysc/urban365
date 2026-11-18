@@ -27,6 +27,12 @@ export class LeadsController {
     return this.leads.archive();
   }
 
+  /** One enquiry, for a deep link from the assistant. */
+  @Get(':id')
+  get(@Param('id') id: string) {
+    return this.leads.get(id);
+  }
+
   @Post()
   create(@Body() dto: CreateLeadDto) {
     return this.leads.create(dto);

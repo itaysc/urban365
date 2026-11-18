@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Archive, FileUp, Plus, Trash2, X } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { qk } from '@/queries/keys';
@@ -12,6 +12,7 @@ import { formatDate, formatPrice } from '@/lib/format';
 import {
   createLead,
   deleteLead,
+  fetchLead,
   fetchLeadArchive,
   fetchLeadCounts,
   fetchLeads,
@@ -84,6 +85,7 @@ export function LeadsPage() {
   const statusParam = params.get('status');
   const status = isStatus(statusParam) ? statusParam : undefined;
   const page = Math.max(1, Number(params.get('page') ?? 1) || 1);
+  const focusId = params.get('id');
 
   const [error, setError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
@@ -99,12 +101,29 @@ export function LeadsPage() {
     queryFn: () => fetchLeads({ status, page }),
   });
 
+  // A link from the assistant opens that enquiry even when the filter or page hides it.
+  const { data: focused } = useQuery({
+    queryKey: ['leads', 'one', focusId],
+    queryFn: () => fetchLead(focusId!),
+    enabled: Boolean(focusId),
+    retry: false,
+  });
+
   // Its own key: the tab counts are shown alongside every page of the list, so they
   // would be refetched on each page change if they shared one.
   const { data: counts = {} } = useQuery({
     queryKey: qk.leads.counts,
     queryFn: fetchLeadCounts,
   });
+
+  const items = data?.items ?? [];
+  const onPage = Boolean(focusId && items.some((lead) => lead.id === focusId));
+  const rows = focused && focusId && !onPage ? [focused, ...items] : items;
+
+  useEffect(() => {
+    if (!focusId) return;
+    document.getElementById(`lead-${focusId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [focusId, focused?.id, data]);
 
   const loading = isPending;
 
@@ -264,15 +283,21 @@ export function LeadsPage() {
 
       {loading && <p className="text-sm text-slate-500">טוען…</p>}
 
-      {!loading && data?.items.length === 0 && (
+      {!loading && rows.length === 0 && (
         <p className="rounded-xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500">
           אין פניות להצגה.
         </p>
       )}
 
       <ul className="flex flex-col gap-2">
-        {data?.items.map((lead) => (
-          <li key={lead.id} className="rounded-xl border border-slate-200 bg-white p-3">
+        {rows.map((lead) => (
+          <li
+            key={lead.id}
+            id={`lead-${lead.id}`}
+            className={`rounded-xl border bg-white p-3 ${
+              focusId === lead.id ? 'border-blue-400 ring-2 ring-blue-100' : 'border-slate-200'
+            }`}
+          >
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="min-w-0">
                 <p className="font-medium text-slate-900">{lead.name}</p>

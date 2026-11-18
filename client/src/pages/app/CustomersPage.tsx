@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useSearchParams } from 'react-router-dom';
 import { Archive, CalendarPlus, ChevronDown, ChevronUp, Mail, Phone, Plus, Search } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
@@ -16,6 +17,7 @@ import { createMeeting, fetchMeetings, type MeetingInput } from '@/services/cale
 import {
   createCustomer,
   deleteCustomer,
+  fetchCustomer,
   fetchCustomerArchive,
   fetchCustomers,
   restoreCustomer,
@@ -77,6 +79,8 @@ function brief(customer: Customer): string {
 export function CustomersPage() {
   const toast = useToast();
   const queryClient = useQueryClient();
+  const [params] = useSearchParams();
+  const focusId = params.get('id');
 
   const [q, setQ] = useState('');
   const [kind, setKind] = useState<CustomerKind | undefined>();
@@ -92,13 +96,26 @@ export function CustomersPage() {
   /** The customer a meeting is being booked with, or null when nothing is open. */
   const [booking, setBooking] = useState<Customer | null>(null);
   /** Whose history is open. One at a time: this is a list, not a dashboard. */
-  const [showing, setShowing] = useState<string | null>(null);
+  const [showing, setShowing] = useState<string | null>(focusId);
   const [archiveOpen, setArchiveOpen] = useState(false);
 
   const { data, isPending } = useQuery({
     queryKey: qk.customers.list(q, kind, agreement, page),
     queryFn: () => fetchCustomers({ q: q || undefined, kind, agreement, page }),
   });
+
+  // A link from the assistant opens that person even when they are not on this page.
+  const { data: focused } = useQuery({
+    queryKey: ['customers', 'one', focusId],
+    queryFn: () => fetchCustomer(focusId!),
+    enabled: Boolean(focusId),
+    retry: false,
+  });
+
+  useEffect(() => {
+    if (!focusId) return;
+    setShowing(focusId);
+  }, [focusId]);
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: qk.customers.all });
 
@@ -134,6 +151,14 @@ export function CustomersPage() {
   });
 
   const items = data?.items ?? [];
+  // A link from the assistant may point at someone who is not on this page of the list.
+  const onPage = Boolean(focusId && items.some((customer) => customer.id === focusId));
+  const rows = focused && focusId && !onPage ? [focused, ...items] : items;
+
+  useEffect(() => {
+    if (!focusId) return;
+    document.getElementById(`customer-${focusId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [focusId, focused?.id, data]);
 
   // Just the next one per customer, which is what a row has space for and what an agent
   // actually wants to see: when am I seeing this person.
@@ -253,7 +278,7 @@ export function CustomersPage() {
         </select>
       </div>
 
-      {!isPending && items.length === 0 && (
+      {!isPending && rows.length === 0 && (
         <div className="rounded-xl border border-slate-200 bg-white p-12 text-center">
           <p className="font-medium text-slate-800">
             {q || kind || agreement ? 'אין לקוחות שמתאימים לחיפוש' : 'עדיין אין לקוחות'}
@@ -266,8 +291,14 @@ export function CustomersPage() {
       )}
 
       <ul className="flex flex-col gap-3">
-        {items.map((customer) => (
-          <li key={customer.id} className="rounded-xl border border-slate-200 bg-white p-4">
+        {rows.map((customer) => (
+          <li
+            key={customer.id}
+            id={`customer-${customer.id}`}
+            className={`rounded-xl border bg-white p-4 ${
+              focusId === customer.id ? 'border-blue-400 ring-2 ring-blue-100' : 'border-slate-200'
+            }`}
+          >
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="min-w-0">
                 <div className="flex items-center gap-2">

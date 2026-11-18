@@ -4,7 +4,15 @@ import type { AgentsConfig } from '../../config/configuration.js';
 import { CONVERSATION_SUMMARY_LLM } from '../../llm/llm.defaults.js';
 import { LlmService } from '../../llm/llm.service.js';
 import type { LLMChatResponse, LLMMessage, LLMStreamEvent, LLMToolCall } from '../../llm/llm.types.js';
-import type { AgentCard, AgentContext, AgentDefinition, Transcript, TranscriptMessage } from './agent.types.js';
+import type {
+  AgentCard,
+  AgentContext,
+  AgentDefinition,
+  AgentPageContext,
+  ToolResult,
+  Transcript,
+  TranscriptMessage,
+} from './agent.types.js';
 import { ConversationStore } from './conversation.store.js';
 import { estimateTokens } from './tokens.js';
 import { ENABLE_GROUPS, toolSchemaTokens, visibleToolSpecs } from './tool-selection.js';
@@ -108,7 +116,7 @@ export class AgentRuntime {
       let response: LLMChatResponse;
 
       try {
-        response = yield* this.complete(agent, toModelMessages(agent, transcript), specs);
+        response = yield* this.complete(agent, toModelMessages(agent, transcript, ctx.page), specs);
       } catch (error) {
         this.logger.warn(`Agent call failed: ${error instanceof Error ? error.message : 'unknown'}`);
         yield { event: 'error', data: { message: 'משהו השתבש. נסה שוב.' } };
@@ -137,13 +145,17 @@ export class AgentRuntime {
       const toolMessages: TranscriptMessage[] = [];
       const shown = recentCards(transcript.messages);
 
+      let waitingConfirm = false;
       for (const call of response.toolCalls) {
         ctx.recentCards = shown;
+        ctx.pendingToolCallId = call.id;
+        ctx.confirmedToolCallId = undefined;
         const result = await this.callTool(agent, ctx, call, enabledGroups);
         if (result.cards?.length) shown.push(...result.cards);
         if (call.name !== ENABLE_GROUPS) yield { event: 'tool', data: { name: call.name } };
         if (result.cards?.length) yield { event: 'cards', data: { cards: result.cards } };
         if (result.needsSignIn) yield { event: 'sign_in', data: { conversationId: transcript.id } };
+        if (result.needsConfirm) waitingConfirm = true;
 
         toolMessages.push({
           role: 'tool',
@@ -152,16 +164,132 @@ export class AgentRuntime {
           toolCallId: call.id,
           cards: result.cards,
           needsSignIn: result.needsSignIn,
+          pendingConfirm: result.pendingConfirm,
         });
       }
 
       transcript.messages.push(assistant, ...toolMessages);
       await this.store.append(transcript.id, [assistant, ...toolMessages]);
+
+      // A write is parked on a confirm card. Do not ask the model again until אשר runs —
+      // otherwise it invents a success the database never saw.
+      if (waitingConfirm) {
+        yield { event: 'done', data: { conversationId: transcript.id } };
+        return;
+      }
     }
 
     const stopped = 'הגעתי למגבלת הצעדים לסוגיה הזו. נסח אותה שוב, קצר יותר.';
     yield { event: 'text', data: { delta: stopped } };
     await this.store.append(transcript.id, [{ role: 'assistant', content: stopped }]);
+    yield { event: 'done', data: { conversationId: transcript.id } };
+  }
+
+  /**
+   * Runs a write the person approved on a confirm card, then lets the model react once.
+   */
+  async *confirm(
+    agent: AgentDefinition,
+    ctx: AgentContext,
+    conversationId: string,
+    toolCallId: string,
+    accept: boolean,
+  ): AsyncGenerator<AgentEvent> {
+    if (!this.llm.isConfigured()) {
+      yield { event: 'error', data: { message: 'העוזר לא זמין כרגע.' } };
+      return;
+    }
+
+    const transcript = await this.store.open(
+      {
+        agentId: agent.id,
+        userId: ctx.principal?.userId ?? null,
+        visitorId: ctx.visitorId,
+        agencyId: ctx.agencyId ?? null,
+      },
+      conversationId,
+    );
+    yield { event: 'ready', data: { conversationId: transcript.id } };
+
+    const pending = await this.store.pendingConfirm(transcript.id, toolCallId);
+    if (!pending) {
+      yield { event: 'error', data: { message: 'הפעולה כבר בוצעה או בוטלה.' } };
+      yield { event: 'done', data: { conversationId: transcript.id } };
+      return;
+    }
+
+    if (!accept) {
+      const cancelledCard: AgentCard = {
+        type: 'confirm',
+        toolCallId,
+        toolName: pending.toolName,
+        label: pending.label,
+        detail: pending.detail,
+        status: 'cancelled',
+      };
+      await this.store.replaceToolMessage(transcript.id, toolCallId, {
+        content: `בוטל: ${pending.label}.`,
+        cards: [cancelledCard],
+        pendingConfirm: null,
+      });
+      yield { event: 'cards', data: { cards: [cancelledCard] } };
+      yield { event: 'text', data: { delta: 'ביטלתי את הפעולה.' } };
+      await this.store.append(transcript.id, [{ role: 'assistant', content: 'ביטלתי את הפעולה.' }]);
+      yield { event: 'done', data: { conversationId: transcript.id } };
+      return;
+    }
+
+    ctx.pendingToolCallId = toolCallId;
+    ctx.confirmedToolCallId = toolCallId;
+    ctx.recentCards = recentCards(transcript.messages);
+    const result = await this.registry.invoke(
+      agent,
+      this.excludedModules(agent),
+      pending.toolName,
+      pending.args,
+      ctx,
+    );
+
+    const doneCard: AgentCard = {
+      type: 'confirm',
+      toolCallId,
+      toolName: pending.toolName,
+      label: pending.label,
+      detail: pending.detail,
+      status: 'done',
+    };
+    const cards = [...(result.cards ?? []), doneCard];
+    await this.store.replaceToolMessage(transcript.id, toolCallId, {
+      content: result.summary,
+      cards,
+      pendingConfirm: null,
+    });
+    // Keep the in-memory transcript aligned for the follow-up model call.
+    for (const message of transcript.messages) {
+      if (message.role === 'tool' && message.toolCallId === toolCallId) {
+        message.content = result.summary;
+        message.cards = cards;
+        message.pendingConfirm = undefined;
+      }
+    }
+
+    yield { event: 'tool', data: { name: pending.toolName } };
+    yield { event: 'cards', data: { cards } };
+
+    try {
+      const tools = this.registry.forAgent(agent, this.excludedModules(agent));
+      const specs = visibleToolSpecs(tools, [], agent.budget.groupThreshold);
+      const response = yield* this.complete(agent, toModelMessages(agent, transcript, ctx.page), specs);
+      transcript.tokensUsed += response.usage.totalTokens;
+      await this.store.addTokens(transcript.id, response.usage.totalTokens);
+      const content = response.content ?? '';
+      if (content) {
+        await this.store.append(transcript.id, [{ role: 'assistant', content }]);
+      }
+    } catch (error) {
+      this.logger.warn(`Confirm follow-up failed: ${error instanceof Error ? error.message : 'unknown'}`);
+    }
+
     yield { event: 'done', data: { conversationId: transcript.id } };
   }
 
@@ -204,7 +332,7 @@ export class AgentRuntime {
     ctx: AgentContext,
     call: LLMToolCall,
     enabledGroups: string[],
-  ): Promise<{ summary: string; cards?: AgentCard[]; needsSignIn?: boolean }> {
+  ): Promise<ToolResult> {
     let args: unknown;
     try {
       args = JSON.parse(call.arguments || '{}') as unknown;
@@ -268,10 +396,19 @@ function recentCards(messages: TranscriptMessage[]): AgentCard[] {
   return messages.slice(-RECENT_CARD_MESSAGES).flatMap((message) => message.cards ?? []);
 }
 
-function toModelMessages(agent: AgentDefinition, transcript: Transcript): LLMMessage[] {
+function toModelMessages(
+  agent: AgentDefinition,
+  transcript: Transcript,
+  page?: AgentPageContext | null,
+): LLMMessage[] {
   const turns = splitTurns(transcript.messages);
   const recent = turns.slice(-agent.budget.historyTurns);
   const messages: LLMMessage[] = [{ role: 'system', content: agent.systemPrompt() }];
+
+  const pageLine = pageContextLine(page);
+  if (pageLine) {
+    messages.push({ role: 'system', content: pageLine });
+  }
 
   if (transcript.summary) {
     messages.push({ role: 'system', content: `סיכום השיחה עד כאן:\n${transcript.summary}` });
@@ -297,4 +434,21 @@ function toModelMessages(agent: AgentDefinition, transcript: Transcript): LLMMes
   });
 
   return messages;
+}
+
+function pageContextLine(page?: AgentPageContext | null): string | null {
+  if (!page) return null;
+  const KIND: Record<AgentPageContext['kind'], string> = {
+    customer: 'לקוח',
+    lead: 'פנייה',
+    deal: 'עסקה',
+    listing: 'נכס',
+    calendar: 'יומן',
+    page: 'מסך',
+  };
+  const label = KIND[page.kind] ?? page.kind;
+  if (page.id) {
+    return `המסך הפתוח עכשיו: ${label} (מזהה ${page.id}, נתיב ${page.path}). כשמבקשים את הסטטוס או "הלקוח"/"הפנייה" בלי לציין מי, הכוונה לפריט הזה.`;
+  }
+  return `המסך הפתוח עכשיו: ${label} (נתיב ${page.path}).`;
 }

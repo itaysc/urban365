@@ -8,6 +8,7 @@ function tool(partial: Partial<RegisteredTool> & Pick<RegisteredTool, 'name' | '
     description: 'x',
     group: 'general',
     auth: false,
+    confirm: false,
     moduleName: 'Test',
     parameters: { type: 'object', properties: {} },
     invoke: async () => ({ summary: 'ok' }),

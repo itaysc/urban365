@@ -2,6 +2,12 @@ import { apiBaseUrl } from '@/services/api';
 
 export type AssistantAgentId = 'end-user' | 'agency';
 
+export interface AgentPageContext {
+  kind: 'customer' | 'lead' | 'deal' | 'listing' | 'calendar' | 'page';
+  id?: string;
+  path: string;
+}
+
 export type AssistantCard =
   | {
       type: 'listing';
@@ -62,6 +68,14 @@ export type AssistantCard =
       phone: string | null;
       email: string | null;
       listingLabel: string | null;
+    }
+  | {
+      type: 'confirm';
+      toolCallId: string;
+      toolName: string;
+      label: string;
+      detail: string;
+      status: 'pending' | 'done' | 'cancelled';
     };
 
 export interface AssistantMessage {
@@ -193,6 +207,7 @@ export async function sendMessage(
   events: AssistantEvents,
   signal?: AbortSignal,
   agentId: AssistantAgentId = 'end-user',
+  page?: AgentPageContext | null,
 ): Promise<void> {
   const response = await fetch(`${apiBaseUrl}/agents/${agentId}/chat`, {
     method: 'POST',
@@ -201,10 +216,45 @@ export async function sendMessage(
       'Content-Type': 'application/json',
       'X-Requested-With': 'XMLHttpRequest',
     },
-    body: JSON.stringify({ message, ...(conversationId ? { conversationId } : {}) }),
+    body: JSON.stringify({
+      message,
+      ...(conversationId ? { conversationId } : {}),
+      ...(page ? { page } : {}),
+    }),
     signal,
   });
 
+  await readAgentStream(response, events);
+}
+
+/** אשר / בטל on a write that is waiting on a confirm card. */
+export async function confirmTool(
+  conversationId: string,
+  toolCallId: string,
+  accept: boolean,
+  events: AssistantEvents,
+  agentId: AssistantAgentId = 'agency',
+  page?: AgentPageContext | null,
+): Promise<void> {
+  const response = await fetch(`${apiBaseUrl}/agents/${agentId}/confirm`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Requested-With': 'XMLHttpRequest',
+    },
+    body: JSON.stringify({
+      conversationId,
+      toolCallId,
+      accept,
+      ...(page ? { page } : {}),
+    }),
+  });
+
+  await readAgentStream(response, events);
+}
+
+async function readAgentStream(response: Response, events: AssistantEvents): Promise<void> {
   if (response.status === 401 || response.status === 403) {
     events.onSignIn();
     return;

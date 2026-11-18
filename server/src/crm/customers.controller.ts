@@ -24,6 +24,12 @@ export class CustomersController {
     return this.customers.archive();
   }
 
+  /** One person, for a deep link from the assistant. */
+  @Get(':id')
+  get(@Param('id') id: string) {
+    return this.customers.get(id);
+  }
+
   @Post()
   create(@Body() dto: CreateCustomerDto) {
     return this.customers.create(dto);

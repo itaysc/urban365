@@ -92,7 +92,7 @@ export function customerCard(row: CustomerRow): AgentCard {
   return {
     type: 'customer',
     id: row.id,
-    href: `/app/customers?id=${row.id}`,
+    href: `/app/customers?id=${encodeURIComponent(row.id)}`,
     name: row.name,
     kind: row.kind,
     phone: row.phone,
@@ -131,7 +131,7 @@ export function leadCard(row: LeadRow): AgentCard {
   return {
     type: 'lead',
     id: row.id,
-    href: `/app/leads?id=${row.id}`,
+    href: `/app/leads?id=${encodeURIComponent(row.id)}`,
     name: row.name,
     status: row.status,
     phone: row.phone,
@@ -162,7 +162,7 @@ export function dealCard(row: DealRow): AgentCard {
   return {
     type: 'deal',
     id: row.id,
-    href: `/app/deals`,
+    href: `/app/deals?id=${encodeURIComponent(row.id)}`,
     title: row.title,
     stage: row.stage,
     price: row.price,
@@ -196,7 +196,7 @@ export function meetingCard(row: MeetingRow): AgentCard {
   return {
     type: 'meeting',
     id: row.id,
-    href: `/app/calendar`,
+    href: `/app/calendar?edit=${encodeURIComponent(row.id)}`,
     title: row.title,
     startsAt: typeof row.startsAt === 'string' ? row.startsAt : row.startsAt.toISOString(),
     customerName: row.customer?.name ?? null,

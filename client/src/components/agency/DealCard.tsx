@@ -14,6 +14,8 @@ interface Props {
   onDragEnd?: () => void;
   /** True while this card is the one being carried. */
   lifted?: boolean;
+  /** True when opened from an assistant card link (`?id=`). */
+  focused?: boolean;
 }
 
 const TINT: Record<DealStage, string> = {
@@ -40,11 +42,13 @@ export function DealCard({
   onDragStart,
   onDragEnd,
   lifted = false,
+  focused = false,
 }: Props) {
   const who = deal.customer?.name ?? deal.lead?.name ?? null;
 
   return (
     <li
+      id={`deal-${deal.id}`}
       draggable={draggable}
       onDragStart={(e) => {
         // The id travels in the drag payload as well as in component state, so a drop
@@ -54,9 +58,9 @@ export function DealCard({
         onDragStart?.();
       }}
       onDragEnd={() => onDragEnd?.()}
-      className={`rounded-xl border bg-white p-3 transition ${TINT[deal.stage]} ${
-        draggable ? 'cursor-grab active:cursor-grabbing' : ''
-      } ${lifted ? 'opacity-40' : ''}`}
+      className={`rounded-xl border bg-white p-3 transition ${
+        focused ? 'border-blue-400 ring-2 ring-blue-100' : TINT[deal.stage]
+      } ${draggable ? 'cursor-grab active:cursor-grabbing' : ''} ${lifted ? 'opacity-40' : ''}`}
     >
       <div className="flex items-start gap-1.5">
         {draggable && (

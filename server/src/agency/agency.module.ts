@@ -47,5 +47,6 @@ import { TeamService } from './team.service.js';
     OfficesService,
     DocumentsService,
   ],
+  exports: [OverviewService],
 })
 export class AgencyModule {}

@@ -32,6 +32,7 @@ describe('AgentRuntime', () => {
       audiences: ['end-user'],
       group: 'search',
       auth: false,
+      confirm: false,
       moduleName: 'TestModule',
       parameters: { type: 'object', properties: {} },
       invoke: async () => {
@@ -81,6 +82,7 @@ describe('AgentRuntime', () => {
       audiences: ['end-user'],
       group: 'mortgage',
       auth: false,
+      confirm: false,
       moduleName: 'TestModule',
       parameters: { type: 'object', properties: {} },
       invoke: async (_args, ctx) => {
@@ -94,6 +96,7 @@ describe('AgentRuntime', () => {
       audiences: ['end-user'],
       group: 'mortgage',
       auth: false,
+      confirm: false,
       moduleName: 'TestModule',
       parameters: { type: 'object', properties: {} },
       invoke: async (_args, ctx) => {
