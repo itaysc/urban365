@@ -66,6 +66,27 @@ describe('chat actions', () => {
     }
   });
 
+  it('asks for a place in one address field', () => {
+    for (const category of CHAT_CATEGORIES) {
+      for (const item of category.items) {
+        if (item.card.type !== 'a2ui') continue;
+        const labels = item.card.components.map((component) => component.label);
+        expect(labels).not.toContain('עיר');
+        expect(labels).not.toContain('רחוב');
+        expect(labels).not.toContain('עיר או שכונה');
+      }
+    }
+    const street = CHAT_CATEGORIES.find((item) => item.id === 'value')?.items.find((item) => item.id === 'street');
+    if (street?.card.type !== 'a2ui') throw new Error('street');
+    expect(street.card.components.some((component) => component.component === 'AddressField')).toBe(true);
+  });
+
+  it('reads one address line as the street and the city', () => {
+    expect(actionText('submit_street', { address: 'ויצמן 9, חולון' })).toBe(
+      'אני רוצה לדעת מה המחיר הממוצע ברחוב ויצמן 9 בעיר חולון',
+    );
+  });
+
   it('turns a filled search into the sentence the search tool expects', () => {
     expect(actionText('submit_search', { section: ['rent'], city: 'תל אביב', roomsMin: '3', roomsMax: '4.5', budget: '8000' })).toBe(
       'אני מחפש דירה להשכרה, בעיר תל אביב, 3–4.5 חדרים, עד 8000',

@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { MapPin } from 'lucide-react';
 import { inputClass } from '@/components/ui/Field';
 import { highlight } from '@/lib/highlight';
@@ -30,6 +31,10 @@ interface Props {
    * has been stepped into — otherwise the key would never reach the form.
    */
   submits?: boolean;
+  disabled?: boolean;
+  /** Draw the list on the document, so a scrolling panel cannot clip it. */
+  floatMenu?: boolean;
+  inputClassName?: string;
 }
 
 /**
@@ -52,9 +57,14 @@ export function SuggestBox({
   term = '',
   footer,
   submits = false,
+  disabled = false,
+  floatMenu = false,
+  inputClassName,
 }: Props) {
   const [open, setOpen] = useState(false);
   const [highlighted, setHighlighted] = useState(0);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [anchor, setAnchor] = useState<{ top: number; left: number; width: number } | null>(null);
   /**
    * Whether the person has actually reached into the list, by arrow key or pointer.
    *
@@ -68,11 +78,30 @@ export function SuggestBox({
 
   useEffect(() => {
     const onDocumentClick = (e: MouseEvent) => {
-      if (box.current && !box.current.contains(e.target as Node)) setOpen(false);
+      const target = e.target as Node;
+      if (box.current?.contains(target)) return;
+      if (target instanceof Element && target.closest('.u365-address-menu')) return;
+      setOpen(false);
     };
     document.addEventListener('mousedown', onDocumentClick);
     return () => document.removeEventListener('mousedown', onDocumentClick);
   }, []);
+
+  useLayoutEffect(() => {
+    if (!open || !floatMenu) return;
+    const place = () => {
+      const rect = inputRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      setAnchor({ top: rect.bottom + 4, left: rect.left, width: rect.width });
+    };
+    place();
+    window.addEventListener('scroll', place, true);
+    window.addEventListener('resize', place);
+    return () => {
+      window.removeEventListener('scroll', place, true);
+      window.removeEventListener('resize', place);
+    };
+  }, [open, floatMenu, value, options.length]);
 
   const choose = (option: string) => {
     if (onPick) {
@@ -128,13 +157,37 @@ export function SuggestBox({
     }
   };
 
+  const menu = options.map((option, i) => (
+    <li key={option}>
+      <button
+        type="button"
+        // mousedown, not click: the input's blur fires first and would close the
+        // list out from under the pointer.
+        onMouseDown={(e) => {
+          e.preventDefault();
+          choose(option);
+        }}
+        onMouseEnter={() => {
+          setHighlighted(i);
+          setReached(true);
+        }}
+        className={`u365-address-option flex w-full items-center gap-2 px-3 py-2 text-right text-sm ${i === highlighted ? 'is-on bg-slate-50' : ''}`}
+      >
+        <MapPin className="h-4 w-4 shrink-0 text-slate-500" aria-hidden />
+        <span>{highlight(option, term)}</span>
+      </button>
+    </li>
+  ));
+
   return (
     <div ref={box} className="relative w-full min-w-0">
       <input
+        ref={inputRef}
         id={id}
         required={required}
+        disabled={disabled}
         autoComplete="off"
-        className={`${inputClass} w-full min-w-0`}
+        className={inputClassName ?? `${inputClass} w-full min-w-0`}
         value={value}
         placeholder={placeholder}
         onChange={(e) => {
@@ -150,33 +203,19 @@ export function SuggestBox({
         aria-autocomplete="list"
       />
 
-      {open && options.length > 0 && (
-        <ul className="absolute z-20 mt-1 max-h-60 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
-          {options.map((option, i) => (
-            <li key={option}>
-              <button
-                type="button"
-                // mousedown, not click: the input's blur fires first and would close the
-                // list out from under the pointer.
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  choose(option);
-                }}
-                onMouseEnter={() => {
-                  setHighlighted(i);
-                  setReached(true);
-                }}
-                className={`flex w-full items-center gap-2 px-3 py-2 text-right text-sm ${
-                  i === highlighted ? 'bg-slate-50' : ''
-                }`}
-              >
-                <MapPin className="h-4 w-4 shrink-0 text-slate-500" aria-hidden />
-                <span>{highlight(option, term)}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
+      {open && options.length > 0 &&
+        (floatMenu && anchor
+          ? createPortal(
+              <ul className="u365-address-menu" style={{ top: anchor.top, left: anchor.left, width: anchor.width }}>
+                {menu}
+              </ul>,
+              document.body,
+            )
+          : (
+              <ul className="absolute z-20 mt-1 max-h-60 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
+                {menu}
+              </ul>
+            ))}
 
       {/* Hidden while the list is open, where it would be underneath it. */}
       {footer && !open && footer}

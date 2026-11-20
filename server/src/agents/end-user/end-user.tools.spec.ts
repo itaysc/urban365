@@ -73,8 +73,7 @@ describe('end-user assistant', () => {
     expect(form.components.map((component) => component.label).filter(Boolean)).toEqual(
       expect.arrayContaining(['קומה', 'מעלית', 'מחסן', 'מצב הבניין', 'נוף']),
     );
-    expect(form.dataModel.city).toBe('חולון');
-    expect(form.dataModel.street).toBe('דב הוז');
+    expect(form.dataModel.address).toBe('דב הוז, חולון');
     expect(form.dataModel.rooms).toBe('4');
     expect(form.dataModel.area).toBe('97');
     expect(form.dataModel.balcony).toEqual(['yes']);
@@ -194,7 +193,7 @@ describe('end-user assistant', () => {
       ),
     ).toBeNull();
     expect(pendingToolIntake(['אני רוצה לדעת מה המחיר הממוצע ברחוב ויצמן בעיר חולון'], undefined)).toBeNull();
-    expect(valuationFormCard('אני רוצה הערכת שווי לדירה שלי').dataModel.city).toBe('');
+    expect(valuationFormCard('אני רוצה הערכת שווי לדירה שלי').dataModel.address).toBe('');
 
     expect(
       pendingToolIntake(

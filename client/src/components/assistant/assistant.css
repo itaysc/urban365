@@ -552,6 +552,7 @@
   font-size: 0.75rem;
 }
 
+.u365-address-input,
 .u365-a2ui-field input,
 .u365-a2ui-field select {
   width: 100%;
@@ -564,6 +565,54 @@
   font-size: 0.875rem;
 }
 
+.u365-address-menu {
+  position: fixed;
+  z-index: 80;
+  max-height: 15rem;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0.25rem 0;
+  list-style: none;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  background: #fff;
+  box-shadow: 0 10px 24px rgb(15 23 42 / 0.12);
+  direction: rtl;
+}
+
+.u365-address-menu button {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 0.5rem;
+  border: 0;
+  background: transparent;
+  padding: 0.5rem 0.75rem;
+  color: #0f172a;
+  font: inherit;
+  font-size: 0.875rem;
+  text-align: right;
+  cursor: pointer;
+}
+
+.u365-address-menu button:hover,
+.u365-address-menu button.is-on {
+  background: #f8fafc;
+}
+
+.u365-address-menu svg {
+  width: 1rem;
+  height: 1rem;
+  flex: none;
+  color: #64748b;
+}
+
+.u365-address-input:focus {
+  outline: 2px solid #2563eb;
+  outline-offset: 1px;
+}
+
+.u365-address-input:disabled,
 .u365-a2ui-field input:disabled,
 .u365-a2ui-field select:disabled {
   background: #f8fafc;

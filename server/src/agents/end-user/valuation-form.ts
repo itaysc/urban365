@@ -40,7 +40,7 @@ const RENEWAL = [
 export function valuationFormCard(said: string): Extract<AgentCard, { type: 'a2ui' }> {
   const stated = readValuation(said);
   const context = Object.fromEntries(
-    ['city', 'street', 'rooms', 'area', 'floor', 'topFloor', 'gush', 'chelka', 'condition', 'balcony', 'mamad', 'lift', 'parking', 'storage', 'building', 'aspect', 'renewal'].map(
+    ['address', 'rooms', 'area', 'floor', 'topFloor', 'gush', 'chelka', 'condition', 'balcony', 'mamad', 'lift', 'parking', 'storage', 'building', 'aspect', 'renewal'].map(
       (key) => [key, { '@path': `/${key}` }],
     ),
   );
@@ -50,12 +50,16 @@ export function valuationFormCard(said: string): Extract<AgentCard, { type: 'a2u
     {
       id: 'form',
       component: 'Column',
-      children: ['title', 'place', 'size', 'home', 'floor', 'condition', 'home-yes', 'block', 'building', 'block-yes', 'around', 'aspect', 'renewal', 'parcel', 'submit'],
+      children: ['title', 'address', 'size', 'home', 'floor', 'condition', 'home-yes', 'block', 'building', 'block-yes', 'around', 'aspect', 'renewal', 'parcel', 'submit'],
     },
     { id: 'title', component: 'Text', text: 'הערכת שווי', variant: 'body' },
-    { id: 'place', component: 'Row', children: ['city', 'street'] },
-    textField('city', 'עיר', 'shortText', 'חולון'),
-    textField('street', 'רחוב', 'shortText', 'דב הוז'),
+    {
+      id: 'address',
+      component: 'AddressField',
+      label: 'מיקום',
+      placeholder: 'רחוב ומספר, עיר',
+      value: { '@path': '/address' },
+    },
     { id: 'size', component: 'Row', children: ['rooms', 'area'] },
     textField('rooms', 'חדרים', 'number', '4'),
     textField('area', 'שטח במ״ר', 'number', '97'),
@@ -94,8 +98,7 @@ export function valuationFormCard(said: string): Extract<AgentCard, { type: 'a2u
     surfaceId: 'valuation',
     components,
     dataModel: {
-      city: placeName(said),
-      street: streetName(said),
+      address: addressLine(said),
       rooms: roomsOf(said),
       area: areaOf(said),
       floor: stated.floor === null ? '' : String(stated.floor),
@@ -135,6 +138,13 @@ function yesNo(value: boolean | null): string[] {
   if (value === true) return ['yes'];
   if (value === false) return ['no'];
   return [];
+}
+
+function addressLine(text: string): string {
+  const city = placeName(text);
+  const street = streetName(text);
+  if (street && city) return `${street}, ${city}`;
+  return city || street;
 }
 
 function placeName(text: string): string {

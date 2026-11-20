@@ -1,4 +1,5 @@
 import { roomsLabel, type RoomsRange } from '@/components/search/roomsRange';
+import { splitPlace } from '@/lib/address-line';
 import type { A2UIComponent, AssistantCard } from './assistant';
 import { valuationReply } from './valuation-reply';
 
@@ -51,6 +52,10 @@ function roomsRange(): A2UIComponent {
   return { id: 'rooms', component: 'RoomsRange', label: 'חדרים' };
 }
 
+function location(placeholder = 'רחוב ומספר, עיר'): A2UIComponent {
+  return { id: 'address', component: 'AddressField', label: 'מיקום', placeholder, value: { '@path': '/address' } };
+}
+
 function button(id: string, name: string, keys: string[]): A2UIComponent {
   return {
     id,
@@ -85,9 +90,7 @@ const yesNo = [
 
 function valuationCard(): AssistantCard {
   const fields: A2UIComponent[] = [
-    row('place', ['city', 'street']),
-    field('city', 'עיר', 'למשל חולון'),
-    field('street', 'רחוב', 'למשל דב הוז'),
+    location(),
     row('size', ['rooms', 'area']),
     field('rooms', 'חדרים', '4', 'number'),
     field('area', 'שטח במ״ר', '97', 'number'),
@@ -130,8 +133,7 @@ function valuationCard(): AssistantCard {
     field('chelka', 'חלקה', '45', 'number'),
   ];
   const keys = [
-    'city',
-    'street',
+    'address',
     'rooms',
     'area',
     'floor',
@@ -161,13 +163,13 @@ function searchCard(): AssistantCard {
         { label: 'למכירה', value: 'forsale' },
         { label: 'להשכרה', value: 'rent' },
       ]),
-      field('city', 'עיר או שכונה', 'למשל תל אביב'),
+      location('עיר, שכונה או רחוב'),
       roomsRange(),
       field('budget', 'עד מחיר', '3000000', 'number'),
     ],
     'חפש',
     'submit_search',
-    ['section', 'city', 'roomsMin', 'roomsMax', 'budget'],
+    ['section', 'address', 'roomsMin', 'roomsMax', 'budget'],
   );
 }
 
@@ -177,14 +179,14 @@ function alertCard(): AssistantCard {
     'התראה על מודעה חדשה',
     'נשמור את החיפוש ונודיע כשמתפרסמת דירה שמתאימה.',
     [
-      field('city', 'עיר או שכונה', 'למשל חולון'),
+      location('עיר, שכונה או רחוב'),
       row('limits', ['rooms', 'budget']),
       field('rooms', 'חדרים', '4', 'number'),
       field('budget', 'עד מחיר', '2500000', 'number'),
     ],
     'הגדר התראה',
     'submit_alert',
-    ['city', 'rooms', 'budget'],
+    ['address', 'rooms', 'budget'],
   );
 }
 
@@ -198,9 +200,7 @@ function listingCard(): AssistantCard {
         { label: 'למכירה', value: 'forsale' },
         { label: 'להשכרה', value: 'rent' },
       ]),
-      row('place', ['city', 'street']),
-      field('city', 'עיר', 'למשל חולון'),
-      field('street', 'רחוב', 'לא חובה'),
+      location(),
       row('size', ['rooms', 'area']),
       field('rooms', 'חדרים', '4', 'number'),
       field('area', 'שטח במ״ר', '90', 'number'),
@@ -208,7 +208,7 @@ function listingCard(): AssistantCard {
     ],
     'שמור כטיוטה',
     'submit_listing',
-    ['section', 'city', 'street', 'rooms', 'area', 'price'],
+    ['section', 'address', 'rooms', 'area', 'price'],
   );
 }
 
@@ -217,10 +217,10 @@ function streetCard(): AssistantCard {
     'street',
     'מחיר ממוצע ברחוב',
     'ממוצע העסקאות שנסגרו ברחוב, לא המחיר שמבקשים במודעות.',
-    [field('city', 'עיר', 'למשל חולון'), field('street', 'רחוב', 'למשל ויצמן')],
+    [location()],
     'הצג מחירים',
     'submit_street',
-    ['city', 'street'],
+    ['address'],
   );
 }
 
@@ -496,6 +496,14 @@ function textOf(data: Record<string, unknown>, key: string): string {
   return typeof value === 'string' ? value.trim() : '';
 }
 
+/** One location line, or the older separate city and street fields. */
+function placeFrom(data: Record<string, unknown>): { city: string; street: string } {
+  const line = textOf(data, 'address');
+  if (!line) return { city: textOf(data, 'city'), street: textOf(data, 'street') };
+  const parts = splitPlace(line);
+  return { city: parts.city, street: [parts.street, parts.house].filter(Boolean).join(' ') };
+}
+
 function choiceOf(data: Record<string, unknown>, key: string): string {
   const value = data[key];
   return Array.isArray(value) && typeof value[0] === 'string' ? value[0] : '';
@@ -524,42 +532,44 @@ function buyerPhrase(value: string): string {
 /** Turns a submitted sheet into the sentence the agent already knows how to read. */
 export function actionText(name: string, data: Record<string, unknown>): string {
   if (name === 'submit_valuation') {
-    const body = valuationReply(data);
+    const place = placeFrom(data);
+    const body = valuationReply({ ...data, city: place.city, street: place.street });
     return body ? `אני רוצה הערכת שווי לדירה. ${body}` : '';
   }
   if (name === 'submit_search') {
     const rent = choiceOf(data, 'section') === 'rent';
     const parts = [`אני מחפש דירה ${rent ? 'להשכרה' : 'למכירה'}`];
-    const city = textOf(data, 'city');
+    const place = placeFrom(data);
     const rooms = roomsPhrase(data);
     const budget = textOf(data, 'budget');
-    if (city) parts.push(`בעיר ${city}`);
+    if (place.city) parts.push(`בעיר ${place.city}`);
+    if (place.street) parts.push(`ברחוב ${place.street}`);
     if (rooms) parts.push(rooms);
     if (budget) parts.push(`עד ${budget}`);
     return parts.join(', ');
   }
   if (name === 'submit_alert') {
     const parts = ['אני רוצה התראה כשמתפרסמת דירה חדשה'];
-    const city = textOf(data, 'city');
+    const place = placeFrom(data);
     const rooms = textOf(data, 'rooms');
     const budget = textOf(data, 'budget');
-    if (city) parts.push(`בעיר ${city}`);
+    if (place.city) parts.push(`בעיר ${place.city}`);
+    if (place.street) parts.push(`ברחוב ${place.street}`);
     if (rooms) parts.push(`${rooms} חדרים`);
     if (budget) parts.push(`עד ${budget}`);
     return parts.join(', ');
   }
   if (name === 'submit_listing') {
-    const city = textOf(data, 'city');
+    const place = placeFrom(data);
     const rooms = textOf(data, 'rooms');
     const price = textOf(data, 'price');
-    if (!city || !rooms || !price) return '';
+    if (!place.city || !rooms || !price) return '';
     const rent = choiceOf(data, 'section') === 'rent';
-    const street = textOf(data, 'street');
     const area = textOf(data, 'area');
     return [
-      `אני רוצה לפרסם דירה ${rent ? 'להשכרה' : 'למכירה'} בעיר ${city}`,
+      `אני רוצה לפרסם דירה ${rent ? 'להשכרה' : 'למכירה'} בעיר ${place.city}`,
       `${rooms} חדרים`,
-      street ? `ברחוב ${street}` : '',
+      place.street ? `ברחוב ${place.street}` : '',
       area ? `${area} מ״ר` : '',
       `מחיר ${price}`,
     ]
@@ -581,10 +591,9 @@ export function actionText(name: string, data: Record<string, unknown>): string 
     return `מרוויחים ${income} נטו בחודש ויש הון עצמי ${equity} ש״ח. ${buyer}. איזו דירה אפשר לקנות`;
   }
   if (name === 'submit_street') {
-    const city = textOf(data, 'city');
-    const street = textOf(data, 'street');
-    if (!city || !street) return '';
-    return `אני רוצה לדעת מה המחיר הממוצע ברחוב ${street} בעיר ${city}`;
+    const place = placeFrom(data);
+    if (!place.city || !place.street) return '';
+    return `אני רוצה לדעת מה המחיר הממוצע ברחוב ${place.street} בעיר ${place.city}`;
   }
   return '';
 }

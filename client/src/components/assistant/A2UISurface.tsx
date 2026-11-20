@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react';
+import { AddressBox } from '@/components/listing/AddressBox';
 import { RoomsPicker } from '@/components/search/RoomsPicker';
 import type { A2UIComponent } from './assistant';
 import { actionText } from './chat-actions';
@@ -141,6 +142,24 @@ function renderNode(
           }}
         />
       </div>
+    );
+  }
+
+  if (component.component === 'AddressField') {
+    const key = component.value?.['@path']?.replace(/^\//, '') ?? component.id;
+    const value = typeof model[key] === 'string' ? model[key] : '';
+    return (
+      <label className="u365-a2ui-field" key={component.id}>
+        <span>{component.label ?? 'מיקום'}</span>
+        <AddressBox
+          id={component.id}
+          value={value}
+          placeholder={component.placeholder}
+          disabled={locked}
+          tone="chat"
+          onChange={(next) => write(`/${key}`, next)}
+        />
+      </label>
     );
   }
 

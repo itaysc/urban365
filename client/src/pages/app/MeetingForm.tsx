@@ -1,17 +1,15 @@
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useState } from 'react';
+import { forwardRef, useCallback, useImperativeHandle, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { CustomerSelect, type PickedCustomer } from '@/components/agency/CustomerSelect';
+import { AddressBox } from '@/components/listing/AddressBox';
 import { SuggestBox } from '@/components/listing/SuggestBox';
 import { Button } from '@/components/ui/Button';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Field, inputClass, selectClass } from '@/components/ui/Field';
-import { ISRAELI_CITIES } from '@/data/cities';
-import { splitPlace } from '@/lib/address-line';
 import { MEETING_TITLES } from '@/lib/meetingTitles';
 import { qk } from '@/queries/keys';
 import { fetchMyListings } from '@/services/agency';
 import type { Meeting, MeetingInput } from '@/services/calendar';
-import { fetchAddressSuggestions, fetchStreetsIn } from '@/services/search';
 
 /**
  * A `datetime-local` input wants `YYYY-MM-DDTHH:mm` in **local** time, while everything
@@ -46,8 +44,6 @@ const exclusiveEndIso = (date: string) => {
   at.setDate(at.getDate() + 1);
   return at.toISOString();
 };
-
-const MAX_PLACES = 8;
 
 /** The top of the next hour — the fallback when no day was chosen. */
 function nextHour(): string {
@@ -163,93 +159,6 @@ export const MeetingForm = forwardRef<MeetingFormHandle, Props>(function Meeting
     queryKey: qk.listings.mine('published', 1),
     queryFn: () => fetchMyListings({ status: 'published', page: 1 }),
   });
-
-  const { street, house, city: cityTerm, separated, loose } = splitPlace(location);
-  const knownCity = (ISRAELI_CITIES as readonly string[]).includes(cityTerm) ? cityTerm : '';
-  // A bare word is tried as a street too. Once it is exactly a town, the streets of
-  // that town take over, which is a different query.
-  const streetLookup = separated || house !== '' ? street : knownCity ? '' : cityTerm;
-  // "הרצל" is the start of הרצליה, and it is also how "שדרות הרצל" is written.
-  const looseLookup = loose ? location.trim() : '';
-  const [streetQuery, setStreetQuery] = useState('');
-  const [looseQuery, setLooseQuery] = useState('');
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => setStreetQuery(streetLookup), 200);
-    return () => window.clearTimeout(timer);
-  }, [streetLookup]);
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => setLooseQuery(looseLookup), 200);
-    return () => window.clearTimeout(timer);
-  }, [looseLookup]);
-
-  const cityOptions = useMemo(() => {
-    if (cityTerm === '') return [];
-    const starts: string[] = [];
-    const contains: string[] = [];
-    for (const city of ISRAELI_CITIES) {
-      if (!separated && city === cityTerm) continue;
-      if (city.startsWith(cityTerm)) starts.push(city);
-      else if (city.includes(cityTerm)) contains.push(city);
-      if (starts.length >= MAX_PLACES) break;
-    }
-    return [...starts, ...contains].slice(0, MAX_PLACES);
-  }, [cityTerm, separated]);
-
-  const { data: streets } = useQuery({
-    queryKey: qk.listings.streets(knownCity, separated ? streetQuery : ''),
-    queryFn: () => fetchStreetsIn(knownCity, separated ? streetQuery : ''),
-    enabled: knownCity !== '' && (!separated || streetQuery !== ''),
-    staleTime: 5 * 60_000,
-  });
-
-  // The same street exists in a lot of towns, so each hit is the whole line.
-  const { data: anywhere } = useQuery({
-    queryKey: qk.listings.addressSuggestions(streetQuery, separated ? cityTerm : ''),
-    queryFn: () => fetchAddressSuggestions(streetQuery, separated ? cityTerm : ''),
-    enabled: streetQuery.length >= 2 && knownCity === '',
-    staleTime: 5 * 60_000,
-  });
-
-  const { data: asWritten } = useQuery({
-    queryKey: qk.listings.addressSuggestions(looseQuery, ''),
-    queryFn: () => fetchAddressSuggestions(looseQuery),
-    enabled: looseQuery.length >= 2,
-    staleTime: 5 * 60_000,
-  });
-
-  // A city, until the line is one — then the streets of that city, written back into
-  // the same line with the house number kept if it was already typed.
-  const places = useMemo(() => {
-    const fromStreets = (streets ?? [])
-      .filter((name) => name !== street)
-      .map((name) => {
-        const road = house ? `${name} ${house}` : name;
-        return `${road}, ${knownCity}`;
-      });
-    const fromAnywhere = (anywhere ?? []).map((row) => {
-      const road = house ? `${row.street} ${house}` : row.street;
-      return `${road}, ${row.city}`;
-    });
-    if (!separated && knownCity) return fromStreets.slice(0, MAX_PLACES);
-    if (!separated) {
-      // Towns first: "תל" is תל אביב long before it is a street. Whatever is left
-      // of the eight slots is streets, so "סוקולוב" — which is no town — still shows.
-      const towns = cityOptions.slice(0, 4);
-      const roads = fromAnywhere.filter((option) => !towns.includes(option));
-      return [...towns, ...roads].filter((option) => option !== location.trim()).slice(0, MAX_PLACES);
-    }
-    const head = house ? `${street} ${house}` : street;
-    const fromCities = cityOptions.map((city) => (head ? `${head}, ${city}` : city));
-    const fromWritten = (asWritten ?? []).map((row) => {
-      const road = house ? `${row.street} ${house}` : row.street;
-      return `${road}, ${row.city}`;
-    });
-    return [...fromAnywhere, ...fromStreets, ...fromCities, ...fromWritten]
-      .filter((option, index, all) => option !== location.trim() && all.indexOf(option) === index)
-      .slice(0, MAX_PLACES);
-  }, [separated, cityOptions, house, street, streets, anywhere, asWritten, knownCity, location]);
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -395,12 +304,10 @@ export const MeetingForm = forwardRef<MeetingFormHandle, Props>(function Meeting
       </Field>
 
       <Field label="מיקום" htmlFor="meeting-location">
-        <SuggestBox
+        <AddressBox
           id="meeting-location"
           value={location}
           onChange={setLocation}
-          options={places}
-          term={separated ? street || cityTerm : cityTerm}
           placeholder="סוקולוב 12, חולון — או המשרד, שיחת וידאו"
         />
       </Field>
