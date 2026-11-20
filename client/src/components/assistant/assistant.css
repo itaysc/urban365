@@ -194,10 +194,397 @@
   padding: 0.75rem 1rem;
 }
 
+.u365-asst-start {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
 .u365-asst-empty {
   margin: 0;
   color: #64748b;
   font-size: 0.875rem;
+}
+
+.u365-asst-dock {
+  position: relative;
+  border-top: 1px solid #e2e8f0;
+  background: #fff;
+  padding: 0.4rem 0.45rem 0;
+}
+
+.u365-asst-cats {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0;
+  overflow: hidden;
+  padding-bottom: 0.35rem;
+}
+
+.u365-asst-cat {
+  display: inline-flex;
+  flex: 1 1 0;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  min-width: 0;
+  border: none;
+  border-radius: 0;
+  outline: none;
+  box-shadow: none;
+  appearance: none;
+  background: none;
+  padding: 0.35rem 0.1rem;
+  color: #2563eb;
+  font: inherit;
+  font-size: clamp(0.62rem, 2.5vw, 0.75rem);
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.u365-asst-cat svg {
+  width: 0.65rem;
+  height: 0.65rem;
+  flex: none;
+}
+
+.u365-asst-cat:focus,
+.u365-asst-cat:focus-visible,
+.u365-asst-cat.is-on {
+  border: none;
+  outline: none;
+  box-shadow: none;
+  background: none;
+  color: #2563eb;
+}
+
+.u365-asst-cat:hover {
+  border-radius: 0.4rem;
+  background: #2563eb;
+  color: #fff;
+}
+
+.u365-asst-menu {
+  position: absolute;
+  right: 0.75rem;
+  bottom: 100%;
+  left: 0.75rem;
+  z-index: 2;
+  display: flex;
+  max-height: min(18rem, 46vh);
+  flex-direction: column;
+  gap: 0.15rem;
+  overflow-y: auto;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.9rem;
+  background: #fff;
+  padding: 0.35rem;
+  box-shadow: 0 -10px 28px rgb(15 23 42 / 0.14);
+}
+
+.u365-asst-menu-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.1rem;
+  border: 0;
+  border-radius: 0.65rem;
+  background: transparent;
+  padding: 0.5rem 0.65rem;
+  color: #0f172a;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.u365-asst-menu-item:hover {
+  background: #f1f5f9;
+}
+
+.u365-asst-menu-item small {
+  color: #64748b;
+  font-size: 0.75rem;
+}
+
+.u365-a2ui {
+  display: flex;
+  flex-direction: column;
+}
+
+.u365-a2ui-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  background: #fff;
+  padding: 0.75rem;
+  animation: u365-a2ui-card-in 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.u365-a2ui-line {
+  animation: u365-a2ui-line-in 340ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.u365-asst-arrive .u365-asst-bot {
+  animation: u365-a2ui-line-in 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes u365-a2ui-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes u365-a2ui-line-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.u365-a2ui-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.u365-a2ui-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.u365-a2ui-row > * {
+  flex: 1 1 7rem;
+  min-width: 0;
+}
+
+.u365-a2ui-title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.u365-a2ui-caption {
+  margin: 0.15rem 0 0;
+  color: #64748b;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.u365-a2ui-body {
+  margin: 0;
+  color: #334155;
+  font-size: 0.875rem;
+  font-weight: 400;
+  line-height: 1.55;
+}
+
+.u365-a2ui-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin: 0;
+  padding-inline-start: 1.15rem;
+  color: #334155;
+  font-size: 0.875rem;
+  line-height: 1.45;
+}
+
+.u365-a2ui-rule {
+  margin: 0.15rem 0;
+  border: 0;
+  border-top: 1px solid #e2e8f0;
+}
+
+.u365-saved {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.u365-saved-card {
+  display: flex;
+  align-items: stretch;
+  gap: 0.65rem;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  background: #fff;
+  color: #0f172a;
+  text-decoration: none;
+}
+
+.u365-saved-card img,
+.u365-saved-photo {
+  width: 5.5rem;
+  height: 4.75rem;
+  flex: none;
+  object-fit: cover;
+  background: #e2e8f0;
+}
+
+.u365-saved-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.15rem;
+  padding: 0.45rem 0.65rem 0.45rem 0;
+  font-size: 0.8rem;
+}
+
+.u365-saved-copy strong {
+  overflow: hidden;
+  font-size: 0.85rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.u365-saved-copy span {
+  color: #64748b;
+}
+
+.u365-saved-price {
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.u365-saved-more {
+  border: 1px solid #2563eb;
+  border-radius: 0.7rem;
+  background: #fff;
+  padding: 0.5rem 0.75rem;
+  color: #2563eb;
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.u365-rooms fieldset {
+  min-width: 0;
+  margin: 0;
+  border: 0;
+  padding: 0;
+}
+
+.u365-rooms legend {
+  margin-bottom: 0.35rem;
+  color: #334155;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.u365-rooms fieldset > div {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  overflow-x: auto;
+  padding-bottom: 0.15rem;
+}
+
+.u365-rooms button {
+  width: 2rem;
+  height: 2rem;
+  flex: none;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  background: #fff;
+  padding: 0;
+  color: #334155;
+  font: inherit;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.u365-rooms button[aria-pressed='true'] {
+  border: 0;
+  background: transparent;
+  color: #2563eb;
+  font-weight: 700;
+}
+
+.u365-rooms div:has(> button[aria-pressed='true']) {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid #2563eb;
+  border-radius: 999px;
+  background: #eff6ff;
+  padding: 0 0.15rem;
+}
+
+.u365-rooms p {
+  margin: 0.35rem 0 0;
+  color: #64748b;
+  font-size: 0.7rem;
+}
+
+.u365-a2ui-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #0f172a;
+  border-radius: 0.75rem;
+  padding: 0.55rem 0.75rem;
+  color: #0f172a;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.u365-a2ui-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  color: #334155;
+  font-size: 0.75rem;
+}
+
+.u365-a2ui-field input,
+.u365-a2ui-field select {
+  width: 100%;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.65rem;
+  background: #fff;
+  padding: 0.45rem 0.6rem;
+  color: #0f172a;
+  font: inherit;
+  font-size: 0.875rem;
+}
+
+.u365-a2ui-field input:disabled,
+.u365-a2ui-field select:disabled {
+  background: #f8fafc;
+  color: #64748b;
+}
+
+.u365-a2ui-submit {
+  border: 0;
+  border-radius: 0.75rem;
+  background: #0f172a;
+  padding: 0.6rem 0.75rem;
+  color: #fff;
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.u365-a2ui-submit:disabled {
+  background: #cbd5e1;
+  cursor: default;
 }
 
 .u365-asst-thinking {
@@ -231,6 +618,12 @@
   .u365-asst-panel,
   .u365-asst-button {
     transition: none;
+  }
+
+  .u365-a2ui-card,
+  .u365-a2ui-line,
+  .u365-asst-arrive .u365-asst-bot {
+    animation: none;
   }
 }
 
@@ -457,4 +850,9 @@ a.u365-asst-signin {
 .u365-asst-form button:disabled {
   opacity: 0.4;
   cursor: default;
+}
+
+.u365-asst-form.is-under-dock {
+  border-top: 0;
+  padding-top: 0.35rem;
 }

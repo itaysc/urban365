@@ -17,6 +17,8 @@ import { ConversationStore } from './conversation.store.js';
 import { estimateTokens } from './tokens.js';
 import { ENABLE_GROUPS, toolSchemaTokens, visibleToolSpecs } from './tool-selection.js';
 import { ToolRegistry } from './tool-registry.js';
+import { intakeFollowUp, matchIntake, pendingToolIntake } from '../end-user/tool-intake.js';
+import { valuationFormCard } from '../end-user/valuation-form.js';
 import { addsValuationDetail, asksForOneFlat, pendingValuationQuestion, VALUATION_QUESTION_LEAD } from '../end-user/valuation-from-text.js';
 
 export type AgentEvent =
@@ -110,10 +112,12 @@ export class AgentRuntime {
     const users = transcript.messages.filter((item) => item.role === 'user').map((item) => item.content);
     const lastAssistant = [...transcript.messages].reverse().find((item) => item.role === 'assistant' && item.content)?.content;
     const alreadyPriced = transcript.messages.some((item) => item.cards?.some((card) => card.type === 'valuation'));
-    const question = pendingValuationQuestion(users, lastAssistant, alreadyPriced);
+    const question = pendingValuationQuestion(users, lastAssistant, alreadyPriced) ?? pendingToolIntake(users, lastAssistant);
     if (question) {
+      const form = question.startsWith(VALUATION_QUESTION_LEAD) ? valuationFormCard(users.join('\n')) : null;
+      if (form) yield { event: 'cards', data: { cards: [form] } };
       yield { event: 'text', data: { delta: question } };
-      const spoken: TranscriptMessage = { role: 'assistant', content: question };
+      const spoken: TranscriptMessage = { role: 'assistant', content: question, ...(form ? { cards: [form] } : {}) };
       transcript.messages.push(spoken);
       await this.store.append(transcript.id, [spoken]);
       yield { event: 'done', data: { conversationId: transcript.id } };
@@ -159,7 +163,10 @@ export class AgentRuntime {
       }
     }
 
-    const enabledGroups: string[] = asksForOneFlat(users.join('\n')) ? ['pricing'] : [];
+    const said = users.join('\n');
+    const enabledGroups: string[] = asksForOneFlat(said) ? ['pricing'] : [];
+    const intake = matchIntake(said);
+    if (intake && !enabledGroups.includes(intake.group)) enabledGroups.push(intake.group);
 
     for (let round = 0; round < agent.budget.maxRounds; round++) {
       await this.compact(agent, transcript);
@@ -490,6 +497,10 @@ function toModelMessages(
 
   const update = valuationUpdateLine(transcript);
   if (update) messages.push({ role: 'system', content: update });
+  const followUp = intakeFollowUp(
+    [...transcript.messages].reverse().find((message) => message.role === 'assistant' && message.content)?.content,
+  );
+  if (followUp) messages.push({ role: 'system', content: followUp });
 
   recent.forEach((turn, index) => {
     const full = index >= recent.length - FULL_TOOL_TURNS;

@@ -51,6 +51,26 @@ export interface AgentContext {
   detailsAnswered?: boolean;
 }
 
+/** The slice of an A2UI v1 component this chat renders. */
+export interface A2UIComponent {
+  id: string;
+  component: string;
+  children?: string[];
+  child?: string;
+  text?: string;
+  label?: string;
+  variant?: string;
+  placeholder?: string;
+  options?: { label: string; value: string }[];
+  value?: { '@path': string };
+  action?: {
+    event?: {
+      name: string;
+      context?: Record<string, { '@path': string }>;
+    };
+  };
+}
+
 /**
  * What the browser draws under a reply. The model never sees this — it sees `summary`.
  * Keeping the two apart is what stops a card of five listings from being re-sent, in
@@ -78,6 +98,13 @@ export type AgentCard =
       city: string;
       street?: string | null;
       parts?: { label: string; factor: number }[];
+    }
+  | {
+      /** An A2UI v1 surface. `root` is the component the renderer mounts. */
+      type: 'a2ui';
+      surfaceId: string;
+      components: A2UIComponent[];
+      dataModel: Record<string, string | string[]>;
     }
   | { type: 'link'; href: string; label: string }
   | {

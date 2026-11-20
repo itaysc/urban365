@@ -2,6 +2,27 @@ import { apiBaseUrl } from '@/services/api';
 
 export type AssistantAgentId = 'end-user' | 'agency';
 
+/** The slice of an A2UI v1 component this chat renders. */
+export interface A2UIComponent {
+  id: string;
+  component: string;
+  children?: string[];
+  child?: string;
+  text?: string;
+  label?: string;
+  variant?: string;
+  placeholder?: string;
+  options?: { label: string; value: string }[];
+  value?: { '@path': string };
+  href?: string;
+  action?: {
+    event?: {
+      name: string;
+      context?: Record<string, { '@path': string }>;
+    };
+  };
+}
+
 export interface AgentPageContext {
   kind: 'customer' | 'lead' | 'deal' | 'listing' | 'calendar' | 'mortgage_case' | 'banker' | 'page';
   id?: string;
@@ -30,6 +51,12 @@ export type AssistantCard =
       city: string;
       street?: string | null;
       parts?: { label: string; factor: number }[];
+    }
+  | {
+      type: 'a2ui';
+      surfaceId: string;
+      components: A2UIComponent[];
+      dataModel: Record<string, string | string[]>;
     }
   | { type: 'link'; href: string; label: string }
   | {
@@ -112,9 +139,18 @@ export interface AssistantMessage {
   content: string;
   cards: AssistantCard[];
   needsSignIn: boolean;
+  /** Set on a card that was just opened from the menu, so its line types in. */
+  fresh?: boolean;
 }
 
 /** `2024-06-01` becomes `01/06/2024`. Anything that is not a calendar day is left as written. */
+/** How many characters to reveal on the next typing frame. Fast, and a long answer does not crawl. */
+export function typeStep(remaining: number): number {
+  if (remaining > 500) return 8;
+  if (remaining > 180) return 5;
+  return 3;
+}
+
 export function displayChatText(text: string): string {
   return text.replace(/\b(\d{4})-(\d{2})-(\d{2})\b/g, (match, year: string, month: string, day: string) => {
     const monthNumber = Number(month);

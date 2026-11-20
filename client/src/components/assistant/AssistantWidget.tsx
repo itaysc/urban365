@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type RefObject } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Trash2, X } from 'lucide-react';
+import { BookOpen, Landmark, LineChart, Search, Tag, Trash2, X, type LucideIcon } from 'lucide-react';
 import { LoginDialog } from '@/components/auth/LoginDialog';
 import { formatPrice, formatShekel } from '@/lib/format';
 import sheet from './assistant.css?inline';
@@ -9,6 +9,7 @@ import {
   confirmTool,
   displayChatText,
   stickAfterScroll,
+  typeStep,
   forgetConversation,
   formatChatDate,
   loadConversation,
@@ -21,9 +22,19 @@ import {
   type AssistantCard,
   type AssistantMessage,
 } from './assistant';
+import { A2UISurface } from './A2UISurface';
+import { CHAT_CATEGORIES, type ChatAction } from './chat-actions';
 import { crmPageContext } from './page-context';
 
 const HIDDEN = [/^\/app(?:\/|$)/, /^\/admin(?:\/|$)/, /^\/login(?:\/|$)/, /^\/signup(?:\/|$)/, /^\/join(?:\/|$)/];
+
+const CATEGORY_ICON: Record<string, LucideIcon> = {
+  buy: Search,
+  sell: Tag,
+  mortgage: Landmark,
+  value: LineChart,
+  info: BookOpen,
+};
 
 const emptyAssistant = (): AssistantMessage => ({
   role: 'assistant',
@@ -34,12 +45,11 @@ const emptyAssistant = (): AssistantMessage => ({
 
 function useAssistantStyles(): void {
   useEffect(() => {
-    if (document.getElementById('u365-asst-css')) return;
-    const style = document.createElement('style');
+    const style = document.getElementById('u365-asst-css') ?? document.createElement('style');
     style.id = 'u365-asst-css';
     style.textContent = sheet;
-    document.head.appendChild(style);
-  }, []);
+    if (!style.parentNode) document.head.appendChild(style);
+  });
 }
 
 /**
@@ -113,6 +123,7 @@ export function AssistantPanel({
   const [confirmingClear, setConfirmingClear] = useState(false);
   const [clearing, setClearing] = useState(false);
   const [draft, setDraft] = useState('');
+  const [category, setCategory] = useState<string | null>(null);
   const [messages, setMessages] = useState<AssistantMessage[]>([]);
   const conversationId = useRef<string | null>(storedConversationId(agentId));
   const scroller = useRef<HTMLDivElement>(null);
@@ -170,6 +181,14 @@ export function AssistantPanel({
   useEffect(() => {
     const node = scroller.current;
     if (!node || !stickToBottom.current) return;
+    const opened = messages.at(-1)?.fresh === true ? node.querySelector('article.u365-asst-arrive:last-of-type') : null;
+    if (opened instanceof HTMLElement) {
+      const top = opened.offsetTop - node.offsetTop;
+      if (top < node.scrollTop || top + opened.offsetHeight > node.scrollTop + node.clientHeight) {
+        node.scrollTop = top;
+      }
+      return;
+    }
     node.scrollTop = node.scrollHeight;
   }, [messages, open]);
 
@@ -190,10 +209,20 @@ export function AssistantPanel({
     }
   };
 
-  const send = async () => {
-    const text = draft.trim();
+  const showAction = (action: ChatAction) => {
+    setCategory(null);
+    stickToBottom.current = true;
+    setMessages((current) => [
+      ...current,
+      { role: 'assistant', content: action.intro, cards: [action.card], needsSignIn: false, fresh: true },
+    ]);
+  };
+
+  const send = async (seed?: string) => {
+    const text = (seed ?? draft).trim();
     if (!text || pending) return;
     stickToBottom.current = true;
+    setCategory(null);
     setConfirmingClear(false);
     setDraft('');
     setPending(true);
@@ -379,7 +408,10 @@ export function AssistantPanel({
                 message.cards.length === 0 &&
                 !message.needsSignIn;
               return (
-                <article key={index} className={message.role === 'user' ? 'u365-asst-mine' : undefined}>
+                <article
+                  key={index}
+                  className={message.role === 'user' ? 'u365-asst-mine' : message.fresh ? 'u365-asst-arrive' : undefined}
+                >
                   {thinking ? (
                     <p className="u365-asst-thinking" role="status">
                       חושב...
@@ -387,7 +419,16 @@ export function AssistantPanel({
                   ) : (
                     message.content && (
                       <p className={message.role === 'user' ? 'u365-asst-user' : 'u365-asst-bot'}>
-                        {displayChatText(message.content)}
+                        {message.role === 'assistant' ? (
+                          <TypedReply
+                            text={message.content}
+                            live={(pending || message.fresh === true) && index === messages.length - 1}
+                            scroller={scroller}
+                            stick={stickToBottom}
+                          />
+                        ) : (
+                          displayChatText(message.content)
+                        )}
                       </p>
                     )
                   )}
@@ -399,6 +440,7 @@ export function AssistantPanel({
                           card={card}
                           pending={pending}
                           onConfirm={onConfirm}
+                          onAction={(text) => void send(text)}
                         />
                       ))}
                     </div>
@@ -418,8 +460,40 @@ export function AssistantPanel({
             })}
           </div>
 
+          {agentId === 'end-user' && (
+            <div className="u365-asst-dock">
+              {category && (
+                <div className="u365-asst-menu" role="menu">
+                  {CHAT_CATEGORIES.find((item) => item.id === category)?.items.map((item) => (
+                    <button key={item.id} type="button" role="menuitem" className="u365-asst-menu-item" onClick={() => showAction(item)}>
+                      <span>{item.label}</span>
+                      <small>{item.hint}</small>
+                    </button>
+                  ))}
+                </div>
+              )}
+              <div className="u365-asst-cats">
+                {CHAT_CATEGORIES.map((item) => {
+                  const Icon = CATEGORY_ICON[item.id];
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      aria-expanded={category === item.id}
+                      className={category === item.id ? 'u365-asst-cat is-on' : 'u365-asst-cat'}
+                      onClick={() => setCategory((current) => (current === item.id ? null : item.id))}
+                    >
+                      {Icon && <Icon size={12} strokeWidth={1.75} aria-hidden="true" />}
+                      {item.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           <form
-            className="u365-asst-form"
+            className={agentId === 'end-user' ? 'u365-asst-form is-under-dock' : 'u365-asst-form'}
             onSubmit={(event) => {
               event.preventDefault();
               void send();
@@ -452,14 +526,56 @@ export function AssistantPanel({
   );
 }
 
+function prefersStillText(): boolean {
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
+/** Reveals an assistant reply in small steps so it reads as typing, not a pop. */
+function TypedReply({
+  text,
+  live,
+  scroller,
+  stick,
+}: {
+  text: string;
+  live: boolean;
+  scroller: RefObject<HTMLDivElement | null>;
+  stick: RefObject<boolean>;
+}) {
+  const animate = useRef(live && !prefersStillText());
+  const [count, setCount] = useState(() => (animate.current ? 0 : text.length));
+
+  useEffect(() => {
+    if (!animate.current) {
+      setCount(text.length);
+      return;
+    }
+    if (count >= text.length) return;
+    const id = window.setTimeout(() => {
+      setCount((current) => Math.min(text.length, current + typeStep(text.length - current)));
+    }, 16);
+    return () => window.clearTimeout(id);
+  }, [text, count]);
+
+  useEffect(() => {
+    const node = scroller.current;
+    if (!animate.current || !node || !stick.current) return;
+    node.scrollTop = node.scrollHeight;
+  }, [count, scroller, stick]);
+
+  return displayChatText(text.slice(0, count));
+}
+
 function CardView({
   card,
   pending,
   onConfirm,
+  onAction,
 }: {
   card: AssistantCard;
   pending: boolean;
   onConfirm: (toolCallId: string, accept: boolean) => void;
+  onAction: (text: string) => void;
 }) {
   if (card.type === 'confirm') {
     return (
@@ -591,6 +707,17 @@ function CardView({
   }
 
   if (card.type === 'valuation') return <ValuationCard card={card} />;
+
+  if (card.type === 'a2ui') {
+    return (
+      <A2UISurface
+        components={card.components}
+        dataModel={card.dataModel}
+        pending={pending}
+        onAction={onAction}
+      />
+    );
+  }
 
   const unreachable: never = card;
   return unreachable;

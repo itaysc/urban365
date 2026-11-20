@@ -6,6 +6,8 @@ import { endUserAgent } from './end-user.agent.js';
 import { EVAL_PROMPTS } from './eval-prompts.js';
 import { endUserSystemPrompt } from './end-user.prompt.js';
 import { EndUserToolsService } from './end-user.tools.js';
+import { pendingToolIntake } from './tool-intake.js';
+import { valuationFormCard } from './valuation-form.js';
 import { asksForOneFlat, describeInfluence, pendingValuationQuestion, readValuation, userSkipped } from './valuation-from-text.js';
 
 describe('end-user assistant', () => {
@@ -66,7 +68,17 @@ describe('end-user assistant', () => {
       ]),
     );
     expect(stated.missing.join('\n')).not.toMatch(/מספר חדרים|שטח רשום|רחוב$|מרפסת|ממ"ד|חניה|מצב הדירה|התחדשות/);
-    expect(pendingValuationQuestion([said], undefined)).toContain('קומה');
+    expect(pendingValuationQuestion([said], undefined)).toContain('כדי לתת הערכת מחיר טובה יותר');
+    const form = valuationFormCard(said);
+    expect(form.components.map((component) => component.label).filter(Boolean)).toEqual(
+      expect.arrayContaining(['קומה', 'מעלית', 'מחסן', 'מצב הבניין', 'נוף']),
+    );
+    expect(form.dataModel.city).toBe('חולון');
+    expect(form.dataModel.street).toBe('דב הוז');
+    expect(form.dataModel.rooms).toBe('4');
+    expect(form.dataModel.area).toBe('97');
+    expect(form.dataModel.balcony).toEqual(['yes']);
+    expect(form.dataModel.condition).toEqual(['fair']);
     expect(userSkipped('אין לי מעלית')).toBe(false);
     expect(userSkipped('אין לי')).toBe(true);
     expect(userSkipped('אין לי את הפרטים')).toBe(true);
@@ -149,6 +161,49 @@ describe('end-user assistant', () => {
       { low: 2_320_000, high: 2_670_000, parts: [{ label: 'נוף', factor: 0.96 }] },
     );
     expect(unchanged).toBe('הפרטים הנוספים לא מזיזים את ההערכה הקודמת.');
+  });
+
+  it('asks each starter for the params its tool still needs', () => {
+    const mortgage = pendingToolIntake(['אני רוצה לבדוק מה יהיה ההחזר החודשי שלי במשכנתא'], undefined);
+    expect(mortgage).toContain('מחיר הדירה');
+    expect(mortgage).toContain('הון עצמי');
+    expect(mortgage).toContain('דירה ראשונה');
+
+    const search = pendingToolIntake(['אני מחפש דירה'], undefined);
+    expect(search).toContain('עיר או שכונה');
+    expect(search).toContain('מספר חדרים');
+    expect(search).toContain('תקציב');
+
+    const alert = pendingToolIntake(['אני רוצה התראה כשמתפרסמת דירה חדשה'], undefined);
+    expect(alert).toContain('כדי להגדיר התראה');
+
+    const street = pendingToolIntake(['אני רוצה לדעת מה המחיר הממוצע ברחוב'], undefined);
+    expect(street).toContain('שם הרחוב');
+    expect(street).toContain('עיר');
+
+    const worth = readValuation('אני רוצה הערכת שווי לדירה שלי. הדירה במצב סביר');
+    expect(worth.missing).toContain('עיר');
+    expect(pendingValuationQuestion(['אני רוצה הערכת שווי לדירה שלי'], undefined)).toContain('מלאו את מה שידוע');
+    expect(pendingValuationQuestion(['אני רוצה הערכת שווי לדירה. בעיר חולון, 4 חדרים'], undefined)).toBeNull();
+    expect(pendingToolIntake(['אני מחפש דירה למכירה, בעיר תל אביב, 4 חדרים, עד 3000000'], undefined)).toBeNull();
+    expect(pendingToolIntake(['אני רוצה התראה כשמתפרסמת דירה חדשה, בעיר חולון, 4 חדרים, עד 2500000'], undefined)).toBeNull();
+    expect(
+      pendingToolIntake(
+        ['אני רוצה לבדוק מה יהיה ההחזר החודשי שלי במשכנתא. מחיר הדירה 2000000 ש״ח, הון עצמי 500000 ש״ח, דירה ראשונה'],
+        undefined,
+      ),
+    ).toBeNull();
+    expect(pendingToolIntake(['אני רוצה לדעת מה המחיר הממוצע ברחוב ויצמן בעיר חולון'], undefined)).toBeNull();
+    expect(valuationFormCard('אני רוצה הערכת שווי לדירה שלי').dataModel.city).toBe('');
+
+    expect(
+      pendingToolIntake(
+        ['אני רוצה לבדוק מה יהיה ההחזר החודשי שלי במשכנתא', '2 מיליון, 500 אלף הון עצמי, דירה ראשונה'],
+        'כדי לחשב את ההחזר החודשי, הפרטים הבאים יעזרו',
+      ),
+    ).toBeNull();
+    expect(pendingToolIntake(['דירות 4 חדרים בתל אביב עד 3 מיליון'], undefined)).toBeNull();
+    expect(pendingToolIntake(['מה המחיר הממוצע לדירת 4 חדרים ברחוב ויצמן בחולון'], undefined)).toBeNull();
   });
 
   it('points every evaluation prompt at a tool that exists', () => {

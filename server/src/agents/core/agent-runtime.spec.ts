@@ -107,10 +107,9 @@ describe('AgentRuntime', () => {
       .filter((event) => event.event === 'text')
       .map((event) => (event.event === 'text' ? event.data.delta : ''))
       .join('');
-    expect(text).toContain('קומה');
-    expect(text).toContain('מתוך כמה קומות הבניין');
-    expect(text).toContain('מעלית (כן או לא)');
-    expect(text).toContain('מחסן (כן או לא)');
+    expect(text).toContain('כדי לתת הערכת מחיר טובה יותר');
+    expect(JSON.stringify(events)).toContain('"component":"ChoicePicker"');
+    expect(JSON.stringify(events)).toContain('מעלית');
     expect(text).not.toContain('2,200,000');
     expect(transcript.messages.map((message) => message.role)).toEqual(['user', 'assistant']);
   });
@@ -131,8 +130,8 @@ describe('AgentRuntime', () => {
       .filter((event) => event.event === 'text')
       .map((event) => (event.event === 'text' ? event.data.delta : ''))
       .join('');
-    expect(text).toContain('קומה');
-    expect(text).toContain('מעלית (כן או לא)');
+    expect(text).toContain('כדי לתת הערכת מחיר טובה יותר');
+    expect(JSON.stringify(events)).toContain('מעלית');
     expect(text).not.toContain('2,150,000');
   });
 
@@ -204,6 +203,30 @@ describe('AgentRuntime', () => {
     expect(text).not.toContain('9,999,999');
   });
 
+  it('asks for the mortgage inputs before the model can invent a payment', async () => {
+    const registry = new ToolRegistry();
+    const transcript = blank();
+    const runtime = runtimeWith(registry, transcript, [{ content: 'ההחזר הוא 5,000 לחודש.', toolCalls: [] }]);
+
+    const events = [];
+    for await (const event of runtime.chat(
+      agent,
+      caller(),
+      'אני רוצה לבדוק מה יהיה ההחזר החודשי שלי במשכנתא',
+    )) {
+      events.push(event);
+    }
+
+    const text = events
+      .filter((event) => event.event === 'text')
+      .map((event) => (event.event === 'text' ? event.data.delta : ''))
+      .join('');
+    expect(text).toContain('מחיר הדירה');
+    expect(text).toContain('הון עצמי');
+    expect(text).toContain('דירה ראשונה');
+    expect(text).not.toContain('5,000');
+  });
+
   it('stops a conversation that has already spent its token budget', async () => {
     const registry = new ToolRegistry();
     const transcript = blank();
@@ -269,7 +292,7 @@ describe('AgentRuntime', () => {
       { content: 'הנה החישוב.', toolCalls: [] },
     ]);
 
-    for await (const event of runtime.chat(agent, caller(), 'כמה החזר')) {
+    for await (const event of runtime.chat(agent, caller(), 'תחשב')) {
       void event;
     }
 

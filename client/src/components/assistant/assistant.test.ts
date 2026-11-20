@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { displayChatText, formatChatDate, stickAfterScroll } from './assistant';
+import { displayChatText, formatChatDate, stickAfterScroll, typeStep } from './assistant';
+import { actionText, CHAT_CATEGORIES } from './chat-actions';
+import { valuationReply } from './valuation-reply';
 
 describe('chat dates', () => {
   it('shows an ISO day as DD/MM/YYYY', () => {
@@ -9,6 +11,102 @@ describe('chat dates', () => {
 
   it('leaves a year and a price alone', () => {
     expect(displayChatText('ב-2024 החציון 1,900,000 ₪')).toBe('ב-2024 החציון 1,900,000 ₪');
+  });
+});
+
+describe('valuationReply', () => {
+  it('says the filled fields the way the valuation parser reads them', () => {
+    const said = valuationReply({
+      city: 'חולון',
+      street: 'דב הוז',
+      rooms: '4',
+      area: '97',
+      floor: '2',
+      topFloor: '4',
+      condition: ['fair'],
+      balcony: ['yes'],
+      mamad: ['no'],
+      lift: [],
+      parking: ['yes'],
+      storage: ['no'],
+      building: ['well-kept'],
+      aspect: ['blocked'],
+      renewal: ['none'],
+      gush: '10',
+      chelka: '20',
+    });
+
+    expect(said).toContain('בעיר חולון');
+    expect(said).toContain('רחוב דב הוז');
+    expect(said).toContain('קומה 2 מתוך 4');
+    expect(said).toContain('יש מרפסת');
+    expect(said).toContain('אין ממ״ד');
+    expect(said).toContain('נוף חסום');
+    expect(said).toContain('גוש 10 חלקה 20');
+    expect(said).not.toContain('מעלית');
+  });
+});
+
+describe('chat actions', () => {
+  it('offers the five categories, each item as its own card', () => {
+    expect(CHAT_CATEGORIES.map((item) => item.label)).toEqual(['קנייה', 'מכירה', 'משכנתא', 'הערכת שווי', 'מידע']);
+    for (const category of CHAT_CATEGORIES) {
+      expect(category.items.length).toBeGreaterThan(0);
+      for (const item of category.items) {
+        if (item.card.type !== 'a2ui') throw new Error(item.id);
+        const ids = new Set(item.card.components.map((component) => component.id));
+        expect(ids.size).toBe(item.card.components.length);
+        for (const component of item.card.components) {
+          for (const child of [component.child, ...(component.children ?? [])]) {
+            if (child) expect(ids.has(child)).toBe(true);
+          }
+        }
+        expect(item.card.components.some((component) => component.id === 'root')).toBe(true);
+      }
+    }
+  });
+
+  it('turns a filled search into the sentence the search tool expects', () => {
+    expect(actionText('submit_search', { section: ['rent'], city: 'תל אביב', roomsMin: '3', roomsMax: '4.5', budget: '8000' })).toBe(
+      'אני מחפש דירה להשכרה, בעיר תל אביב, 3–4.5 חדרים, עד 8000',
+    );
+  });
+
+  it('opens saved listings from קנייה, and the search asks for a rooms range', () => {
+    const buy = CHAT_CATEGORIES.find((item) => item.id === 'buy');
+    const saved = buy?.items.find((item) => item.id === 'saved');
+    const search = buy?.items.find((item) => item.id === 'search');
+    if (saved?.card.type !== 'a2ui' || search?.card.type !== 'a2ui') throw new Error('buy');
+    expect(saved.label).toBe('נכסים ששמרתי');
+    expect(saved.card.components.some((component) => component.component === 'SavedListings')).toBe(true);
+    expect(search.card.components.some((component) => component.component === 'RoomsRange')).toBe(true);
+  });
+
+  it('keeps a filled valuation from starting the questionnaire again', () => {
+    const said = actionText('submit_valuation', { city: 'חולון', rooms: '4', building: ['well-kept'] });
+    expect(said.startsWith('אני רוצה הערכת שווי לדירה.')).toBe(true);
+    expect(said).toContain('בעיר חולון');
+    expect(said).toContain('הבניין מטופח');
+  });
+
+  it('opens the sell and buy guides inside the chat, with a link to the post', () => {
+    const sell = CHAT_CATEGORIES.find((item) => item.id === 'sell')?.items.find((item) => item.id === 'sell-guide');
+    const buy = CHAT_CATEGORIES.find((item) => item.id === 'buy')?.items.find((item) => item.id === 'buy-guide');
+    if (sell?.card.type !== 'a2ui' || buy?.card.type !== 'a2ui') throw new Error('guide');
+    expect(sell.card.components.some((component) => component.href === '/blog/איך-מוכרים-דירה')).toBe(true);
+    expect(buy.card.components.some((component) => component.text === 'איך קונים ומחפשים דירה')).toBe(true);
+    expect(sell.card.components.some((component) => component.component === 'List')).toBe(true);
+  });
+});
+
+describe('typeStep', () => {
+  it('reveals a short answer a few characters at a time', () => {
+    expect(typeStep(40)).toBe(3);
+  });
+
+  it('moves faster once a long answer is waiting', () => {
+    expect(typeStep(200)).toBe(5);
+    expect(typeStep(800)).toBe(8);
   });
 });
 

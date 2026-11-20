@@ -47,6 +47,7 @@ export function readValuation(said: string): StatedValuation {
   const chelka = numberAfter(said, /חלקה\s*(\d+)/);
 
   const missing: string[] = [];
+  if (!placeWasSaid(said)) missing.push('עיר');
   if (!/\d+(?:\.\d)?\s*חדר/.test(said)) missing.push('מספר חדרים');
   if (!areaWasSaid(said)) missing.push('שטח רשום במ״ר');
   if (!/רחוב|שדרות|שד(?:\s|$)|דרך |סמט/.test(said)) missing.push('רחוב');
@@ -81,12 +82,9 @@ export function readValuation(said: string): StatedValuation {
   };
 }
 
-/** The message the person sees. The turn stops on it. */
-export function valuationQuestion(missing: string[]): string {
-  return [
-    `${VALUATION_QUESTION_LEAD}, הפרטים הבאים יעזרו. אפשר לענות על כולם בהודעה אחת, ואפשר לכתוב "אין לי" על מה שלא ידוע.`,
-    missing.map((item) => `• ${item}`).join('\n'),
-  ].join('\n');
+/** The message the person sees. The form under it is what they fill. The turn stops on it. */
+export function valuationQuestion(_missing: string[]): string {
+  return `${VALUATION_QUESTION_LEAD}, מלאו את מה שידוע. אפשר להשאיר ריק מה שאין.`;
 }
 
 /**
@@ -103,13 +101,19 @@ export function pendingValuationQuestion(
   const latest = userTexts.at(-1) ?? '';
   const said = userTexts.join('\n');
   const waiting = lastAssistant?.startsWith(VALUATION_QUESTION_LEAD) ?? false;
-  if (waiting || userSkipped(latest)) return null;
+  if (waiting || userSkipped(latest) || filledValuationForm(latest)) return null;
   // A detail added after a price updates that price. It does not start the form again.
   if (alreadyPriced && !asksForOneFlat(latest)) return null;
   if (!asksForOneFlat(said)) return null;
   const missing = readValuation(said).missing;
   if (missing.length === 0) return null;
   return valuationQuestion(missing);
+}
+
+/** A valuation sheet that already carries a detail. The rest can stay unknown. */
+export function filledValuationForm(text: string): boolean {
+  if (!/אני רוצה הערכת שווי לדירה/.test(text)) return false;
+  return placeWasSaid(text) || /\d+(?:\.\d)?\s*חדר/.test(text) || areaWasSaid(text);
 }
 
 /** A follow-up that names a form field, rather than a new question. */
@@ -202,6 +206,46 @@ function topFloorOf(text: string): number | null {
 function numberAfter(text: string, pattern: RegExp): number | null {
   const match = text.match(pattern);
   return match ? Number(match[1]) : null;
+}
+
+/** A city or neighborhood the person named, not the word "דירה" or "רחוב" after ב. */
+export function placeWasSaid(text: string): boolean {
+  if (/בעיר\s+[א-ת]/.test(text)) return true;
+  if (/בשכונ(?:ה|ת)\s+[א-ת]/.test(text)) return true;
+  const stops = new Set([
+    'דירה',
+    'דירת',
+    'רחוב',
+    'משכנתא',
+    'ממוצע',
+    'החזר',
+    'מודעה',
+    'מודעות',
+    'חדרים',
+    'חדר',
+    'תקציב',
+    'מחיר',
+    'שכונה',
+    'שכונת',
+    'עיר',
+    'בית',
+    'בניין',
+    'קומה',
+    'מצב',
+    'עבר',
+    'כלל',
+    'נוסף',
+    'ערך',
+    'מידה',
+    'תנאי',
+    'סביבות',
+  ]);
+  for (const match of text.matchAll(/(?:^|\s)ב([א-ת]{2,}(?:\s+[א-ת]{2,})?)/g)) {
+    const [first, second] = match[1].split(/\s+/);
+    if (first === 'שכונת' || first === 'שכונה' || first === 'עיר') return Boolean(second);
+    if (!stops.has(first)) return true;
+  }
+  return false;
 }
 
 function areaWasSaid(text: string): boolean {

@@ -275,7 +275,7 @@ export function transcriptView(messages: TranscriptMessage[]): TranscriptViewIte
     }
     if (message.role === 'assistant' && !message.content) return [];
     if (message.role === 'assistant') {
-      return [{ role: 'assistant' as const, content: message.content, cards: [], needsSignIn: false }];
+      return [{ role: 'assistant' as const, content: message.content, cards: message.cards ?? [], needsSignIn: false }];
     }
     return [{ role: 'user' as const, content: message.content, cards: [], needsSignIn: false }];
   });
