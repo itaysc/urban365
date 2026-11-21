@@ -18,25 +18,52 @@ body {
 /*
  * A card that sits on the page rather than being drawn on it.
  *
- * The top edge is a hair lighter than the face, which is what reads as thickness.
- * The pointer tilts it a few degrees; with reduced motion it only lifts.
+ * The face is lit from above and the bottom edge is a hair darker. It leans back a
+ * couple of degrees, like a card standing on the desk, and keeps that lean while a
+ * field inside it is in use. The pointer tilts a listing card further; with reduced
+ * motion the lean and the lift are both gone.
  */
 .u365-card {
   border-radius: 0.9rem;
-  background: #fff;
+  background: linear-gradient(180deg, #fff 0%, #f8f6f1 100%);
   box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.9),
-    0 1px 2px rgb(18 21 28 / 0.05),
-    0 14px 32px -18px rgb(18 21 28 / 0.45);
+    inset 0 1px 0 #fff,
+    inset 0 -1px 0 #e4ddd0,
+    0 1px 1px rgb(18 21 28 / 0.04),
+    0 8px 14px -10px rgb(18 21 28 / 0.18),
+    0 16px 24px -18px rgb(18 21 28 / 0.22);
   transition:
     transform 180ms ease,
     box-shadow 180ms ease;
 }
 
+.u365-card:not([role='tablist']) {
+  transform: perspective(1200px) rotateX(2.5deg);
+  transform-origin: center bottom;
+}
+
 .u365-card:hover {
   box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.95),
-    0 18px 36px -16px rgb(18 21 28 / 0.5);
+    inset 0 1px 0 #fff,
+    inset 0 -1px 0 #ddd6c8,
+    0 1px 2px rgb(18 21 28 / 0.05),
+    0 10px 16px -10px rgb(18 21 28 / 0.2),
+    0 18px 28px -16px rgb(18 21 28 / 0.24);
+}
+
+.u365-card:not([role='tablist']):hover {
+  transform: perspective(1200px) rotateX(2.5deg) translateY(-4px);
+}
+
+/* A form. Hovering it leaves the fields where they are. */
+.u365-card.is-still:not([role='tablist']):hover {
+  transform: perspective(1200px) rotateX(2.5deg);
+}
+
+/* A switch, not a panel. It keeps the face and stays level. */
+.u365-card.is-flat,
+.u365-card.is-flat:hover {
+  transform: none;
 }
 
 .u365-card:has(:focus-visible) {
@@ -45,6 +72,13 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .u365-card,
+  .u365-card:hover,
+  .u365-card:not([role='tablist']),
+  .u365-card:not([role='tablist']):hover {
+    transform: none;
+  }
+
   .u365-card,
   .u365-hero-photo,
   .u365-pill {
@@ -171,6 +205,25 @@ body {
     0 0 14px rgb(37 99 235 / 0.4);
 }
 
+/* A share of the tube, growing from the inline start. Over the cap it goes red. */
+.u365-meter-fill {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  max-width: 100%;
+  border-radius: inherit;
+  background: linear-gradient(to left, #60a5fa, #2563eb);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.45),
+    0 0 14px rgb(37 99 235 / 0.4);
+  transition: width 280ms ease;
+}
+
+.u365-meter-fill.is-over {
+  background: #dc2626;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.35);
+}
+
 .u365-meter-pin,
 .u365-meter-tick {
   position: absolute;
@@ -211,7 +264,8 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .u365-meter-pin,
-  .u365-meter-tick {
+  .u365-meter-tick,
+  .u365-meter-fill {
     transition: none;
   }
 }

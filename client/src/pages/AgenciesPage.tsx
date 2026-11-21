@@ -17,7 +17,7 @@ function AgencyCard({ agency }: { agency: PublicAgencyCard }) {
   return (
     <Link
       to={agencyPublicPath(agency)}
-      className="flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white transition hover:border-slate-400 hover:shadow-md"
+      className="u365-card flex h-full flex-col overflow-hidden border border-white/80"
     >
       <div className="relative h-28 bg-slate-200">
         {agency.coverImageUrl ? (
@@ -57,7 +57,7 @@ export function AgenciesPage() {
   const regions = data?.regions ?? [];
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-[var(--paper)]">
       <SiteHeader />
 
       <main id="main" tabIndex={-1} className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-8">
@@ -71,7 +71,7 @@ export function AgenciesPage() {
               <a
                 key={region.name}
                 href={`#region-${encodeURIComponent(region.name)}`}
-                className="rounded-full border border-slate-200 bg-white px-3 py-1 text-sm text-slate-700 transition hover:border-slate-400"
+                className="rounded-full border border-white/80 bg-white px-3 py-1 text-sm text-slate-700 transition hover:text-slate-900"
               >
                 {region.name}
                 <span className="ms-1 text-xs text-slate-400">{region.agencies.length}</span>
@@ -89,7 +89,7 @@ export function AgenciesPage() {
         )}
 
         {!isPending && !isError && regions.length === 0 && (
-          <p className="mt-8 rounded-xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500">
+          <p className="u365-card is-still mt-8 border border-white/80 p-8 text-center text-sm text-slate-500">
             אין סוכנויות להצגה.
           </p>
         )}

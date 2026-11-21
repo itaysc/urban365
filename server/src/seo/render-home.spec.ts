@@ -28,12 +28,15 @@ describe('renderHomePage', () => {
     expect(html).toContain('<script type="module" src="/assistant.js"></script>');
     if (process.env.NODE_ENV !== 'development') expect(html).not.toContain('assistant-preamble');
     expect(html).toContain('class="hero"');
-    expect(html).toContain('/home/urban1-slow.mp4');
-    expect(html).toContain('poster="/home/urban1-poster.jpg"');
+    expect(html).toContain('data-src="/home/urban3-slow.mp4"');
+    expect(html).not.toMatch(/<video[^>]*\ssrc=/);
+    expect(html).toContain('poster="/home/urban3-poster.jpg"');
+    expect(html).toContain('c.saveData');
+    expect(html).toContain('slow-2g');
     expect(html).toContain('muted');
     expect(html).toContain('playsinline');
     expect(html).toContain('id="u365-cover"');
-    expect(html).toContain('aria-label="עצירת הסרטון"');
+    expect(html).toContain('aria-label="הפעלת הסרטון"');
     expect(html).not.toContain('rate=8/30');
     expect(html).not.toContain('/home/cover-1600.webp');
     expect(html).toContain('rel="preload"');

@@ -115,7 +115,7 @@ export function AlertsPage() {
   const searches = data ?? [];
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-[var(--paper)]">
       {/* Edge to edge, as on the profile page, so the bar's padding matches it. */}
       <SiteHeader fullWidth />
 
@@ -123,7 +123,7 @@ export function AlertsPage() {
         <SavedTabs />
 
         <header>
-          <h1 className="text-xl font-bold text-slate-900">חיפושים שמורים</h1>
+          <h1 className="text-2xl font-extrabold text-slate-900">חיפושים שמורים</h1>
           <p className="text-sm text-slate-500">
             נעדכן אתכם במייל כשייכנס נכס חדש שמתאים — לכל היותר פעם ביום לכל חיפוש.
           </p>
@@ -132,7 +132,7 @@ export function AlertsPage() {
         {isPending && <p className="text-sm text-slate-500">טוען…</p>}
 
         {!isPending && searches.length === 0 && (
-          <div className="flex flex-col items-center gap-2 rounded-xl border border-slate-200 bg-white p-8 text-center">
+          <div className="u365-card is-still flex flex-col items-center gap-2 border border-white/80 p-8 text-center">
             <p className="text-sm text-slate-600">עוד לא שמרתם חיפושים.</p>
             <p className="text-sm text-slate-500">
               אפשר לשמור חיפוש מעמוד החיפוש, אחרי שבוחרים עיר ומה שחשוב לכם.
@@ -147,7 +147,7 @@ export function AlertsPage() {
           {searches.map((search) => (
             <li
               key={search.id}
-              className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-slate-200 bg-white p-4"
+              className="u365-card is-still flex flex-wrap items-start justify-between gap-3 border border-white/80 p-4"
             >
               <div className="min-w-0 flex-1">
                 {/* State belongs in a chip and the action in the button. Before this

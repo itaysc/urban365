@@ -295,11 +295,11 @@ export function ValuationPage() {
   ).length;
 
   return (
-    <div className="flex min-h-screen flex-col bg-slate-50">
+    <div className="flex min-h-screen flex-col bg-[var(--paper)]">
       <SiteHeader />
 
       <main id="main" tabIndex={-1} className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-8 sm:py-12">
-        <h1 className="text-2xl font-semibold text-slate-900 sm:text-3xl">הערכת שווי לדירה</h1>
+        <h1 className="text-2xl font-extrabold text-slate-900 sm:text-3xl">הערכת שווי לדירה</h1>
         <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-600">
           לפי עסקאות שנרשמו בפועל ברשות המסים — לא לפי מחירים מבוקשים במודעות. ממלאים
           את הפרטים, ומקבלים טווח מחירים ומחיר פרסום מומלץ.

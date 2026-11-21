@@ -46,7 +46,7 @@ export function SavedPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-[var(--paper)]">
       <SiteHeader />
 
       <main id="main" tabIndex={-1} className="mx-auto flex max-w-5xl flex-col gap-6 p-4 sm:p-8">
@@ -54,7 +54,7 @@ export function SavedPage() {
 
         <header className="flex flex-wrap items-baseline justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">הנכסים ששמרתי</h1>
+            <h1 className="text-2xl font-extrabold text-slate-900">הנכסים ששמרתי</h1>
             <p className="text-sm text-slate-500">
               {isPending ? 'טוען…' : `${items?.length ?? 0} נכסים`}
             </p>
@@ -66,7 +66,7 @@ export function SavedPage() {
         </header>
 
         {!isPending && (items?.length ?? 0) === 0 && (
-          <div className="flex flex-col items-center gap-3 rounded-xl border border-slate-200 bg-white p-12 text-center">
+          <div className="u365-card is-still flex flex-col items-center gap-3 border border-white/80 p-12 text-center">
             <Heart className="h-8 w-8 text-slate-300" aria-hidden />
             <p className="font-medium text-slate-800">עדיין לא שמרתם נכסים</p>
             <p className="max-w-sm text-sm text-slate-500">

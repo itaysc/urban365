@@ -9,6 +9,25 @@ import { REGIONS } from '@/data/regions';
 import { qk } from '@/queries/keys';
 import { fetchCityLinks, type CityLink } from '@/services/search';
 
+const COVER_SRC = '/home/urban3-slow.mp4';
+
+/**
+ * Chrome and Android report this. Safari does not, and then the film plays.
+ * `3g` is already too slow for the cover file.
+ */
+function slowConnection(): boolean {
+  const connection = (navigator as Navigator & {
+    connection?: { saveData?: boolean; effectiveType?: string };
+  }).connection;
+  if (!connection) return false;
+  if (connection.saveData) return true;
+  return (
+    connection.effectiveType === 'slow-2g' ||
+    connection.effectiveType === '2g' ||
+    connection.effectiveType === '3g'
+  );
+}
+
 /** Per region, so a column is a column and not a page. */
 const PER_REGION = 10;
 
@@ -52,7 +71,10 @@ function byRegion(cities: CityLink[]): { name: string; cities: CityLink[] }[] {
 function HeroCover() {
   const video = useRef<HTMLVideoElement>(null);
   const layer = useRef<HTMLDivElement>(null);
-  const [playing, setPlaying] = useState(true);
+  const pending = useRef(false);
+  const [slow] = useState(slowConnection);
+  const [playing, setPlaying] = useState(false);
+  const [src, setSrc] = useState<string | undefined>(slow ? undefined : COVER_SRC);
 
   useEffect(() => {
     const node = video.current;
@@ -73,6 +95,8 @@ function HeroCover() {
       };
     }
 
+    if (src && node.paused) void node.play();
+
     const move = layer.current;
     let frame = 0;
     const place = () => {
@@ -92,13 +116,25 @@ function HeroCover() {
       node.removeEventListener('play', onPlay);
       node.removeEventListener('pause', onPause);
     };
-  }, []);
+  }, [src]);
+
+  useEffect(() => {
+    const node = video.current;
+    if (!node || !src || !pending.current) return;
+    pending.current = false;
+    void node.play();
+  }, [src]);
 
   const toggle = () => {
     const node = video.current;
     if (!node) return;
-    if (node.paused) void node.play();
-    else node.pause();
+    if (!node.paused && node.getAttribute('src')) {
+      node.pause();
+      return;
+    }
+    pending.current = true;
+    if (src) void node.play();
+    else setSrc(COVER_SRC);
   };
 
   return (
@@ -107,15 +143,15 @@ function HeroCover() {
         <div ref={layer} className="u365-hero-photo absolute inset-x-0 -top-[8%] h-[120%] w-full">
           <video
             ref={video}
-            src="/home/urban1-slow.mp4"
-            poster="/home/urban1-poster.jpg"
+            src={src}
+            poster="/home/urban3-poster.jpg"
             width={1280}
             height={720}
             muted
-            autoPlay
+            autoPlay={Boolean(src)}
             loop
             playsInline
-            preload="auto"
+            preload={src ? 'auto' : 'none'}
             disablePictureInPicture
             aria-hidden="true"
             className="absolute inset-0 h-full w-full object-cover"

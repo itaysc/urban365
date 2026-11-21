@@ -30,7 +30,7 @@ export function Section({ title, hint, answered, total, defaultOpen = false, chi
   const id = useId();
 
   return (
-    <div className="rounded-xl border border-slate-200">
+    <div className="rounded-xl bg-[var(--paper)]">
       <button
         type="button"
         onClick={() => setOpen(!open)}
@@ -59,7 +59,7 @@ export function Section({ title, hint, answered, total, defaultOpen = false, chi
         tabbing through the form never lands somewhere invisible.
       */}
       {open && (
-        <div id={id} className="flex flex-col gap-4 border-t border-slate-100 px-4 py-4">
+        <div id={id} className="flex flex-col gap-4 border-t border-[var(--ink)]/10 px-4 py-4">
           {children}
         </div>
       )}

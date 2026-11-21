@@ -8,17 +8,18 @@ import { cityHref, mainSection, totalIn } from './render-index.js';
 /**
  * The same film the app's home uses.
  *
- * The source is eight seconds. Playing that slowly in the browser holds each of its
- * 24 frames, so the picture steps. This file is those eight seconds already stretched
- * to thirty, with the missing frames filled in, and it plays at ordinary speed.
- * The still is the first frame, shown until the file is ready and when the reader
- * has asked for less motion.
+ * The source is fifteen seconds. Playing it slowly in the browser holds each frame,
+ * so the picture steps. This file is those fifteen seconds stretched to twenty, with
+ * only the in-between frames filled in, and it plays at ordinary speed.
+ * The still is the first frame. On a slow link, or when the reader has asked to save
+ * data, it is the whole cover until they press play. A browser that does not report
+ * its connection, such as Safari, plays the film straight away.
  */
-const COVER_VIDEO = '/home/urban1-slow.mp4';
-const COVER_POSTER = '/home/urban1-poster.jpg';
+const COVER_VIDEO = '/home/urban3-slow.mp4';
+const COVER_POSTER = '/home/urban3-poster.jpg';
 
-const COVER_PAUSE = `<svg class="on" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>`;
-const COVER_PLAY = `<svg class="off" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" hidden><path d="M8 5.5v13l11-6.5z"/></svg>`;
+const COVER_PAUSE = `<svg class="on" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" hidden><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>`;
+const COVER_PLAY = `<svg class="off" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13l11-6.5z"/></svg>`;
 
 /**
  * Mute the cover, honour reduced motion, and let the corner button stop it or start it.
@@ -35,24 +36,35 @@ v.muted=true;
 var on=b.querySelector(".on");
 var off=b.querySelector(".off");
 function paint(){
-  var playing=!v.paused;
+  var playing=!v.paused&&!!v.getAttribute("src");
   b.setAttribute("aria-pressed",playing?"true":"false");
   b.setAttribute("aria-label",playing?"עצירת הסרטון":"הפעלת הסרטון");
   if(on)on.hidden=!playing;
   if(off)off.hidden=playing;
 }
+function slow(){
+  var c=navigator.connection||navigator.mozConnection||navigator.webkitConnection;
+  if(!c)return false;
+  if(c.saveData)return true;
+  return c.effectiveType==="slow-2g"||c.effectiveType==="2g"||c.effectiveType==="3g";
+}
+function arm(){
+  if(!v.getAttribute("src"))v.src=v.getAttribute("data-src");
+}
 b.addEventListener("click",function(){
-  if(v.paused){var p=v.play();if(p&&p.catch)p.catch(function(){});}
+  if(v.paused||!v.getAttribute("src")){arm();var p=v.play();if(p&&p.catch)p.catch(function(){});}
   else v.pause();
 });
 v.addEventListener("play",paint);
 v.addEventListener("pause",paint);
-if(window.matchMedia("(prefers-reduced-motion: reduce)").matches){
-  v.removeAttribute("autoplay");
-  var stop=function(){v.pause();paint();};
-  if(v.readyState>=1)stop();else v.addEventListener("loadedmetadata",stop);
+if(window.matchMedia("(prefers-reduced-motion: reduce)").matches||slow()){
+  v.preload="none";
+  paint();
   return;
 }
+arm();
+var started=v.play();
+if(started&&started.catch)started.catch(function(){});
 paint();
 })();`;
 
@@ -149,10 +161,10 @@ export function renderHomePage(
 
   const body = `<section class="hero">
 <div class="stage">
-<div class="cover-move"><video class="cover" src="${COVER_VIDEO}" poster="${COVER_POSTER}" width="1280" height="720" muted autoplay loop playsinline preload="auto" disablepictureinpicture aria-hidden="true"></video></div>
+<div class="cover-move"><video class="cover" data-src="${COVER_VIDEO}" poster="${COVER_POSTER}" width="1280" height="720" muted loop playsinline preload="none" disablepictureinpicture aria-hidden="true"></video></div>
 <div class="veil" aria-hidden="true"></div>
 </div>
-<button type="button" class="cover-toggle" id="u365-cover" aria-pressed="true" aria-label="עצירת הסרטון">${COVER_PAUSE}${COVER_PLAY}</button>
+<button type="button" class="cover-toggle" id="u365-cover" aria-pressed="false" aria-label="הפעלת הסרטון">${COVER_PAUSE}${COVER_PLAY}</button>
 <div class="hero-inner">
 <div>
 <h1>דירות למכירה ולהשכרה בישראל</h1>

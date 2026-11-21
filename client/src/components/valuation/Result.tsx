@@ -70,13 +70,13 @@ export function Result({ result }: { result: ValuationResponse }) {
         one advertised far above it does not sell at all.
       */}
       <dl className="mt-4 grid grid-cols-2 gap-3">
-        <div className="rounded-xl bg-slate-50 px-3 py-2.5">
+        <div className="rounded-xl bg-[var(--paper)] px-3 py-2.5">
           <dt className="text-xs text-slate-500">צפוי להימכר סביב</dt>
           <dd className="mt-0.5 text-lg font-medium tabular-nums text-slate-800">
             <ShekelFigure value={range.expected} />
           </dd>
         </div>
-        <div className="rounded-xl bg-slate-50 px-3 py-2.5">
+        <div className="rounded-xl bg-[var(--paper)] px-3 py-2.5">
           <dt className="text-xs text-slate-500">מחיר פרסום מומלץ</dt>
           <dd className="mt-0.5 text-lg font-medium tabular-nums text-slate-800">
             <ShekelFigure value={range.asking} />

@@ -146,7 +146,7 @@ function TrackRow({
   const monthly = Math.round(monthlyPayment(part.amount, part.annualRate, part.years));
 
   return (
-    <li className="rounded-xl border border-slate-200 bg-slate-50/60 p-3">
+    <li className="rounded-xl bg-[var(--paper)] p-3">
       <div className="flex items-start gap-2">
         <select
           aria-label="מסלול"
@@ -329,7 +329,7 @@ export function MortgagePage() {
   const buyerPicker = <BuyerPicker value={buyer} onChange={setBuyer} />;
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-[var(--paper)]">
       <SiteHeader />
 
       <main id="main" tabIndex={-1} className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-8 sm:py-12">
@@ -344,7 +344,7 @@ export function MortgagePage() {
         <div
           role="tablist"
           aria-label="מה לחשב"
-          className="mt-6 inline-flex rounded-xl border border-slate-200 bg-white p-1"
+          className="u365-card mt-6 inline-flex border border-white/80 p-1"
         >
           {(Object.keys(TAB) as Mode[]).map((key) => (
             <button
@@ -560,7 +560,7 @@ export function MortgagePage() {
                 somebody at 58% wants to know how much room is left, not merely that
                 they are inside it.
               */}
-              <div className="mt-4 rounded-xl bg-slate-50 px-4 py-3">
+              <div className="mt-4 rounded-xl bg-[var(--paper)] px-4 py-3">
                 <div className="flex items-baseline justify-between gap-3 text-sm">
                   <span className="text-slate-600">בריבית משתנה</span>
                   <span className="font-semibold tabular-nums text-slate-900">
@@ -576,15 +576,16 @@ export function MortgagePage() {
                 <p className="mt-0.5 text-xs text-slate-500">
                   התקרה: שני שלישים מהמשכנתא. לפחות שליש חייב להיות בריבית קבועה.
                 </p>
-                <div
-                  className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-200"
-                  role="presentation"
-                >
+                <div className="u365-meter mt-3" role="presentation">
                   <div
-                    className={`h-full rounded-full ${
-                      summary.variableShare > VARIABLE_CAP ? 'bg-red-600' : 'bg-slate-900'
-                    }`}
+                    className={
+                      summary.variableShare > VARIABLE_CAP ? 'u365-meter-fill is-over' : 'u365-meter-fill'
+                    }
                     style={{ width: `${Math.min(100, summary.variableShare * 100)}%` }}
+                  />
+                  <span
+                    className="u365-meter-tick"
+                    style={{ insetInlineStart: `${VARIABLE_CAP * 100}%` }}
                   />
                 </div>
 
@@ -632,8 +633,9 @@ export function MortgagePage() {
             <section className={panelClass} aria-live="polite">
               <p className="text-sm text-slate-500">תקציב הרכישה</p>
               <p className="mt-1 text-4xl font-extrabold tabular-nums text-slate-900">
-                {formatPrice(reach.price)}
+                <ShekelFigure value={reach.price} />
               </p>
+              <div className="u365-readout" aria-hidden />
 
               <div className="mt-4">
                 <Row label="משכנתא" value={formatShekel(reach.loan)} />
@@ -651,7 +653,7 @@ export function MortgagePage() {
                 from stretching the term, and somebody stopped by their income gains
                 nothing from saving another ten thousand.
               */}
-              <p className="mt-4 rounded-xl bg-slate-50 px-4 py-3 text-sm leading-relaxed text-slate-700">
+              <p className="mt-4 rounded-xl bg-[var(--paper)] px-4 py-3 text-sm leading-relaxed text-slate-700">
                 {reach.limitedBy === 'equity'
                   ? `ההון העצמי הוא מה שמגביל כאן: ההחזר נושא סכום גבוה יותר, אבל ל${BUYER_LABEL[buyer]} הבנק מלווה עד ${Math.round(LTV_CAP[buyer] * 100)}% מהמחיר. כל ${formatShekel(EXTRA_EQUITY)} שיתווספו להון העצמי יגדילו את התקציב ${extraBudgetPhrase(buyer)}.`
                   : chosenMonthly === null

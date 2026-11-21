@@ -140,7 +140,7 @@ export function MixCompare({
           return (
             <li key={option.id} className="flex items-stretch gap-1">
               {showing ? (
-                <div className="flex min-w-0 flex-1 items-center justify-between gap-3 rounded-lg bg-slate-50 px-3 py-2">
+                <div className="flex min-w-0 flex-1 items-center justify-between gap-3 rounded-lg bg-[var(--paper)] px-3 py-2">
                   {body}
                 </div>
               ) : (
@@ -148,7 +148,7 @@ export function MixCompare({
                   type="button"
                   onClick={() => onApply(option.parts)}
                   aria-label={`הצגת ${option.name}, ${formatShekel(summary.monthly)} לחודש`}
-                  className="flex min-w-0 flex-1 items-center justify-between gap-3 rounded-lg px-3 py-2 text-start transition hover:bg-slate-50"
+                  className="flex min-w-0 flex-1 items-center justify-between gap-3 rounded-lg px-3 py-2 text-start transition hover:bg-[var(--paper)]"
                 >
                   {body}
                 </button>

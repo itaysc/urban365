@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Plus, X } from 'lucide-react';
 import { Money, Row, Slide } from '@/components/mortgage/fields';
+import { panelClass } from '@/components/mortgage/panel';
+import { ShekelFigure } from '@/components/ui/ShekelFigure';
 import { formatShekel, grouped } from '@/lib/format';
 import { INCOME_CAP } from '@/lib/mortgage';
 import {
@@ -113,7 +115,7 @@ export function HouseholdPlanner({
     setOutgoings((current) => ({ ...current, [key]: value }));
 
   return (
-    <section className="mt-5 rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-6">
+    <section className={`${panelClass} mt-5`}>
       <h2 className="text-lg font-bold text-slate-900">כמה החזר באמת מתאים לי?</h2>
       <p className="mt-1 max-w-3xl text-sm leading-relaxed text-slate-600">
         הבנק שואל אם ההחזר נכנס ב־40% מההכנסה. הוא לא שואל מה שאר הכסף כבר עושה. כאן
@@ -288,11 +290,12 @@ export function HouseholdPlanner({
         </div>
 
         <div className="flex flex-col gap-4">
-          <div className="rounded-xl bg-slate-50 p-4">
+          <div className="rounded-xl bg-[var(--paper)] p-4">
             <p className="text-sm text-slate-500">החזר חודשי מומלץ</p>
             <p className="mt-1 text-3xl font-extrabold tabular-nums text-slate-900">
-              {formatShekel(recommended)}
+              <ShekelFigure value={recommended} />
             </p>
+            <div className="u365-readout" aria-hidden />
 
             <div className="mt-3">
               <Row label="נשאר אחרי ההוצאות" value={formatShekel(advice.disposable)} />
@@ -304,7 +307,7 @@ export function HouseholdPlanner({
             </div>
 
             {heldByBank && (
-              <p className="mt-3 rounded-lg bg-slate-100 px-3 py-2 text-xs leading-relaxed text-slate-600">
+              <p className="mt-3 rounded-lg bg-white px-3 py-2 text-xs leading-relaxed text-slate-600">
                 הבית יכול לשאת {formatShekel(advice.recommended)}, אבל הבנק לא ילווה
                 מעבר ל־{formatShekel(Math.round(ceiling))} על ההכנסה הזו — {Math.round(INCOME_CAP * 100)}%
                 ממנה, פחות ההחזרים הקיימים. ההמלצה מוגבלת לתקרה.
@@ -334,7 +337,7 @@ export function HouseholdPlanner({
             one for the year the family is a person larger.
           */}
           {rows.length > 1 && (
-            <div className="rounded-xl border border-slate-200 p-4">
+            <div className="rounded-xl bg-[var(--paper)] p-4">
               <h3 className="text-sm font-semibold text-slate-900">
                 מה יישאר אחרי החזר של {formatShekel(repayment)}
               </h3>
@@ -378,7 +381,7 @@ export function HouseholdPlanner({
           )}
 
           {notes.length > 0 && (
-            <ul className="flex flex-col gap-1.5 rounded-xl border border-slate-200 p-4 text-sm leading-relaxed text-slate-600">
+            <ul className="flex flex-col gap-1.5 rounded-xl bg-[var(--paper)] p-4 text-sm leading-relaxed text-slate-600">
               {notes.map((note) => (
                 <li key={note.kind}>
                   {note.kind === 'daycare' &&

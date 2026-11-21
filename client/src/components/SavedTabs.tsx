@@ -20,7 +20,7 @@ export function SavedTabs() {
   const { pathname } = useLocation();
 
   return (
-    <nav className="flex gap-1 rounded-xl bg-slate-100 p-1" aria-label="מה שמרתי">
+    <nav className="u365-card is-flat flex gap-1 border border-white/80 p-1" aria-label="מה שמרתי">
       {TABS.map((tab) => {
         const current = pathname === tab.to;
 
@@ -31,7 +31,7 @@ export function SavedTabs() {
             aria-current={current ? 'page' : undefined}
             className={`flex-1 rounded-lg px-3 py-1.5 text-center text-sm font-medium transition ${
               current
-                ? 'bg-white text-slate-900 shadow-sm'
+                ? 'bg-slate-900 text-white'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
