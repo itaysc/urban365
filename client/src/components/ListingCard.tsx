@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef, useState } from 'react';
+import { useCardTilt } from '@/components/ui/tilt';
 import { EXCLUSIVE_LABEL, isExclusiveListing } from '@/lib/exclusivity';
 import { SaveButton } from '@/components/SaveButton';
 import { isNew, priceDrop } from '@/lib/listingBadges';
@@ -119,13 +120,19 @@ export function ListingCard({
   const fresh = isNew(listing);
   // The badge over the photo already says it; the chips list what the property has.
   const amenities = listing.amenities.filter((a) => a !== EXCLUSIVE_LABEL);
+  const tilt = useCardTilt();
 
   return (
     // The heart is a sibling of the card button, not a child of it. A button inside a
     // button is invalid HTML, and the browser rearranges the tree to cope — the heart
     // rendered in the right place and received no clicks at all, because hit testing
     // handed them to the card it was nested in.
-    <div className="relative flex h-full flex-col">
+    <div
+      ref={tilt.ref}
+      className="u365-card relative flex h-full flex-col"
+      onPointerMove={tilt.onPointerMove}
+      onPointerLeave={tilt.onPointerLeave}
+    >
       {/*
         Top-left, opposite the badges. It is the one control on a card that does
         something other than open the listing.
@@ -137,7 +144,7 @@ export function ListingCard({
       <button
         type="button"
         onClick={() => onOpen(listing)}
-        className="flex h-full flex-col overflow-hidden rounded-xl border border-slate-200 bg-white text-right transition hover:border-slate-400 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-slate-900"
+        className="flex h-full flex-col overflow-hidden rounded-[inherit] bg-transparent text-right focus:outline-none"
       >
       <div className="relative h-44 bg-slate-100">
         {/*

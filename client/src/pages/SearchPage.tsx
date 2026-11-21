@@ -182,7 +182,7 @@ export function SearchPage() {
       results column inside itself. The page scrolls, so there is somewhere for the
       footer to be: scrolling past the search reveals it.
     */
-    <div className="bg-slate-50">
+    <div className="bg-[var(--paper)]">
       <SiteHeader />
       {/*
         The yellow banner and this bar already occupy the top of the window (2rem +

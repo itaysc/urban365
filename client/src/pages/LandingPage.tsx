@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { Link, Navigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { HeroSearch } from '@/components/home/HeroSearch';
@@ -58,6 +59,48 @@ function byRegion(cities: CityLink[]): { name: string; cities: CityLink[] }[] {
  * footer carries, in the place a person actually looks for them, and they are what a
  * search engine follows from the strongest page on the site.
  */
+function HeroCover() {
+  const photo = useRef<HTMLImageElement>(null);
+
+  useEffect(() => {
+    const node = photo.current;
+    if (!node) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    let frame = 0;
+    const place = () => {
+      const shift = Math.min(window.scrollY, 480) * 0.28;
+      node.style.transform = `translate3d(0, ${shift}px, 0) scale(1.08)`;
+    };
+    const onScroll = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(place);
+    };
+    place();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener('scroll', onScroll);
+    };
+  }, []);
+
+  return (
+    <div className="absolute inset-0 -z-10 overflow-hidden">
+      <img
+        ref={photo}
+        src="/home/cover-1600.webp"
+        srcSet={COVER_SET}
+        sizes="100vw"
+        alt="קו הרקיע של תל אביב מעל חוף הים"
+        title="קו הרקיע של תל אביב מעל חוף הים"
+        width={1600}
+        height={359}
+        className="u365-hero-photo absolute inset-x-0 -top-[8%] h-[120%] w-full object-cover"
+        fetchPriority="high"
+      />
+    </div>
+  );
+}
+
 export function LandingPage() {
   const [params] = useSearchParams();
 
@@ -75,7 +118,7 @@ export function LandingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-[var(--paper)]">
       <SiteHeader />
 
       <main id="main" tabIndex={-1}>
@@ -86,19 +129,9 @@ export function LandingPage() {
           this box exactly.
         */}
         <section className="relative isolate">
-          <img
-            src="/home/cover-1600.webp"
-            srcSet={COVER_SET}
-            sizes="100vw"
-            alt="קו הרקיע של תל אביב מעל חוף הים"
-            title="קו הרקיע של תל אביב מעל חוף הים"
-            width={1600}
-            height={359}
-            className="absolute inset-0 -z-10 h-full w-full object-cover"
-            fetchPriority="high"
-          />
-          {/* Dark enough for white text to pass contrast over a bright sky. */}
-          <div className="absolute inset-0 -z-10 bg-slate-900/55" aria-hidden />
+          <HeroCover />
+          {/* Dark behind the words. The skyline at the edges stays visible. */}
+          <div className="u365-hero-shade absolute inset-0 -z-10" aria-hidden />
 
           <div className="mx-auto flex max-w-4xl flex-col items-center gap-6 px-4 py-16 text-center sm:py-24">
             <div>
@@ -152,7 +185,7 @@ export function LandingPage() {
               byRegion(cities).map((region) => (
                 <section
                   key={region.name}
-                  className="rounded-2xl border border-slate-200/80 bg-white p-5 transition hover:border-slate-300 hover:shadow-md"
+                  className="u365-card border border-white/80 p-5"
                 >
                   <h3 className="mb-3 flex items-baseline justify-between gap-2 border-b border-slate-100 pb-2.5">
                     <span className="text-sm font-bold text-slate-900">{region.name}</span>

@@ -1,12 +1,15 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Expand } from 'lucide-react';
 import { GalleryLightbox } from '@/components/GalleryLightbox';
+import { PhotoSwipe, type PhotoSwipeHandle } from '@/components/PhotoSwipe';
 import { Chevron } from '@/components/ui/Chevron';
 
 /** Main image plus thumbnails, with arrow-key and button navigation. */
 export function AssetGallery({ images, alt }: { images: string[]; alt: string }) {
   const [index, setIndex] = useState(0);
   const [fullScreen, setFullScreen] = useState(false);
+  const gallery = useRef<PhotoSwipeHandle>(null);
+  const lightbox = useRef<PhotoSwipeHandle>(null);
 
   useEffect(() => setIndex(0), [images]);
 
@@ -15,12 +18,13 @@ export function AssetGallery({ images, alt }: { images: string[]; alt: string })
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       // RTL: ArrowLeft advances, ArrowRight goes back.
-      if (e.key === 'ArrowLeft') setIndex((i) => (i + 1) % images.length);
-      if (e.key === 'ArrowRight') setIndex((i) => (i - 1 + images.length) % images.length);
+      const swipe = fullScreen ? lightbox.current : gallery.current;
+      if (e.key === 'ArrowLeft') swipe?.go(1);
+      if (e.key === 'ArrowRight') swipe?.go(-1);
     };
     if (images.length > 1) window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [images.length]);
+  }, [images.length, fullScreen]);
 
   if (images.length === 0) {
     return <div className="flex h-72 items-center justify-center bg-slate-100 text-slate-500">ללא תמונות</div>;
@@ -37,18 +41,16 @@ export function AssetGallery({ images, alt }: { images: string[]; alt: string })
           clicking a photo to enlarge it is what everyone tries first, and the two cost
           one element between them.
         */}
-        <button
-          type="button"
-          onClick={() => setFullScreen(true)}
-          // Out of the tab order and hidden from assistive technology: the icon beside
-          // it is the same action with the same label, and two identical tab stops that
-          // do one thing is worse than one.
-          tabIndex={-1}
-          aria-hidden
-          className="block h-full w-full cursor-zoom-in"
-        >
-          <img src={images[index]} alt={alt} className="h-full w-full object-cover" />
-        </button>
+        <PhotoSwipe
+          ref={gallery}
+          images={images}
+          index={index}
+          alt={alt}
+          onIndex={setIndex}
+          fit="cover"
+          onActivate={() => setFullScreen(true)}
+          className="h-full w-full"
+        />
 
         <button
           type="button"
@@ -68,16 +70,16 @@ export function AssetGallery({ images, alt }: { images: string[]; alt: string })
             <button
               type="button"
               aria-label="התמונה הקודמת"
-              className={`${arrow} right-3`}
-              onClick={() => setIndex((i) => (i - 1 + images.length) % images.length)}
+              className={`${arrow} right-3 z-10`}
+              onClick={() => gallery.current?.go(-1)}
             >
               <Chevron direction="right" />
             </button>
             <button
               type="button"
               aria-label="התמונה הבאה"
-              className={`${arrow} left-3`}
-              onClick={() => setIndex((i) => (i + 1) % images.length)}
+              className={`${arrow} left-3 z-10`}
+              onClick={() => gallery.current?.go(1)}
             >
               <Chevron direction="left" />
             </button>
@@ -98,7 +100,7 @@ export function AssetGallery({ images, alt }: { images: string[]; alt: string })
             <button
               key={src}
               type="button"
-              onClick={() => setIndex(i)}
+              onClick={() => gallery.current?.goTo(i)}
               aria-label={`תמונה ${i + 1}`}
               className={`h-16 w-20 flex-none overflow-hidden rounded border-2 ${
                 i === index ? 'border-slate-900' : 'border-transparent'
@@ -115,6 +117,7 @@ export function AssetGallery({ images, alt }: { images: string[]; alt: string })
         alt={alt}
         index={index}
         onIndexChange={setIndex}
+        swipeRef={lightbox}
         open={fullScreen}
         onOpenChange={setFullScreen}
       />

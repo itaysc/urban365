@@ -1,4 +1,5 @@
 import { amenityIcon } from '@/components/listing/amenities';
+import { useCardTilt } from '@/components/ui/tilt';
 import { formatAddress, formatPrice } from '@/lib/format';
 import type { Asset } from '@/types/yad2';
 
@@ -16,13 +17,20 @@ export function AssetCard({ asset, onOpen }: { asset: Asset; onOpen: (asset: Ass
 
   // The card only has room for what the property actually has.
   const present = asset.amenities.filter((a) => a.present);
+  const tilt = useCardTilt();
 
   return (
-    <button
-      type="button"
-      onClick={() => onOpen(asset)}
-      className="flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white text-right transition hover:border-slate-400 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-slate-900"
+    <div
+      ref={tilt.ref}
+      className="u365-card"
+      onPointerMove={tilt.onPointerMove}
+      onPointerLeave={tilt.onPointerLeave}
     >
+      <button
+        type="button"
+        onClick={() => onOpen(asset)}
+        className="flex w-full flex-col overflow-hidden rounded-[inherit] bg-transparent text-right focus:outline-none"
+      >
       <div className="relative h-44 bg-slate-100">
         {/* `alt=""`, as on the search card: this whole card is one button, and the
             words under the photo already say the property type and the city. */}
@@ -85,6 +93,7 @@ export function AssetCard({ asset, onOpen }: { asset: Asset; onOpen: (asset: Ass
 
         {asset.brokerName && <div className="text-xs text-slate-500">{asset.brokerName}</div>}
       </div>
-    </button>
+      </button>
+    </div>
   );
 }

@@ -75,7 +75,7 @@ export function HeroSearch() {
 
       {/* One pill, one action: the suggestion box is the pill rather than a box in it. */}
       <form
-        className="flex items-center gap-2 rounded-full bg-white p-2 shadow-2xl ring-1 ring-slate-900/5"
+        className="u365-pill flex items-center gap-2 rounded-full bg-white p-2"
         onSubmit={(e) => {
           e.preventDefault();
           submit();

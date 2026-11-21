@@ -3,8 +3,97 @@
 @tailwind utilities;
 
 :root {
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --paper: #f4f1ea;
+  --ink: #12151c;
+  font-family: 'IBM Plex Sans Hebrew', system-ui, -apple-system, 'Segoe UI', sans-serif;
   line-height: 1.5;
+  color: var(--ink);
+  background: var(--paper);
+}
+
+body {
+  background: var(--paper);
+}
+
+/*
+ * A card that sits on the page rather than being drawn on it.
+ *
+ * The top edge is a hair lighter than the face, which is what reads as thickness.
+ * The pointer tilts it a few degrees; with reduced motion it only lifts.
+ */
+.u365-card {
+  border-radius: 0.9rem;
+  background: #fff;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.9),
+    0 1px 2px rgb(18 21 28 / 0.05),
+    0 14px 32px -18px rgb(18 21 28 / 0.45);
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.u365-card:hover {
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.95),
+    0 18px 36px -16px rgb(18 21 28 / 0.5);
+}
+
+.u365-card:has(:focus-visible) {
+  outline: 2px solid #2563eb;
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .u365-card,
+  .u365-hero-photo,
+  .u365-pill {
+    transition: none;
+  }
+}
+
+.u365-hero-photo {
+  transform: scale(1.08);
+  transform-origin: center 30%;
+  will-change: transform;
+}
+
+/* The wash sits behind the words, not across the whole skyline. */
+.u365-hero-shade {
+  background:
+    radial-gradient(ellipse 78% 68% at 50% 42%, rgb(15 23 42 / 0.62), transparent 72%),
+    linear-gradient(to bottom, rgb(15 23 42 / 0.12), rgb(15 23 42 / 0.5));
+}
+
+.u365-pill {
+  transform: perspective(900px) rotateX(7deg);
+  transform-origin: center bottom;
+  box-shadow:
+    inset 0 1px 0 #fff,
+    0 22px 44px rgb(0 0 0 / 0.32);
+  transition:
+    transform 200ms ease,
+    box-shadow 200ms ease;
+}
+
+.u365-pill:hover {
+  transform: perspective(900px) rotateX(7deg) translateY(-2px);
+  box-shadow:
+    inset 0 1px 0 #fff,
+    0 28px 50px rgb(0 0 0 / 0.36);
+}
+
+/* Flat once the field is in use, so the suggestion list is not drawn on a slant. */
+.u365-pill:focus-within {
+  transform: perspective(900px) rotateX(0deg) translateY(-2px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .u365-pill,
+  .u365-pill:hover,
+  .u365-pill:focus-within {
+    transform: none;
+  }
 }
 
 /*
@@ -55,4 +144,74 @@
 
 .no-scrollbar::-webkit-scrollbar {
   display: none;
+}
+
+/*
+ * A range drawn as a lit tube, with a pin for the expected sale.
+ *
+ * The gradient runs toward the high end. The pin is centered on its mark with a
+ * physical translate, which is correct while the page is RTL: the pin's inline-start
+ * edge sits on the mark and the mark's half-width has to come back toward the start.
+ */
+.u365-meter {
+  position: relative;
+  height: 0.5rem;
+  border-radius: 999px;
+  background: #e2e8f0;
+  box-shadow: inset 0 1px 2px rgb(15 23 42 / 0.16);
+}
+
+.u365-meter-lit {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(to left, #60a5fa, #2563eb);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.45),
+    0 0 14px rgb(37 99 235 / 0.4);
+}
+
+.u365-meter-pin,
+.u365-meter-tick {
+  position: absolute;
+  top: 50%;
+  transition: inset-inline-start 450ms ease;
+}
+
+.u365-meter-pin {
+  width: 1rem;
+  height: 1rem;
+  border: 3px solid #2563eb;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow:
+    0 0 0 4px rgb(37 99 235 / 0.22),
+    0 6px 14px rgb(37 99 235 / 0.35);
+  transform: translate(50%, -50%);
+}
+
+.u365-meter-tick {
+  width: 2px;
+  height: 0.9rem;
+  border-radius: 1px;
+  background: #1e3a8a;
+  transform: translate(50%, -50%);
+}
+
+.u365-readout {
+  width: 4.5rem;
+  height: 0.25rem;
+  margin-top: 0.75rem;
+  border-radius: 999px;
+  background: #2563eb;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.45),
+    0 0 12px rgb(37 99 235 / 0.55);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .u365-meter-pin,
+  .u365-meter-tick {
+    transition: none;
+  }
 }

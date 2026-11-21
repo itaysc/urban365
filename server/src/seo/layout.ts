@@ -120,7 +120,8 @@ export function seoCsp(apiOrigin: string, extraScriptHash?: string): string {
   return [
     "default-src 'none'",
     "img-src 'self' https: data:",
-    "style-src 'unsafe-inline'",
+    "style-src 'unsafe-inline' https://fonts.googleapis.com",
+    "font-src https://fonts.gstatic.com",
     `script-src ${scripts}`,
     `connect-src 'self' ${apiOrigin}`,
     "base-uri 'none'",
@@ -187,8 +188,8 @@ export interface PageOptions {
  */
 const STYLES = `
 *,*::before,*::after{box-sizing:border-box}
-body{margin:0;background:#f8fafc;color:#0f172a;
-  font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+body{margin:0;background:#f4f1ea;color:#12151c;
+  font-family:"IBM Plex Sans Hebrew",system-ui,-apple-system,"Segoe UI",sans-serif;
   font-size:16px;line-height:1.6}
 a{color:#1d4ed8}
 .wrap{max-width:60rem;margin:0 auto;padding:0 1rem}
@@ -315,7 +316,8 @@ td.num,th.num{font-variant-numeric:tabular-nums;white-space:nowrap}
 .cards{list-style:none;padding:0;margin:0;display:grid;
   grid-template-columns:repeat(auto-fill,minmax(15rem,1fr));gap:.875rem}
 .card{background:#fff;border:1px solid #e2e8f0;border-radius:.75rem;overflow:hidden;
-  display:flex;flex-direction:column}
+  display:flex;flex-direction:column;
+  box-shadow:inset 0 1px 0 #fff,0 14px 32px -18px rgb(18 21 28 / .45)}
 .card img,.card .noimage{width:100%;height:9rem;background:#e2e8f0;display:block}
 .card img{object-fit:cover}
 .card .body{padding:.75rem .875rem;display:flex;flex-direction:column;gap:.25rem;flex:1}
@@ -446,8 +448,14 @@ footer.site .small{margin:1.5rem 0 0;padding-top:1rem;border-top:1px solid #f1f5
  */
 main.door{padding:0 0 3rem}
 .hero{position:relative;isolation:isolate;z-index:1}
-.hero .cover{position:absolute;inset:0;z-index:-1;width:100%;height:100%;object-fit:cover}
-.hero .veil{position:absolute;inset:0;z-index:-1;background:rgb(15 23 42 / .55)}
+/* The photograph is clipped here. The hero itself is not, or the suggestion list
+   hanging under the search box would be cut off. */
+.hero .stage{position:absolute;inset:0;z-index:-1;overflow:hidden}
+.hero .cover{position:absolute;inset:-8% 0 auto;width:100%;height:120%;object-fit:cover;
+  transform:scale(1.06);transform-origin:center 30%}
+.hero .veil{position:absolute;inset:0;
+  background:radial-gradient(ellipse 78% 68% at 50% 42%,rgb(15 23 42 / .62),transparent 72%),
+    linear-gradient(to bottom,rgb(15 23 42 / .12),rgb(15 23 42 / .5))}
 .hero-inner{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;
   gap:1.5rem;max-width:56rem;margin:0 auto;padding:4rem 1rem;text-align:center}
 @media (min-width:40rem){.hero-inner{padding:6rem 1rem}}
@@ -492,7 +500,14 @@ main.door{padding:0 0 3rem}
 .tab input{position:absolute;opacity:0;inset:0;margin:0;cursor:pointer}
 .tab:has(input:checked){background:#fff;color:#0f172a;box-shadow:0 10px 15px rgb(0 0 0 / .15)}
 .pill{display:flex;align-items:center;gap:.5rem;border-radius:9999px;background:#fff;padding:.5rem;
-  box-shadow:0 25px 50px rgb(0 0 0 / .25)}
+  transform:perspective(900px) rotateX(7deg);transform-origin:center bottom;
+  box-shadow:inset 0 1px 0 #fff,0 22px 44px rgb(0 0 0 / .32);
+  transition:transform 200ms ease,box-shadow 200ms ease}
+.pill:hover{transform:perspective(900px) rotateX(7deg) translateY(-2px)}
+.find:focus-within .pill{transform:perspective(900px) rotateX(0deg) translateY(-2px)}
+@media (prefers-reduced-motion:reduce){
+  .pill,.pill:hover,.find:focus-within .pill,.hero .cover{transform:none;transition:none}
+}
 /* The names sit in the field, beside the caret. A direct-child button is the search
    control; the remove buttons live inside a badge and must not inherit it. */
 .pill-field{display:flex;flex:1;flex-wrap:wrap;align-items:center;gap:.375rem;min-width:0;
@@ -521,8 +536,9 @@ main.door{padding:0 0 3rem}
 .regions{display:grid;gap:1rem;margin-top:1.25rem}
 @media (min-width:40rem){.regions{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (min-width:64rem){.regions{grid-template-columns:repeat(3,minmax(0,1fr))}}
-.region{border:1px solid rgb(226 232 240 / .8);border-radius:1rem;background:#fff;padding:1.25rem}
-.region:hover{border-color:#cbd5e1;box-shadow:0 4px 6px rgb(15 23 42 / .06)}
+.region{border:1px solid rgb(255 255 255 / .8);border-radius:1rem;background:#fff;padding:1.25rem;
+  box-shadow:inset 0 1px 0 #fff,0 14px 32px -18px rgb(18 21 28 / .45)}
+.region:hover{box-shadow:inset 0 1px 0 #fff,0 18px 36px -16px rgb(18 21 28 / .5)}
 .region h3{display:flex;align-items:baseline;justify-content:space-between;gap:.5rem;margin:0 0 .75rem;
   padding-bottom:.625rem;border-bottom:1px solid #f1f5f9;font-size:.875rem}
 .region h3 .count{font-weight:400;font-size:.75rem;color:#64748b}
@@ -602,6 +618,9 @@ ${options.preload ?? ''}
 <meta name="twitter:description" content="${esc(options.description)}">
 <meta name="twitter:image" content="${esc(options.image ?? `${options.appUrl}/og-image.png`)}">
 <meta name="theme-color" content="#1d4ed8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Hebrew:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="icon" type="image/svg+xml" href="${esc(options.appUrl)}/favicon.svg">
 <link rel="icon" href="${esc(options.appUrl)}/favicon.ico" sizes="48x48">
 <link rel="apple-touch-icon" href="${esc(options.appUrl)}/apple-touch-icon.png">

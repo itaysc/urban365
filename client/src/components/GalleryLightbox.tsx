@@ -1,5 +1,7 @@
+import { useRef, type RefObject } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { X } from 'lucide-react';
+import { PhotoSwipe, type PhotoSwipeHandle } from '@/components/PhotoSwipe';
 import { Chevron } from '@/components/ui/Chevron';
 
 interface Props {
@@ -11,6 +13,8 @@ interface Props {
   onIndexChange: (index: number) => void;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** So the arrow keys, which live with the gallery, can slide this view too. */
+  swipeRef?: RefObject<PhotoSwipeHandle | null>;
 }
 
 /**
@@ -30,10 +34,12 @@ export function GalleryLightbox({
   onIndexChange,
   open,
   onOpenChange,
+  swipeRef,
 }: Props) {
-  if (images.length === 0) return null;
+  const own = useRef<PhotoSwipeHandle>(null);
+  const swipe = swipeRef ?? own;
 
-  const step = (by: number) => onIndexChange((index + by + images.length) % images.length);
+  if (images.length === 0) return null;
 
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
@@ -70,10 +76,14 @@ export function GalleryLightbox({
           </div>
 
           <div className="relative flex min-h-0 flex-1 items-center justify-center px-3">
-            <img
-              src={images[index]}
+            <PhotoSwipe
+              ref={swipe}
+              images={images}
+              index={index}
               alt={alt}
-              className="max-h-full max-w-full object-contain"
+              onIndex={onIndexChange}
+              fit="contain"
+              className="h-full w-full"
             />
 
             {images.length > 1 && (
@@ -83,16 +93,16 @@ export function GalleryLightbox({
                 <button
                   type="button"
                   aria-label="התמונה הקודמת"
-                  onClick={() => step(-1)}
-                  className="absolute right-4 rounded-full bg-white/10 p-3 text-white transition hover:bg-white/20"
+                  onClick={() => swipe.current?.go(-1)}
+                  className="absolute right-4 z-10 rounded-full bg-white/10 p-3 text-white transition hover:bg-white/20"
                 >
                   <Chevron direction="right" />
                 </button>
                 <button
                   type="button"
                   aria-label="התמונה הבאה"
-                  onClick={() => step(1)}
-                  className="absolute left-4 rounded-full bg-white/10 p-3 text-white transition hover:bg-white/20"
+                  onClick={() => swipe.current?.go(1)}
+                  className="absolute left-4 z-10 rounded-full bg-white/10 p-3 text-white transition hover:bg-white/20"
                 >
                   <Chevron direction="left" />
                 </button>
@@ -106,7 +116,7 @@ export function GalleryLightbox({
                 <button
                   key={src}
                   type="button"
-                  onClick={() => onIndexChange(i)}
+                  onClick={() => swipe.current?.goTo(i)}
                   aria-label={`תמונה ${i + 1}`}
                   aria-current={i === index}
                   className={`h-14 w-20 flex-none overflow-hidden rounded border-2 transition ${

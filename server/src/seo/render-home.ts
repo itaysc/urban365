@@ -103,8 +103,10 @@ export function renderHomePage(
     .join('');
 
   const body = `<section class="hero">
+<div class="stage">
 <img class="cover" src="${COVER_1600}" srcset="${COVER_SET}" sizes="100vw" alt="קו הרקיע של תל אביב מעל חוף הים" title="קו הרקיע של תל אביב מעל חוף הים" width="1600" height="359" fetchpriority="high">
 <div class="veil" aria-hidden="true"></div>
+</div>
 <div class="hero-inner">
 <div>
 <h1>דירות למכירה ולהשכרה בישראל</h1>

@@ -1,6 +1,8 @@
 import { formatShekel } from '@/lib/format';
 import { panelClass } from '@/components/mortgage/panel';
+import { ShekelFigure } from '@/components/ui/ShekelFigure';
 import type { ValuationResponse } from '@/services/valuation';
+import { RangeTrack } from '@/components/valuation/RangeTrack';
 
 const MARKET_LABEL: Record<ValuationResponse['market']['state'], string> = {
   buyers: 'שוק של קונים',
@@ -58,8 +60,9 @@ export function Result({ result }: { result: ValuationResponse }) {
       <h2 className="text-base font-semibold text-slate-800">טווח השווי</h2>
 
       <p className="mt-3 text-2xl font-semibold tabular-nums text-slate-900 sm:text-3xl">
-        {formatShekel(range.low)} – {formatShekel(range.high)}
+        <ShekelFigure value={range.low} /> – <ShekelFigure value={range.high} />
       </p>
+      <RangeTrack low={range.low} high={range.high} expected={range.expected} asking={range.asking} />
 
       {/*
         The guide's step 7, as two numbers rather than one. They differ on purpose: a
@@ -70,13 +73,13 @@ export function Result({ result }: { result: ValuationResponse }) {
         <div className="rounded-xl bg-slate-50 px-3 py-2.5">
           <dt className="text-xs text-slate-500">צפוי להימכר סביב</dt>
           <dd className="mt-0.5 text-lg font-medium tabular-nums text-slate-800">
-            {formatShekel(range.expected)}
+            <ShekelFigure value={range.expected} />
           </dd>
         </div>
         <div className="rounded-xl bg-slate-50 px-3 py-2.5">
           <dt className="text-xs text-slate-500">מחיר פרסום מומלץ</dt>
           <dd className="mt-0.5 text-lg font-medium tabular-nums text-slate-800">
-            {formatShekel(range.asking)}
+            <ShekelFigure value={range.asking} />
           </dd>
         </div>
       </dl>

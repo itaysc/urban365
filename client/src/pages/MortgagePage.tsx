@@ -4,6 +4,7 @@ import { Plus, X } from 'lucide-react';
 import { SiteFooter } from '@/components/SiteFooter';
 import { SiteHeader } from '@/components/SiteHeader';
 import { selectClass } from '@/components/ui/Field';
+import { ShekelFigure } from '@/components/ui/ShekelFigure';
 import { HouseholdPlanner } from '@/components/mortgage/HouseholdPlanner';
 import { MixCompare } from '@/components/mortgage/MixCompare';
 import { Money, Num, Row, Slide } from '@/components/mortgage/fields';
@@ -528,8 +529,9 @@ export function MortgagePage() {
             <section className={panelClass} aria-live="polite">
               <p className="text-sm text-slate-500">החזר חודשי</p>
               <p className="mt-1 text-4xl font-extrabold tabular-nums text-slate-900">
-                {formatShekel(summary.monthly)}
+                <ShekelFigure value={summary.monthly} />
               </p>
+              <div className="u365-readout" aria-hidden />
 
               <MixCompare
                 loan={result.loan}
