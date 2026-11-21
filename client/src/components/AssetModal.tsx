@@ -10,6 +10,7 @@ import { AmenityGrid } from '@/components/AmenityGrid';
 import { AssetGallery } from '@/components/AssetGallery';
 import { DetailGrid, type Detail } from '@/components/DetailGrid';
 import { MortgageTeaser } from '@/components/MortgageTeaser';
+import { PriceGapBrief, PriceGapLine, usePriceBrief } from '@/components/listing/PriceGap';
 import { EXCLUSIVE_LABEL, isExclusiveAsset } from '@/lib/exclusivity';
 import { formatAddress, formatDate, formatPrice, formatShekel } from '@/lib/format';
 import { agencyPublicPath } from '@/services/publicAgencies';
@@ -35,6 +36,8 @@ export function AssetModal({ asset, onClose }: { asset: Asset; onClose: () => vo
   const closeRef = useRef<HTMLButtonElement>(null);
   const { user } = useAuth();
   const yad2Visible = useYad2Visible();
+  const sale = asset.dealType === SALE && asset.price !== null && asset.price > 0;
+  const gap = usePriceBrief(sale ? asset.id : null);
 
   // `membershipStatus` matters as much as the id: someone whose claim on an agency is
   // still pending is not yet that agency.
@@ -110,7 +113,11 @@ export function AssetModal({ asset, onClose }: { asset: Asset; onClose: () => vo
           ✕
         </button>
 
-        <AssetGallery images={asset.imageUrls} alt={`${asset.propertyType}, ${asset.city}`} />
+        <AssetGallery
+          images={asset.imageUrls}
+          alt={`${asset.propertyType}, ${asset.city}`}
+          strip={gap ? <PriceGapLine check={gap} /> : undefined}
+        />
 
         <div className="flex flex-col gap-5 p-6">
           <div>
@@ -179,8 +186,11 @@ export function AssetModal({ asset, onClose }: { asset: Asset; onClose: () => vo
             scraped or created here, both go through the same subcategory map on the
             server, so a rental reads 'השכרה' and a shop 'מסחרי'.
           */}
-          {asset.dealType === SALE && asset.price !== null && asset.price > 0 && (
-            <MortgageTeaser price={asset.price} />
+          {sale && (
+            <>
+              {gap && <PriceGapBrief check={gap} />}
+              <MortgageTeaser price={asset.price!} />
+            </>
           )}
 
           {asset.description && (

@@ -6,6 +6,10 @@ import { AgencyBreadcrumbs } from '@/components/agency/AgencyBreadcrumbs';
 import { AgencyEnquiryForm } from '@/components/agency/AgencyEnquiryForm';
 import { AssetModal } from '@/components/AssetModal';
 import { ListingCard } from '@/components/ListingCard';
+import { BuyingPowerNote } from '@/components/listing/Affordability';
+import { clearBuyingPower } from '@/lib/buying-power';
+import { useBuyingPower } from '@/lib/use-buying-power';
+import { usePriceChecks } from '@/lib/use-price-checks';
 import { Pagination } from '@/components/Pagination';
 import { SiteFooter } from '@/components/SiteFooter';
 import { SiteHeader } from '@/components/SiteHeader';
@@ -78,6 +82,7 @@ function Team({ brokers, agencyName }: { brokers: PublicBroker[]; agencyName: st
 
 function Listings({ agency }: { agency: PublicAgency }) {
   const [params, setParams] = useSearchParams();
+  const power = useBuyingPower();
   const requested = params.get('section');
   const fallback = SECTIONS.find((section) => agency.counts[section] > 0) ?? 'forsale';
   const section: Section = isSection(requested) ? requested : fallback;
@@ -109,6 +114,11 @@ function Listings({ agency }: { agency: PublicAgency }) {
   });
 
   const ids = data?.items.map((item) => item.id) ?? [];
+  const gaps = usePriceChecks(
+    section === 'forsale'
+      ? (data?.items ?? []).filter((item) => item.price).map((item) => item.id)
+      : [],
+  );
   const { data: saved } = useQuery({
     queryKey: qk.saved.among(ids),
     queryFn: () => fetchSavedAmong(ids),
@@ -161,10 +171,22 @@ function Listings({ agency }: { agency: PublicAgency }) {
         </p>
       )}
 
+      {power && section === 'forsale' && (
+        <div className="mt-4">
+          <BuyingPowerNote power={power} onClear={clearBuyingPower} />
+        </div>
+      )}
+
       <ul className={`mt-4 grid gap-4 sm:grid-cols-2 ${isPending ? 'opacity-60' : ''}`}>
         {data?.items.map((listing) => (
           <li key={listing.id}>
-            <ListingCard listing={listing} onOpen={open} saved={saved?.has(listing.id) ?? false} />
+            <ListingCard
+              listing={listing}
+              onOpen={open}
+              saved={saved?.has(listing.id) ?? false}
+              power={section === 'forsale' ? power : null}
+              gap={section === 'forsale' ? gaps.get(listing.id) ?? null : null}
+            />
           </li>
         ))}
       </ul>

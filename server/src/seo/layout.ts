@@ -155,6 +155,11 @@ export interface PageOptions {
   extraScript?: string;
   /** Marks "מחירים לפי עיר" as the section being read. */
   onCityPages?: boolean;
+  /**
+   * A for-sale city page with prices on the cards. Loads the script that paints
+   * this browser's mortgage onto them. Rent and commercial pages leave it off.
+   */
+  afford?: boolean;
   /** Marks "בלוג" as the section being read. */
   onBlog?: boolean;
   /**
@@ -190,7 +195,7 @@ export interface PageOptions {
  */
 const STYLES = `
 *,*::before,*::after{box-sizing:border-box}
-body{margin:0;background:#f4f1ea;color:#12151c;
+body{margin:0;background:#f7f6f4;color:#12151c;
   font-family:"IBM Plex Sans Hebrew",system-ui,-apple-system,"Segoe UI",sans-serif;
   font-size:16px;line-height:1.6}
 a{color:#1d4ed8}
@@ -320,10 +325,33 @@ td.num,th.num{font-variant-numeric:tabular-nums;white-space:nowrap}
 .card{background:#fff;border:1px solid #e2e8f0;border-radius:.75rem;overflow:hidden;
   display:flex;flex-direction:column;
   box-shadow:inset 0 1px 0 #fff,0 14px 32px -18px rgb(18 21 28 / .45)}
+.card .photo{position:relative}
 .card img,.card .noimage{width:100%;height:9rem;background:#e2e8f0;display:block}
 .card img{object-fit:cover}
+/* Across the foot of the photograph, so the card does not grow a line taller. */
+.card .photo .gap{position:absolute;inset-inline:0;bottom:0;z-index:0;margin:0;
+  padding:.3rem .5rem;background:rgb(15 23 42 / .82);color:#fff;font-size:.75rem;
+  font-weight:600;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card .photo .gap.above{background:rgb(120 53 15 / .9)}
+.card .photo .gap.below{background:rgb(6 78 59 / .9)}
 .card .body{padding:.75rem .875rem;display:flex;flex-direction:column;gap:.25rem;flex:1}
 .card .price{font-weight:700}
+/* Painted once a household is saved. The page itself stays the price. */
+.buying{font-size:.875rem;color:#475569;margin:0 0 .875rem}
+.buying a,.buying button{font-weight:600;color:#1d4ed8;background:none;border:0;padding:0;
+  font:inherit;cursor:pointer}
+.afford{background:#f8fafc;border-radius:.5rem;padding:.375rem .5rem;font-size:.75rem;line-height:1.35}
+.afford .pay{display:flex;flex-wrap:wrap;justify-content:space-between;gap:.25rem;
+  font-weight:600;color:#0f172a}
+.afford .mark{background:#fef3c7;color:#78350f;border-radius:.375rem;padding:.0625rem .375rem}
+.afford .rest{margin:.125rem 0 0;color:#64748b}
+aside.gap{background:#f8fafc;border-radius:.5rem;padding:.75rem 1rem;margin:.75rem 0;font-size:.875rem;color:#475569}
+.gallery li{position:relative}
+.gallery .gap{position:absolute;inset-inline:0;bottom:0;margin:0;padding:.5rem .75rem;
+  background:rgb(15 23 42 / .82);color:#fff;font-size:.875rem;font-weight:600;line-height:1.35;
+  border-radius:0 0 .625rem .625rem}
+.gallery .gap.above{background:rgb(120 53 15 / .9)}
+.gallery .gap.below{background:rgb(6 78 59 / .9)}
 /* The badges sit over the photograph, stacked: a listing can wear both, and two
    facing each other across a picture read as unrelated. */
 .badges{position:absolute;top:.5rem;inset-inline-start:.5rem;z-index:1;
@@ -681,6 +709,7 @@ ${blocks}
 ${options.extraScript ? `<script>${options.extraScript}</script>` : ''}
 <div id="u365-assistant"></div>
 ${process.env.NODE_ENV === 'development' ? '<script type="module" src="/src/assistant-preamble.js"></script>\n' : ''}<script type="module" src="/assistant.js"></script>
+${options.afford ? '<script type="module" src="/afford.js"></script>' : ''}
 <footer class="site"><div class="${frame}">
 ${options.links ?? ''}
 <!--

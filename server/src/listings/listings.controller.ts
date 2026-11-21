@@ -4,6 +4,7 @@ import type { Request, Response } from 'express';
 import { Public } from '../auth/decorators/public.decorator.js';
 import { SearchListingsDto } from './dto/search-listings.dto.js';
 import { ListingsService } from './listings.service.js';
+import { PriceCheckService } from './price-check.service.js';
 import { EngagementService } from '../seller/engagement.service.js';
 import { ConfigService } from '@nestjs/config';
 import { VISITOR_COOKIE, VisitorService, setVisitorCookie } from '../visitor/visitor.service.js';
@@ -23,6 +24,7 @@ export class ListingsController {
 
   constructor(
     private readonly listings: ListingsService,
+    private readonly prices: PriceCheckService,
     private readonly engagement: EngagementService,
     private readonly visitors: VisitorService,
     config: ConfigService,
@@ -115,6 +117,29 @@ export class ListingsController {
    * Declared before `:id` — Nest matches in declaration order, and `listings/:id`
    * would otherwise swallow it.
    */
+  /**
+   * Where each asking price sits against similar sales.
+   *
+   * Declared before `:id`. A card only needs the sentence; opening the listing asks
+   * again, with the questions. Capped, because each id can be a valuation.
+   */
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
+  @Get('price-checks')
+  priceChecks(@Query('ids') ids?: string) {
+    const list = (ids ?? '')
+      .split(',')
+      .map((id) => id.trim())
+      .filter((id) => /^[a-z0-9]{8,40}$/iu.test(id));
+    return this.prices.forIds(list).then((items) => ({ items }));
+  }
+
+  /** The same sentence, plus the questions worth asking before a visit. */
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
+  @Get(':id/price-check')
+  async priceCheck(@Param('id') id: string, @Query('brief') brief?: string) {
+    return { item: await this.prices.forId(id, brief === '1') };
+  }
+
   @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @Get(':id/phone')
   async phone(

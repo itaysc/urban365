@@ -169,18 +169,18 @@ function describedByTheSeller(text: string | null): string {
   return `<h2>תיאור</h2>${paragraphs.map((p) => `<p>${esc(p)}</p>`).join('')}`;
 }
 
-function gallery(urls: string[], alt: string): string {
+function gallery(urls: string[], alt: string, strip: string | null): string {
   if (urls.length === 0) return '';
 
   return `<ul class="gallery">${urls
-    .map(
-      (url, i) =>
-        `<li><img src="${esc(url)}" alt="${esc(`${alt} — תמונה ${i + 1}`)}"${
-          // The first is what somebody sees before anything scrolls, so it is not
-          // deferred; everything below the fold is.
-          i === 0 ? '' : ' loading="lazy"'
-        } width="640" height="420"></li>`,
-    )
+    .map((url, i) => {
+      const band = i === 0 && strip ? strip : '';
+      return `<li><img src="${esc(url)}" alt="${esc(`${alt} — תמונה ${i + 1}`)}"${
+        // The first is what somebody sees before anything scrolls, so it is not
+        // deferred; everything below the fold is.
+        i === 0 ? '' : ' loading="lazy"'
+      } width="640" height="420">${band}</li>`;
+    })
     .join('')}</ul>`;
 }
 
@@ -313,6 +313,7 @@ export function renderListingPage(
   similar: SimilarListing[],
   appUrl: string,
   links = '',
+  gap: { headline: string; detail: string; stance?: 'within' | 'above' | 'below' } | null = null,
 ): string {
   const title = heading(listing);
   const canonical = `${appUrl}${listingPath(listing.id, listing)}`;
@@ -357,10 +358,25 @@ export function renderListingPage(
   const body = `${trail.html}
 <h1>${esc(title)}</h1>
 <p class="headline-price">${esc(money(listing.price, listing.section))}${drop}</p>
+${
+  // On the photograph when there is one. With no photograph the sentence has to sit
+  // in the page, or a listing without pictures would say nothing about its price.
+  gap && images.length === 0
+    ? `<aside class="gap"><p>${esc(gap.headline)}</p><p>${esc(gap.detail)}</p></aside>`
+    : gap
+      ? `<aside class="gap"><p>${esc(gap.detail)}</p></aside>`
+      : ''
+}
 ${badgesFor(listing)}
 ${figures(listing)}
 <a class="cta" href="${esc(`${appUrl}/search?listing=${encodeURIComponent(listing.id)}`)}">צפייה בנכס ויצירת קשר</a>
-${gallery(images, title)}
+${gallery(
+  images,
+  title,
+  gap
+    ? `<p class="gap${gap.stance === 'above' || gap.stance === 'below' ? ` ${gap.stance}` : ''}">${esc(gap.headline)}</p>`
+    : null,
+)}
 ${describedByTheSeller(listing.description)}
 ${details(listing)}
 ${amenities}

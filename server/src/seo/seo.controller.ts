@@ -22,6 +22,7 @@ import { CityPageService } from './city-page.service.js';
 import { esc } from './html.js';
 import { currentSessionApiOrigin, page, seoCsp, setSessionApi } from './layout.js';
 import { placeScriptHash, placeSearchScript } from './place-script.js';
+import { PriceCheckService } from '../listings/price-check.service.js';
 import { ListingPageService } from './listing-page.service.js';
 import { idFromSlug, listingPath } from './listing-slug.js';
 import { renderCityPage } from './render-city.js';
@@ -107,6 +108,7 @@ export class SeoController {
   constructor(
     private readonly cities: CityPageService,
     private readonly listings: ListingPageService,
+    private readonly prices: PriceCheckService,
     config: ConfigService,
   ) {
     /*
@@ -342,10 +344,17 @@ export class SeoController {
       return;
     }
 
+    const gap =
+      result.listing.section === 'forsale' && result.listing.price
+        ? await this.prices.forId(result.listing.id, false).catch(() => null)
+        : null;
+
     res
       .type('text/html; charset=utf-8')
       .set('Cache-Control', CACHE)
-      .send(renderListingPage(result.listing, result.similar, this.appUrl, await this.footer()));
+      .send(
+        renderListingPage(result.listing, result.similar, this.appUrl, await this.footer(), gap),
+      );
   }
 
   /*

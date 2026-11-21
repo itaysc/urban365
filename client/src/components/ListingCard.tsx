@@ -4,7 +4,11 @@ import { EXCLUSIVE_LABEL, isExclusiveListing } from '@/lib/exclusivity';
 import { SaveButton } from '@/components/SaveButton';
 import { isNew, priceDrop } from '@/lib/listingBadges';
 import { amenityIcon } from '@/components/listing/amenities';
+import { AffordabilityMark } from '@/components/listing/Affordability';
+import { PriceGapLine } from '@/components/listing/PriceGap';
+import type { PriceCheck } from '@/lib/price-check';
 import { formatAddress, formatPrice, formatShekel } from '@/lib/format';
+import type { BuyingPower } from '@/lib/buying-power';
 import type { SearchListing } from '@/types/search';
 
 const CHIP = 'flex shrink-0 items-center gap-1 rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-600';
@@ -100,11 +104,17 @@ export function ListingCard({
   listing,
   onOpen,
   saved = false,
+  power = null,
+  gap = null,
 }: {
   listing: SearchListing;
   onOpen: (l: SearchListing) => void;
   /** Resolved once for the whole page rather than per card — see `SearchPage`. */
   saved?: boolean;
+  /** The household from the calculator. Null leaves the card exactly as it was. */
+  power?: BuyingPower | null;
+  /** The sale comparison for this asking price. Null until it arrives, or when there isn't one. */
+  gap?: PriceCheck | null;
 }) {
   const floor =
     listing.floor === null
@@ -206,8 +216,10 @@ export function ListingCard({
           )}
         </div>
 
+        {gap && listing.section === 'forsale' && <PriceGapLine check={gap} />}
+
         {listing.tags.length > 0 && (
-          <div className="absolute bottom-2 right-2 flex flex-wrap gap-1">
+          <div className={`absolute right-2 flex flex-wrap gap-1 ${gap && listing.section === 'forsale' ? 'bottom-8' : 'bottom-2'}`}>
             {listing.tags.slice(0, 2).map((tag) => (
               <span key={tag} className="rounded bg-white/90 px-2 py-0.5 text-xs font-medium text-slate-700">
                 {tag}
@@ -224,6 +236,15 @@ export function ListingCard({
             <span className="truncate text-sm text-slate-500 line-through">{formatPrice(listing.priceBeforeDrop)}</span>
           )}
         </div>
+
+        {/*
+          Only a sale, and only once they have told the calculator who they are.
+          Rent has no mortgage, and a card with no household has nothing to mark.
+          The listing is never removed: the chip says the bank would refuse it.
+        */}
+        {power && listing.section === 'forsale' && listing.price !== null && listing.price > 0 && (
+          <AffordabilityMark price={listing.price} power={power} />
+        )}
 
         <div>
           <div className="truncate font-medium text-slate-800">

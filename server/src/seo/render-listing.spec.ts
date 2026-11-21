@@ -199,6 +199,22 @@ describe('renderListingPage', () => {
     expect(html).not.toContain('class="was"');
   });
 
+  it('prints the sale comparison under the price when one was computed', () => {
+    const html = renderListingPage(
+      listing(),
+      [],
+      APP,
+      '',
+      {
+        headline: 'המחיר המבוקש גבוה ב־10% מעסקאות דומות',
+        detail: 'זו השוואה, לא שמאות.',
+      },
+    );
+
+    expect(html).toContain('המחיר המבוקש גבוה ב־10% מעסקאות דומות');
+    expect(html).toContain('לא שמאות');
+  });
+
   it('links on to other properties and back to the city', () => {
     const html = renderListingPage(listing(), similar, APP);
 

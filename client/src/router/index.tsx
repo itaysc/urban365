@@ -3,7 +3,7 @@ import { AlertsPage } from '@/pages/AlertsPage';
 import { SellerViewingPage } from '@/pages/SellerViewingPage';
 import { ViewingPage } from '@/pages/ViewingPage';
 import { AccessibilityPage, PrivacyPage, TermsPage } from '@/pages/LegalPage';
-import { Navigate, Outlet, createBrowserRouter, useParams } from 'react-router-dom';
+import { Navigate, Outlet, ScrollRestoration, createBrowserRouter, useParams } from 'react-router-dom';
 import { ClosedSiteGate } from '@/auth/ClosedSiteGate';
 import { RequireAdmin, RequireAuth, RequireCrm } from '@/auth/RequireAuth';
 import { AgenciesPage } from '@/pages/AgenciesPage';
@@ -66,9 +66,16 @@ export const router = createBrowserRouter([
       live. `PageTitle` is the first of them: it needs the router's own location, so it
       cannot sit outside the provider, and mounting it here means it survives every
       navigation rather than remounting per page.
+
+      `ScrollRestoration` is the other. The data router turns the browser's own
+      restoration off, and without this a page opened after scrolling stays where the
+      last one left off. A fresh navigation starts at the top; Back returns to where
+      you were. In-page query changes pass `preventScrollReset` so a filter or a tab
+      does not do the same.
     */
     element: (
       <>
+        <ScrollRestoration />
         <PreviewBanner />
         <PageTitle />
         <AssistantWidget />

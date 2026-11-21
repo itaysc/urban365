@@ -8,6 +8,10 @@ import { SiteHeader } from '@/components/SiteHeader';
 import { ListingsMap } from '@/components/map/ListingsMap';
 import { FilterBar } from '@/components/search/FilterBar';
 import { ListingCard } from '@/components/ListingCard';
+import { BuyingPowerNote } from '@/components/listing/Affordability';
+import { clearBuyingPower } from '@/lib/buying-power';
+import { useBuyingPower } from '@/lib/use-buying-power';
+import { usePriceChecks } from '@/lib/use-price-checks';
 import { Pagination } from '@/components/Pagination';
 import { useListingSearch } from '@/hooks/useListingSearch';
 import { useSearchFilters } from '@/hooks/useSearchFilters';
@@ -160,6 +164,11 @@ export function SearchPage() {
   }, [filters.page]);
 
   const items = data?.items ?? [];
+  const power = useBuyingPower();
+  const gaps = usePriceChecks(
+    items.filter((listing) => listing.section === 'forsale' && listing.price).map((listing) => listing.id),
+  );
+  const showPower = power !== null && filters.section !== 'rent' && filters.section !== 'commercial';
 
   // One request for the page rather than one per card. Works signed out: the server
   // answers from the visitor cookie when there is no account behind the request.
@@ -263,6 +272,7 @@ export function SearchPage() {
             card and never scrolls.
           */}
           <section ref={results} className="flex flex-col gap-4 lg:min-h-0 lg:overflow-y-auto lg:pe-1">
+            {showPower && power && <BuyingPowerNote power={power} onClear={clearBuyingPower} />}
             {status === 'error' && (
               <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-red-800">
                 <p className="font-medium">החיפוש נכשל</p>
@@ -294,6 +304,8 @@ export function SearchPage() {
                   listing={listing}
                   onOpen={open}
                   saved={saved?.has(listing.id) ?? false}
+                  power={showPower ? power : null}
+                  gap={listing.section === 'forsale' ? gaps.get(listing.id) ?? null : null}
                 />
               ))}
             </div>

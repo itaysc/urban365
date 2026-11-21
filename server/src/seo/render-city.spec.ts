@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { CityPage } from './city-page.service.js';
+import type { CityListing, CityPage } from './city-page.service.js';
 import { toSlug } from './city-slug.js';
 import { MIN_INDEXABLE, renderCityPage } from './render-city.js';
 import { byNeighborhood, byPropertyType, byRooms, summarise, type StatRow } from './stats.js';
@@ -38,6 +38,24 @@ const healthy = () => [
   ...Array.from({ length: 4 }, () => stat({ rooms: 3, price: 1_600_000 })),
   ...Array.from({ length: 4 }, () => stat({ rooms: 4, price: 2_200_000 })),
 ];
+
+const priced = (): CityListing => ({
+  id: 'cmvu0ayux0046xzh0ifihzgx6',
+  price: 2_200_000,
+  lastPriceDropAmount: null,
+  lastPriceDropAt: null,
+  listedAt: null,
+  publishedAt: null,
+  rooms: 4,
+  squareMeter: 90,
+  floor: 2,
+  street: 'סוקולוב',
+  houseNumber: 15,
+  neighborhood: 'קרית שרת',
+  city: 'חולון',
+  propertyType: 'דירה',
+  coverImageUrl: null,
+});
 
 describe('renderCityPage', () => {
   it('says what the page is, in the title and in the heading', () => {
@@ -189,6 +207,22 @@ describe('renderCityPage', () => {
 
     expect(data['@type']).toBe('BreadcrumbList');
     expect(data.itemListElement.map((i) => i.name)).toEqual(['ערים', 'חולון']);
+  });
+
+  it('names the price on a for-sale card so a saved household can be painted on it', () => {
+    const html = renderCityPage(build(healthy(), { listings: [priced()] }), APP);
+
+    expect(html).toContain('data-price="2200000"');
+    expect(html).toContain('data-id="cmvu0ayux0046xzh0ifihzgx6"');
+    expect(html).toContain('<script type="module" src="/afford.js"></script>');
+  });
+
+  it('leaves a rental card as a price, with nothing for a mortgage to read', () => {
+    const html = renderCityPage(build(healthy(), { section: 'rent', listings: [priced()] }), APP);
+
+    expect(html).not.toContain('data-price');
+    expect(html).not.toContain('data-id=');
+    expect(html).not.toContain('src="/afford.js"');
   });
 
   it('carries the session check, its structured data, and the assistant', () => {

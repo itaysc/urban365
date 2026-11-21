@@ -1,11 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Expand } from 'lucide-react';
 import { GalleryLightbox } from '@/components/GalleryLightbox';
 import { PhotoSwipe, type PhotoSwipeHandle } from '@/components/PhotoSwipe';
 import { Chevron } from '@/components/ui/Chevron';
 
 /** Main image plus thumbnails, with arrow-key and button navigation. */
-export function AssetGallery({ images, alt }: { images: string[]; alt: string }) {
+export function AssetGallery({ images, alt, strip }: { images: string[]; alt: string; strip?: ReactNode }) {
   const [index, setIndex] = useState(0);
   const [fullScreen, setFullScreen] = useState(false);
   const gallery = useRef<PhotoSwipeHandle>(null);
@@ -27,7 +27,12 @@ export function AssetGallery({ images, alt }: { images: string[]; alt: string })
   }, [images.length, fullScreen]);
 
   if (images.length === 0) {
-    return <div className="flex h-72 items-center justify-center bg-slate-100 text-slate-500">ללא תמונות</div>;
+    return (
+      <div className="relative flex h-72 items-center justify-center bg-slate-100 text-slate-500">
+        ללא תמונות
+        {strip}
+      </div>
+    );
   }
 
   const arrow =
@@ -51,6 +56,8 @@ export function AssetGallery({ images, alt }: { images: string[]; alt: string })
           onActivate={() => setFullScreen(true)}
           className="h-full w-full"
         />
+
+        {strip}
 
         <button
           type="button"
@@ -86,7 +93,7 @@ export function AssetGallery({ images, alt }: { images: string[]; alt: string })
             {/* LTR, or the bidi algorithm reorders `1 / 9` into `9 / 1`. */}
             <span
               dir="ltr"
-              className="absolute bottom-3 left-3 rounded bg-black/60 px-2 py-0.5 text-xs text-white"
+              className={`absolute left-3 z-10 rounded bg-black/60 px-2 py-0.5 text-xs text-white ${strip ? 'bottom-9' : 'bottom-3'}`}
             >
               {index + 1} / {images.length}
             </span>

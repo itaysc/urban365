@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Plus, X } from 'lucide-react';
 import { SiteFooter } from '@/components/SiteFooter';
@@ -9,7 +9,8 @@ import { HouseholdPlanner } from '@/components/mortgage/HouseholdPlanner';
 import { MixCompare } from '@/components/mortgage/MixCompare';
 import { Money, Num, Row, Slide } from '@/components/mortgage/fields';
 import { panelClass } from '@/components/mortgage/panel';
-import { digits, formatPrice, formatShekel, grouped } from '@/lib/format';
+import { loadBuyingPower, storeBuyingPower, type BuyingPower } from '@/lib/buying-power';
+import { digits, formatShekel, grouped } from '@/lib/format';
 import { loadSavedMixes, storeSavedMixes, type SavedMix } from '@/lib/mortgage-mixes';
 import {
   BUYER_LABEL,
@@ -42,6 +43,12 @@ const TAB: Record<Mode, string> = {
   budget: 'איזו דירה אפשר לקנות',
   household: 'כמה החזר מתאים לי',
 };
+
+/** The first tab is the address with no `tab`, so every existing link to the calculator stays there. */
+function tabFrom(value: string | null): Mode {
+  if (value === 'budget' || value === 'household') return value;
+  return 'payment';
+}
 
 /**
  * The caveat, per tab, because the two tabs no longer compute the same way.
@@ -240,31 +247,54 @@ function TrackRow({
  * the price by who the buyer is, and the repayment at a share of their income.
  */
 export function MortgagePage() {
-  const [params] = useSearchParams();
+  const [params, setParams] = useSearchParams();
+  const mode = tabFrom(params.get('tab'));
+  const [remembered] = useState(loadBuyingPower);
 
-  // Arrived from a listing, which is the common way in: start on that price with the
-  // deposit a first-time buyer needs for it, so the page opens on an answer.
+  // Arrived from a listing, which is the common way in: start on that price. Their
+  // deposit, when they have already typed one, stays theirs — the listing does not
+  // get to invent a new household.
   const fromListing = digits(params.get('price') ?? '');
+  const openingPrice = fromListing || remembered?.price || 2_000_000;
+  const openingEquity =
+    remembered?.equity ?? Math.ceil((openingPrice * DEFAULT_EQUITY_SHARE) / 10_000) * 10_000;
+  const openingBuyer = remembered?.buyer ?? 'first';
+  const openingRate = remembered?.annualRate ?? DEFAULT_RATE;
+  const openingYears = remembered?.years ?? DEFAULT_YEARS;
 
-  const [mode, setMode] = useState<Mode>('payment');
-  const [buyer, setBuyer] = useState<BuyerKind>('first');
-  const [rate, setRate] = useState(DEFAULT_RATE);
-  const [years, setYears] = useState(DEFAULT_YEARS);
+  const setMode = (next: Mode) => {
+    setParams(
+      (prev) => {
+        const nextParams = new URLSearchParams(prev);
+        if (next === 'payment') nextParams.delete('tab');
+        else nextParams.set('tab', next);
+        return nextParams;
+      },
+      // Replacing keeps a tab click off the back stack. A link that names a tab
+      // still pushes, so Back from עדכון returns to the search.
+      { replace: true, preventScrollReset: true },
+    );
+  };
 
-  const opening = fromListing || 2_000_000;
-  const [price, setPrice] = useState(opening);
+  const [buyer, setBuyer] = useState<BuyerKind>(openingBuyer);
+  const [rate, setRate] = useState(openingRate);
+  const [years, setYears] = useState(openingYears);
+
+  const [price, setPrice] = useState(openingPrice);
   /*
-   * The deposit that price needs, to the ten thousand above.
+   * The deposit that price needs, to the ten thousand above, when nobody has said
+   * otherwise.
    *
    * Rounded up rather than to the nearest: a tenth of a per cent below what the rule
    * asks for is still below it, and the page would open on its own warning.
    */
-  const [equity, setEquity] = useState(
-    Math.ceil((opening * DEFAULT_EQUITY_SHARE) / 10_000) * 10_000,
-  );
+  const [equity, setEquity] = useState(openingEquity);
 
-  const [income, setIncome] = useState(25_000);
-  const [commitments, setCommitments] = useState(0);
+  const [income, setIncome] = useState(remembered?.income ?? 25_000);
+  const [commitments, setCommitments] = useState(remembered?.commitments ?? 0);
+  // The 25,000 the field opens on is a placeholder. It becomes a salary when they
+  // type one, or when they send these numbers out to the listings.
+  const [incomeKnown, setIncomeKnown] = useState(remembered?.incomeKnown ?? false);
 
   /*
    * What they are willing to pay each month, once they say so.
@@ -274,7 +304,7 @@ export function MortgagePage() {
    * typed. The moment somebody sets a figure it stops moving under them — nobody
    * wants the number they just chose rewritten because they corrected their salary.
    */
-  const [chosenMonthly, setChosenMonthly] = useState<number | null>(null);
+  const [chosenMonthly, setChosenMonthly] = useState<number | null>(remembered?.chosenMonthly ?? null);
 
   const result = plan({ price, equity, annualRate: rate, years, buyer });
   const reach = budget({
@@ -295,30 +325,75 @@ export function MortgagePage() {
    * had just built. When the two stop agreeing the page says so and offers to resize
    * the mix, which keeps its shape.
    */
-  const [parts, setParts] = useState<MixPart[]>(() => defaultMix(result.loan, DEFAULT_YEARS));
+  const [shaped, setShaped] = useState(remembered?.shaped ?? false);
+  const [parts, setParts] = useState<MixPart[]>(() =>
+    remembered?.parts.length
+      ? remembered.parts.map((part) => ({ ...part }))
+      : defaultMix(result.loan, openingYears),
+  );
   const [savedMixes, setSavedMixes] = useState<SavedMix[]>(() => loadSavedMixes());
   /** The mix on screen before the last comparison replaced it. One step, not a history. */
   const [previousMix, setPreviousMix] = useState<MixPart[] | null>(null);
+
+  const snapshot = (): BuyingPower => ({
+    buyer,
+    equity,
+    income,
+    incomeKnown,
+    commitments,
+    chosenMonthly,
+    annualRate: rate,
+    years,
+    shaped,
+    parts: parts.map((part) => ({ ...part })),
+    price,
+  });
+
+  /*
+   * Written when the numbers change, and not on the way in.
+   *
+   * The opening snapshot is the form as it was born, placeholders included. It is
+   * recorded and not stored. A later one is stored only once it differs, so merely
+   * opening the calculator does not go and mark every listing.
+   */
+  const openedAs = useRef<string | null>(null);
+  useEffect(() => {
+    const next = JSON.stringify(snapshot());
+    if (openedAs.current === null) {
+      openedAs.current = next;
+      return;
+    }
+    if (next === openedAs.current) return;
+    storeBuyingPower(snapshot());
+    // snapshot() closes over the fields listed here; it is rebuilt every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [buyer, equity, income, incomeKnown, commitments, chosenMonthly, rate, years, shaped, parts, price]);
 
   const rememberMixes = (next: SavedMix[]) => {
     setSavedMixes(next);
     storeSavedMixes(next);
   };
 
+  /** A mix they touched. From here a listing is priced on the tracks, not the single rate. */
+  const editParts = (update: MixPart[] | ((current: MixPart[]) => MixPart[])) => {
+    setShaped(true);
+    setParts(update);
+  };
+
   const applyMix = (next: MixPart[]) => {
     setPreviousMix(parts);
-    setParts(next);
+    editParts(next);
   };
 
   const summary = mix(parts);
   const problems = mixProblems(parts, result.loan);
 
   const setPart = (at: number, next: MixPart) =>
-    setParts((current) => current.map((p, i) => (i === at ? next : p)));
+    editParts((current) => current.map((p, i) => (i === at ? next : p)));
 
   /** The track to offer next: the first that is not already in the mix, else prime. */
   const addPart = () =>
-    setParts((current) => {
+    editParts((current) => {
       const used = new Set(current.map((p) => p.key));
       const key = (Object.keys(TRACKS) as TrackKey[]).find((k) => !used.has(k)) ?? 'prime';
       // Opens at nothing rather than guessing: the amount comes out of the other
@@ -413,7 +488,7 @@ export function MortgagePage() {
                         key={at}
                         part={part}
                         onChange={(next) => setPart(at, next)}
-                        onRemove={() => setParts((c) => c.filter((_, i) => i !== at))}
+                        onRemove={() => editParts((c) => c.filter((_, i) => i !== at))}
                         removable={parts.length > 1}
                       />
                     ))}
@@ -438,7 +513,7 @@ export function MortgagePage() {
                     {problems.some((p) => p.kind === 'short' || p.kind === 'over') && (
                       <button
                         type="button"
-                        onClick={() => setParts((c) => rebalance(c, result.loan))}
+                        onClick={() => editParts((c) => rebalance(c, result.loan))}
                         className="rounded-lg bg-slate-900 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-slate-800"
                       >
                         {/* The ל prefix takes a hyphen before a numeral, as ב- does
@@ -456,7 +531,10 @@ export function MortgagePage() {
                   label="הכנסה חודשית נטו"
                   hint="של משק הבית — מה שנכנס לחשבון, לא ברוטו."
                   value={income}
-                  onChange={setIncome}
+                  onChange={(next) => {
+                    setIncomeKnown(true);
+                    setIncome(next);
+                  }}
                 />
                 <Money
                   id="commitments"
@@ -540,7 +618,7 @@ export function MortgagePage() {
                 canUndo={previousMix !== null}
                 onUndo={() => {
                   if (!previousMix) return;
-                  setParts(previousMix);
+                  editParts(previousMix);
                   setPreviousMix(null);
                 }}
                 onApply={applyMix}
@@ -676,15 +754,26 @@ export function MortgagePage() {
                 </p>
               )}
 
-              {/* The point of the whole page, on a site that sells flats: a budget is
-                  only useful pointed at what it buys. */}
-              {reach.price > 0 && (
-                <Link
-                  to={`/search?section=forsale&maxPrice=${reach.price}`}
-                  className="mt-4 block rounded-xl bg-blue-600 px-4 py-3 text-center text-sm font-semibold text-white transition hover:bg-blue-700"
-                >
-                  נכסים עד {formatPrice(reach.price)} ←
-                </Link>
+              {/*
+                The point of the whole page, on a site that sells flats: a budget is
+                only useful pointed at what it buys. The search is not cut down to
+                this price. Every listing stays, and the ones a bank would refuse
+                are marked from the numbers on this form.
+              */}
+              <Link
+                to="/search?section=forsale"
+                onClick={() => {
+                  setIncomeKnown(true);
+                  storeBuyingPower({ ...snapshot(), incomeKnown: true });
+                }}
+                className="mt-4 block rounded-xl bg-blue-600 px-4 py-3 text-center text-sm font-semibold text-white transition hover:bg-blue-700"
+              >
+                סימון הדירות לפי המספרים האלה ←
+              </Link>
+              {shaped && (
+                <p className="mt-2 text-xs leading-relaxed text-slate-500">
+                  הסימון מחושב לפי התמהיל שבניתם, לא לפי הריבית האחת כאן.
+                </p>
               )}
             </section>
           )}
@@ -699,7 +788,10 @@ export function MortgagePage() {
         <div hidden={mode !== 'household'}>
           <HouseholdPlanner
             netIncome={income}
-            onNetIncome={setIncome}
+            onNetIncome={(next) => {
+              setIncomeKnown(true);
+              setIncome(next);
+            }}
             commitments={commitments}
             onCommitments={setCommitments}
             repayment={reach.spend}

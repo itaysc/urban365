@@ -274,7 +274,7 @@ function bandTable(
 </div>`;
 }
 
-function card(listing: CityListing, perMonth: boolean): string {
+function card(listing: CityListing, perMonth: boolean, mark: boolean): string {
   const where = addressLine(listing);
   const facts = [
     listing.rooms ? `${number(listing.rooms)} חדרים` : null,
@@ -293,9 +293,13 @@ function card(listing: CityListing, perMonth: boolean): string {
    */
   const href = listingPath(listing.id, listing);
   const label = where || listing.propertyType || 'נכס';
+  // The raw shekels, for the script that paints this household's mortgage onto the
+  // card. Absent on a rental: there is no loan to mark, and a crawler never needs it.
+  const priced = mark && listing.price !== null && listing.price > 0;
 
-  return `<li class="card">
+  return `<li class="card"${priced ? ` data-price="${Math.round(listing.price ?? 0)}" data-id="${esc(listing.id)}"` : ''}>
 ${badgesFor(listing)}
+<div class="photo">
 ${
   listing.coverImageUrl
     ? // `alt=""`: the card is a single link whose text is this same address, so a
@@ -305,6 +309,7 @@ ${
       // heights and the grid reads as broken rather than as one listing having no photo.
       '<div class="noimage" aria-hidden="true"></div>'
 }
+</div>
 <div class="body">
 <span class="price">${esc(money(listing.price, perMonth))}</span>
 <a class="where" href="${esc(href)}">${esc(label)}</a>
@@ -396,7 +401,7 @@ export function renderCityPage(data: CityPage, appUrl: string, links = ''): stri
           ? `${number(data.listings.length)} מתוך ${number(summary.count)} הנכסים, החדשים ביותר תחילה.`
           : 'כל הנכסים שמוצעים כרגע, החדשים ביותר תחילה.',
       )}</p>
-<ul class="cards">${data.listings.map((l) => card(l, voice.perMonth)).join('')}</ul>`
+<ul class="cards">${data.listings.map((l) => card(l, voice.perMonth, data.section === 'forsale')).join('')}</ul>`
     : '';
 
   const body = `${trail.html}
@@ -455,6 +460,10 @@ ${nearby}
     canonical,
     indexable: summary.count >= MIN_INDEXABLE,
     onCityPages: true,
+    // Only a sale has a mortgage, and only a card with a price can carry one.
+    afford:
+      data.section === 'forsale' &&
+      data.listings.some((listing) => listing.price !== null && listing.price > 0),
     links,
     structuredData: [trail.data],
     appUrl,

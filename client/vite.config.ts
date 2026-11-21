@@ -22,7 +22,10 @@ export default defineConfig({
       name: 'home-assistant',
       configureServer(server) {
         server.middlewares.use((req, _res, next) => {
-          if (req.url?.split('?')[0] === '/assistant.js') req.url = '/src/home-assistant.ts';
+          const path = req.url?.split('?')[0];
+          if (path === '/assistant.js') req.url = '/src/home-assistant.ts';
+          // The city pages ask for this. Same idea: the file the HTML names is this module.
+          if (path === '/afford.js') req.url = '/src/city-affordability.ts';
           next();
         });
       },
@@ -89,10 +92,13 @@ export default defineConfig({
       input: {
         main: path.resolve(import.meta.dirname, 'index.html'),
         assistant: path.resolve(import.meta.dirname, 'src/home-assistant.ts'),
+        afford: path.resolve(import.meta.dirname, 'src/city-affordability.ts'),
       },
       output: {
         entryFileNames: (chunk) =>
-          chunk.name === 'assistant' ? 'assistant.js' : 'assets/[name]-[hash].js',
+          chunk.name === 'assistant' || chunk.name === 'afford'
+            ? `${chunk.name}.js`
+            : 'assets/[name]-[hash].js',
       },
     },
   },

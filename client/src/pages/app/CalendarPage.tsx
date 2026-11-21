@@ -108,7 +108,7 @@ export function CalendarPage() {
       if (value === null) next.delete(key);
       else next.set(key, value);
     }
-    setParams(next, { replace: !push });
+    setParams(next, { replace: !push, preventScrollReset: true });
   };
 
   const openNew = (at: Date) => go({ day: isoDay(at), new: localSlot(at) }, true);
@@ -363,7 +363,7 @@ export function CalendarPage() {
           {googleError ?? 'יומן Google חובר. הפגישות שתקבעו כאן יופיעו גם שם.'}
           <button
             type="button"
-            onClick={() => setParams(new URLSearchParams(), { replace: true })}
+            onClick={() => setParams(new URLSearchParams(), { replace: true, preventScrollReset: true })}
             className="ms-2 underline"
           >
             סגירה

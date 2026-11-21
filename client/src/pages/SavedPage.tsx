@@ -4,6 +4,10 @@ import { useQuery } from '@tanstack/react-query';
 import { Heart } from 'lucide-react';
 import { AssetModal } from '@/components/AssetModal';
 import { ListingCard } from '@/components/ListingCard';
+import { BuyingPowerNote } from '@/components/listing/Affordability';
+import { clearBuyingPower } from '@/lib/buying-power';
+import { useBuyingPower } from '@/lib/use-buying-power';
+import { usePriceChecks } from '@/lib/use-price-checks';
 import { SavedTabs } from '@/components/SavedTabs';
 import { SiteFooter } from '@/components/SiteFooter';
 import { SiteHeader } from '@/components/SiteHeader';
@@ -22,6 +26,7 @@ import type { Asset } from '@/types/yad2';
  */
 export function SavedPage() {
   const [selected, setSelected] = useState<Asset | null>(null);
+  const power = useBuyingPower();
 
   const { data: items, isPending } = useQuery({
     queryKey: qk.saved.list,
@@ -31,6 +36,9 @@ export function SavedPage() {
   // Read from the same cache the hearts write to, so unsaving one here empties it
   // immediately rather than leaving a filled heart on a listing no longer saved.
   const ids = (items ?? []).map((item) => item.id);
+  const gaps = usePriceChecks(
+    (items ?? []).filter((listing) => listing.section === 'forsale' && listing.price).map((listing) => listing.id),
+  );
   const { data: savedSet } = useQuery({
     queryKey: qk.saved.among(ids),
     queryFn: () => fetchSavedAmong(ids),
@@ -82,6 +90,10 @@ export function SavedPage() {
           </div>
         )}
 
+        {power && (items ?? []).some((listing) => listing.section === 'forsale') && (
+          <BuyingPowerNote power={power} onClear={clearBuyingPower} />
+        )}
+
         <div className="grid gap-4 sm:grid-cols-2">
           {(items ?? []).map((listing) => (
             // Everything here was saved when the page loaded; the heart then follows
@@ -91,6 +103,8 @@ export function SavedPage() {
               listing={listing}
               onOpen={open}
               saved={savedSet?.has(listing.id) ?? true}
+              power={power}
+              gap={listing.section === 'forsale' ? gaps.get(listing.id) ?? null : null}
             />
           ))}
         </div>

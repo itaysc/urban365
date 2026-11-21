@@ -56,6 +56,19 @@ export const END_USER_AGENT_LLM = {
   temperature: 0.3,
 } satisfies LlmPreset;
 
+/**
+ * Two or three questions to ask before a visit.
+ *
+ * Cold, and JSON, because a price in the answer would be a price we did not compute.
+ * The headline is written in code. This only phrases what the ad left out.
+ */
+export const PRICE_BRIEF_LLM = {
+  ...GPT_4O_MINI,
+  maxTokens: 300,
+  temperature: 0,
+  responseFormat: 'json',
+} satisfies LlmPreset;
+
 /** Folding the part of a conversation that has scrolled out of the window. Cold, and short. */
 export const CONVERSATION_SUMMARY_LLM = {
   ...GPT_4O_MINI,
