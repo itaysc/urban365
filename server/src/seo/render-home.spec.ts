@@ -28,7 +28,14 @@ describe('renderHomePage', () => {
     expect(html).toContain('<script type="module" src="/assistant.js"></script>');
     if (process.env.NODE_ENV !== 'development') expect(html).not.toContain('assistant-preamble');
     expect(html).toContain('class="hero"');
-    expect(html).toContain('/home/cover-1600.webp');
+    expect(html).toContain('/home/urban1-slow.mp4');
+    expect(html).toContain('poster="/home/urban1-poster.jpg"');
+    expect(html).toContain('muted');
+    expect(html).toContain('playsinline');
+    expect(html).toContain('id="u365-cover"');
+    expect(html).toContain('aria-label="עצירת הסרטון"');
+    expect(html).not.toContain('rate=8/30');
+    expect(html).not.toContain('/home/cover-1600.webp');
     expect(html).toContain('rel="preload"');
   });
 
@@ -49,7 +56,8 @@ describe('renderHomePage', () => {
     expect(html).toContain(`href="/nadlan/forsale/${encodeURIComponent(toSlug('חולון'))}"`);
     expect(html).toContain(`href="/forsale/${encodeURIComponent('אזור')}"`);
     expect(html).not.toMatch(/<a [^>]*href="[^"]*\?/);
-    expect(html).toContain('alt="קו הרקיע של תל אביב מעל חוף הים"');
+    expect(html).toContain('<video class="cover"');
+    expect(html).toContain('aria-hidden="true"');
     expect(html).toContain('<p class="tag">דירות למכירה ולהשכרה בישראל, מהסוכנויות ומבעלי הבתים, במקום אחד.</p>');
     expect(html).toContain('>12<');
   });

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, Navigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { HeroSearch } from '@/components/home/HeroSearch';
@@ -8,16 +8,6 @@ import { SiteHeader } from '@/components/SiteHeader';
 import { REGIONS } from '@/data/regions';
 import { qk } from '@/queries/keys';
 import { fetchCityLinks, type CityLink } from '@/services/search';
-
-/**
- * The cover.
- *
- * From Wikimedia, like the city photographs. Only the URL is here, because this file
- * renders the picture — its author and licence live with every other credit on
- * `/nadlan/credits`, which is where the licence asks them to be published.
- */
-/** Same files the server-rendered door preloads. Two widths, from this site. */
-const COVER_SET = '/home/cover-800.webp 800w, /home/cover-1600.webp 1600w';
 
 /** Per region, so a column is a column and not a page. */
 const PER_REGION = 10;
@@ -60,16 +50,35 @@ function byRegion(cities: CityLink[]): { name: string; cities: CityLink[] }[] {
  * search engine follows from the strongest page on the site.
  */
 function HeroCover() {
-  const photo = useRef<HTMLImageElement>(null);
+  const video = useRef<HTMLVideoElement>(null);
+  const layer = useRef<HTMLDivElement>(null);
+  const [playing, setPlaying] = useState(true);
 
   useEffect(() => {
-    const node = photo.current;
+    const node = video.current;
     if (!node) return;
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    node.muted = true;
+
+    const onPlay = () => setPlaying(true);
+    const onPause = () => setPlaying(false);
+    node.addEventListener('play', onPlay);
+    node.addEventListener('pause', onPause);
+
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      node.pause();
+      setPlaying(false);
+      return () => {
+        node.removeEventListener('play', onPlay);
+        node.removeEventListener('pause', onPause);
+      };
+    }
+
+    const move = layer.current;
     let frame = 0;
     const place = () => {
+      if (!move) return;
       const shift = Math.min(window.scrollY, 480) * 0.28;
-      node.style.transform = `translate3d(0, ${shift}px, 0) scale(1.08)`;
+      move.style.transform = `translate3d(0, ${shift}px, 0) scale(1.08)`;
     };
     const onScroll = () => {
       cancelAnimationFrame(frame);
@@ -80,24 +89,58 @@ function HeroCover() {
     return () => {
       cancelAnimationFrame(frame);
       window.removeEventListener('scroll', onScroll);
+      node.removeEventListener('play', onPlay);
+      node.removeEventListener('pause', onPause);
     };
   }, []);
 
+  const toggle = () => {
+    const node = video.current;
+    if (!node) return;
+    if (node.paused) void node.play();
+    else node.pause();
+  };
+
   return (
-    <div className="absolute inset-0 -z-10 overflow-hidden">
-      <img
-        ref={photo}
-        src="/home/cover-1600.webp"
-        srcSet={COVER_SET}
-        sizes="100vw"
-        alt="קו הרקיע של תל אביב מעל חוף הים"
-        title="קו הרקיע של תל אביב מעל חוף הים"
-        width={1600}
-        height={359}
-        className="u365-hero-photo absolute inset-x-0 -top-[8%] h-[120%] w-full object-cover"
-        fetchPriority="high"
-      />
-    </div>
+    <>
+      <div className="absolute inset-0 -z-10 overflow-hidden bg-slate-900">
+        <div ref={layer} className="u365-hero-photo absolute inset-x-0 -top-[8%] h-[120%] w-full">
+          <video
+            ref={video}
+            src="/home/urban1-slow.mp4"
+            poster="/home/urban1-poster.jpg"
+            width={1280}
+            height={720}
+            muted
+            autoPlay
+            loop
+            playsInline
+            preload="auto"
+            disablePictureInPicture
+            aria-hidden="true"
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={toggle}
+        aria-pressed={playing}
+        aria-label={playing ? 'עצירת הסרטון' : 'הפעלת הסרטון'}
+        className="absolute top-3 inset-inline-start-3 z-10 grid h-10 w-10 place-items-center rounded-full bg-white/15 text-white shadow-[inset_0_0_0_1px_rgb(255_255_255/0.45)] transition hover:bg-white/25 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+      >
+        {playing ? (
+          <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor" aria-hidden>
+            <rect x="6" y="5" width="4" height="14" rx="1" />
+            <rect x="14" y="5" width="4" height="14" rx="1" />
+          </svg>
+        ) : (
+          <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor" aria-hidden>
+            <path d="M8 5.5v13l11-6.5z" />
+          </svg>
+        )}
+      </button>
+    </>
   );
 }
 
@@ -236,7 +279,7 @@ export function LandingPage() {
           <HomeGuide />
 
           <p className="mt-6 text-xs text-slate-500">
-            תמונות הערים ותמונת השער מוויקיפדיה ומוויקישיתוף.{' '}
+            תמונות הערים מוויקיפדיה ומוויקישיתוף.{' '}
             <a className="hover:underline" href="/nadlan/credits">
               קרדיט לצלמים
             </a>

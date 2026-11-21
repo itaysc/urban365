@@ -270,7 +270,7 @@ export function LeadsPage() {
       )}
 
       <div className="flex flex-wrap gap-2">
-        <FilterChip label="הכול" active={!status} onClick={() => setParams({}, { replace: true })} />
+        <FilterChip label="הכל" active={!status} onClick={() => setParams({}, { replace: true })} />
         {STATUS_ORDER.map((value) => (
           <FilterChip
             key={value}

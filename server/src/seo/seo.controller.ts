@@ -30,7 +30,7 @@ import { renderBlogIndex, renderBlogPost } from './render-blog.js';
 import { renderCreditsPage } from './render-credits.js';
 import { renderFooterLinks } from './footer.js';
 import { renderAllCitiesPage } from './render-all-cities.js';
-import { renderHomePage } from './render-home.js';
+import { renderHomePage, withCoverPlayback } from './render-home.js';
 import { renderIndexPage, totalIn } from './render-index.js';
 import { renderGonePage, renderListingPage } from './render-listing.js';
 import { llmsFullTxt, llmsTxt } from './llms.js';
@@ -121,7 +121,8 @@ export class SeoController {
     this.placeScript = placeSearchScript(mail.apiUrl);
     // The bar's session check calls this host. Recorded once, before any page renders.
     setSessionApi(mail.apiUrl);
-    this.homeCsp = seoCsp(new URL(mail.apiUrl).origin, placeScriptHash(this.placeScript));
+    // The page appends the cover script to this one. The hash has to name that whole block.
+    this.homeCsp = seoCsp(new URL(mail.apiUrl).origin, placeScriptHash(withCoverPlayback(this.placeScript)));
   }
 
   /**

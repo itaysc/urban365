@@ -51,7 +51,7 @@ function rangeLabel(min: number | undefined, max: number | undefined, format = c
  * reading does not pull the filters beside it.
  */
 function widestRangeLabel(ceiling: number, step: number): string {
-  let widest = 'הכול';
+  let widest = 'הכל';
   for (let n = step; n <= ceiling; n += step) {
     const both = rangeLabel(n, n);
     if (both && both.length > widest.length) widest = both;
@@ -174,7 +174,7 @@ function FilterPopover({ label, value, reserved, width = '18rem', children }: Po
                 value ? 'font-semibold' : 'text-slate-500'
               }`}
             >
-              {value ?? 'הכול'}
+              {value ?? 'הכל'}
             </span>
           </span>
         </span>

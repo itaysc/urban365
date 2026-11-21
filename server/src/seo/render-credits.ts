@@ -3,18 +3,6 @@ import { esc } from './html.js';
 import { breadcrumbs, page } from './layout.js';
 
 /**
- * The cover on the home page.
- *
- * Its URL lives in the client, which renders it; its attribution lives here, which is
- * where attribution is published. One image, and the two halves do different jobs.
- */
-const COVER = {
-  what: 'תמונת השער בעמוד הבית — קו הרקיע של תל אביב ורמת גן',
-  credit: 'Ynhockey, CC BY-SA 4.0',
-  page: 'https://commons.wikimedia.org/wiki/File:Tel_Aviv_Skyline_01.jpg',
-};
-
-/**
  * Where the photographs come from and who took them.
  *
  * Creative Commons asks for credit "in any reasonable manner based on the medium,
@@ -42,22 +30,20 @@ export function renderCreditsPage(appUrl: string, links = ''): string {
 
   const cities = Object.entries(CITY_PHOTOS).sort(([a], [b]) => a.localeCompare(b, 'he'));
 
-  const rows = [
-    `<tr><th scope="row">${esc(COVER.what)}</th><td>${esc(COVER.credit)}</td>
-<td><a href="${esc(COVER.page)}" rel="noopener nofollow" target="_blank">בוויקישיתוף</a></td></tr>`,
-    ...cities.map(
+  const rows = cities
+    .map(
       ([city, photo]) => `<tr>
 <th scope="row">${esc(city)}</th>
 <td>${esc(photo.credit)}</td>
 <td><a href="${esc(photo.page)}" rel="noopener nofollow" target="_blank">בוויקישיתוף</a></td>
 </tr>`,
-    ),
-  ].join('');
+    )
+    .join('');
 
   const body = `${trail.html}
 <h1>קרדיט לתמונות</h1>
 <p class="lede">התמונות באתר הזה מגיעות מוויקיפדיה ומוויקישיתוף, ברישיונות Creative Commons או כנחלת הכלל. כל רישיון כזה מבקש שניתן קרדיט לצלם — והדף הזה הוא הקרדיט. תודה לכל מי שצילם.</p>
-<p class="note">התמונות של הנכסים עצמם אינן ברשימה: הן מגיעות עם המודעות, מהסוכנות או מבעל הנכס שפרסם אותן.</p>
+<p class="note">סרטון השער בעמוד הבית צולם עבור האתר. התמונות של הנכסים עצמם אינן ברשימה: הן מגיעות עם המודעות, מהסוכנות או מבעל הנכס שפרסם אותן.</p>
 
 <div class="scroller">
 <table>

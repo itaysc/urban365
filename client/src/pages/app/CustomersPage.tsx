@@ -272,7 +272,7 @@ export function CustomersPage() {
           }}
           aria-label="הסכם תיווך"
         >
-          <option value="">הסכם תיווך: הכול</option>
+          <option value="">הסכם תיווך: הכל</option>
           <option value="unsigned">ללא הסכם</option>
           <option value="signed">עם הסכם</option>
         </select>

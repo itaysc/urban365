@@ -6,15 +6,60 @@ import { page } from './layout.js';
 import { cityHref, mainSection, totalIn } from './render-index.js';
 
 /**
- * The same photograph the app's home uses, credited on `/nadlan/credits`.
+ * The same film the app's home uses.
  *
- * Served from this site in two widths, rather than from Wikimedia at 1920px. On a phone
- * the wide file was the thing the page waited on, and it could not start until the
- * browser had already read the body.
+ * The source is eight seconds. Playing that slowly in the browser holds each of its
+ * 24 frames, so the picture steps. This file is those eight seconds already stretched
+ * to thirty, with the missing frames filled in, and it plays at ordinary speed.
+ * The still is the first frame, shown until the file is ready and when the reader
+ * has asked for less motion.
  */
-const COVER_800 = '/home/cover-800.webp';
-const COVER_1600 = '/home/cover-1600.webp';
-const COVER_SET = `${COVER_800} 800w, ${COVER_1600} 1600w`;
+const COVER_VIDEO = '/home/urban1-slow.mp4';
+const COVER_POSTER = '/home/urban1-poster.jpg';
+
+const COVER_PAUSE = `<svg class="on" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>`;
+const COVER_PLAY = `<svg class="off" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" hidden><path d="M8 5.5v13l11-6.5z"/></svg>`;
+
+/**
+ * Mute the cover, honour reduced motion, and let the corner button stop it or start it.
+ *
+ * Hashed with the place-search script: `withCoverPlayback` is what the page embeds
+ * and what the home policy allows. A byte that is only in one of those two is a
+ * script the browser refuses to run.
+ */
+export const COVER_PLAYBACK_SCRIPT = `(function(){
+var v=document.querySelector(".hero video.cover");
+var b=document.getElementById("u365-cover");
+if(!v||!b)return;
+v.muted=true;
+var on=b.querySelector(".on");
+var off=b.querySelector(".off");
+function paint(){
+  var playing=!v.paused;
+  b.setAttribute("aria-pressed",playing?"true":"false");
+  b.setAttribute("aria-label",playing?"עצירת הסרטון":"הפעלת הסרטון");
+  if(on)on.hidden=!playing;
+  if(off)off.hidden=playing;
+}
+b.addEventListener("click",function(){
+  if(v.paused){var p=v.play();if(p&&p.catch)p.catch(function(){});}
+  else v.pause();
+});
+v.addEventListener("play",paint);
+v.addEventListener("pause",paint);
+if(window.matchMedia("(prefers-reduced-motion: reduce)").matches){
+  v.removeAttribute("autoplay");
+  var stop=function(){v.pause();paint();};
+  if(v.readyState>=1)stop();else v.addEventListener("loadedmetadata",stop);
+  return;
+}
+paint();
+})();`;
+
+/** The place-search script plus the cover. One block, so one hash covers both. */
+export function withCoverPlayback(placeScript: string): string {
+  return placeScript ? `${placeScript}\n${COVER_PLAYBACK_SCRIPT}` : COVER_PLAYBACK_SCRIPT;
+}
 
 const LINK_LEAD: Record<Section, string> = {
   forsale: 'דירות למכירה ב',
@@ -60,9 +105,9 @@ function renderGuide(): string {
 /**
  * The front door, drawn the way the app draws it.
  *
- * A photograph, the one question (where, and buying or renting), then the cities in
- * columns. There is no script here, so the three choices are radio buttons and the
- * box is a real field — submitting it opens the same search the app does.
+ * A film, the one question (where, and buying or renting), then the cities in
+ * columns. The three choices are radio buttons and the box is a real field —
+ * submitting it opens the same search the app does, with or without the script.
  */
 export function renderHomePage(
   groups: { name: string | null; cities: CityEntry[] }[],
@@ -104,9 +149,10 @@ export function renderHomePage(
 
   const body = `<section class="hero">
 <div class="stage">
-<img class="cover" src="${COVER_1600}" srcset="${COVER_SET}" sizes="100vw" alt="קו הרקיע של תל אביב מעל חוף הים" title="קו הרקיע של תל אביב מעל חוף הים" width="1600" height="359" fetchpriority="high">
+<div class="cover-move"><video class="cover" src="${COVER_VIDEO}" poster="${COVER_POSTER}" width="1280" height="720" muted autoplay loop playsinline preload="auto" disablepictureinpicture aria-hidden="true"></video></div>
 <div class="veil" aria-hidden="true"></div>
 </div>
+<button type="button" class="cover-toggle" id="u365-cover" aria-pressed="true" aria-label="עצירת הסרטון">${COVER_PAUSE}${COVER_PLAY}</button>
 <div class="hero-inner">
 <div>
 <h1>דירות למכירה ולהשכרה בישראל</h1>
@@ -135,7 +181,7 @@ export function renderHomePage(
 <div class="regions">${sections}</div>
 <p class="more"><a href="/nadlan">כל הערים ומחירי הנדל״ן בהן ←</a> <a href="/agencies">סוכנויות נדל״ן ←</a></p>
 ${renderGuide()}
-<p class="credit">תמונות הערים ותמונת השער מוויקיפדיה ומוויקישיתוף. <a href="/nadlan/credits">קרדיט לצלמים</a></p>
+<p class="credit">תמונות הערים מוויקיפדיה ומוויקישיתוף. <a href="/nadlan/credits">קרדיט לצלמים</a></p>
 </div>`;
 
   return page({
@@ -145,8 +191,8 @@ ${renderGuide()}
     canonical: `${appUrl}/`,
     indexable: true,
     door: true,
-    preload: `<link rel="preload" as="image" href="${COVER_800}" imagesrcset="${COVER_SET}" imagesizes="100vw" fetchpriority="high" type="image/webp">`,
-    extraScript: script,
+    preload: `<link rel="preload" as="image" href="${COVER_POSTER}" fetchpriority="high" type="image/jpeg">`,
+    extraScript: withCoverPlayback(script),
     links,
     structuredData: [
       {

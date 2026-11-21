@@ -112,7 +112,7 @@ export const SESSION_SCRIPT_HASH = `sha256-${createHash('sha256').update(SESSION
  */
 export function seoCsp(apiOrigin: string, extraScriptHash?: string): string {
   // Every one of these pages loads /assistant.js, a same-origin module.
-  // The extra hash is only the front door's place box.
+  // The extra hash is the front door's script: the place box and the cover rate.
   const scripts = extraScriptHash
     ? `'self' '${SESSION_SCRIPT_HASH}' '${extraScriptHash}'`
     : `'self' '${SESSION_SCRIPT_HASH}'`;
@@ -120,6 +120,8 @@ export function seoCsp(apiOrigin: string, extraScriptHash?: string): string {
   return [
     "default-src 'none'",
     "img-src 'self' https: data:",
+    // The front door's cover is a video. Without this, default-src 'none' blocks it.
+    "media-src 'self'",
     "style-src 'unsafe-inline' https://fonts.googleapis.com",
     "font-src https://fonts.gstatic.com",
     `script-src ${scripts}`,
@@ -147,8 +149,8 @@ export interface PageOptions {
    */
   door?: boolean;
   /**
-   * A second inline script, only for the front door's place box. Hashed on its own
-   * and named in that page's policy; the city pages do not carry it.
+   * A second inline script, only for the front door. The place box and the cover
+   * rate share it, and the hash is of that whole block. The city pages do not carry it.
    */
   extraScript?: string;
   /** Marks "מחירים לפי עיר" as the section being read. */
@@ -156,8 +158,8 @@ export interface PageOptions {
   /** Marks "בלוג" as the section being read. */
   onBlog?: boolean;
   /**
-   * A tag for `<head>`, already safe to embed. The front door preloads its photograph
-   * so the browser can fetch it before it reaches the body.
+   * A tag for `<head>`, already safe to embed. The front door preloads the cover's
+   * still so the browser can fetch it before it reaches the body.
    */
   preload?: string;
   /**
@@ -443,19 +445,29 @@ footer.site .small{margin:1.5rem 0 0;padding-top:1rem;border-top:1px solid #f1f5
 .sitelinks a:hover{color:#1d4ed8;text-decoration:underline}
 @media (max-width:30rem){h1{font-size:1.375rem}.figure dd{font-size:1.0625rem}}
 /*
- * The front door, matched to the app's own home: a photograph, the question, then the
+ * The front door, matched to the app's own home: a film, the question, then the
  * cities as columns. These rules come last so they win over the column styles above.
  */
 main.door{padding:0 0 3rem}
 .hero{position:relative;isolation:isolate;z-index:1}
-/* The photograph is clipped here. The hero itself is not, or the suggestion list
+/* The film is clipped here. The hero itself is not, or the suggestion list
    hanging under the search box would be cut off. */
-.hero .stage{position:absolute;inset:0;z-index:-1;overflow:hidden}
-.hero .cover{position:absolute;inset:-8% 0 auto;width:100%;height:120%;object-fit:cover;
+.hero .stage{position:absolute;inset:0;z-index:-1;overflow:hidden;background:#0f172a}
+/* The scale sits on a wrapper. A transform on the video itself makes Chrome paint
+   the frame in blocks. */
+.hero .cover-move{position:absolute;inset:-8% 0 auto;width:100%;height:120%;
   transform:scale(1.06);transform-origin:center 30%}
+.hero .cover{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#0f172a}
 .hero .veil{position:absolute;inset:0;
   background:radial-gradient(ellipse 78% 68% at 50% 42%,rgb(15 23 42 / .62),transparent 72%),
     linear-gradient(to bottom,rgb(15 23 42 / .12),rgb(15 23 42 / .5))}
+.cover-toggle{position:absolute;z-index:2;top:.75rem;inset-inline-start:.75rem;display:grid;
+  place-items:center;width:2.5rem;height:2.5rem;padding:0;border:0;border-radius:9999px;color:#fff;
+  background:rgb(255 255 255 / .18);box-shadow:inset 0 0 0 1px rgb(255 255 255 / .45);cursor:pointer}
+.cover-toggle:hover{background:rgb(255 255 255 / .28)}
+.cover-toggle:focus-visible{outline:2px solid #fff;outline-offset:2px}
+.cover-toggle svg{width:1.05rem;height:1.05rem}
+.cover-toggle svg[hidden]{display:none}
 .hero-inner{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;
   gap:1.5rem;max-width:56rem;margin:0 auto;padding:4rem 1rem;text-align:center}
 @media (min-width:40rem){.hero-inner{padding:6rem 1rem}}
@@ -506,7 +518,7 @@ main.door{padding:0 0 3rem}
 .pill:hover{transform:perspective(900px) rotateX(7deg) translateY(-2px)}
 .find:focus-within .pill{transform:perspective(900px) rotateX(0deg) translateY(-2px)}
 @media (prefers-reduced-motion:reduce){
-  .pill,.pill:hover,.find:focus-within .pill,.hero .cover{transform:none;transition:none}
+  .pill,.pill:hover,.find:focus-within .pill,.hero .cover-move{transform:none;transition:none}
 }
 /* The names sit in the field, beside the caret. A direct-child button is the search
    control; the remove buttons live inside a badge and must not inherit it. */
