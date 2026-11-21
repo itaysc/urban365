@@ -222,6 +222,24 @@ export function storedAssistantOpen(agentId: AssistantAgentId = 'end-user'): boo
   }
 }
 
+/** Phones are below the site's wide layout. The panel there covers the page. */
+const NARROW_SCREEN = '(max-width: 639px)';
+
+/**
+ * Whether the panel is already open when the page arrives.
+ *
+ * A phone starts on the button. Opening the chat there is a tap. A wider screen
+ * comes back to the chat the person left open.
+ */
+export function assistantOpensOnLoad(agentId: AssistantAgentId = 'end-user'): boolean {
+  try {
+    if (window.matchMedia(NARROW_SCREEN).matches) return false;
+  } catch {
+    // Without a media query the stored choice is the only signal we have.
+  }
+  return storedAssistantOpen(agentId);
+}
+
 export function rememberAssistantOpen(open: boolean, agentId: AssistantAgentId = 'end-user'): void {
   try {
     window.localStorage.setItem(openKey(agentId), open ? '1' : '0');

@@ -1,5 +1,16 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { displayChatText, formatChatDate, forgetTranscript, rememberTranscript, shownTranscript, stickAfterScroll, storedTranscript, typeStep } from './assistant';
+import {
+  assistantOpensOnLoad,
+  displayChatText,
+  formatChatDate,
+  forgetTranscript,
+  rememberAssistantOpen,
+  rememberTranscript,
+  shownTranscript,
+  stickAfterScroll,
+  storedTranscript,
+  typeStep,
+} from './assistant';
 import { actionText, CHAT_CATEGORIES } from './chat-actions';
 import { valuationReply } from './valuation-reply';
 
@@ -151,6 +162,41 @@ describe('chat transcript', () => {
   it('keeps the open chat when the server copy has not arrived', () => {
     const open = [{ role: 'user' as const, content: 'חולון', cards: [], needsSignIn: false }];
     expect(shownTranscript(open, [])).toEqual(open);
+  });
+});
+
+describe('assistant open on load', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  function windowWith(widthQueryMatches: boolean, stored: string | null) {
+    const store = new Map<string, string>();
+    if (stored !== null) store.set('nadlan:assistant:open:end-user', stored);
+    vi.stubGlobal('window', {
+      localStorage: {
+        getItem: (key: string) => store.get(key) ?? null,
+        setItem: (key: string, value: string) => store.set(key, value),
+        removeItem: (key: string) => store.delete(key),
+      },
+      matchMedia: (query: string) => ({ matches: query.includes('max-width') ? widthQueryMatches : false }),
+    });
+  }
+
+  it('stays closed on a phone even when the chat was left open', () => {
+    windowWith(true, '1');
+    expect(assistantOpensOnLoad('end-user')).toBe(false);
+  });
+
+  it('comes back open on a wider screen when the chat was left open', () => {
+    windowWith(false, '1');
+    expect(assistantOpensOnLoad('end-user')).toBe(true);
+  });
+
+  it('stays closed on a wider screen when the chat was closed', () => {
+    windowWith(false, '0');
+    rememberAssistantOpen(false, 'end-user');
+    expect(assistantOpensOnLoad('end-user')).toBe(false);
   });
 });
 

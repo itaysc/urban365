@@ -14,12 +14,12 @@ import {
   forgetTranscript,
   formatChatDate,
   loadConversation,
+  assistantOpensOnLoad,
   rememberAssistantOpen,
   rememberConversation,
   rememberTranscript,
   sendMessage,
   shownTranscript,
-  storedAssistantOpen,
   storedConversationId,
   storedTranscript,
   type AssistantAgentId,
@@ -110,7 +110,7 @@ export function AssistantPanel({
   note?: string;
 }) {
   useAssistantStyles();
-  const [open, setOpenState] = useState(() => storedAssistantOpen(agentId));
+  const [open, setOpenState] = useState(() => assistantOpensOnLoad(agentId));
   // `present` keeps the panel mounted through the slide out. `entered` is the
   // frame after it is in the document, so the browser can animate from off-screen.
   const [present, setPresent] = useState(open);
