@@ -19,7 +19,15 @@ import { ENABLE_GROUPS, toolSchemaTokens, visibleToolSpecs } from './tool-select
 import { ToolRegistry } from './tool-registry.js';
 import { intakeFollowUp, matchIntake, pendingToolIntake } from '../end-user/tool-intake.js';
 import { valuationFormCard } from '../end-user/valuation-form.js';
-import { addsValuationDetail, asksForOneFlat, pendingValuationQuestion, VALUATION_QUESTION_LEAD } from '../end-user/valuation-from-text.js';
+import {
+  addsValuationDetail,
+  asksForOneFlat,
+  filledValuationForm,
+  pendingValuationQuestion,
+  userSkipped,
+  VALUATION_QUESTION_LEAD,
+  valuationInputs,
+} from '../end-user/valuation-from-text.js';
 
 export type AgentEvent =
   | { event: 'ready'; data: { conversationId: string } }
@@ -161,6 +169,50 @@ export class AgentRuntime {
           return;
         }
       }
+    }
+
+    // A valuation the person has described is priced here, from those words, on the
+    // street point the valuation page uses. The model does not get to swap the rooms,
+    // the area, or the place for numbers it invented.
+    const saidNow = users.join('\n');
+    const heard = valuationInputs(saidNow);
+    const priceNow =
+      asksForOneFlat(saidNow) &&
+      (asksForOneFlat(latest) || filledValuationForm(latest) || userSkipped(latest)) &&
+      heard.city !== null &&
+      heard.street !== null &&
+      heard.rooms !== null &&
+      heard.area !== null &&
+      this.registry.forAgent(agent, this.excludedModules(agent)).some((tool) => tool.name === 'estimate_value');
+    if (priceNow) {
+      ctx.said = saidNow;
+      ctx.latestUserMessage = latest;
+      ctx.detailsAnswered = true;
+      ctx.recentCards = recentCards(transcript.messages);
+      const callId = `value-${transcript.messages.length}`;
+      const args = JSON.stringify({ city: heard.city, street: heard.street, rooms: heard.rooms, area: heard.area });
+      const result = await this.callTool(agent, ctx, { id: callId, name: 'estimate_value', arguments: args }, ['pricing']);
+      const rows: TranscriptMessage[] = [
+        {
+          role: 'assistant',
+          content: '',
+          toolCalls: [{ id: callId, name: 'estimate_value', arguments: args }],
+        },
+        {
+          role: 'tool',
+          content: result.summary,
+          toolName: 'estimate_value',
+          toolCallId: callId,
+          cards: result.cards,
+        },
+        { role: 'assistant', content: result.reply ?? result.summary },
+      ];
+      transcript.messages.push(...rows);
+      await this.store.append(transcript.id, rows);
+      if (result.cards?.length) yield { event: 'cards', data: { cards: result.cards } };
+      yield { event: 'text', data: { delta: result.reply ?? result.summary } };
+      yield { event: 'done', data: { conversationId: transcript.id } };
+      return;
     }
 
     const said = users.join('\n');

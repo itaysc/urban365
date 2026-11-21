@@ -114,6 +114,42 @@ describe('AgentRuntime', () => {
     expect(transcript.messages.map((message) => message.role)).toEqual(['user', 'assistant']);
   });
 
+  it('prices a filled valuation from the words, not from a number the model invented', async () => {
+    const seen: string[] = [];
+    const registry = new ToolRegistry();
+    registry.add({
+      name: 'estimate_value',
+      description: 'שווי',
+      audiences: ['end-user'],
+      group: 'pricing',
+      auth: false,
+      confirm: false,
+      moduleName: 'TestModule',
+      parameters: { type: 'object', properties: {} },
+      invoke: async (args) => {
+        seen.push(JSON.stringify(args));
+        return { summary: 'טווח שווי 2,100,000–2,400,000.', cards: [{ type: 'valuation', low: 2_100_000, high: 2_400_000, verdict: 'good', city: 'חולון' }] };
+      },
+    });
+
+    const transcript = blank();
+    const runtime = runtimeWith(registry, transcript, [{ content: 'לדעתי 9,999,999.', toolCalls: [] }]);
+    const said = 'אני רוצה הערכת שווי לדירה. בעיר חולון, רחוב דב הוז, 4 חדרים, 97 מ״ר';
+
+    const events = [];
+    for await (const event of runtime.chat(agent, caller(), said)) {
+      events.push(event);
+    }
+
+    const text = events
+      .filter((event) => event.event === 'text')
+      .map((event) => (event.event === 'text' ? event.data.delta : ''))
+      .join('');
+    expect(seen).toEqual(['{"city":"חולון","street":"דב הוז","rooms":4,"area":97}']);
+    expect(text).toContain('2,100,000');
+    expect(text).not.toContain('9,999,999');
+  });
+
   it('asks the office assistant for the same missing details', async () => {
     const registry = new ToolRegistry();
     const transcript = blank();

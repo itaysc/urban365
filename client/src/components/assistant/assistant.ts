@@ -190,6 +190,10 @@ function conversationKey(agentId: AssistantAgentId): string {
   return `nadlan:assistant:${agentId}`;
 }
 
+function transcriptKey(agentId: AssistantAgentId): string {
+  return `nadlan:assistant:transcript:${agentId}`;
+}
+
 function openKey(agentId: AssistantAgentId): string {
   return `nadlan:assistant:open:${agentId}`;
 }
@@ -234,6 +238,56 @@ export function forgetConversation(agentId: AssistantAgentId = 'end-user'): void
   }
 }
 
+/** What is on screen, so a new page in this tab opens on the same chat. */
+export function storedTranscript(agentId: AssistantAgentId = 'end-user'): AssistantMessage[] {
+  try {
+    const raw = window.sessionStorage.getItem(transcriptKey(agentId));
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    return parsed.flatMap((item) => {
+      if (!item || typeof item !== 'object') return [];
+      const message = item as AssistantMessage;
+      if (message.role !== 'user' && message.role !== 'assistant') return [];
+      if (typeof message.content !== 'string' || !Array.isArray(message.cards)) return [];
+      return [{ ...message, fresh: false }];
+    });
+  } catch {
+    return [];
+  }
+}
+
+export function rememberTranscript(messages: AssistantMessage[], agentId: AssistantAgentId = 'end-user'): void {
+  try {
+    const saved = messages.map((message) => {
+      const next = { ...message };
+      delete next.fresh;
+      return next;
+    });
+    window.sessionStorage.setItem(transcriptKey(agentId), JSON.stringify(saved));
+  } catch {
+    // The chat is still on this page. The next page starts from the server copy.
+  }
+}
+
+export function forgetTranscript(agentId: AssistantAgentId = 'end-user'): void {
+  try {
+    window.sessionStorage.removeItem(transcriptKey(agentId));
+  } catch {
+    // The panel already cleared what it is showing.
+  }
+}
+
+/**
+ * A page that just opened already has the chat, or it does not.
+ *
+ * The copy kept in this tab wins: it includes a form opened from the menu, which
+ * the server never stored. The server copy is only the start, when this tab has none.
+ */
+export function shownTranscript(current: AssistantMessage[], loaded: AssistantMessage[]): AssistantMessage[] {
+  return current.length > 0 ? current : loaded;
+}
+
 /** Deletes this browser's transcript on the server. The panel forgets its id only after this succeeds. */
 export async function clearHistory(agentId: AssistantAgentId = 'end-user'): Promise<boolean> {
   const response = await fetch(`${apiBaseUrl}/agents/${agentId}/conversations`, {
@@ -247,14 +301,19 @@ export async function clearHistory(agentId: AssistantAgentId = 'end-user'): Prom
 export async function loadConversation(
   id: string,
   agentId: AssistantAgentId = 'end-user',
-): Promise<AssistantMessage[] | null> {
-  const response = await fetch(`${apiBaseUrl}/agents/${agentId}/conversations/${id}`, {
-    credentials: 'include',
-    headers: { 'X-Requested-With': 'XMLHttpRequest' },
-  });
-  if (!response.ok) return null;
-  const body = (await response.json()) as { messages: AssistantMessage[] };
-  return body.messages;
+): Promise<{ ok: true; messages: AssistantMessage[] } | { ok: false; missing: boolean }> {
+  try {
+    const response = await fetch(`${apiBaseUrl}/agents/${agentId}/conversations/${id}`, {
+      credentials: 'include',
+      headers: { 'X-Requested-With': 'XMLHttpRequest' },
+    });
+    if (response.status === 404) return { ok: false, missing: true };
+    if (!response.ok) return { ok: false, missing: false };
+    const body = (await response.json()) as { messages?: AssistantMessage[] };
+    return { ok: true, messages: body.messages ?? [] };
+  } catch {
+    return { ok: false, missing: false };
+  }
 }
 
 export interface AssistantEvents {

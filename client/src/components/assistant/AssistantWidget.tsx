@@ -11,13 +11,17 @@ import {
   stickAfterScroll,
   typeStep,
   forgetConversation,
+  forgetTranscript,
   formatChatDate,
   loadConversation,
   rememberAssistantOpen,
   rememberConversation,
+  rememberTranscript,
   sendMessage,
+  shownTranscript,
   storedAssistantOpen,
   storedConversationId,
+  storedTranscript,
   type AssistantAgentId,
   type AssistantCard,
   type AssistantMessage,
@@ -58,7 +62,6 @@ function useAssistantStyles(): void {
 export function AssistantWidget() {
   const { pathname } = useLocation();
   const [signIn, setSignIn] = useState(false);
-  if (HIDDEN.some((pattern) => pattern.test(pathname))) return null;
 
   return (
     <>
@@ -124,7 +127,14 @@ export function AssistantPanel({
   const [clearing, setClearing] = useState(false);
   const [draft, setDraft] = useState('');
   const [category, setCategory] = useState<string | null>(null);
-  const [messages, setMessages] = useState<AssistantMessage[]>([]);
+  const [messages, setMessagesState] = useState<AssistantMessage[]>(() => storedTranscript(agentId));
+  const setMessages = (update: AssistantMessage[] | ((current: AssistantMessage[]) => AssistantMessage[])) => {
+    setMessagesState((current) => {
+      const next = typeof update === 'function' ? update(current) : update;
+      rememberTranscript(next, agentId);
+      return next;
+    });
+  };
   const conversationId = useRef<string | null>(storedConversationId(agentId));
   const scroller = useRef<HTMLDivElement>(null);
   const stickToBottom = useRef(true);
@@ -166,12 +176,16 @@ export function AssistantPanel({
     let cancelled = false;
     void loadConversation(id, agentId).then((loaded) => {
       if (cancelled) return;
-      if (!loaded) {
-        conversationId.current = null;
-        forgetConversation(agentId);
+      if (!loaded.ok) {
+        // A missing row cannot be continued. A failed request can, so the id stays.
+        // Either way the lines already on screen stay there.
+        if (loaded.missing) {
+          conversationId.current = null;
+          forgetConversation(agentId);
+        }
         return;
       }
-      setMessages(loaded);
+      setMessages((current) => shownTranscript(current, loaded.messages));
     });
     return () => {
       cancelled = true;
@@ -202,6 +216,7 @@ export function AssistantPanel({
       if (!cleared) return;
       conversationId.current = null;
       forgetConversation(agentId);
+      forgetTranscript(agentId);
       setMessages([]);
       setConfirmingClear(false);
     } finally {

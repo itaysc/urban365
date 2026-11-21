@@ -34,7 +34,7 @@ import {
 import { advise, DEFAULT_BUFFER_SHARE, DEFAULT_COST_GROWTH, NO_OUTGOINGS } from '../../mortgage/household.js';
 import { AgentTool } from '../core/agent-tool.decorator.js';
 import type { AgentCard, AgentContext, ToolResult } from '../core/agent.types.js';
-import { asksForOneFlat, describeInfluence, readValuation, userSkipped, valuationQuestion } from './valuation-from-text.js';
+import { asksForOneFlat, describeInfluence, readValuation, userSkipped, valuationInputs, valuationQuestion } from './valuation-from-text.js';
 import {
   AffordabilityDto,
   AreaPricesDto,
@@ -443,22 +443,6 @@ export class EndUserToolsService {
     dto: EstimateValueDto,
   })
   async estimateValue(dto: EstimateValueDto, ctx: AgentContext): Promise<ToolResult> {
-    const place = await this.places.find(dto.city);
-    const registered = dto.street ? await this.pickRegisteredStreet(dto.city, dto.street) : null;
-    if (registered && !('name' in registered)) {
-      const list = registered.choices.join(', ');
-      return {
-        summary: list
-          ? `כמה רחובות מתאימים ב${dto.city}: ${list}. צריך את השם המדויק.`
-          : `אין רחוב בשם ${dto.street?.trim()} ב${dto.city}.`,
-      };
-    }
-    const streetName = registered && 'name' in registered ? registered.name : undefined;
-    const street = streetName ? await this.places.locateStreet(dto.city, streetName) : null;
-    if (dto.street && !street) {
-      return { summary: `הרחוב ${streetName ?? dto.street} ב${dto.city} לא מוקם, אז אין נקודה להערכת שווי.` };
-    }
-
     const said = ctx.said ?? '';
     const stated = readValuation(said);
     if (stated.missing.length > 0 && !userSkipped(ctx.latestUserMessage ?? '') && !ctx.detailsAnswered) {
@@ -469,22 +453,44 @@ export class EndUserToolsService {
       };
     }
 
-    const latitude = street?.latitude ?? place?.latitude;
-    const longitude = street?.longitude ?? place?.longitude;
-    if (latitude === undefined || longitude === undefined) {
-      return { summary: `לא הצלחתי למקם את ${dto.city}. בלי נקודה אין הערכת שווי.` };
+    // The page will not price a flat the person did not describe. A room count or
+    // an area the model supplied on its own is a different flat, so it is ignored.
+    const heard = valuationInputs(said);
+    const city = heard.city ?? (asksForOneFlat(said) ? null : dto.city);
+    const streetText = heard.street ?? (asksForOneFlat(said) ? null : dto.street);
+    const rooms = heard.rooms ?? (asksForOneFlat(said) ? null : dto.rooms);
+    const area = heard.area ?? (asksForOneFlat(said) ? null : dto.area);
+    if (!city || !streetText || rooms === null || area === null) {
+      const reply = 'כדי לחשב כמו בדף הערכת השווי צריך עיר, רחוב, מספר חדרים ושטח רשום במ״ר. אל תמלא מספר שלא נאמר.';
+      return { summary: reply, reply };
     }
 
-    const context = await this.market.stateFor(dto.city, latitude, longitude, dto.rooms);
+    const place = await this.places.find(city);
+    const registered = await this.pickRegisteredStreet(city, streetText);
+    if (!('name' in registered)) {
+      const list = registered.choices.join(', ');
+      const reply = list
+        ? `כמה רחובות מתאימים ב${city}: ${list}. צריך את השם המדויק.`
+        : `אין רחוב בשם ${streetText.trim()} ב${city}.`;
+      return { summary: reply, reply };
+    }
+    const streetName = registered.name;
+    const street = await this.places.locateStreet(city, streetName);
+    if (!street) {
+      const reply = `הרחוב ${streetName} ב${city} לא מוקם, אז אין נקודה להערכת שווי. בדף מסמנים את הנקודה על המפה.`;
+      return { summary: reply, reply };
+    }
+
+    const context = await this.market.stateFor(city, street.latitude, street.longitude, rooms);
     const request: ValuationRequest = {
-      city: dto.city,
-      latitude,
-      longitude,
+      city,
+      latitude: street.latitude,
+      longitude: street.longitude,
       gush: stated.gush,
       chelka: stated.chelka,
       settlementCode: place?.settlementCode ?? null,
-      rooms: dto.rooms,
-      area: dto.area,
+      rooms,
+      area,
       attributes: toSubject(stated),
       market: context.verdict.state,
     };
@@ -494,7 +500,7 @@ export class EndUserToolsService {
 
     const range = result.range;
     const parts = result.workings.quality?.parts ?? [];
-    const where = streetName ? `${streetName}, ${dto.city}` : dto.city;
+    const where = `${streetName}, ${city}`;
     const adjustments = parts.map((part) => `${part.label} ${signedPercent(part.factor)}`).join(', ');
     const previous = [...(ctx.recentCards ?? [])].reverse().find((card) => card.type === 'valuation');
     const influence = previous
@@ -507,8 +513,7 @@ export class EndUserToolsService {
             `צפוי להימכר סביב ${shekel(range.expected)}. מחיר פרסום מומלץ ${shekel(range.asking)}.`,
             adjustments ? `מה הזיז את המחיר: ${adjustments}.` : 'אף פרט שנמסר לא הזיז את המחיר מול הדירות שהושוו.',
             influence,
-            street ? '' : 'בלי רחוב, הנקודה היא מרכז העיר.',
-            'זה אותו חישוב כמו בדף הערכת השווי, ואינו שמאות. צטט את המספרים האלה, ואם יש משפט על ההפרש מההערכה הקודמת צטט גם אותו.',
+            'זה אותו חישוב כמו בדף הערכת השווי, על נקודת הרחוב, ואינו שמאות. צטט את המספרים האלה, ואם יש משפט על ההפרש מההערכה הקודמת צטט גם אותו.',
           ]
             .filter(Boolean)
             .join('\n')
@@ -521,8 +526,8 @@ export class EndUserToolsService {
           expected: range?.expected ?? null,
           asking: range?.asking ?? null,
           verdict: result.verdict,
-          city: dto.city,
-          street: streetName ?? null,
+          city,
+          street: streetName,
           parts: parts.map((part) => ({ label: part.label, factor: part.factor })),
         },
       ],

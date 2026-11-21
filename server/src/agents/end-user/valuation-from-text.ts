@@ -110,6 +110,27 @@ export function pendingValuationQuestion(
   return valuationQuestion(missing);
 }
 
+/**
+ * The city, street, rooms and registered area the person named.
+ *
+ * These are the same four things the valuation page will not calculate without.
+ * A number only the model filled in is left out, so the chat prices the flat
+ * that was described.
+ */
+export function valuationInputs(text: string): {
+  city: string | null;
+  street: string | null;
+  rooms: number | null;
+  area: number | null;
+} {
+  return {
+    city: cityOf(text),
+    street: streetOf(text),
+    rooms: roomsOf(text),
+    area: areaOf(text),
+  };
+}
+
 /** A valuation sheet that already carries a detail. The rest can stay unknown. */
 export function filledValuationForm(text: string): boolean {
   if (!/אני רוצה הערכת שווי לדירה/.test(text)) return false;
@@ -201,6 +222,66 @@ function topFloorOf(text: string): number | null {
   if (of) return Number(of[1]);
   const storeys = text.match(/(\d{1,2})\s*קומות/);
   return storeys ? Number(storeys[1]) : null;
+}
+
+function cityOf(text: string): string | null {
+  const named = [...text.matchAll(/בעיר\s+([א-ת״"']{2,}(?:\s+[א-ת״"']{2,})?)/g)].at(-1);
+  if (named) return named[1];
+  const stops = new Set([
+    'דירה',
+    'דירת',
+    'רחוב',
+    'משכנתא',
+    'ממוצע',
+    'החזר',
+    'מודעה',
+    'מודעות',
+    'חדרים',
+    'חדר',
+    'תקציב',
+    'מחיר',
+    'שכונה',
+    'שכונת',
+    'עיר',
+    'בית',
+    'בניין',
+    'קומה',
+    'מצב',
+    'עבר',
+    'כלל',
+    'נוסף',
+    'ערך',
+    'מידה',
+    'תנאי',
+    'סביבות',
+  ]);
+  let found: string | null = null;
+  for (const match of text.matchAll(/(?:^|\s)ב([א-ת]{2,}(?:\s+[א-ת]{2,})?)/g)) {
+    const [first, second] = match[1].split(/\s+/);
+    if (stops.has(first)) continue;
+    found = second ? `${first} ${second}` : first;
+  }
+  return found;
+}
+
+/** "רחוב דב הוז 9" keeps the house number; the register match drops it, as the page does. */
+function streetOf(text: string): string | null {
+  const match = [...text.matchAll(/(?:רחוב|שדרות|שד['׳.]?)\s+([^,\n]+?)(?=\s+ב[א-ת]|,|$)/g)].at(-1);
+  const street = match?.[1]?.trim().replace(/[.,]$/, '');
+  return street ? street : null;
+}
+
+function roomsOf(text: string): number | null {
+  const match = [...text.matchAll(/(\d+(?:\.\d)?)\s*חדר/g)].at(-1);
+  return match ? Number(match[1]) : null;
+}
+
+function areaOf(text: string): number | null {
+  const registered = [...text.matchAll(/(\d[\d,]*)\s*מ["״']ר/g)].at(-1);
+  if (registered) return Number(registered[1].replace(/,/g, ''));
+  const withoutBalcony = text.replace(/מרפסת(?:\s+\S+){0,3}/g, '');
+  const metres = [...withoutBalcony.matchAll(/(\d[\d,]*)\s*מטר/g)].at(-1);
+  return metres ? Number(metres[1].replace(/,/g, '')) : null;
 }
 
 function numberAfter(text: string, pattern: RegExp): number | null {

@@ -8,7 +8,7 @@ import { endUserSystemPrompt } from './end-user.prompt.js';
 import { EndUserToolsService } from './end-user.tools.js';
 import { pendingToolIntake } from './tool-intake.js';
 import { valuationFormCard } from './valuation-form.js';
-import { asksForOneFlat, describeInfluence, pendingValuationQuestion, readValuation, userSkipped } from './valuation-from-text.js';
+import { asksForOneFlat, describeInfluence, pendingValuationQuestion, readValuation, userSkipped, valuationInputs } from './valuation-from-text.js';
 
 describe('end-user assistant', () => {
   const tools = toolsOn(EndUserToolsService);
@@ -74,6 +74,13 @@ describe('end-user assistant', () => {
       expect.arrayContaining(['קומה', 'מעלית', 'מחסן', 'מצב הבניין', 'נוף']),
     );
     expect(form.dataModel.address).toBe('דב הוז, חולון');
+    const sheet =
+      'אני רוצה הערכת שווי לדירה. בעיר חולון, רחוב דב הוז 9, 4 חדרים, 97 מ״ר, קומה 2 מתוך 4, הדירה במצב סביר, יש מרפסת, אין ממ״ד, יש חניה';
+    expect(valuationInputs(sheet)).toEqual({ city: 'חולון', street: 'דב הוז 9', rooms: 4, area: 97 });
+    expect(readValuation(sheet).hasParking).toBe(true);
+    expect(readValuation(sheet).hasMamad).toBe(false);
+    expect(readValuation(sheet).floor).toBe(2);
+    expect(readValuation(sheet).topFloor).toBe(4);
     expect(form.dataModel.rooms).toBe('4');
     expect(form.dataModel.area).toBe('97');
     expect(form.dataModel.balcony).toEqual(['yes']);

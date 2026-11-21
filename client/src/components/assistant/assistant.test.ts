@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { displayChatText, formatChatDate, stickAfterScroll, typeStep } from './assistant';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { displayChatText, formatChatDate, forgetTranscript, rememberTranscript, shownTranscript, stickAfterScroll, storedTranscript, typeStep } from './assistant';
 import { actionText, CHAT_CATEGORIES } from './chat-actions';
 import { valuationReply } from './valuation-reply';
 
@@ -117,6 +117,40 @@ describe('chat actions', () => {
     expect(sell.card.components.some((component) => component.href === '/blog/איך-מוכרים-דירה')).toBe(true);
     expect(buy.card.components.some((component) => component.text === 'איך קונים ומחפשים דירה')).toBe(true);
     expect(sell.card.components.some((component) => component.component === 'List')).toBe(true);
+  });
+});
+
+describe('chat transcript', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('is still there after the page is opened again', () => {
+    const store = new Map<string, string>();
+    vi.stubGlobal('window', {
+      sessionStorage: {
+        getItem: (key: string) => store.get(key) ?? null,
+        setItem: (key: string, value: string) => store.set(key, value),
+        removeItem: (key: string) => store.delete(key),
+      },
+    });
+
+    rememberTranscript(
+      [{ role: 'assistant', content: 'הנה הטווח.', cards: [], needsSignIn: false, fresh: true }],
+      'end-user',
+    );
+
+    expect(storedTranscript('end-user')).toEqual([
+      { role: 'assistant', content: 'הנה הטווח.', cards: [], needsSignIn: false, fresh: false },
+    ]);
+    expect(shownTranscript(storedTranscript('end-user'), [])).toHaveLength(1);
+    forgetTranscript('end-user');
+    expect(storedTranscript('end-user')).toEqual([]);
+  });
+
+  it('keeps the open chat when the server copy has not arrived', () => {
+    const open = [{ role: 'user' as const, content: 'חולון', cards: [], needsSignIn: false }];
+    expect(shownTranscript(open, [])).toEqual(open);
   });
 });
 
