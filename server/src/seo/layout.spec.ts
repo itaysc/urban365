@@ -42,4 +42,10 @@ describe('session check', () => {
     expect(html()).toContain('id="u365-assistant"');
     expect(html()).toContain('src="/assistant.js"');
   });
+
+  it('loads the accessibility button from this origin', () => {
+    expect(html()).toContain('src="/nagish.js"');
+    expect(html()).toContain('#opennagish-widget');
+    expect(seoCsp('https://api.urban365.co.il')).not.toContain('jsdelivr');
+  });
 });

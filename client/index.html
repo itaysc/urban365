@@ -94,6 +94,30 @@
     <meta name="twitter:description" content="דירות למכירה ולהשכרה בישראל לפי עיר. ראו מה נמכר באמת, את הנכסים שמוצעים עכשיו, הערכת שווי ומחשבון משכנתא — מסוכנויות ומבעלי בתים, לפני הפנייה." />
     <meta name="twitter:image" content="https://urban365.co.il/og-image.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!--
+      Open-Nagish builds its button inside a shadow host styled `all: initial`.
+      That host is an inline box at the end of the document, and the button is
+      fixed to the box rather than to the window: it shows for a moment, then
+      scrolls away once the page is tall — a desktop window never catches it,
+      and a long page such as the agencies list never has it in view. The host
+      is the window instead. The trigger itself is locked in the script below,
+      because a resize (the phone's address bar) otherwise writes a top/left
+      that parks the button off screen.
+    -->
+    <style>
+      #opennagish-widget {
+        position: fixed !important;
+        inset: 0 !important;
+        z-index: 2147483646 !important;
+        display: block !important;
+        width: auto !important;
+        height: auto !important;
+        margin: 0 !important;
+        pointer-events: none !important;
+        background: transparent !important;
+        overflow: visible !important;
+      }
+    </style>
     <title>נדל״ן למכירה ולהשכרה בישראל — דירות לפי עיר · Urban365</title>
     <script type="application/ld+json">
       {
@@ -197,32 +221,10 @@
     <script type="module" src="/src/main.tsx"></script>
 
     <!--
-      Open-Nagish: the accessibility toolbar, as used in foozool-initiatives. It reads
-      `<html lang="he">` above, so the panel comes up in Hebrew without being asked.
-
-      Config must be defined before the script runs, which is why it sits here rather
-      than in <head> with a deferred script above it.
-
-      It is a third-party script from a CDN, so visitors' browsers fetch it from
-      jsdelivr. Pinned to an exact version rather than a range for that reason.
+      The same file the server-rendered pages load. Those pages only run scripts
+      from this origin, so the toolbar cannot come from a CDN there. The mailbox
+      in that file is the one `/accessibility` publishes.
     -->
-    <script>
-      window.OpenNagishConfig = {
-        language: 'he',
-        position: 'bottom-left',
-        statementUrl: '/accessibility',
-        statementData: {
-          orgName: 'Urban365',
-          // The accessibility coordinator's mailbox, the same one `/accessibility`
-          // publishes. The toolbar can generate a statement of its own from these, and
-          // one that gave a different address from ours would be the worse of the two.
-          orgEmail: 'accessibility@urban365.com',
-        },
-      };
-    </script>
-    <script
-      src="https://cdn.jsdelivr.net/npm/open-nagish@1.1.4/dist/open-nagish.min.js"
-      defer
-    ></script>
+    <script src="/nagish.js" defer></script>
   </body>
 </html>

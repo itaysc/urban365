@@ -614,6 +614,14 @@ main.door{padding:0 0 3rem}
 @media (min-width:40rem){.citycover h1{font-size:2.125rem}}
 .citycover .by{display:block;margin-top:.25rem;font-size:.5rem;color:rgb(255 255 255 / .85)}
 .citycover .by a{color:inherit;text-decoration:underline;text-underline-offset:.15rem}
+/*
+ * Open-Nagish's host is an inline box at the end of the document, so its button
+ * scrolls away with the page. The host is the window; /nagish.js locks the
+ * trigger into the corner. Clicks pass through everywhere except that button.
+ */
+#opennagish-widget{position:fixed!important;inset:0!important;z-index:2147483646!important;
+  display:block!important;width:auto!important;height:auto!important;margin:0!important;
+  pointer-events:none!important;background:transparent!important;overflow:visible!important}
 `;
 
 /**
@@ -709,6 +717,7 @@ ${blocks}
 ${options.extraScript ? `<script>${options.extraScript}</script>` : ''}
 <div id="u365-assistant"></div>
 ${process.env.NODE_ENV === 'development' ? '<script type="module" src="/src/assistant-preamble.js"></script>\n' : ''}<script type="module" src="/assistant.js"></script>
+<script src="/nagish.js" defer></script>
 ${options.afford ? '<script type="module" src="/afford.js"></script>' : ''}
 <footer class="site"><div class="${frame}">
 ${options.links ?? ''}
