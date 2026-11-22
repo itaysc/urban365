@@ -183,8 +183,9 @@ function paymentFor(power: BuyingPower, loan: number): number {
  * What this apartment costs this household, and which of the rules it fails.
  *
  * Equity and the income cap are the bank's rules. Cash is the tax and the lawyer,
- * which the bank will not lend: it is marked only once the deposit already covers
- * the bank's share, because a short deposit is the thing to say first.
+ * which the bank will not lend. That money still comes out of the deposit, so a
+ * deposit that covers the bank and not the tax is marked as short equity too.
+ * A deposit that does not cover the bank is marked only as equity.
  */
 export function quoteListing(power: BuyingPower, price: number): ListingQuote {
   const equityRequired = Math.ceil(price * (1 - LTV_CAP[power.buyer]));
@@ -201,7 +202,7 @@ export function quoteListing(power: BuyingPower, price: number): ListingQuote {
 
   const marks: BuyingMark[] = [];
   if (power.equity < equityRequired) marks.push('equity');
-  else if (cashLeft < extraCash) marks.push('cash');
+  else if (cashLeft < extraCash) marks.push('equity', 'cash');
   // A shekel over is rounding, the same tolerance the budget uses.
   if (ceiling !== null && monthly - ceiling > 1) marks.push('income');
 

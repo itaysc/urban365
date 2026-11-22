@@ -169,17 +169,23 @@ function describedByTheSeller(text: string | null): string {
   return `<h2>תיאור</h2>${paragraphs.map((p) => `<p>${esc(p)}</p>`).join('')}`;
 }
 
+/**
+ * The photographs. Each one is a button: `/gallery.js` opens it in the same
+ * full-screen gallery the app uses, on the photograph that was clicked.
+ */
 function gallery(urls: string[], alt: string, strip: string | null): string {
   if (urls.length === 0) return '';
 
   return `<ul class="gallery">${urls
     .map((url, i) => {
       const band = i === 0 && strip ? strip : '';
-      return `<li><img src="${esc(url)}" alt="${esc(`${alt} — תמונה ${i + 1}`)}"${
+      return `<li><button type="button" class="shot" aria-label="${esc(
+        `הצגה במסך מלא, תמונה ${i + 1}`,
+      )}"><img src="${esc(url)}" alt="${esc(`${alt} — תמונה ${i + 1}`)}"${
         // The first is what somebody sees before anything scrolls, so it is not
         // deferred; everything below the fold is.
         i === 0 ? '' : ' loading="lazy"'
-      } width="640" height="420">${band}</li>`;
+      } width="640" height="420"></button>${band}</li>`;
     })
     .join('')}</ul>`;
 }
@@ -401,6 +407,8 @@ ${
     structuredData: [trail.data, listingJsonLd(listing, canonical, images)],
     appUrl,
     body,
+    // No photographs, nothing to open. The script is the app's own lightbox.
+    lightbox: images.length > 0,
   });
 }
 

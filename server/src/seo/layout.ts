@@ -160,6 +160,11 @@ export interface PageOptions {
    * this browser's mortgage onto them. Rent and commercial pages leave it off.
    */
   afford?: boolean;
+  /**
+   * A listing page with photographs. Loads the script that opens them in the same
+   * full-screen gallery the app uses. A page with no photographs leaves it off.
+   */
+  lightbox?: boolean;
   /** Marks "בלוג" as the section being read. */
   onBlog?: boolean;
   /**
@@ -395,6 +400,10 @@ aside.gap{background:#f8fafc;border-radius:.5rem;padding:.75rem 1rem;margin:.75r
   grid-template-columns:repeat(auto-fill,minmax(14rem,1fr));gap:.5rem}
 .gallery img{width:100%;height:11rem;object-fit:cover;border-radius:.625rem;background:#e2e8f0;
   display:block}
+/* The photograph is the button. Reset the browser's own so it stays a picture. */
+.gallery .shot{display:block;width:100%;margin:0;padding:0;border:0;background:none;
+  cursor:zoom-in;border-radius:.625rem}
+.gallery .shot:focus-visible{outline:2px solid #1d4ed8;outline-offset:2px}
 /* The first photograph is the one somebody looks at, so it gets the room. */
 .gallery li:first-child{grid-column:1/-1}
 .gallery li:first-child img{height:20rem}
@@ -719,6 +728,7 @@ ${options.extraScript ? `<script>${options.extraScript}</script>` : ''}
 ${process.env.NODE_ENV === 'development' ? '<script type="module" src="/src/assistant-preamble.js"></script>\n' : ''}<script type="module" src="/assistant.js"></script>
 <script src="/nagish.js" defer></script>
 ${options.afford ? '<script type="module" src="/afford.js"></script>' : ''}
+${options.lightbox ? '<script type="module" src="/gallery.js"></script>' : ''}
 <footer class="site"><div class="${frame}">
 ${options.links ?? ''}
 <!--

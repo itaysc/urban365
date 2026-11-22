@@ -85,9 +85,10 @@ describe('quoteListing', () => {
     expect(quote.marks).toEqual(['income']);
   });
 
-  it('marks tax and lawyer once the bank is already satisfied', () => {
+  it('marks tax and lawyer as missing equity once the bank is already satisfied', () => {
     const quote = quoteListing(power({ equity: 400_000, incomeKnown: false }), 1_600_000);
-    expect(quote.marks).toEqual(['cash']);
+    expect(quote.marks).toEqual(['equity', 'cash']);
+    expect(quote.equityShortfall).toBe(0);
     expect(quote.ceiling).toBeNull();
   });
 

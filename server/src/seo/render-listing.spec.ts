@@ -75,6 +75,25 @@ function structured(html: string): Record<string, unknown>[] {
 }
 
 describe('renderListingPage', () => {
+  it('opens each photograph in the gallery', () => {
+    const html = renderListingPage(listing(), [], APP);
+
+    expect(html).toContain('class="shot"');
+    expect(html).toContain('הצגה במסך מלא, תמונה 1');
+    expect(html).toContain('src="/gallery.js"');
+  });
+
+  it('leaves the gallery off a listing with no photographs', () => {
+    const html = renderListingPage(
+      listing({ coverImageUrl: null, imageUrls: [], images: [] }),
+      [],
+      APP,
+    );
+
+    expect(html).not.toContain('class="shot"');
+    expect(html).not.toContain('src="/gallery.js"');
+  });
+
   it('says how many people saved the listing', () => {
     const html = renderListingPage(listing({ savedCount: 12 }), [], APP);
 
@@ -245,8 +264,8 @@ describe('renderListingPage', () => {
     expect(scripts.filter((a) => a.trim() === '')).toHaveLength(1);
     expect(external).toEqual(
       process.env.NODE_ENV === 'development'
-        ? ['/src/assistant-preamble.js', '/assistant.js']
-        : ['/assistant.js'],
+        ? ['/src/assistant-preamble.js', '/assistant.js', '/nagish.js', '/gallery.js']
+        : ['/assistant.js', '/nagish.js', '/gallery.js'],
     );
   });
 

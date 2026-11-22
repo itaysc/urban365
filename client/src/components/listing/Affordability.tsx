@@ -13,7 +13,8 @@ const MARK_LABEL: Record<BuyingMark, string> = {
  * The household's numbers on one for-sale card.
  *
  * The listing stays either way. The amber chip is the mark for a loan a bank would
- * not write, or for a deposit that covers the bank and not the tax.
+ * not write, or for a deposit that covers the bank and not the tax. The tax comes
+ * out of the same money, so that card is marked short of equity as well.
  */
 export function AffordabilityMark({ price, power }: { price: number; power: BuyingPower }) {
   const quote = quoteListing(power, price);

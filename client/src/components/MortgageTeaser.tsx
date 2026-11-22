@@ -74,7 +74,7 @@ function PersonalTeaser({ price, power }: { price: number; power: BuyingPower })
         </p>
       )}
 
-      {quote.marks.includes('equity') && (
+      {quote.equityShortfall > 0 && (
         <p className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-sm leading-relaxed text-amber-900">
           חסרים {formatShekel(quote.equityShortfall)} הון עצמי כדי שהבנק יממן את הרכישה הזו.
         </p>

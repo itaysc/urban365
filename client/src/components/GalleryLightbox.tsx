@@ -15,6 +15,12 @@ interface Props {
   onOpenChange: (open: boolean) => void;
   /** So the arrow keys, which live with the gallery, can slide this view too. */
   swipeRef?: RefObject<PhotoSwipeHandle | null>;
+  /**
+   * Where the dialog is portaled. The app leaves this empty, so it goes on
+   * `document.body`. A page that styles the dialog inside a shadow root passes
+   * the node that root contains.
+   */
+  container?: HTMLElement | null;
 }
 
 /**
@@ -35,6 +41,7 @@ export function GalleryLightbox({
   open,
   onOpenChange,
   swipeRef,
+  container,
 }: Props) {
   const own = useRef<PhotoSwipeHandle>(null);
   const swipe = swipeRef ?? own;
@@ -43,7 +50,7 @@ export function GalleryLightbox({
 
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
-      <Dialog.Portal>
+      <Dialog.Portal container={container ?? undefined}>
         <Dialog.Overlay className="fixed inset-0 z-[60] bg-black" />
 
         <Dialog.Content
