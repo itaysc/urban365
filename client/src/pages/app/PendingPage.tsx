@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button';
 import { Field, inputClass } from '@/components/ui/Field';
 import { PhoneField } from '@/components/ui/PhoneField';
 import { errorMessageOf } from '@/lib/apiError';
+import { hasCallablePhone } from '@/lib/phone';
 import { resubmitAgency, type AgencyLookupResult } from '@/services/auth';
 import type { AuthUser } from '@/types/auth';
 
@@ -62,6 +63,10 @@ function Declined({
     setError(null);
     if (mode === 'revise' && name.trim() === '') {
       setError('צריך שם לסוכנות.');
+      return;
+    }
+    if (mode === 'revise' && !hasCallablePhone(phone)) {
+      setError('צריך מספר טלפון תקין.');
       return;
     }
     if (mode === 'switch' && !claimed && otherName.trim() === '') {
@@ -122,8 +127,8 @@ function Declined({
               onChange={(e) => setName(e.target.value)}
             />
           </Field>
-          <Field label="טלפון" htmlFor="resubmit-phone">
-            <PhoneField id="resubmit-phone" value={phone} onChange={setPhone} />
+          <Field label="טלפון" htmlFor="resubmit-phone" required>
+            <PhoneField id="resubmit-phone" required value={phone} onChange={setPhone} />
           </Field>
           <Field label="אימייל ליצירת קשר" htmlFor="resubmit-email">
             <input

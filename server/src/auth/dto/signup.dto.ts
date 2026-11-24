@@ -1,5 +1,6 @@
-import { Equals, IsBoolean, IsEmail, IsIn, IsOptional, IsString, Matches, MaxLength, MinLength } from 'class-validator';
+import { Equals, IsBoolean, IsEmail, IsIn, IsOptional, IsString, Matches, MaxLength, MinLength, ValidateBy } from 'class-validator';
 import { AGENCY_VERTICALS, type AgencyVerticalValue } from '../agency-vertical.js';
+import { keptPhone } from '../../lib/phone.js';
 
 /** Mirrors the reference's policy: length plus a little complexity, nothing exotic. */
 export const PASSWORD_MIN = 10;
@@ -19,7 +20,16 @@ export class SignupDto {
   @IsString() @MinLength(1) @MaxLength(80) firstName!: string;
   @IsString() @MinLength(1) @MaxLength(80) lastName!: string;
 
-  @IsOptional() @IsString() @MaxLength(40) phone?: string;
+  @IsString()
+  @MaxLength(40)
+  @ValidateBy({
+    name: 'isIsraeliPhone',
+    validator: {
+      validate: (value: unknown) => typeof value === 'string' && keptPhone(value) !== null,
+      defaultMessage: () => 'צריך מספר טלפון תקין',
+    },
+  })
+  phone!: string;
 
   /**
    * Agreement to the terms and the privacy policy.

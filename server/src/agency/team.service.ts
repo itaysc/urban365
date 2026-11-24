@@ -15,6 +15,7 @@ import { agencyInviteTemplate, removedFromAgencyTemplate } from '../mail/templat
 import { PasswordService } from '../auth/password.service.js';
 import { StorageService } from '../storage/storage.service.js';
 import { userAvatarUrl } from './image-url.js';
+import { keptPhone } from '../lib/phone.js';
 import { normalizeEmail } from '../auth/normalize-email.js';
 import { can } from '../auth/permissions.js';
 import type { AcceptInviteDto, AgencyRoleValue, UpdateMyProfileDto } from './dto/team.dto.js';
@@ -214,6 +215,9 @@ export class TeamService {
 
       await this.assertNoOtherAgency(existing.id, invite.agencyId);
 
+      const phone = keptPhone(existing.phone) ?? keptPhone(dto.phone);
+      if (!phone) throw new BadRequestException('צריך מספר טלפון תקין.');
+
       return this.owner.$transaction(async (tx) => {
         await tx.agencyMembership.upsert({
           where: { userId_agencyId: { userId: existing.id, agencyId: invite.agencyId } },
@@ -245,6 +249,7 @@ export class TeamService {
             // what the account is *for*, and their BuyerProfile is untouched — an agent
             // looking for their own home keeps their shortlist.
             accountType: 'agency',
+            ...(keptPhone(existing.phone) ? {} : { phone }),
           },
         });
 
@@ -255,6 +260,8 @@ export class TeamService {
     if (!dto.password || !dto.firstName?.trim() || !dto.lastName?.trim()) {
       throw new BadRequestException('צריך למלא שם פרטי, שם משפחה וסיסמה.');
     }
+    const phone = keptPhone(dto.phone);
+    if (!phone) throw new BadRequestException('צריך מספר טלפון תקין.');
 
     const passwordHash = await this.passwords.hash(dto.password);
 
@@ -267,7 +274,7 @@ export class TeamService {
           accountType: 'agency',
           firstName: dto.firstName!.trim(),
           lastName: dto.lastName!.trim(),
-          phone: dto.phone?.trim() || null,
+          phone,
           // Receiving the link is itself proof of control over the address.
           emailVerifiedAt: new Date(),
         },
@@ -411,15 +418,26 @@ export class TeamService {
    * comes from the verified token rather than the request body.
    */
   async updateOwnProfile(userId: string, dto: UpdateMyProfileDto) {
-    const phone = dto.phone?.trim();
+    let phone: string | null | undefined;
+    if (dto.phone !== undefined) {
+      const kept = keptPhone(dto.phone);
+      if (kept) {
+        phone = kept;
+      } else {
+        const user = await this.owner.user.findUnique({ where: { id: userId }, select: { accountType: true } });
+        // A buyer may leave it blank. An agent may not: this is the number a buyer calls.
+        if (user?.accountType === 'agency') throw new BadRequestException('צריך מספר טלפון תקין.');
+        phone = dto.phone.trim() || null;
+      }
+    }
 
     return this.owner.user.update({
       where: { id: userId },
       data: {
         ...(dto.firstName?.trim() ? { firstName: dto.firstName.trim() } : {}),
         ...(dto.lastName?.trim() ? { lastName: dto.lastName.trim() } : {}),
-        // An empty string is how the client clears it; undefined means "not sent".
-        ...(dto.phone !== undefined ? { phone: phone || null } : {}),
+        // Undefined means "not sent". An empty string is how a buyer clears it.
+        ...(phone !== undefined ? { phone } : {}),
         ...(dto.bio !== undefined ? { bio: dto.bio.trim() || null } : {}),
         ...(dto.dailyBriefing !== undefined ? { dailyBriefing: dto.dailyBriefing } : {}),
       },

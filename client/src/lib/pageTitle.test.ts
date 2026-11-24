@@ -4,6 +4,8 @@ import { documentTitle, titleForPath } from './pageTitle';
 describe('titleForPath', () => {
   it('names a page from its path', () => {
     expect(titleForPath('/alerts')).toBe('חיפושים שמורים');
+    expect(titleForPath('/history')).toBe('עסקאות שנרשמו');
+    expect(titleForPath('/app/market')).toBe('מחירי שוק');
     expect(titleForPath('/app/calendar')).toBe('יומן');
   });
 

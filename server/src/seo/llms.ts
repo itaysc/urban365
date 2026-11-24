@@ -36,6 +36,7 @@ ${blog}
 - Open a single listing at ${appUrl}/nadlan/property/<address-and-id>.
 - Browse licensed real-estate agencies at ${appUrl}/agencies.
 - Estimate a property's value at ${appUrl}/valuation, using comparable sales in the area.
+- Read recorded sale prices around a street at ${appUrl}/history. Sign-in is required.
 - Work out a mortgage at ${appUrl}/mortgage.
 
 ## Key pages
@@ -47,6 +48,7 @@ ${blog}
 - Cities: ${appUrl}/nadlan/cities
 - Agencies directory: ${appUrl}/agencies
 - Valuation: ${appUrl}/valuation
+- Recorded sales: ${appUrl}/history
 - Mortgage calculator: ${appUrl}/mortgage
 - Sitemap index: ${appUrl}/sitemap.xml
 

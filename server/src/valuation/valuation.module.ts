@@ -3,6 +3,7 @@ import { Module } from '@nestjs/common';
 import { PrismaModule } from '../prisma/prisma.module.js';
 import { GeocodeModule } from '../geocode/geocode.module.js';
 import { MarketContextService } from './market-context.service.js';
+import { MarketHistoryService } from './market-history.service.js';
 import { ValuationController } from './valuation.controller.js';
 import { PlaceService } from './place.service.js';
 import { ValuationService } from './valuation.service.js';
@@ -11,7 +12,7 @@ import { ValuationService } from './valuation.service.js';
 @Module({
   imports: [PrismaModule, GeocodeModule],
   controllers: [ValuationController],
-  providers: [ValuationService, MarketContextService, PlaceService],
-  exports: [ValuationService, MarketContextService, PlaceService],
+  providers: [ValuationService, MarketContextService, PlaceService, MarketHistoryService],
+  exports: [ValuationService, MarketContextService, PlaceService, MarketHistoryService],
 })
 export class ValuationModule {}

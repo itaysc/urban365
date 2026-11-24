@@ -1,3 +1,22 @@
+import { parsePhoneNumberFromString } from 'libphonenumber-js';
+
+/**
+ * Whether this is an Israeli number someone can call.
+ *
+ * The same rule as `keptPhone` on the server: the Israeli numbering plan, including a
+ * 972 prefix typed without a plus.
+ */
+export function hasCallablePhone(value: string | null | undefined): boolean {
+  const trimmed = value?.trim() ?? '';
+  if (!trimmed) return false;
+  const digits = trimmed.replace(/\D/g, '');
+  const candidates = digits.startsWith('972') ? [trimmed, `+${digits}`] : [trimmed];
+  return candidates.some((candidate) => {
+    const parsed = parsePhoneNumberFromString(candidate, 'IL');
+    return parsed?.isValid() === true && parsed.country === 'IL';
+  });
+}
+
 /**
  * What a phone field will accept as it is typed.
  *

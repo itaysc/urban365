@@ -11,10 +11,9 @@ import { cityKey } from '../../listings/city-name.js';
 import { listingPath } from '../../seo/listing-slug.js';
 import { blogPost } from '../../seo/blog.js';
 import { HOME_GUIDE } from '../../seo/home-guide.js';
-import { summarise, byRooms, median, type StatRow } from '../../seo/stats.js';
-import { cellRangeWithin } from '../../cadastre/parcel-index.js';
-import { metresBetween } from '../../valuation/geo.js';
+import { summarise, byRooms, type StatRow } from '../../seo/stats.js';
 import { PlaceService } from '../../valuation/place.service.js';
+import { MarketHistoryService } from '../../valuation/market-history.service.js';
 import { MarketContextService } from '../../valuation/market-context.service.js';
 import { ValuationService, type ValuationRequest } from '../../valuation/valuation.service.js';
 import type { Subject } from '../../valuation/adjustments.js';
@@ -48,17 +47,7 @@ import {
   ResolvePlaceDto,
   StreetHistoryDto,
 } from './end-user.dto.js';
-import {
-  RESIDENTIAL_GROUPS,
-  STREET_HISTORY_LIMIT,
-  STREET_HISTORY_RADIUS_METRES,
-  STREET_HISTORY_YEARS,
-  listingOnStreet,
-  pickStreet,
-  streetHistoryCard,
-  streetHistorySummary,
-  type AskingPrices,
-} from './street-history.js';
+import { pickStreet, streetHistoryCard, streetHistorySummary } from './street-history.js';
 import { attachMortgageCalculator } from './mortgage-link.js';
 import { pageHref, PAGE_LINKS } from './pages.js';
 
@@ -104,6 +93,7 @@ export class EndUserToolsService {
     private readonly places: PlaceService,
     private readonly market: MarketContextService,
     private readonly valuation: ValuationService,
+    private readonly history: MarketHistoryService,
     private readonly prisma: PrismaService,
   ) {}
 
@@ -290,88 +280,26 @@ export class EndUserToolsService {
       return { summary: 'זו הערכת שווי לדירה אחת. קרא ל-estimate_value עם הפרטים שנאמרו.' };
     }
 
-    const picked = await this.pickRegisteredStreet(dto.city, dto.street);
-    const asked = dto.street.trim();
-    if (!('name' in picked)) {
-      const list = picked.choices.join(', ');
+    const found = await this.history.forStreet(dto);
+    if (found.status === 'unknown-street') {
+      const list = found.choices.join(', ');
+      const asked = dto.street.trim();
       return {
         summary: list
           ? `כמה רחובות מתאימים ב${dto.city}: ${list}. צריך את השם המדויק.`
           : `אין רחוב בשם ${asked} ב${dto.city} ברשימת הרחובות.`,
       };
     }
-
-    const place = await this.places.find(dto.city);
-    if (!place) return { summary: `לא מצאתי את ${dto.city} במרשם העסקאות.` };
-
-    const point = await this.places.locateStreet(dto.city, picked.name);
-    if (!point) {
-      return { summary: `הרחוב ${picked.name} ב${dto.city} קיים, אבל אין לו נקודה, אז אי אפשר לבחור את העסקאות שסביבו.` };
+    if (found.status === 'unknown-city') return { summary: `לא מצאתי את ${dto.city} במרשם העסקאות.` };
+    if (found.status === 'unplaced') {
+      return {
+        summary: `הרחוב ${found.street} ב${dto.city} קיים, אבל אין לו נקודה, אז אי אפשר לבחור את העסקאות שסביבו.`,
+      };
     }
 
-    const years = dto.years ?? STREET_HISTORY_YEARS;
-    const since = new Date();
-    since.setUTCFullYear(since.getUTCFullYear() - years);
-
-    const cells = cellRangeWithin(point.latitude, point.longitude, STREET_HISTORY_RADIUS_METRES);
-    const latSpan = STREET_HISTORY_RADIUS_METRES / 111_320;
-    const lngSpan =
-      STREET_HISTORY_RADIUS_METRES / (111_320 * Math.max(0.1, Math.cos((point.latitude * Math.PI) / 180)));
-
-    const rows = await this.prisma.marketDeal.findMany({
-      where: {
-        settlementCode: place.settlementCode,
-        cellLat: { gte: cells.minCellLat, lte: cells.maxCellLat },
-        cellLng: { gte: cells.minCellLng, lte: cells.maxCellLng },
-        latitude: { gte: point.latitude - latSpan, lte: point.latitude + latSpan },
-        longitude: { gte: point.longitude - lngSpan, lte: point.longitude + lngSpan },
-        dealDate: { gte: since },
-        propertyGroup: { in: [...RESIDENTIAL_GROUPS] },
-        inStats: true,
-        isFullDeal: true,
-        ...(dto.rooms !== undefined ? { rooms: dto.rooms } : {}),
-      },
-      orderBy: { dealDate: 'desc' },
-      take: STREET_HISTORY_LIMIT,
-      select: {
-        dealDate: true,
-        dealAmount: true,
-        rooms: true,
-        area: true,
-        pricePerSqm: true,
-        latitude: true,
-        longitude: true,
-      },
-    });
-
-    const deals = rows
-      .filter(
-        (row) =>
-          row.latitude !== null &&
-          row.longitude !== null &&
-          metresBetween(point, { latitude: row.latitude, longitude: row.longitude }) <= STREET_HISTORY_RADIUS_METRES,
-      )
-      .map((row) => ({
-        dealDate: row.dealDate,
-        amount: Number(row.dealAmount),
-        rooms: row.rooms,
-        area: row.area,
-        pricePerSqm: row.pricePerSqm,
-      }));
-
-    const asking = await this.askingOnStreet(place.settlement, dto.city, picked.name, dto.rooms);
-    const history = {
-      city: place.settlement,
-      street: picked.name,
-      years,
-      deals,
-      truncated: rows.length === STREET_HISTORY_LIMIT,
-      rooms: dto.rooms,
-      asking,
-    };
-    const card = streetHistoryCard(history);
+    const card = streetHistoryCard(found.history);
     return {
-      summary: streetHistorySummary(history),
+      summary: streetHistorySummary(found.history),
       ...(card ? { cards: [card] } : {}),
     };
   }
@@ -394,43 +322,6 @@ export class EndUserToolsService {
   private async namedStreets(city: string, text: string): Promise<string[]> {
     const picked = await this.pickRegisteredStreet(city, text);
     return 'name' in picked ? [picked.name] : picked.choices;
-  }
-
-  /** Published for-sale listings on this street, matched the way a person names it. */
-  private async askingOnStreet(
-    settlement: string,
-    city: string,
-    street: string,
-    rooms?: number,
-  ): Promise<AskingPrices | null> {
-    const cities = [...new Set([settlement.trim(), city.trim()].filter((name) => name.length > 0))];
-    const rows = await this.prisma.listing.findMany({
-      where: {
-        status: 'published',
-        delistedAt: null,
-        section: 'forsale',
-        OR: cities.map((name) => ({ city: { equals: name, mode: 'insensitive' as const } })),
-        price: { gt: 0 },
-        ...(rooms !== undefined ? { rooms } : {}),
-        AND: [FROM_A_VISIBLE_AGENCY],
-      },
-      select: { street: true, price: true, pricePerSquareMeter: true },
-      take: 400,
-    });
-
-    const onStreet = rows.filter(
-      (row) => row.street && row.price !== null && row.price > 0 && listingOnStreet(row.street, street),
-    );
-    if (onStreet.length === 0) return null;
-
-    const perSqm = onStreet
-      .map((row) => row.pricePerSquareMeter)
-      .filter((value): value is number => value !== null && value > 0);
-    return {
-      count: onStreet.length,
-      median: median(onStreet.map((row) => row.price as number)) ?? 0,
-      perSqm: perSqm.length > 0 ? median(perSqm) : null,
-    };
   }
 
   @AgentTool({

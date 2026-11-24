@@ -7,6 +7,7 @@ import {
   FileText,
   Handshake,
   HandHeart,
+  History,
   LayoutDashboard,
   Landmark,
   ShieldCheck,
@@ -31,6 +32,7 @@ export const NAV_ITEMS = [
   { path: '/app/leads', label: 'פניות', icon: Contact, group: 'work' },
   { path: '/app/customers', label: 'לקוחות', icon: ContactRound, group: 'work' },
   { path: '/app/deals', label: 'עסקאות', icon: Handshake, group: 'work' },
+  { path: '/app/market', label: 'מחירי שוק', icon: History, group: 'work' },
   {
     path: '/app/mortgage-cases',
     label: 'תיקי משכנתא',

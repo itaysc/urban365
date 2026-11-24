@@ -60,7 +60,7 @@ const navItem = (current: boolean) =>
     ? { className: `${navLink} font-semibold text-slate-900`, 'aria-current': 'page' as const }
     : { className: navLink };
 
-type LoginIntent = 'account' | 'sell' | 'valuation';
+type LoginIntent = 'account' | 'sell' | 'valuation' | 'history';
 
 /**
  * What each sign-in was asked for: what to say, and where to carry on to.
@@ -72,6 +72,7 @@ const ASKED_FOR: Record<LoginIntent, { because?: string; then?: string }> = {
   account: {},
   sell: { because: 'פרסום נכס פתוח למשתמשים רשומים', then: '/sell/new' },
   valuation: { because: 'הערכת שווי פתוחה למשתמשים רשומים', then: '/valuation' },
+  history: { because: 'היסטוריית העסקאות פתוחה למשתמשים רשומים', then: '/history' },
 };
 
 export function SiteHeader({ leading, subtitle, fullWidth = true }: Props) {
@@ -86,6 +87,7 @@ export function SiteHeader({ leading, subtitle, fullWidth = true }: Props) {
     blog: section('/blog'),
     mortgage: section('/mortgage'),
     valuation: section('/valuation'),
+    history: section('/history'),
   };
 
   const [loginOpen, setLoginOpen] = useState(false);
@@ -96,6 +98,7 @@ export function SiteHeader({ leading, subtitle, fullWidth = true }: Props) {
   const loginButton = useRef<HTMLButtonElement>(null);
   const publishButton = useRef<HTMLButtonElement>(null);
   const valuationButton = useRef<HTMLButtonElement>(null);
+  const historyButton = useRef<HTMLButtonElement>(null);
 
   const { data: savedCount } = useQuery({
     queryKey: qk.saved.count,
@@ -279,6 +282,24 @@ export function SiteHeader({ leading, subtitle, fullWidth = true }: Props) {
                   className={navLink}
                 >
                   הערכת שווי
+                </button>
+              )}
+              <NavBar />
+              {user ? (
+                <Link to="/history" {...navItem(selected.history)}>
+                  עסקאות
+                </Link>
+              ) : (
+                <button
+                  ref={historyButton}
+                  type="button"
+                  onClick={() => {
+                    setLoginIntent('history');
+                    setLoginOpen(true);
+                  }}
+                  className={navLink}
+                >
+                  עסקאות
                 </button>
               )}
             </nav>
@@ -521,6 +542,23 @@ export function SiteHeader({ leading, subtitle, fullWidth = true }: Props) {
                   הערכת שווי
                 </button>
               )}
+              {user ? (
+                <Link to="/history" {...navItem(selected.history)} onClick={() => setMenuOpen(false)}>
+                  עסקאות
+                </Link>
+              ) : (
+                <button
+                  type="button"
+                  className={`${navLink} text-start`}
+                  onClick={() => {
+                    setMenuOpen(false);
+                    setLoginIntent('history');
+                    setLoginOpen(true);
+                  }}
+                >
+                  עסקאות
+                </button>
+              )}
               {user?.impersonating && (
                 <button
                   type="button"
@@ -556,7 +594,9 @@ export function SiteHeader({ leading, subtitle, fullWidth = true }: Props) {
         open={loginOpen}
         onOpenChange={setLoginOpen}
         returnFocusTo={
-          { account: loginButton, sell: publishButton, valuation: valuationButton }[loginIntent]
+          { account: loginButton, sell: publishButton, valuation: valuationButton, history: historyButton }[
+            loginIntent
+          ]
         }
         description={ASKED_FOR[loginIntent].because}
         // Google leaves the site, so for it the intent has to travel as a destination.

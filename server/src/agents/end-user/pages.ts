@@ -27,6 +27,12 @@ export const PAGE_LINKS: Record<string, (query: PageQuery) => string> = {
   },
   mortgage: (query) => (query.price ? `/mortgage?price=${query.price}` : '/mortgage'),
   valuation: () => '/valuation',
+  history: (query) => {
+    const params = new URLSearchParams();
+    if (query.city) params.set('city', query.city);
+    const qs = params.toString();
+    return qs ? `/history?${qs}` : '/history';
+  },
   blog: (query) => (query.slug ? blogPath(query.slug) : '/blog'),
   sell: () => '/sell/new',
   saved: () => '/saved',

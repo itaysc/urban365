@@ -13,6 +13,7 @@ import { TermsNotice } from '@/components/auth/TermsCheckbox';
 import { AuthLayout } from '@/pages/auth/AuthLayout';
 import type { AgencyLookupResult } from '@/services/auth';
 import { PhoneField } from '@/components/ui/PhoneField';
+import { hasCallablePhone } from '@/lib/phone';
 import type { AgencyVertical } from '@/types/auth';
 
 const PASSWORD_MIN = 10;
@@ -44,6 +45,9 @@ export function SignupPage() {
         .required('שדה חובה'),
       firstName: Yup.string().required('שדה חובה'),
       lastName: Yup.string().required('שדה חובה'),
+      phone: Yup.string()
+        .required('שדה חובה')
+        .test('callable', 'צריך מספר טלפון תקין', (value) => hasCallablePhone(value)),
     }),
     onSubmit: async (values, helpers) => {
       setFormError(null);
@@ -59,7 +63,7 @@ export function SignupPage() {
           password: values.password,
           firstName: values.firstName,
           lastName: values.lastName,
-          phone: values.phone || undefined,
+          phone: values.phone.trim(),
           // The sentence above the form is the agreement; submitting is what accepts it.
           acceptedTerms: true,
           ...(claimed ? { claimAgencyId: claimed.id } : { agencyName: values.agencyName, vertical }),
@@ -114,9 +118,10 @@ export function SignupPage() {
           <input id="email" type="email" dir="ltr" autoComplete="email" className={inputClass} {...formik.getFieldProps('email')} />
         </Field>
 
-        <Field label="טלפון" htmlFor="phone">
+        <Field label="טלפון" htmlFor="phone" required error={formik.touched.phone && formik.errors.phone}>
           <PhoneField
             id="phone"
+            required
             value={formik.values.phone}
             onChange={(v) => void formik.setFieldValue('phone', v)}
             onBlur={formik.handleBlur}

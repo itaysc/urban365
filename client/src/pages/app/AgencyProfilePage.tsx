@@ -23,6 +23,7 @@ import {
 import { OfficesPanel } from '@/components/agency/OfficesPanel';
 import { agencyPublicPath } from '@/services/publicAgencies';
 import { PhoneField } from '@/components/ui/PhoneField';
+import { hasCallablePhone } from '@/lib/phone';
 import { DemoDataPanel } from '@/components/agency/DemoDataPanel';
 
 /** The agency's own public page: the banner and the description shown to visitors. */
@@ -83,6 +84,12 @@ export function AgencyProfilePage() {
   };
 
   const save = async () => {
+    if (!hasCallablePhone(form.phone)) {
+      const message = 'צריך מספר טלפון תקין.';
+      setError(message);
+      toast.error(message);
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
@@ -314,8 +321,8 @@ export function AgencyProfilePage() {
           <input id="agency-license" className={inputClass} value={profile.licenseNumber ?? '—'} disabled />
         </Field>
 
-        <Field label="טלפון" htmlFor="agency-phone">
-          <PhoneField id="agency-phone" disabled={!canManage} value={form.phone}
+        <Field label="טלפון" htmlFor="agency-phone" required>
+          <PhoneField id="agency-phone" required disabled={!canManage} value={form.phone}
                       onChange={(v) => set('phone', v)} />
         </Field>
 

@@ -10,6 +10,7 @@ import { AuthLayout } from '@/pages/auth/AuthLayout';
 import { errorCodeOf, errorMessageOf } from '@/lib/apiError';
 import { acceptInvite, fetchInvite } from '@/services/agency';
 import { PhoneField } from '@/components/ui/PhoneField';
+import { hasCallablePhone } from '@/lib/phone';
 
 const ROLE_LABEL: Record<string, string> = { owner: 'בעלים', agent: 'סוכן' };
 
@@ -45,7 +46,13 @@ export function AcceptInvitePage() {
     try {
       // An existing account sends nothing: the session identifies them, and the server
       // checks it matches the invited address.
-      await acceptInvite(token, invite?.hasAccount ? {} : form);
+      const needsPhone = !invite?.hasAccount || !hasCallablePhone(user?.phone);
+      if (needsPhone && !hasCallablePhone(form.phone)) {
+        setError('צריך מספר טלפון תקין.');
+        setSubmitting(false);
+        return;
+      }
+      await acceptInvite(token, invite?.hasAccount ? (needsPhone ? { phone: form.phone } : {}) : form);
 
       // Whether they just signed up or were already signed in, their access token does
       // not name this agency yet — rotate before landing on the dashboard, or every
@@ -132,8 +139,8 @@ export function AcceptInvitePage() {
                        onChange={(e) => set('lastName', e.target.value)} />
               </Field>
 
-              <Field label="טלפון" htmlFor="invite-phone">
-                <PhoneField id="invite-phone" value={form.phone} onChange={(v) => set('phone', v)} />
+              <Field label="טלפון" htmlFor="invite-phone" required>
+                <PhoneField id="invite-phone" required value={form.phone} onChange={(v) => set('phone', v)} />
               </Field>
 
               <Field label="סיסמה" htmlFor="invite-password" required>
@@ -141,6 +148,12 @@ export function AcceptInvitePage() {
                        value={form.password} onChange={(e) => set('password', e.target.value)} />
               </Field>
             </>
+          )}
+
+          {invite.hasAccount && !hasCallablePhone(user?.phone) && (
+            <Field label="טלפון" htmlFor="invite-phone" required>
+              <PhoneField id="invite-phone" required value={form.phone} onChange={(v) => set('phone', v)} />
+            </Field>
           )}
 
           <Button type="submit" disabled={submitting}>

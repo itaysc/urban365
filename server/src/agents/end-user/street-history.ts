@@ -33,6 +33,8 @@ export interface RecordedDeal {
   rooms: number | null;
   area: number | null;
   pricePerSqm: number | null;
+  /** The registry's own description, when we have it. The chart does not use it. */
+  nature?: string | null;
 }
 
 /** Asking prices of listings on the street that are on the site right now. */

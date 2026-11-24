@@ -12,6 +12,7 @@ const BIO_MAX_LENGTH = 600;
 import { errorMessageOf } from '@/lib/apiError';
 import { removeMyAvatar, updateMyProfile, uploadMyAvatar } from '@/services/agency';
 import { PhoneField } from '@/components/ui/PhoneField';
+import { hasCallablePhone } from '@/lib/phone';
 
 /**
  * The member's own details — open to every role, unlike the team page, because this is
@@ -42,6 +43,10 @@ export function MyProfilePage() {
   const set = (key: keyof typeof form, value: string) => setForm((f) => ({ ...f, [key]: value }));
 
   const save = async () => {
+    if (user?.accountType === 'agency' && !hasCallablePhone(form.phone)) {
+      toast.error('צריך מספר טלפון תקין.');
+      return;
+    }
     setSaving(true);
     try {
       await updateMyProfile({ ...form, dailyBriefing });
@@ -160,9 +165,9 @@ export function MyProfilePage() {
         </Field>
 
         <div>
-          <Field label="טלפון" htmlFor="me-phone">
-            <PhoneField id="me-phone" value={form.phone} onChange={(v) => set('phone', v)}
-                        placeholder="050-0000000" />
+          <Field label="טלפון" htmlFor="me-phone" required={user?.accountType === 'agency'}>
+            <PhoneField id="me-phone" required={user?.accountType === 'agency'} value={form.phone}
+                        onChange={(v) => set('phone', v)} placeholder="050-0000000" />
           </Field>
           {/* Describes the phone field, so it sits under it — and `aria-describedby`
               ties the two together for anyone not reading by position. */}

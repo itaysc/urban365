@@ -12,6 +12,7 @@ import { HomePage } from '@/pages/HomePage';
 import { LandingPage } from '@/pages/LandingPage';
 import { MortgagePage } from '@/pages/MortgagePage';
 import { ValuationPage } from '@/pages/ValuationPage';
+import { DealHistoryPage } from '@/pages/DealHistoryPage';
 import { SearchPage } from '@/pages/SearchPage';
 import { ForgotPasswordPage } from '@/pages/auth/ForgotPasswordPage';
 import { LoginPage } from '@/pages/auth/LoginPage';
@@ -107,6 +108,7 @@ export const router = createBrowserRouter([
   // Takes `?price=` from a listing, so arriving from one opens on that flat's figures.
   { path: '/mortgage', element: <MortgagePage /> },
   { path: '/valuation', element: <ValuationPage /> },
+  { path: '/history', element: <DealHistoryPage /> },
   // An agency's public page. The yad2 importer used to sit on this component for
   // anyone to run; it now lives in the agency's own dashboard.
   { path: '/agency/:agencyId', element: <HomePage /> },
@@ -176,6 +178,7 @@ export const router = createBrowserRouter([
               { path: '/app/customers', element: <CustomersPage /> },
               { path: '/app/calendar', element: <CalendarPage /> },
               { path: '/app/deals', element: <DealsPage /> },
+              { path: '/app/market', element: <DealHistoryPage embedded /> },
               { path: '/app/mortgage-cases', element: <MortgageCasesPage /> },
               { path: '/app/mortgage-cases/:caseId', element: <MortgageCaseDetailPage /> },
               { path: '/app/banker-contacts', element: <BankerContactsPage /> },

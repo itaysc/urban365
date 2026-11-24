@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useMutation, useQuery } from '@tanstack/react-query';
 
 import { SiteFooter } from '@/components/SiteFooter';
@@ -302,7 +303,11 @@ export function ValuationPage() {
         <h1 className="text-2xl font-extrabold text-slate-900 sm:text-3xl">הערכת שווי לדירה</h1>
         <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-600">
           לפי עסקאות שנרשמו בפועל ברשות המסים — לא לפי מחירים מבוקשים במודעות. ממלאים
-          את הפרטים, ומקבלים טווח מחירים ומחיר פרסום מומלץ.
+          את הפרטים, ומקבלים טווח מחירים ומחיר פרסום מומלץ.{' '}
+          <Link to="/history" className="font-medium text-blue-800 underline-offset-2 hover:underline">
+            אפשר גם לעיין בעסקאות עצמן
+          </Link>
+          .
         </p>
 
         {needsAccount ? (

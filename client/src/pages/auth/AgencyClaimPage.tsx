@@ -9,6 +9,7 @@ import { errorMessageOf } from '@/lib/apiError';
 import { AuthLayout } from '@/pages/auth/AuthLayout';
 import { attachAgency, type AgencyLookupResult } from '@/services/auth';
 import { PhoneField } from '@/components/ui/PhoneField';
+import { hasCallablePhone } from '@/lib/phone';
 import type { AgencyVertical } from '@/types/auth';
 
 /**
@@ -41,6 +42,10 @@ export function AgencyClaimPage() {
 
     if (!claimed && agencyName.trim() === '') {
       setError('צריך לבחור סוכנות קיימת או להזין שם סוכנות חדשה.');
+      return;
+    }
+    if (!hasCallablePhone(phone) && !hasCallablePhone(user?.phone)) {
+      setError('צריך מספר טלפון תקין.');
       return;
     }
 
@@ -78,9 +83,10 @@ export function AgencyClaimPage() {
           onVerticalChange={setVertical}
         />
 
-        <Field label="טלפון" htmlFor="phone">
+        <Field label="טלפון" htmlFor="phone" required={!hasCallablePhone(user?.phone)}>
           <PhoneField
             id="phone"
+            required={!hasCallablePhone(user?.phone)}
             value={phone}
             onChange={setPhone}
             placeholder={user?.phone ?? '050-0000000'}

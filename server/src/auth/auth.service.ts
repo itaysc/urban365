@@ -18,6 +18,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service.js';
 import { AuthTokenService } from './auth-token.service.js';
 import { INVALID_CREDENTIALS, LOCKOUT_MINUTES, MAX_FAILED_LOGINS } from './auth.constants.js';
+import { keptPhone } from '../lib/phone.js';
 import { normalizeEmail } from './normalize-email.js';
 import { PasswordService } from './password.service.js';
 import { randomBytes } from 'node:crypto';
@@ -143,6 +144,8 @@ export class AuthService {
     }
 
     const passwordHash = await this.passwords.hash(dto.password);
+    const phone = keptPhone(dto.phone);
+    if (!phone) throw new BadRequestException('צריך מספר טלפון תקין.');
 
     const user = await this.prisma.$transaction(async (tx) => {
       const created = await tx.user.create({
@@ -154,7 +157,7 @@ export class AuthService {
           accountType: 'agency',
           firstName: dto.firstName.trim(),
           lastName: dto.lastName.trim(),
-          phone: dto.phone?.trim() || null,
+          phone,
           // The DTO already refuses anything but true, so this records when rather than
           // whether.
           termsAcceptedAt: new Date(),
@@ -190,6 +193,7 @@ export class AuthService {
             name: dto.agencyName!.trim(),
             status: 'pending',
             contactEmail: email,
+            phone,
             vertical: dto.vertical ?? 'real_estate',
           },
         });
@@ -232,6 +236,9 @@ export class AuthService {
       throw new BadRequestException('צריך לבחור סוכנות קיימת או להזין שם סוכנות חדשה.');
     }
 
+    const phone = keptPhone(dto.phone) ?? keptPhone(user.phone);
+    if (!phone) throw new BadRequestException('צריך מספר טלפון תקין.');
+
     const updated = await this.prisma.$transaction(async (tx) => {
       if (dto.claimAgencyId) {
         const agency = await tx.agency.findUnique({ where: { id: dto.claimAgencyId } });
@@ -261,6 +268,7 @@ export class AuthService {
             name: dto.agencyName!.trim(),
             status: 'pending',
             contactEmail: user.email,
+            phone,
             vertical: dto.vertical ?? 'real_estate',
           },
         });
@@ -275,7 +283,7 @@ export class AuthService {
           accountType: 'agency',
           // Only filled in, never overwritten: the number on the account is theirs and
           // this form is not where it gets replaced by a typo.
-          ...(dto.phone?.trim() && !user.phone ? { phone: dto.phone.trim() } : {}),
+          ...(!user.phone ? { phone } : {}),
           termsAcceptedAt: user.termsAcceptedAt ?? new Date(),
         },
       });
@@ -321,6 +329,8 @@ export class AuthService {
       if (dto.mode === 'revise') {
         const name = dto.agencyName?.trim();
         if (!name) throw new BadRequestException('צריך שם לסוכנות.');
+        const phone = keptPhone(dto.phone);
+        if (!phone) throw new BadRequestException('צריך מספר טלפון תקין.');
 
         await tx.agency.update({
           where: { id: membership.agencyId },
@@ -330,7 +340,7 @@ export class AuthService {
             rejectionReason: null,
             reviewedAt: null,
             reviewedById: null,
-            phone: dto.phone?.trim() || null,
+            phone,
             contactEmail: dto.contactEmail?.trim() || user.email,
             description: dto.description?.trim() || null,
           },
@@ -443,7 +453,13 @@ export class AuthService {
     if (!name) throw new BadRequestException('צריך לבחור סוכנות קיימת או להזין שם סוכנות חדשה.');
 
     const agency = await tx.agency.create({
-      data: { name, status: 'pending', contactEmail: user.email, vertical: dto.vertical ?? 'real_estate' },
+      data: {
+        name,
+        status: 'pending',
+        contactEmail: user.email,
+        phone: keptPhone(user.phone),
+        vertical: dto.vertical ?? 'real_estate',
+      },
     });
     await tx.agencyMembership.create({
       data: { userId: user.id, agencyId: agency.id, role: 'owner', status: 'pending' },

@@ -697,6 +697,7 @@ ${blocks}
 <a href="/blog"${options.onBlog ? ' aria-current="page"' : ''}>בלוג</a>
 <a href="${esc(options.appUrl)}/mortgage">מחשבון משכנתא</a>
 <a href="${esc(options.appUrl)}/valuation">הערכת שווי</a>
+<a href="${esc(options.appUrl)}/history">עסקאות</a>
 <button type="button" class="leave" data-leave hidden>יציאה</button>
 </nav>
 </div>

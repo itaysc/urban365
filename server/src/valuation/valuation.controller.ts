@@ -4,7 +4,10 @@ import { Throttle } from '@nestjs/throttler';
 import { CurrentUser } from '../auth/decorators/current-user.decorator.js';
 import type { Principal } from '../auth/types/principal.js';
 
+import { MarketHistoryQueryDto } from './dto/market-history.dto.js';
 import { ValuePropertyDto, type AttributesDto } from './dto/value-property.dto.js';
+import { presentHistory } from './market-history.js';
+import { MarketHistoryService } from './market-history.service.js';
 import { ValuationService, type ValuationRequest } from './valuation.service.js';
 import { MarketContextService } from './market-context.service.js';
 import { PlaceService } from './place.service.js';
@@ -30,6 +33,7 @@ export class ValuationController {
     private readonly valuation: ValuationService,
     private readonly context: MarketContextService,
     private readonly places: PlaceService,
+    private readonly history: MarketHistoryService,
   ) {}
 
   /**
@@ -66,6 +70,27 @@ export class ValuationController {
 
     const point = await this.places.locateStreet(city, street);
     return point ?? { latitude: null, longitude: null };
+  }
+
+  /**
+   * Recorded sales around a street, for someone who is signed in.
+   *
+   * The same window the assistant answers with, plus the sales themselves rather than
+   * only the yearly median. A town or a street we cannot place is an ordinary answer,
+   * not an error: the page says which, and offers the streets the name could still be.
+   */
+  @Get('history')
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
+  async streetHistory(@Query() query: MarketHistoryQueryDto) {
+    const found = await this.history.forStreet(query);
+    if (found.status === 'unknown-city') return { ok: false as const, reason: 'city' as const };
+    if (found.status === 'unknown-street') {
+      return { ok: false as const, reason: 'street' as const, choices: found.choices };
+    }
+    if (found.status === 'unplaced') {
+      return { ok: false as const, reason: 'point' as const, street: found.street };
+    }
+    return { ok: true as const, ...presentHistory(found.history, query.year) };
   }
 
   /**

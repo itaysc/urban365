@@ -25,6 +25,7 @@ import { TenantPrismaService } from '../tenancy/tenant-prisma.service.js';
 import { StorageService } from '../storage/storage.service.js';
 import { can } from '../auth/permissions.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { keptPhone } from '../lib/phone.js';
 import { agencyCoverUrl, agencyLogoUrl } from './image-url.js';
 import { Yad2Service } from '../yad2/yad2.service.js';
 import { ImportYad2Dto, UpdateAgencyProfileDto } from './dto/agency-profile.dto.js';
@@ -90,9 +91,12 @@ export class AgencyProfileController {
     this.assertCanManage();
     const agencyId = this.context.requireAgencyId();
 
+    const phone = dto.phone !== undefined ? keptPhone(dto.phone) : undefined;
+    if (dto.phone !== undefined && !phone) throw new BadRequestException('צריך מספר טלפון תקין.');
+
     return this.prisma.client.agency.update({
       where: { id: agencyId },
-      data: { ...dto },
+      data: { ...dto, ...(phone ? { phone } : {}) },
       select: {
         id: true,
         name: true,
