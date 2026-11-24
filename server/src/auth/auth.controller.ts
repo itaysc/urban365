@@ -352,7 +352,7 @@ export class AuthController {
 
     try {
       const { identity, returnTo } = await this.google.exchange(code, state);
-      const result = await this.auth.loginWithGoogle(identity, this.meta(req));
+      const result = await this.auth.loginWithGoogle(identity, this.meta(req), { returnTo });
       setAuthCookies(res, result, this.cookieOpts);
       // This path does not go through `send` — it redirects rather than replying — so
       // the saves a browser made before signing in with Google are collected here too.

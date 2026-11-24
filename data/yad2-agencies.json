@@ -1,0 +1,740 @@
+{
+  "source": "https://www.yad2.co.il/realestate/agencies",
+  "extractedAt": "2026-11-22",
+  "note": "Yad2's agencies page is behind a bot check, so only the featured offices in the public HTML were readable. Emails are not on Yad2. featuredOnYad2 covers that page. additionalPublicInboxes are office addresses published on the agency's own site, including every Anglo-Saxon branch on anglo-saxon.co.il/branches.",
+  "featuredOnYad2": [
+    {
+      "name": "רימקס Success",
+      "listings": 720,
+      "area": "Ramla / Lod, and a separate Holon office",
+      "email": "success@remax.co.il",
+      "alternateEmail": "Efrattibi@gmail.com",
+      "emailSource": "https://global.remax.com/en/offices/israel/holon/remax-success-2-%D7%A8%D7%99%D7%9E%D7%A7%D7%A1-success-2/5143",
+      "alternateEmailSource": "https://www.remax-success.co.il/%D7%A6%D7%95%D7%A8-%D7%A7%D7%A9%D7%A8-%D7%A8%D7%99%D7%9E%D7%A7%D7%A1-%D7%9C%D7%95%D7%93-%D7%A8%D7%9E%D7%9C%D7%94-%D7%91%D7%90%D7%A8-%D7%99%D7%A2%D7%A7%D7%91",
+      "note": "success@remax.co.il is on the Holon Success 2 page. The Ramla/Lod site lists Efrattibi@gmail.com."
+    },
+    {
+      "name": "רימקס אושן",
+      "listings": 452,
+      "area": "Tel Aviv, Ibn Gabirol 52",
+      "email": "info@remax-ocean.com",
+      "website": "http://www.remax-ocean.com/",
+      "emailSource": "Published business listing for RE/MAX Ocean. The RE/MAX office page hides the address behind email-the-office.",
+      "note": null
+    },
+    {
+      "name": "Remax Beer Sheva",
+      "listings": 405,
+      "area": "Beer Sheva, Yitzhak Nafha 25",
+      "email": "plus@remax.co.il",
+      "website": "https://remaxplus.co.il/contact-us/",
+      "emailSource": "https://remaxplus.co.il/contact-us/",
+      "note": "Office brand is RE/MAX Plus, which presents itself as Remax Beer Sheva."
+    },
+    {
+      "name": "מגורים החברה לנדל\"ן",
+      "listings": 268,
+      "area": "Haifa, Sderot Moriah 125",
+      "email": "nadlanchaifa@gmail.com",
+      "website": "https://megurimltd.co.il/",
+      "emailSource": "https://megurimltd.co.il/",
+      "note": null
+    },
+    {
+      "name": "ארץ עיר",
+      "listings": 268,
+      "area": "Beer Sheva and Tel Aviv",
+      "email": "citynmd@gmail.com",
+      "website": "https://eretz-ir.co.il/",
+      "emailSource": "https://eretz-ir.co.il/%D7%A6%D7%95%D7%A8-%D7%A7%D7%A9%D7%A8/",
+      "note": null
+    },
+    {
+      "name": "י.ש.א. יזמות ושיווק נדל\"ן",
+      "listings": 234,
+      "area": "Tiberias",
+      "email": null,
+      "yad2Url": "https://www.yad2.co.il/realestate/agency/4685334/forsale",
+      "emailSource": null,
+      "note": "No email on the Yad2 profile or a matching site."
+    },
+    {
+      "name": "המרכז לנדל\"ן בע\"מ",
+      "listings": 211,
+      "area": "Haifa, Harav Ohana 4",
+      "email": "office@commercialnadlan.co.il",
+      "alternateEmail": "shimritnadlan@gmail.com",
+      "website": "https://commercialnadlan.co.il/",
+      "emailSource": "https://commercialnadlan.co.il/%D7%A6%D7%95%D7%A8-%D7%A7%D7%A9%D7%A8/",
+      "note": "Both addresses are on the same contact page."
+    },
+    {
+      "name": "קבוצת חן אבואלגיז",
+      "listings": 209,
+      "area": "Beer Sheva",
+      "email": null,
+      "website": "https://chen-group.co.il/",
+      "emailSource": null,
+      "note": "Phone is published; no email."
+    },
+    {
+      "name": "REMAX MAXIMUM",
+      "listings": 188,
+      "area": "Netanya, Ramat Poleg",
+      "email": null,
+      "emailSource": null,
+      "note": "Agent addresses on RE/MAX are masked. No full office inbox."
+    },
+    {
+      "name": "Landsman",
+      "listings": 183,
+      "area": "Petah Tikva",
+      "email": "office@ronlandsman.co.il",
+      "website": "http://www.ronlandsman.co.il/",
+      "emailSource": "Published business listing for Landsman, Petah Tikva.",
+      "note": null
+    },
+    {
+      "name": "REHOUSE",
+      "listings": 182,
+      "area": null,
+      "email": null,
+      "emailSource": null,
+      "note": "No matching public inbox."
+    },
+    {
+      "name": "רימקס SMART",
+      "listings": 179,
+      "area": "Krayot",
+      "email": "remax.smart.office@gmail.com",
+      "website": "https://remaxsmart.co.il/",
+      "emailSource": "https://remaxsmart.co.il/about-us/",
+      "note": null
+    },
+    {
+      "name": "promise",
+      "listings": 173,
+      "area": "Ashkelon, if this card is RE/MAX Promise",
+      "email": null,
+      "yad2Note": "RE/MAX Promise Ashkelon publishes no email.",
+      "emailSource": "https://www.remax-israel.com/he-il/%D7%9E%D7%A9%D7%A8%D7%93%D7%99%D7%9D/%D7%99%D7%A8%D7%95%D7%A9%D7%9C%D7%99%D7%9D-%D7%95%D7%93%D7%A8%D7%95%D7%9D/%D7%90%D7%A9%D7%A7%D7%9C%D7%95%D7%9F/%D7%A8%D7%99%D7%9E%D7%A7%D7%A1-%D7%A4%D7%A8%D7%95%D7%9E%D7%99%D7%A1-remax-promise/5202",
+      "note": "A different Jerusalem office uses promise.jerusalem@gmail.com. That address was not attached to this card."
+    },
+    {
+      "name": "Re/max Family",
+      "listings": 170,
+      "area": null,
+      "email": "eli.shmul@remax.co.il",
+      "emailSource": "https://www.nadlans.net/contactus-broker/104",
+      "note": "Agent contact page, not a confirmed office inbox."
+    }
+  ],
+  "additionalPublicInboxes": [
+    {
+      "name": "RE/MAX Exclusive",
+      "area": "Herzliya Pituach",
+      "email": "exclusive@remax.co.il",
+      "fromYad2FeaturedList": false
+    },
+    {
+      "name": "RE/MAX STAR",
+      "area": "Herzliya",
+      "email": "star@remax.co.il",
+      "fromYad2FeaturedList": false
+    },
+    {
+      "name": "RE/MAX בעיר",
+      "area": "Herzliya",
+      "email": "asaf.reem@remax.co.il",
+      "fromYad2FeaturedList": false
+    },
+    {
+      "name": "RE/MAX ONE",
+      "area": "Ra'anana",
+      "email": "one.raanana@remax.co.il",
+      "fromYad2FeaturedList": false
+    },
+    {
+      "name": "RE/MAX Israel",
+      "area": "Network headquarters, Ramat Gan",
+      "email": "info@remax.co.il",
+      "fromYad2FeaturedList": false
+    },
+    {
+      "name": "פתרונות נדל\"ן",
+      "area": "Haifa",
+      "email": "info@rs-nadlan.co.il",
+      "fromYad2FeaturedList": false
+    },
+    {
+      "name": "שילה",
+      "area": "Kiryat Bialik",
+      "email": "Office@shilo-nadlan.com",
+      "fromYad2FeaturedList": false
+    },
+    {
+      "name": "אחוזת הנדל\"ן",
+      "area": "Ra'anana",
+      "email": "info@ahuzathanadlan.co.il",
+      "fromYad2FeaturedList": false
+    },
+    {
+      "name": "הר סלול",
+      "area": "Petah Tikva",
+      "email": "office@salul.co.il",
+      "fromYad2FeaturedList": false
+    },
+    {
+      "name": "נדל\"ן חיפה",
+      "area": "Haifa",
+      "email": "Info@nadlanhaifa.co.il",
+      "fromYad2FeaturedList": false
+    },
+    {
+      "name": "אנגלו-סכסון חיפה",
+      "network": "אנגלו-סכסון",
+      "area": "Haifa, Sderot Wedgwood 16",
+      "email": "haifa@anglo-saxon.co.il",
+      "phone": "073-7028357",
+      "emailSource": "https://www.anglo-saxon.co.il/branches/",
+      "fromYad2FeaturedList": false
+    },
+    {
+      "name": "אנגלו-סכסון חיפה - מרכז הכרמל",
+      "network": "אנגלו-סכסון",
+      "area": "Haifa, Elhanan 3, Carmel Center",
+      "email": "mhacarmel@anglo-saxon.co.il",
+      "phone": "073-7028320",
+      "emailSource": "https://www.anglo-saxon.co.il/branches/",
+      "fromYad2FeaturedList": false
+    },
+    {
+      "name": "אנגלו-סכסון טבעון",
+      "network": "אנגלו-סכסון",
+      "area": "Kiryat Tivon, served from Migdal HaEmek",
+      "email": "k_tivon@anglo-saxon.co.il",
+      "phone": "073-7534296",
+      "emailSource": "https://www.anglo-saxon.co.il/branches/",
+      "fromYad2FeaturedList": false
+    },
+    {
+      "name": "אנגלו-סכסון טירת הכרמל, עתלית וחוף הכרמל",
+      "network": "אנגלו-סכסון",
+      "area": "Tirat Carmel, Menachem Begin 35",
+      "email": "Hcarmel@anglo-saxon.co.il",
+      "phone": "073-8090007",
+      "emailSource": "https://www.anglo-saxon.co.il/branches/",
+      "fromYad2FeaturedList": false
+    },
+    {
+      "name": "אנגלו-סכסון יקנעם",
+      "network": "אנגלו-סכסון",
+      "area": "Yokneam, served from Migdal HaEmek",
+      "email": "yokneam@anglo-saxon.co.il",
+      "phone": "073-7026066",
+      "emailSource": "https://www.anglo-saxon.co.il/branches/",
+      "fromYad2FeaturedList": false
+    },
+    {
+      "name": "אנגלו-סכסון כרמיאל, מעלות, כפר ורדים",
+      "network": "אנגלו-סכסון",
+      "area": "Karmiel, Tzahal 91",
+      "email": "karmiel@anglo-saxon.co.il",
+      "phone": "073-7534778",
+      "emailSource": "https://www.anglo-saxon.co.il/branches/",
+      "fromYad2FeaturedList": false
+    },
+    {
+      "name": "אנגלו-סכסון מגדל העמק",
+      "network": "אנגלו-סכסון",
+      "area": "Migdal HaEmek, Derech HaEmek 13",
+      "email": "migdal@anglo-saxon.co.il",
+      "phone": "073-7536488",
+      "emailSource": "https://www.anglo-saxon.co.il/branches/",
+      "fromYad2FeaturedList": false
+    },
+    {
+      "name": "אנגלו-סכסון נהריה",
+      "network": "אנגלו-סכסון",
+      "area": "Nahariya, Sderot Ga'aton 36",
+      "email": "nahariya@anglo-saxon.co.il",
+      "phone": "073-7533768",
+      "emailSource": "https://www.anglo-saxon.co.il/branches/",
+      "fromYad2FeaturedList": false
+    },
+    {
+      "name": "אנגלו-סכסון נשר",
+      "network": "אנגלו-סכסון",
+      "area": "Nesher, commercial center shop 10",
+      "email": "nesher@anglo-saxon.co.il",
+      "phone": "073-7533350",
+      "emailSource": "https://www.anglo-saxon.co.il/branches/",
+      "fromYad2FeaturedList": false
+    },
+    {
+      "name": "אנגלו-סכסון עכו",
+      "network": "אנגלו-סכסון",
+      "area": "Akko, Ben Ami 24",
+      "email": "akko@anglo-saxon.co.il",
+      "phone": "073-7584639",
+      "emailSource": "https://www.anglo-saxon.co.il/branches/",
+      "fromYad2FeaturedList": false
+    },
+    {
+      "name": "אנגלו-סכסון עפולה",
+      "network": "אנגלו-סכסון",
+      "area": "Afula, HaParsa 6",
+      "email": "afula@anglo-saxon.co.il",
+      "phone": "073-7028860",
+      "emailSource": "https://www.anglo-saxon.co.il/branches/",
+      "fromYad2FeaturedList": false
+    },
+    {
+      "name": "אנגלו-סכסון קריות",
+      "network": "אנגלו-סכסון",
+      "area": "Kiryat Motzkin, Sderot Moshe Goshen 91",
+      "email": "krayot@anglo-saxon.co.il",
+      "phone": "073-7027383",
+      "emailSource": "https://www.anglo-saxon.co.il/branches/",
+      "fromYad2FeaturedList": false
+    },
+    {
+      "name": "אנגלו-סכסון קרית אתא",
+      "network": "אנגלו-סכסון",
+      "area": "Kiryat Ata, HaAtzmaut 114",
+      "email": "kata@anglosaxon.co.il",
+      "phone": "073-7532930",
+      "emailSource": "https://www.anglo-saxon.co.il/branches/",
+      "fromYad2FeaturedList": false
+    },
+    {
+      "name": "אנגלו-סכסון הוד השרון",
+      "network": "אנגלו-סכסון",
+      "area": "Hod HaSharon, Sokolov 4",
+      "email": "hhasharo@anglo-saxon.co.il",
+      "phone": "073-7026195",
+      "emailSource": "https://www.anglo-saxon.co.il/branches/",
+      "fromYad2FeaturedList": false
+    },
+    {
+      "name": "אנגלו-סכסון הרצליה",
+      "network": "אנגלו-סכסון",
+      "area": "Herzliya, Uri Zvi Greenberg 20",
+      "email": "herzliya@anglo-saxon.co.il",
+      "phone": "073-7535016",
+      "emailSource": "https://www.anglo-saxon.co.il/branches/",
+      "fromYad2FeaturedList": false
+    },
+    {
+      "name": "אנגלו-סכסון הרצליה פיתוח",
+      "network": "אנגלו-סכסון",
+      "area": "Herzliya Pituach, Eli Landau 60",
+      "email": "herzlpit@anglo-saxon.co.il",
+      "phone": "073-7535674",
+      "emailSource": "https://www.anglo-saxon.co.il/branches/",
+      "fromYad2FeaturedList": false
+    },
+    {
+      "name": "אנגלו-סכסון הרצליה פיתוח מסחרי",
+      "network": "אנגלו-סכסון",
+      "area": "Herzliya, Sderot Eli Landau 60",
+      "email": "herzliyacom@anglo-saxon.co.il",
+      "phone": "073-7533299",
+      "emailSource": "https://www.anglo-saxon.co.il/branches/",
+      "fromYad2FeaturedList": false
+    },
+    {
+      "name": "אנגלו-סכסון חדרה",
+      "network": "אנגלו-סכסון",
+      "area": "Hadera, Harav Ovadia Yosef 2",
+      "email": "hadera@anglo-saxon.co.il",
+      "phone": "073-7533784",
+      "emailSource": "https://www.anglo-saxon.co.il/branches/",
+      "fromYad2FeaturedList": false
+    },
+    {
+      "name": "אנגלו-סכסון כפר יונה, פרדסיה והמושבים",
+      "network": "אנגלו-סכסון",
+      "area": "Netanya, HaMisgeret 3",
+      "email": "kfar-yona@anglo-saxon.co.il",
+      "phone": "073-7531420",
+      "emailSource": "https://www.anglo-saxon.co.il/branches/",
+      "fromYad2FeaturedList": false
+    },
+    {
+      "name": "אנגלו-סכסון לב השרון",
+      "network": "אנגלו-סכסון",
+      "area": "Tel Mond, HaDekel 54",
+      "email": "telmond@anglo-saxon.co.il",
+      "phone": "073-7022530",
+      "emailSource": "https://www.anglo-saxon.co.il/branches/",
+      "fromYad2FeaturedList": false
+    },
+    {
+      "name": "אנגלו-סכסון נתניה",
+      "network": "אנגלו-סכסון",
+      "area": "Netanya, HaMisgeret 3",
+      "email": "natanya@anglo-saxon.co.il",
+      "phone": "073-7028610",
+      "emailSource": "https://www.anglo-saxon.co.il/branches/",
+      "fromYad2FeaturedList": false
+    },
+    {
+      "name": "אנגלו-סכסון פרדס חנה כרכור",
+      "network": "אנגלו-סכסון",
+      "area": "Pardes Hanna-Karkur, HaMoshav 42",
+      "email": "pardeshana@anglo-saxon.co.il",
+      "phone": "073-7534575",
+      "emailSource": "https://www.anglo-saxon.co.il/branches/",
+      "fromYad2FeaturedList": false
+    },
+    {
+      "name": "אנגלו-סכסון רמת השרון",
+      "network": "אנגלו-סכסון",
+      "area": "Ramat HaSharon, served from Herzliya, Uri Zvi Greenberg 20",
+      "email": "ramat.hasharon@anglo-saxon.co.il",
+      "phone": "073-7026883",
+      "emailSource": "https://www.anglo-saxon.co.il/branches/",
+      "fromYad2FeaturedList": false
+    },
+    {
+      "name": "אנגלו-סכסון רעננה",
+      "network": "אנגלו-סכסון",
+      "area": "Ra'anana, Ben Gurion 5",
+      "email": "raanana@anglo-saxon.co.il",
+      "phone": "073-7536451",
+      "emailSource": "https://www.anglo-saxon.co.il/branches/",
+      "fromYad2FeaturedList": false
+    },
+    {
+      "name": "אנגלו-סכסון אור יהודה",
+      "network": "אנגלו-סכסון",
+      "area": "Or Yehuda, Sderot Haim Bar Lev 10",
+      "email": "or-yehuda-1@anglo-saxon.co.il",
+      "phone": "073-7533895",
+      "emailSource": "https://www.anglo-saxon.co.il/branches/",
+      "fromYad2FeaturedList": false
+    },
+    {
+      "name": "אנגלו-סכסון גבעתיים",
+      "network": "אנגלו-סכסון",
+      "area": "Givatayim, Katznelson 39",
+      "email": "givataim@anglo-saxon.co.il",
+      "phone": "073-7533353",
+      "emailSource": "https://www.anglo-saxon.co.il/branches/",
+      "fromYad2FeaturedList": false
+    },
+    {
+      "name": "אנגלו-סכסון רמת גן",
+      "network": "אנגלו-סכסון",
+      "area": "Ramat Gan, Bialik 32",
+      "email": "ramatgan@anglo-saxon.co.il",
+      "phone": "073-7533410",
+      "emailSource": "https://www.anglo-saxon.co.il/branches/",
+      "fromYad2FeaturedList": false
+    },
+    {
+      "name": "אנגלו-סכסון שוהם",
+      "network": "אנגלו-סכסון",
+      "area": "Shoham, Carmel 6",
+      "email": "shoham@anglo-saxon.co.il",
+      "phone": "073-7531544",
+      "emailSource": "https://www.anglo-saxon.co.il/branches/",
+      "fromYad2FeaturedList": false
+    },
+    {
+      "name": "אנגלו-סכסון תל אביב - כיכר המדינה",
+      "network": "אנגלו-סכסון",
+      "area": "Tel Aviv, He Be'Iyar 44, Kikar HaMedina",
+      "email": "telavivk@anglo-saxon.co.il",
+      "phone": "073-7534933",
+      "emailSource": "https://www.anglo-saxon.co.il/branches/",
+      "fromYad2FeaturedList": false
+    },
+    {
+      "name": "אנגלו-סכסון תל אביב - מסחרי",
+      "network": "אנגלו-סכסון",
+      "area": "Tel Aviv, Aliyat HaNoar 42",
+      "email": "telavivs@anglo-saxon.co.il",
+      "phone": "073-7020409",
+      "emailSource": "https://www.anglo-saxon.co.il/branches/",
+      "fromYad2FeaturedList": false
+    },
+    {
+      "name": "אנגלו-סכסון תל אביב - נחלת יצחק",
+      "network": "אנגלו-סכסון",
+      "area": "Tel Aviv, Aliyat HaNoar 42",
+      "email": "telavivn@anglo-saxon.co.il",
+      "phone": "073-7534187",
+      "emailSource": "https://www.anglo-saxon.co.il/branches/",
+      "fromYad2FeaturedList": false
+    },
+    {
+      "name": "אנגלו-סכסון גני אביב",
+      "network": "אנגלו-סכסון",
+      "area": "Lod, Ganei Aviv, Arba Onot 16",
+      "email": "ganeyaviv@anglo-saxon.co.il",
+      "phone": "073-7533212",
+      "emailSource": "https://www.anglo-saxon.co.il/branches/",
+      "fromYad2FeaturedList": false
+    },
+    {
+      "name": "אנגלו-סכסון לוד",
+      "network": "אנגלו-סכסון",
+      "area": "Lod, Sderot HaTzionut 1",
+      "email": "ofer-a@anglo-saxon.co.il",
+      "phone": "073-7536531",
+      "emailSource": "https://www.anglo-saxon.co.il/branches/",
+      "fromYad2FeaturedList": false
+    },
+    {
+      "name": "אנגלו-סכסון מודיעין",
+      "network": "אנגלו-סכסון",
+      "area": "Modiin, Leshem 71",
+      "email": "modiin@anglo-saxon.co.il",
+      "phone": "073-7026277",
+      "emailSource": "https://www.anglo-saxon.co.il/branches/",
+      "fromYad2FeaturedList": false
+    },
+    {
+      "name": "אנגלו-סכסון נס ציונה",
+      "network": "אנגלו-סכסון",
+      "area": "Ness Ziona, Nordau 4",
+      "email": "nesziona@anglo-saxon.co.il",
+      "phone": "073-7533565",
+      "emailSource": "https://www.anglo-saxon.co.il/branches/",
+      "fromYad2FeaturedList": false
+    },
+    {
+      "name": "אנגלו-סכסון ראשון לציון",
+      "network": "אנגלו-סכסון",
+      "area": "Rishon LeZion, Rothschild 45, Rothschild Mall",
+      "email": "rishonlz@anglo-saxon.co.il",
+      "phone": "073-7536492",
+      "emailSource": "https://www.anglo-saxon.co.il/branches/",
+      "fromYad2FeaturedList": false
+    },
+    {
+      "name": "אנגלו-סכסון רחובות",
+      "network": "אנגלו-סכסון",
+      "area": "Rehovot, Beit HaPoalim 2",
+      "email": "rehovot@anglo-saxon.co.il",
+      "phone": "073-7535671",
+      "emailSource": "https://www.anglo-saxon.co.il/branches/",
+      "fromYad2FeaturedList": false
+    },
+    {
+      "name": "אנגלו-סכסון רמלה",
+      "network": "אנגלו-סכסון",
+      "area": "Ramla, Sderot Herzl 55",
+      "email": "ramla@anglo-saxon.co.il",
+      "phone": "073-7545232",
+      "emailSource": "https://www.anglo-saxon.co.il/branches/",
+      "fromYad2FeaturedList": false
+    },
+    {
+      "name": "אנגלו-סכסון ירושלים - אפרת וגוש עציון",
+      "network": "אנגלו-סכסון",
+      "area": "Efrat, HaTe'ena commercial center",
+      "email": "efrat-gushetzion@anglo-saxon.co.il",
+      "phone": "073-7535110",
+      "emailSource": "https://www.anglo-saxon.co.il/branches/",
+      "fromYad2FeaturedList": false
+    },
+    {
+      "name": "אנגלו-סכסון מבשרת ציון",
+      "network": "אנגלו-סכסון",
+      "area": "Mevaseret Zion, HaOren 5",
+      "email": "mevvaseret@anglo-saxon.co.il",
+      "phone": "073-7531529",
+      "emailSource": "https://www.anglo-saxon.co.il/branches/",
+      "fromYad2FeaturedList": false
+    },
+    {
+      "name": "אנגלו-סכסון צור הדסה",
+      "network": "אנגלו-סכסון",
+      "area": "Tzur Hadassah, Afarsemon 2",
+      "email": "tzurhadassah@anglo-saxon.co.il",
+      "phone": "073-7536005",
+      "emailSource": "https://www.anglo-saxon.co.il/branches/",
+      "fromYad2FeaturedList": false
+    },
+    {
+      "name": "אנגלו-סכסון ירושלים - ראשי",
+      "network": "אנגלו-סכסון",
+      "area": "Jerusalem, Moshe Hess 3",
+      "email": "jerusalem@anglo-saxon.co.il",
+      "phone": "073-7597880",
+      "emailSource": "https://www.anglo-saxon.co.il/branches/",
+      "fromYad2FeaturedList": false
+    },
+    {
+      "name": "אנגלו-סכסון אשדוד",
+      "network": "אנגלו-סכסון",
+      "area": "Ashdod, HaKalanit 13",
+      "email": "ashdod@anglo-saxon.co.il",
+      "phone": "073-7536044",
+      "emailSource": "https://www.anglo-saxon.co.il/branches/",
+      "fromYad2FeaturedList": false
+    },
+    {
+      "name": "אנגלו-סכסון אשקלון",
+      "network": "אנגלו-סכסון",
+      "area": "Ashkelon, KKL 3",
+      "email": "ashkelon@anglo-saxon.co.il",
+      "phone": "073-7534672",
+      "emailSource": "https://www.anglo-saxon.co.il/branches/",
+      "fromYad2FeaturedList": false
+    },
+    {
+      "name": "אנגלו-סכסון באר שבע",
+      "network": "אנגלו-סכסון",
+      "area": "Beer Sheva, Ben Gurion 15",
+      "email": "Bsheva@anglo-saxon.co.il",
+      "phone": "073-7027103",
+      "emailSource": "https://www.anglo-saxon.co.il/branches/",
+      "fromYad2FeaturedList": false
+    },
+    {
+      "name": "אנגלו-סכסון ערד",
+      "network": "אנגלו-סכסון",
+      "area": "Arad, Sderot Hen 29",
+      "email": "arad@anglo-saxon.co.il",
+      "phone": "073-7027087",
+      "emailSource": "https://www.anglo-saxon.co.il/branches/",
+      "fromYad2FeaturedList": false
+    },
+    {
+      "name": "אנגלו-סכסון קרית גת",
+      "network": "אנגלו-סכסון",
+      "area": "Kiryat Gat, Sderot Lachish 153",
+      "email": "kiryat-gat@anglo-saxon.co.il",
+      "phone": "073-7532264",
+      "emailSource": "https://www.anglo-saxon.co.il/branches/",
+      "fromYad2FeaturedList": false
+    },
+    {
+      "name": "RE/MAX Gold מודיעין",
+      "network": "RE/MAX",
+      "area": "Modiin, Sderot HaMelachot 21",
+      "email": "info@remax-gold.co.il",
+      "phone": "052-646-1677",
+      "website": "https://remax-gold.co.il/",
+      "emailSource": "https://remax-gold.co.il/",
+      "fromYad2FeaturedList": false
+    },
+    {
+      "name": "RE/MAX Advantage יפו",
+      "network": "RE/MAX",
+      "area": "Jaffa / Tel Aviv",
+      "email": "advantage@remax.co.il",
+      "phone": "03-541-0948",
+      "website": "https://remaxadvantage.co.il/",
+      "emailSource": "https://remaxadvantage.co.il/",
+      "fromYad2FeaturedList": false
+    },
+    {
+      "name": "RE/MAX Silver נתניה",
+      "network": "RE/MAX",
+      "area": "Netanya, Yehuda Perah 9",
+      "email": "silver@remax.co.il",
+      "phone": "09-8612595",
+      "website": "https://remax-n.co.il/he",
+      "emailSource": "https://remax-n.co.il/he",
+      "fromYad2FeaturedList": false
+    },
+    {
+      "name": "RE/MAX Extra בת ים",
+      "network": "RE/MAX",
+      "area": "Bat Yam, Derech Ben Gurion 83",
+      "email": "matan100remax@gmail.com",
+      "phone": "052-4442534",
+      "website": "https://rea-me.co.il/",
+      "emailSource": "https://rea-me.co.il/%D7%A6%D7%95%D7%A8-%D7%A7%D7%A9%D7%A8/",
+      "note": "Published as the office contact for manager Matan Ezra.",
+      "fromYad2FeaturedList": false
+    },
+    {
+      "name": "CENTURY 21 Israel",
+      "network": "CENTURY 21",
+      "area": "Netanya, HaTzoran 4B, Poleg industrial zone",
+      "email": "admin@c21israel.com",
+      "phone": "09-8822121",
+      "website": "https://www.century21.co.il/",
+      "emailSource": "https://www.century21.com.ar/busqueda-internacional",
+      "note": "Network headquarters, not a local sales office.",
+      "fromYad2FeaturedList": false
+    },
+    {
+      "name": "CENTURY 21 רחביה ירושלים",
+      "network": "CENTURY 21",
+      "area": "Jerusalem, David Marcus 2",
+      "email": "office@century21jerusalem.com",
+      "phone": "02-5672030",
+      "website": "https://www.century21jerusalem.co.il/",
+      "emailSource": "https://www.century21jerusalem.co.il/contact/",
+      "fromYad2FeaturedList": false
+    },
+    {
+      "name": "CENTURY 21 SMILEY הרצליה",
+      "network": "CENTURY 21",
+      "area": "Herzliya, Sokolov 53",
+      "email": "c21eti@gmail.com",
+      "phone": "09-9501460",
+      "emailSource": "https://mail.century21.tempurl.co.il/index.php?id=1&type=branch",
+      "note": "Published branch contact for Eti Patilon.",
+      "fromYad2FeaturedList": false
+    },
+    {
+      "name": "CENTURY 21 Gold נווה שאנן",
+      "network": "CENTURY 21",
+      "area": "Haifa, Trumpeldor 29, Neve Sha'anan",
+      "email": "ruth.coda@c21israel.com",
+      "phone": "04-8272233",
+      "emailSource": "https://www.nadlanix.co.il/%D7%A1%D7%A0%D7%A6_%D7%95%D7%A8%D7%99_21_gold_%D7%A0%D7%95%D7%95%D7%94_%D7%A9%D7%90%D7%A0%D7%9F/",
+      "note": "Published as the office email for franchisee Ruth Coda.",
+      "fromYad2FeaturedList": false
+    },
+    {
+      "name": "לפאייט נדל\"ן",
+      "area": "Jerusalem, Gaza 29, Rehavia; Tel Aviv, Abravanel 33, Florentin",
+      "email": "office@lafayette.co.il",
+      "phone": "02-5666218",
+      "website": "https://lafayette.co.il/",
+      "emailSource": "https://lafayette.co.il/",
+      "fromYad2FeaturedList": false
+    },
+    {
+      "name": "טופ נכסים",
+      "area": "Hod HaSharon, Derech Ramatayim 38",
+      "email": "info@topnadlan.co.il",
+      "phone": "09-7407500",
+      "website": "https://www.topnadlan.co.il/",
+      "emailSource": "https://www.topnadlan.co.il/",
+      "fromYad2FeaturedList": false
+    },
+    {
+      "name": "קוריאט גרינולד",
+      "area": "Hod HaSharon",
+      "email": "iris@coriat-greenwald.co.il",
+      "phone": "054-481-4919",
+      "website": "https://coriat-greenwald.co.il/",
+      "emailSource": "https://coriat-greenwald.co.il/%D7%A6%D7%95%D7%A8-%D7%A7%D7%A9%D7%A8/",
+      "fromYad2FeaturedList": false
+    },
+    {
+      "name": "איצקוביץ נכסים",
+      "area": "Ra'anana, HaSadna 15",
+      "email": "gilitzcovich@gmail.com",
+      "phone": "09-7413300",
+      "website": "https://www.gilitzcovich.com/",
+      "emailSource": "https://www.gilitzcovich.com/%d7%a6%d7%95%d7%a8-%d7%a7%d7%a9%d7%a8/",
+      "fromYad2FeaturedList": false
+    }
+  ],
+  "counts": {
+    "featuredOnYad2": 14,
+    "featuredWithEmail": 9,
+    "additionalPublicInboxes": 69
+  }
+}

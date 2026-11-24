@@ -5,8 +5,9 @@
  * the mortgage calculator stay open because the bar on that page links to them.
  * Signing in, recovering a password,
  * accepting an invite, and answering a viewing email all have to work or the closed
- * site has no way in. The legal pages stay because the login form links to them.
- * Everything else goes back to the home page.
+ * site has no way in. Agency signup stays open too: offices are invited in by email
+ * and land on that form. A private account is still invite-only. The legal pages
+ * stay because the login form links to them. Everything else goes back to the home page.
  */
 const OPEN_WHEN_CLOSED = new Set([
   '/',
@@ -30,6 +31,8 @@ export function guestMayBrowse(pathname: string): boolean {
   if (pathname === '/agencies' || pathname.startsWith('/agencies/')) return true;
   // The calculator in the same bar.
   if (pathname === '/mortgage' || pathname.startsWith('/mortgage/')) return true;
+  // An invited office opens an account here. Buyer signup stays shut.
+  if (pathname === '/agency/signup' || pathname.startsWith('/agency/signup/')) return true;
   return false;
 }
 

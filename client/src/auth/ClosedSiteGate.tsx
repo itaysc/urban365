@@ -41,11 +41,15 @@ export function ClosedSiteGate() {
   // Someone already signed in does not wait: the flag changes nothing for them.
   if (loading || (!user && pending)) return <Booting />;
 
-  // Self-serve signup stays shut. An agency that was invited still has to name the
-  // office, and sending them to the CRM from here only bounces them back.
-  const finishingAgencyInvite =
-    user?.accountType === 'agency' && location.pathname.startsWith('/agency/claim');
-  if (closed && isSignupPath(location.pathname) && !finishingAgencyInvite) {
+  // Buyer signup stays shut. An office can still open an account, and someone who
+  // just did — including with Google, which arrives as a buyer and then names the
+  // office — has to be able to finish on /agency/claim. Sending them to the CRM
+  // from here only bounces them back.
+  const openingAgency =
+    location.pathname === '/agency/signup' ||
+    location.pathname.startsWith('/agency/signup/') ||
+    (!!user && location.pathname.startsWith('/agency/claim'));
+  if (closed && isSignupPath(location.pathname) && !openingAgency) {
     return <Navigate to={user ? (canUseCrm(user) ? '/app' : '/account') : '/'} replace />;
   }
 

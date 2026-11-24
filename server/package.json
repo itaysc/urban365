@@ -20,6 +20,7 @@
     "import:yad2": "npm run build && node dist/scripts/import-yad2-prod.js",
     "import:yad2:images": "npm run build && node dist/scripts/import-yad2-prod.js --images",
     "grant:admin": "node dist/scripts/grant-admin.js",
+    "invite:agencies": "node scripts/invite-agencies.mjs",
     "seed:dev-agency": "node dist/scripts/seed-dev-agency.js",
     "seed:demo": "npm run build && node dist/scripts/seed-demo-data.js",
     "sync:deals": "npm run build && node dist/scripts/sync-deals.js",

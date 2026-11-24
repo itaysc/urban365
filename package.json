@@ -14,6 +14,7 @@
     "dev:prod": "node server/scripts/check-node.mjs && npm-run-all --parallel dev:server:prod dev:client",
     "dev:server:prod": "cd server && npm run dev:prod",
     "chrome:debug": "bash scripts/chrome-debug.sh",
+    "invite:agencies": "npm run invite:agencies --prefix server",
     "import:yad2": "npm run import:yad2 --prefix server",
     "import:yad2:images": "npm run import:yad2:images --prefix server",
     "build": "npm run build:server && npm run build:client",

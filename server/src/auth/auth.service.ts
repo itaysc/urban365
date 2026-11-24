@@ -63,7 +63,11 @@ export class AuthService {
     private readonly config: ConfigService,
   ) {}
 
-  /** Self-serve accounts are off while the site is closed. Invites do not pass through here. */
+  /**
+   * Private accounts are off while the site is closed. An agency account is not:
+   * offices are invited by email and sign up themselves. Platform invites do not
+   * pass through here.
+   */
   private assertSignupsOpen(): void {
     if (this.config.get<boolean>('app.siteClosed') === true) {
       throw new ForbiddenException(SIGNUPS_CLOSED);
@@ -117,7 +121,6 @@ export class AuthService {
    * nothing is merged and no listing is ever re-parented.
    */
   async signup(dto: SignupDto, meta: RequestMeta): Promise<AuthResult> {
-    this.assertSignupsOpen();
     const email = normalizeEmail(dto.email);
 
     const existing = await this.prisma.user.findUnique({ where: { email } });
@@ -215,9 +218,6 @@ export class AuthService {
    */
   async attachAgency(userId: string, dto: AttachAgencyDto): Promise<PublicUser> {
     const user = await this.prisma.user.findUnique({ where: { id: userId }, include: this.include });
-    // A platform invite already made this an agency account. Closing self-serve
-    // signup must not stop them finishing the agency the invite was for.
-    if (user?.accountType !== 'agency') this.assertSignupsOpen();
     if (!user) throw new UnauthorizedException(INVALID_CREDENTIALS);
 
     // Any membership at all, not only an active one: a second claim from an account
@@ -481,7 +481,11 @@ export class AuthService {
    * address is verified** — otherwise anyone able to create a Google account claiming
    * an address could take over the matching local account.
    */
-  async loginWithGoogle(identity: GoogleIdentity, meta: RequestMeta): Promise<AuthResult> {
+  async loginWithGoogle(
+    identity: GoogleIdentity,
+    meta: RequestMeta,
+    options?: { returnTo?: string },
+  ): Promise<AuthResult> {
     const email = normalizeEmail(identity.email);
 
     const byProvider = await this.prisma.user.findFirst({
@@ -534,9 +538,11 @@ export class AuthService {
       return this.issue(linked, meta);
     }
 
-    // An existing account may sign in with Google. A new one may not, while the site
-    // is closed — that would be a signup with no invite.
-    this.assertSignupsOpen();
+    // An existing account may sign in with Google. A new private account may not,
+    // while the site is closed. A new account that is on its way to name an office
+    // may: that is the Google button on the agency signup form.
+    const openingAgency = options?.returnTo === '/agency/claim' || options?.returnTo?.startsWith('/agency/claim?');
+    if (!openingAgency) this.assertSignupsOpen();
 
     if (!identity.emailVerified) {
       throw new BadRequestException('כתובת האימייל אינה מאומתת אצל Google.');

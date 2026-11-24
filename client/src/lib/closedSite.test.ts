@@ -23,8 +23,12 @@ describe('guestMayBrowse', () => {
     expect(guestMayBrowse('/mortgage/')).toBe(true);
   });
 
+  it('keeps agency signup open for an invited office', () => {
+    expect(guestMayBrowse('/agency/signup')).toBe(true);
+  });
+
   it('sends the rest of the site back to the home page', () => {
-    for (const path of ['/search', '/signup', '/agency/signup', '/valuation', '/sell']) {
+    for (const path of ['/search', '/signup', '/valuation', '/sell']) {
       expect(guestMayBrowse(path), path).toBe(false);
     }
   });
