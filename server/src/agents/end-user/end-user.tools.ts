@@ -293,7 +293,7 @@ export class EndUserToolsService {
     if (found.status === 'unknown-city') return { summary: `לא מצאתי את ${dto.city} במרשם העסקאות.` };
     if (found.status === 'unplaced') {
       return {
-        summary: `הרחוב ${found.street} ב${dto.city} קיים, אבל אין לו נקודה, אז אי אפשר לבחור את העסקאות שסביבו.`,
+        summary: `הרחוב ${found.street} ב${dto.city} מופיע ברשימת הרחובות, אבל לא נמצא על המפה. בלי מיקום אי אפשר לבחור את העסקאות שסביבו, כי למרשם אין שמות רחובות.`,
       };
     }
 

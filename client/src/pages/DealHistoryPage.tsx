@@ -9,6 +9,7 @@ import { SiteFooter } from '@/components/SiteFooter';
 import { SiteHeader } from '@/components/SiteHeader';
 import { panelClass } from '@/components/mortgage/panel';
 import { ROOM_STEPS } from '@/components/search/roomsRange';
+import { Button } from '@/components/ui/Button';
 import { Field, selectClass } from '@/components/ui/Field';
 import { errorMessageOf } from '@/lib/apiError';
 import { formatDate, formatShekel } from '@/lib/format';
@@ -33,46 +34,49 @@ export function DealHistoryPage({ embedded = false }: { embedded?: boolean }) {
   const [city, setCity] = useState(initial.city);
   const [street, setStreet] = useState(initial.street);
   const [rooms, setRooms] = useState(initial.rooms);
-  const [year, setYear] = useState(initial.year);
-  const [typedStreet, setTypedStreet] = useState(() => splitHouseNumber(initial.street).name.trim());
+  // What חפש last asked for. Typing changes the fields and nothing else; a link that
+  // already names a street counts as that ask, so it still opens on the sales.
+  const [submitted, setSubmitted] = useState<HistoryQuery | null>(() => askedQuery(initial));
 
-  useEffect(() => {
-    const timer = window.setTimeout(() => setTypedStreet(splitHouseNumber(street).name.trim()), 250);
-    return () => window.clearTimeout(timer);
-  }, [street]);
+  const remember = (next: HistoryQuery) => {
+    setSubmitted(next);
+    const query = new URLSearchParams();
+    query.set('city', next.city);
+    query.set('street', next.street);
+    if (next.rooms) query.set('rooms', next.rooms);
+    if (next.year) query.set('year', next.year);
+    setParams(query, { replace: true, preventScrollReset: true });
+  };
 
-  useEffect(() => {
-    const next = new URLSearchParams();
-    if (city.trim()) next.set('city', city.trim());
-    if (typedStreet) next.set('street', typedStreet);
-    if (rooms) next.set('rooms', rooms);
-    if (year) next.set('year', year);
-    if (next.toString() === params.toString()) return;
-    setParams(next, { replace: true, preventScrollReset: true });
-  }, [city, typedStreet, rooms, year, params, setParams]);
+  const search = (event?: { preventDefault: () => void }) => {
+    event?.preventDefault();
+    const next = askedQuery({ city, street, rooms, year: '' });
+    if (next) remember(next);
+  };
 
-  const roomsNumber = rooms === '' ? undefined : Number(rooms);
-  const yearNumber = year === '' ? undefined : Number(year);
-  const ready = Boolean(user) && city.trim().length > 1 && typedStreet.length > 1;
+  const roomsNumber = submitted?.rooms ? Number(submitted.rooms) : undefined;
+  const yearNumber = submitted?.year ? Number(submitted.year) : undefined;
 
   const result = useQuery({
-    queryKey: ['market-history', city.trim(), typedStreet, roomsNumber ?? null, yearNumber ?? null],
+    queryKey: ['market-history', submitted?.city ?? '', submitted?.street ?? '', roomsNumber ?? null, yearNumber ?? null],
     queryFn: () =>
       fetchMarketHistory({
-        city: city.trim(),
-        street: typedStreet,
+        city: submitted!.city,
+        street: submitted!.street,
         ...(roomsNumber !== undefined ? { rooms: roomsNumber } : {}),
         ...(yearNumber !== undefined ? { year: yearNumber } : {}),
       }),
-    enabled: ready,
+    enabled: Boolean(user) && submitted !== null,
   });
 
   const found = result.data?.ok ? result.data : null;
 
   useEffect(() => {
-    if (!found || year === '') return;
-    if (!found.byYear.some((bar) => String(bar.year) === year)) setYear('');
-  }, [found, year]);
+    if (!found || !submitted?.year) return;
+    if (!found.byYear.some((bar) => String(bar.year) === submitted.year)) {
+      remember({ ...submitted, year: '' });
+    }
+  }, [found, submitted]);
 
   const body = (
     <>
@@ -100,40 +104,21 @@ export function DealHistoryPage({ embedded = false }: { embedded?: boolean }) {
       ) : (
         <div className="mt-5 flex flex-col gap-5">
           <form
-            className={`${panelClass} grid min-w-0 gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_9rem]`}
-            onSubmit={(event) => event.preventDefault()}
+            className={`${panelClass} grid min-w-0 items-end gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_9rem_auto]`}
+            onSubmit={search}
           >
             <Field label="עיר" htmlFor="history-city" required>
-              <CityBox
-                id="history-city"
-                value={city}
-                onChange={(value) => {
-                  setCity(value);
-                  setYear('');
-                }}
-                required
-              />
+              <CityBox id="history-city" value={city} onChange={setCity} required />
             </Field>
             <Field label="רחוב" htmlFor="history-street" required>
-              <StreetBox
-                id="history-street"
-                city={city}
-                value={street}
-                onChange={(value) => {
-                  setStreet(value);
-                  setYear('');
-                }}
-              />
+              <StreetBox id="history-street" city={city} value={street} onChange={setStreet} />
             </Field>
             <Field label="חדרים" htmlFor="history-rooms">
               <select
                 id="history-rooms"
                 className={selectClass}
                 value={rooms}
-                onChange={(event) => {
-                  setRooms(event.target.value);
-                  setYear('');
-                }}
+                onChange={(event) => setRooms(event.target.value)}
               >
                 <option value="">הכל</option>
                 {ROOM_STEPS.map((step) => (
@@ -143,6 +128,7 @@ export function DealHistoryPage({ embedded = false }: { embedded?: boolean }) {
                 ))}
               </select>
             </Field>
+            <Button type="submit">חפש</Button>
           </form>
 
           <section aria-live="polite" aria-busy={result.isFetching} className="flex flex-col gap-5">
@@ -151,13 +137,28 @@ export function DealHistoryPage({ embedded = false }: { embedded?: boolean }) {
                 {errorMessageOf(result.error, 'לא הצלחנו לטעון את העסקאות.')}
               </p>
             )}
-            {result.isFetching && !found && ready && (
+            {result.isFetching && !found && submitted && (
               <p className="text-sm text-slate-500">מחפש עסקאות…</p>
             )}
-            {result.data && !result.data.ok && <HistoryMiss miss={result.data} onStreet={setStreet} />}
-            {found && <HistoryResult history={found} year={year} onYear={setYear} />}
-            {!ready && !needsAccount && user && (
-              <p className="text-sm text-slate-500">בחרו עיר ורחוב כדי לראות את העסקאות שנרשמו בסביבה.</p>
+            {result.data && !result.data.ok && (
+              <HistoryMiss
+                miss={result.data}
+                onStreet={(name) => {
+                  setStreet(name);
+                  const next = askedQuery({ city, street: name, rooms, year: '' });
+                  if (next) remember(next);
+                }}
+              />
+            )}
+            {found && submitted && (
+              <HistoryResult
+                history={found}
+                year={submitted.year}
+                onYear={(value) => remember({ ...submitted, year: value })}
+              />
+            )}
+            {!submitted && !needsAccount && user && (
+              <p className="text-sm text-slate-500">מלאו עיר ורחוב, ולחצו על חפש.</p>
             )}
           </section>
         </div>
@@ -188,7 +189,22 @@ export function DealHistoryPage({ embedded = false }: { embedded?: boolean }) {
   );
 }
 
-function readHistoryQuery(params: URLSearchParams): { city: string; street: string; rooms: string; year: string } {
+interface HistoryQuery {
+  city: string;
+  street: string;
+  rooms: string;
+  year: string;
+}
+
+/** A search worth sending: a town and a street, with the house number left off. */
+function askedQuery(fields: HistoryQuery): HistoryQuery | null {
+  const city = fields.city.trim();
+  const street = splitHouseNumber(fields.street).name.trim();
+  if (city.length < 2 || street.length < 2) return null;
+  return { city, street, rooms: fields.rooms, year: fields.year };
+}
+
+function readHistoryQuery(params: URLSearchParams): HistoryQuery {
   return {
     city: params.get('city') ?? '',
     street: params.get('street') ?? '',
@@ -214,7 +230,9 @@ function HistoryMiss({
   if (miss.reason === 'point') {
     return (
       <p className="rounded-xl bg-amber-50 px-3 py-2.5 text-sm text-amber-900">
-        הרחוב {miss.street} קיים במרשם, אבל אין לנו נקודה עבורו, אז אי אפשר לבחור את העסקאות שסביבו.
+        הרחוב {miss.street} מופיע ברשימת הרחובות, אבל לא מצאנו אותו על המפה. במרשם
+        העסקאות אין שם רחוב, רק מיקום, ולכן בלי מיקום של הרחוב אי אפשר לדעת אילו עסקאות
+        נמצאות לידו.
       </p>
     );
   }
@@ -364,20 +382,20 @@ function HistoryResult({
                 עסקאות מגורים שנרשמו ליד {history.street}, {history.city}
               </caption>
               <thead>
-                <tr className="border-b border-slate-200 text-start text-xs text-slate-500">
-                  <th scope="col" className="px-2 py-2 font-medium">
+                <tr className="border-b border-slate-200 text-xs text-slate-500">
+                  <th scope="col" className="px-3 py-2 text-start font-medium">
                     תאריך
                   </th>
-                  <th scope="col" className="px-2 py-2 font-medium">
+                  <th scope="col" className="px-3 py-2 text-start font-medium">
                     חדרים
                   </th>
-                  <th scope="col" className="px-2 py-2 font-medium">
+                  <th scope="col" className="px-3 py-2 text-start font-medium">
                     שטח
                   </th>
-                  <th scope="col" className="px-2 py-2 font-medium">
+                  <th scope="col" className="px-3 py-2 text-start font-medium">
                     מחיר
                   </th>
-                  <th scope="col" className="px-2 py-2 font-medium">
+                  <th scope="col" className="px-3 py-2 text-start font-medium">
                     למ"ר
                   </th>
                 </tr>
@@ -385,14 +403,14 @@ function HistoryResult({
               <tbody>
                 {history.sales.map((sale, index) => (
                   <tr key={`${sale.date}-${sale.amount}-${sale.area ?? 0}-${index}`} className="border-b border-slate-100">
-                    <td className="px-2 py-2 text-slate-800">
+                    <td className="px-3 py-2 text-start text-slate-800">
                       {formatDate(sale.date)}
                       {sale.nature && <span className="mt-0.5 block text-xs text-slate-500">{sale.nature}</span>}
                     </td>
-                    <td className="px-2 py-2">{sale.rooms === null ? '—' : sale.rooms}</td>
-                    <td className="px-2 py-2">{sale.area === null ? '—' : `${sale.area} מ"ר`}</td>
-                    <td className="px-2 py-2 font-medium">{formatShekel(sale.amount)}</td>
-                    <td className="px-2 py-2 text-slate-600">
+                    <td className="px-3 py-2 text-start tabular-nums">{sale.rooms === null ? '—' : sale.rooms}</td>
+                    <td className="px-3 py-2 text-start tabular-nums">{sale.area === null ? '—' : `${sale.area} מ"ר`}</td>
+                    <td className="px-3 py-2 text-start font-medium tabular-nums">{formatShekel(sale.amount)}</td>
+                    <td className="px-3 py-2 text-start tabular-nums text-slate-600">
                       {sale.perSqm === null ? '—' : formatShekel(sale.perSqm)}
                     </td>
                   </tr>
