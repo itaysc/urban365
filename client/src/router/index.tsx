@@ -49,7 +49,6 @@ import { PublishPage } from '@/pages/sell/PublishPage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
 import { AssistantWidget } from '@/components/assistant/AssistantWidget';
 import { PageTitle } from '@/components/PageTitle';
-import { PreviewBanner } from '@/components/PreviewBanner';
 
 /** A city with nothing listed yet still opens the sale search, without a query on the link. */
 function ForSaleCity() {
@@ -76,7 +75,6 @@ export const router = createBrowserRouter([
     element: (
       <>
         <ScrollRestoration />
-        <PreviewBanner />
         <PageTitle />
         <AssistantWidget />
         <Outlet />

@@ -68,6 +68,33 @@ export const accountExistsTemplate = (loginUrl: string, resetUrl: string) => ({
   ),
 });
 
+/** To the operator when an office signs up, or asks again, and is waiting for a decision. */
+export const agencyPendingTemplate = (input: {
+  agencyName: string;
+  personName: string;
+  email: string;
+  phone: string | null;
+  reviewUrl: string;
+  /** A request that was turned down and sent again, rather than a first signup. */
+  again: boolean;
+}) => ({
+  subject: `סוכנות ממתינה לאישור: ${input.agencyName}`,
+  html: `<!doctype html>
+<html lang="he" dir="rtl"><head><meta charset="utf-8"></head>
+<body style="margin:0;background:#f8fafc;font-family:system-ui,-apple-system,'Segoe UI',Arial,sans-serif">
+  <div style="max-width:520px;margin:32px auto;background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:32px">
+    <h1 style="margin:0 0 16px;font-size:20px;color:#0f172a">סוכנות ממתינה לאישור</h1>
+    <p style="color:#334155;line-height:1.6">${input.again ? 'בקשה שנדחתה נשלחה שוב וממתינה לאישור.' : 'נרשמה סוכנות וממתינה לאישור.'}</p>
+    <p style="color:#0f172a;line-height:1.7">
+      <strong>${escape(input.agencyName)}</strong><br>
+      ${escape(input.personName)}<br>
+      ${escape(input.email)}${input.phone ? `<br>${escape(input.phone)}` : ''}
+    </p>
+    ${button(input.reviewUrl, 'לאישור הסוכנות')}
+  </div>
+</body></html>`,
+});
+
 export const claimDecisionTemplate = (approved: boolean, agencyName: string, appUrl: string) => ({
   subject: approved ? `הסוכנות ${agencyName} אושרה` : `בקשת השיוך לסוכנות ${agencyName} נדחתה`,
   html: shell(

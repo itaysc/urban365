@@ -215,10 +215,7 @@ a{color:#1d4ed8}
  * count or somebody's name would be one visitor's data shown to the next. It is the
  * signed-out bar, always, which is also what most of these visitors are.
  */
-/* The same strip the app draws above its bar. 2rem, so the header can stick just under it. */
-.preview{position:sticky;top:0;z-index:40;display:flex;align-items:center;justify-content:center;
-  height:2rem;padding:0 1rem;background:#fde047;color:#422006;font-size:.875rem;font-weight:500}
-header.site{position:sticky;top:2rem;z-index:30;background:rgb(255 255 255 / .95);
+header.site{position:sticky;top:0;z-index:30;background:rgb(255 255 255 / .95);
   border-bottom:1px solid #e2e8f0}
 @media (min-width:40rem){header.site{backdrop-filter:blur(8px)}}
 header.site .wrap,header.site .band{display:flex;align-items:center;justify-content:space-between;gap:.75rem;
@@ -686,7 +683,6 @@ ${options.preload ?? ''}
 ${blocks}
 </head>
 <body>
-<div class="preview">אתר בהרצה</div>
 <header class="site"><div class="band">
 <div class="navl">
 <input id="u365-menu" class="menubox" type="checkbox">

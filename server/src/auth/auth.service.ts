@@ -11,6 +11,7 @@ import { Prisma, type Agency, type AgencyMembership, type User } from '@prisma/c
 import { MailService } from '../mail/mail.service.js';
 import {
   accountExistsTemplate,
+  agencyPendingTemplate,
   passwordResetTemplate,
   verifyEmailTemplate,
 } from '../mail/templates.js';
@@ -201,6 +202,7 @@ export class AuthService {
     });
 
     await this.sendVerificationEmail(user.id, email, user.firstName);
+    this.notifyAgencyPending(user, false);
     this.logger.log(`Signed up ${email}`);
     return this.issue(user, meta);
   }
@@ -281,6 +283,7 @@ export class AuthService {
       return tx.user.findUniqueOrThrow({ where: { id: userId }, include: this.include });
     });
 
+    this.notifyAgencyPending(updated, false);
     this.logger.log(`Attached agency to ${user.email}`);
     return sanitizeUser(updated);
   }
@@ -368,8 +371,31 @@ export class AuthService {
       return tx.user.findUniqueOrThrow({ where: { id: userId }, include: this.include });
     });
 
+    this.notifyAgencyPending(updated, true);
     this.logger.log(`Resubmitted agency for ${user.email} (${dto.mode})`);
     return sanitizeUser(updated);
+  }
+
+  /**
+   * The office is in the queue. The person who decides hears about it at the support
+   * inbox. A mail failure must not fail the signup that already succeeded.
+   */
+  private notifyAgencyPending(user: UserWithMembership, again: boolean): void {
+    const to = this.config.get<string>('mail.supportEmail')?.trim();
+    if (!to) return;
+    const membership = shownMembership(user);
+    if (!membership || membership.status !== 'pending') return;
+    void this.mail.send({
+      to,
+      ...agencyPendingTemplate({
+        agencyName: membership.agency.name,
+        personName: `${user.firstName} ${user.lastName}`.trim(),
+        email: user.email,
+        phone: user.phone,
+        reviewUrl: `${this.mail.appUrl}/admin/moderation`,
+        again,
+      }),
+    });
   }
 
   /**

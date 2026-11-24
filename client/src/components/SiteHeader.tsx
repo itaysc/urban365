@@ -131,7 +131,7 @@ export function SiteHeader({ leading, subtitle, fullWidth = true }: Props) {
   }, [menuOpen]);
 
   return (
-    <header className="sticky top-8 z-30 border-b border-slate-200 bg-white/95 backdrop-blur">
+    <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur">
       {/*
         The first thing in the tab order, invisible until it has focus.
 

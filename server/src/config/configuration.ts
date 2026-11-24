@@ -120,6 +120,11 @@ export interface MailConfig {
   /** Empty means the console transport: links are logged, nothing is sent. */
   resendApiKey: string;
   from: string;
+  /**
+   * Where a notice goes when an agency signs up and waits for approval.
+   * Empty sends nothing. Unset goes to the support inbox.
+   */
+  supportEmail: string;
   /** The SPA, where a user lands after a link is validated. */
   appUrl: string;
   /**
@@ -244,6 +249,7 @@ export default (): {
   mail: {
     resendApiKey: process.env.RESEND_API_KEY ?? '',
     from: process.env.MAIL_FROM ?? 'Nadlan <onboarding@resend.dev>',
+    supportEmail: process.env.SUPPORT_EMAIL ?? 'support@urban365.co.il',
     appUrl: process.env.APP_URL ?? 'http://localhost:5173',
     // Defaults to the app URL, which is correct in dev where Vite proxies /api.
     apiUrl: process.env.API_URL ?? process.env.APP_URL ?? 'http://localhost:5173',
