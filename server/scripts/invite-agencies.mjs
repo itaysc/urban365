@@ -107,23 +107,33 @@ function letter(name) {
     'אני איתי, ממייסדי Urban365, אתר חדש לנכסים למכירה ולהשכרה בישראל.',
     'אנחנו בשלב ההשקה ופותחים את האתר בהדרגה למשרדי תיווך שאנחנו מזמינים אישית. נשמח שתהיו בין הראשונים.',
   ];
-  const benefits = [
-    ['פרסום בחינם.', 'פרסום נכסים באתר לא עולה כלום.'],
-    ['שליטה מלאה בנכסים.', 'אתם מעלים, מעדכנים ומורידים מודעות מתי שנוח לכם.'],
-    ['פניות ישירות לסוכן.', 'קונה שמתעניין בנכס רואה את מספר הטלפון שלכם ומתקשר אליכם ישירות.'],
-    ['CRM למשרד.', 'במקום אחד: הפניות שמגיעות מהאתר, הלקוחות ומה שהם מחפשים, העסקאות, יומן הפגישות והמסמכים של המשרד.'],
-    ['הערכת שווי והיסטוריית עסקאות.', 'באתר יש הערכת שווי לדירה לפי עסקאות שנרשמו, ואפשר לראות את היסטוריית העסקאות ברחוב.'],
+  const forOffice = [
+    ['פרסום בחינם.', 'פרסום נכסים באתר לא עולה כלום, ואתם מעלים, מעדכנים ומורידים את המודעות.'],
+    ['הטלפון של הסוכן.', 'הפנייה מגיעה אליכם, לא למרכזייה.'],
+    ['CRM במקום אחד.', 'פניות, לקוחות, עסקאות, יומן ומסמכים.'],
+    ['הזדמנויות.', 'נכס של משרד אחר שמתאים ללקוח שלכם, ואפשר להציע שיתוף פעולה.'],
+    ['מחירי שוק.', 'לפי עסקאות שנרשמו, לא לפי מחירי המודעות.'],
+  ];
+  const forPeople = [
+    ['הערכת שווי לדירה.', 'טווח מחיר לפי עסקאות שנרשמו.'],
+    ['היסטוריית עסקאות.', 'אפשר לראות מה נמכר ברחוב.'],
+    ['מחשבון משכנתא.', 'החזר חודשי לפני שפונים למשרד.'],
+    ['חיפוש שנשמר.', 'שומרים נכס, ומקבלים התראה כשמודעה חדשה מתאימה.'],
   ];
   const afterSignup = 'אחרי ההרשמה נאשר את החשבון ותוכלו להתחיל לפרסם. נשמח גם לעזור להעלות את הנכסים הראשונים.';
   const question = 'יש שאלה? פשוט השיבו למייל הזה, אני קורא כל תשובה.';
 
+  const lines = (rows) => rows.map(([title, body]) => `• ${title} ${body}`);
   const text = [
     greeting,
     '',
     ...intro,
     '',
-    'מה תקבלו:',
-    ...benefits.map(([title, body]) => `• ${title} ${body}`),
+    'למשרד',
+    ...lines(forOffice),
+    '',
+    'למי שמחפש או מוכר דירה',
+    ...lines(forPeople),
     '',
     'ההרשמה לוקחת דקה',
     SIGNUP,
@@ -136,19 +146,80 @@ function letter(name) {
     'Urban365 · urban365.co.il',
   ].join('\n');
 
-  const html = `<div dir="rtl" style="font-family: Arial, Helvetica, sans-serif; font-size: 16px; line-height: 1.7; color: #1e293b;">
-<p>${escapeHtml(greeting)}</p>
-<p>${intro.join('<br>')}</p>
-<p><strong>מה תקבלו:</strong></p>
-<ul>
-${benefits.map(([title, body]) => `<li><strong>${title}</strong> ${body}</li>`).join('\n')}
-</ul>
-<p>ההרשמה לוקחת דקה</p>
-<p><a href="${SIGNUP}" style="display: inline-block; background: #1d4ed8; color: #ffffff; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-weight: bold;">פתיחת חשבון משרד</a></p>
-<p>${afterSignup}</p>
-<p>${question}</p>
-<p>תודה,<br>איתי<br>Urban365 · <a href="https://urban365.co.il">urban365.co.il</a></p>
-</div>`;
+  const row = ([title, body]) => `<tr>
+<td style="padding:0 0 10px;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.6;color:#1e293b;text-align:right;">
+<strong>${title}</strong> ${body}
+</td>
+</tr>`;
+  const group = (label, rows) => `<tr>
+<td style="padding:18px 0 8px;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.4;font-weight:bold;color:#1d4ed8;text-align:right;">
+${label}
+</td>
+</tr>
+${rows.map(row).join('\n')}`;
+
+  const html = `<!doctype html>
+<html lang="he" dir="rtl">
+<body style="margin:0;padding:0;background:#f6f8fc;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" dir="rtl" style="background:#f6f8fc;">
+<tr>
+<td align="center" style="padding:24px 12px;">
+<table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0" dir="rtl" style="width:560px;max-width:560px;background:#ffffff;border:1px solid #e2e8f0;">
+<tr>
+<td style="padding:28px 28px 8px;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.7;color:#1e293b;text-align:right;">
+${escapeHtml(greeting)}
+</td>
+</tr>
+<tr>
+<td style="padding:0 28px 4px;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.7;color:#1e293b;text-align:right;">
+${intro.join('<br>')}
+</td>
+</tr>
+<tr>
+<td style="padding:8px 28px 0;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" dir="rtl">
+${group('למשרד', forOffice)}
+${group('למי שמחפש או מוכר דירה', forPeople)}
+</table>
+</td>
+</tr>
+<tr>
+<td style="padding:18px 28px 0;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.7;color:#1e293b;text-align:right;">
+ההרשמה לוקחת דקה
+</td>
+</tr>
+<tr>
+<td align="right" style="padding:14px 28px 0;">
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" dir="rtl">
+<tr>
+<td align="center" bgcolor="#1d4ed8" style="border-radius:6px;">
+<a href="${SIGNUP}" style="display:inline-block;padding:12px 22px;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:bold;color:#ffffff;text-decoration:none;">פתיחת חשבון משרד</a>
+</td>
+</tr>
+</table>
+</td>
+</tr>
+<tr>
+<td style="padding:16px 28px 0;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.7;color:#1e293b;text-align:right;">
+${afterSignup}
+</td>
+</tr>
+<tr>
+<td style="padding:12px 28px 0;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.7;color:#1e293b;text-align:right;">
+${question}
+</td>
+</tr>
+<tr>
+<td style="padding:18px 28px 28px;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.7;color:#1e293b;text-align:right;">
+תודה,<br>איתי<br>Urban365 · <a href="https://urban365.co.il" style="color:#1d4ed8;text-decoration:none;">urban365.co.il</a>
+</td>
+</tr>
+</table>
+</td>
+</tr>
+</table>
+</body>
+</html>`;
 
   return { text, html };
 }
