@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react';
 import { useAuth } from '@/auth/auth-context';
 import { LoginDialog } from '@/components/auth/LoginDialog';
 import { CityBox } from '@/components/listing/CityBox';
@@ -14,7 +15,10 @@ import { Field, selectClass } from '@/components/ui/Field';
 import { errorMessageOf } from '@/lib/apiError';
 import { formatDate, formatShekel } from '@/lib/format';
 import { splitHouseNumber } from '@/lib/house-number';
-import { fetchMarketHistory, type MarketHistory } from '@/services/market-history';
+import { fetchMarketHistory, type HistorySale, type MarketHistory } from '@/services/market-history';
+
+/** How many recorded sales one page of the table shows. */
+const SALES_PAGE_SIZE = 20;
 
 /**
  * Recorded sales around a street, for someone with an account.
@@ -273,12 +277,12 @@ function HistoryResult({
   year: string;
   onYear: (year: string) => void;
 }) {
-  const peak = Math.max(...history.byYear.map((bar) => bar.median), 1);
   const listedYear = year === '' ? null : Number(year);
+  const asking = history.asking && history.asking.count > 0 ? history.asking : null;
 
   return (
     <>
-      <section className={panelClass}>
+      <section>
         <h2 className="text-lg font-bold text-slate-900">
           {history.street}, {history.city}
         </h2>
@@ -289,58 +293,47 @@ function HistoryResult({
           ].join(' · ')}
         </p>
 
-        {history.asking && history.asking.count > 0 && (
-          <p className="mt-3 text-sm text-slate-700">
-            מודעות שמוצגות עכשיו ברחוב:{' '}
-            {history.asking.count === 1 ? 'מודעה אחת' : `${history.asking.count.toLocaleString('he-IL')} מודעות`}
-            , חציון {formatShekel(history.asking.median)}
-            {history.asking.perSqm !== null ? ` · ${formatShekel(history.asking.perSqm)} למ"ר` : ''}. זה מחיר
-            מבוקש, לא מחיר עסקה.
-          </p>
+        {asking && (
+          <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 sm:flex sm:items-baseline sm:justify-between sm:gap-4">
+            <p className="text-sm text-amber-950">
+              <span className="text-amber-800">מחיר מבוקש עכשיו </span>
+              <span className="font-bold tabular-nums">{formatShekel(asking.median)}</span>
+              {asking.perSqm !== null ? (
+                <span className="text-amber-900"> · {formatShekel(asking.perSqm)} למ"ר</span>
+              ) : null}
+            </p>
+            <p className="mt-1 text-xs text-amber-900 sm:mt-0">
+              {asking.count === 1 ? 'מודעה אחת' : `${asking.count.toLocaleString('he-IL')} מודעות`} ברחוב. זה מחיר
+              מבוקש, לא מחיר עסקה.
+            </p>
+          </div>
         )}
 
         {history.byYear.length > 0 ? (
-          <ul className="mt-4 flex flex-col gap-1.5">
+          <ul className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
             <li>
-              <button
-                type="button"
-                aria-pressed={listedYear === null}
+              <YearCard
+                pressed={listedYear === null}
                 onClick={() => onYear('')}
-                className={`rounded-lg px-2 py-1 text-sm ${
-                  listedYear === null ? 'bg-slate-900 font-medium text-white' : 'text-slate-600 hover:bg-slate-100'
-                }`}
-              >
-                כל השנים ·{' '}
-                {history.total === 1 ? 'עסקה אחת' : `${history.total.toLocaleString('he-IL')} עסקאות`}
-              </button>
+                label="כל השנים"
+                value={dealCount(history.total)}
+                hint={yearSpan(history.byYear)}
+              />
             </li>
             {history.byYear.map((bar) => (
-              <li key={bar.year} className="grid grid-cols-[4.5rem_minmax(0,1fr)] items-center gap-x-2 gap-y-0.5">
-                <button
-                  type="button"
-                  aria-pressed={listedYear === bar.year}
+              <li key={bar.year}>
+                <YearCard
+                  pressed={listedYear === bar.year}
                   onClick={() => onYear(String(bar.year))}
-                  className={`rounded-lg px-2 py-1 text-start text-sm ${
-                    listedYear === bar.year
-                      ? 'bg-blue-700 font-semibold text-white'
-                      : 'font-medium text-slate-800 hover:bg-slate-100'
-                  }`}
-                >
-                  {bar.year}
-                </button>
-                <span className="h-2 overflow-hidden rounded-full bg-slate-100">
-                  <span
-                    className="block h-full rounded-full bg-blue-600"
-                    style={{ width: `${Math.max(8, Math.round((bar.median / peak) * 100))}%` }}
-                  />
-                </span>
-                <span className="col-start-2 text-sm text-slate-800">
-                  {formatShekel(bar.median)}
-                  <span className="ms-2 text-xs text-slate-500">
-                    {bar.count === 1 ? 'עסקה אחת' : `${bar.count.toLocaleString('he-IL')} עסקאות`}
-                    {bar.perSqm !== null ? ` · ${formatShekel(bar.perSqm)} למ"ר` : ''}
-                  </span>
-                </span>
+                  label={String(bar.year)}
+                  value={formatShekel(bar.median)}
+                  hint={[
+                    dealCount(bar.count),
+                    bar.perSqm !== null ? `${formatShekel(bar.perSqm)} למ"ר` : '',
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')}
+                />
               </li>
             ))}
           </ul>
@@ -366,60 +359,252 @@ function HistoryResult({
       </section>
 
       {history.sales.length > 0 && (
-        <section className={panelClass}>
-          <h2 className="text-sm font-semibold text-slate-900">
-            {listedYear === null ? 'עסקאות אחרונות' : `עסקאות ${listedYear}`}
-          </h2>
-          {history.salesTotal > history.sales.length && (
-            <p className="mt-1 text-xs text-slate-500">
-              מוצגות {history.sales.length.toLocaleString('he-IL')} מתוך{' '}
-              {history.salesTotal.toLocaleString('he-IL')}.
-            </p>
-          )}
-          <div className="mt-3 overflow-x-auto">
-            <table className="w-full min-w-[32rem] text-sm">
-              <caption className="sr-only">
-                עסקאות מגורים שנרשמו ליד {history.street}, {history.city}
-              </caption>
-              <thead>
-                <tr className="border-b border-slate-200 text-xs text-slate-500">
-                  <th scope="col" className="px-3 py-2 text-start font-medium">
-                    תאריך
-                  </th>
-                  <th scope="col" className="px-3 py-2 text-start font-medium">
-                    חדרים
-                  </th>
-                  <th scope="col" className="px-3 py-2 text-start font-medium">
-                    שטח
-                  </th>
-                  <th scope="col" className="px-3 py-2 text-start font-medium">
-                    מחיר
-                  </th>
-                  <th scope="col" className="px-3 py-2 text-start font-medium">
-                    למ"ר
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {history.sales.map((sale, index) => (
-                  <tr key={`${sale.date}-${sale.amount}-${sale.area ?? 0}-${index}`} className="border-b border-slate-100">
-                    <td className="px-3 py-2 text-start text-slate-800">
-                      {formatDate(sale.date)}
-                      {sale.nature && <span className="mt-0.5 block text-xs text-slate-500">{sale.nature}</span>}
-                    </td>
-                    <td className="px-3 py-2 text-start tabular-nums">{sale.rooms === null ? '—' : sale.rooms}</td>
-                    <td className="px-3 py-2 text-start tabular-nums">{sale.area === null ? '—' : `${sale.area} מ"ר`}</td>
-                    <td className="px-3 py-2 text-start font-medium tabular-nums">{formatShekel(sale.amount)}</td>
-                    <td className="px-3 py-2 text-start tabular-nums text-slate-600">
-                      {sale.perSqm === null ? '—' : formatShekel(sale.perSqm)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
+        <SalesTable
+          key={`${history.city}-${history.street}-${year}-${history.rooms ?? ''}`}
+          sales={history.sales}
+          salesTotal={history.salesTotal}
+          heading={listedYear === null ? 'עסקאות אחרונות' : `עסקאות ${listedYear}`}
+          caption={`עסקאות מגורים שנרשמו ליד ${history.street}, ${history.city}`}
+        />
       )}
     </>
   );
+}
+
+function YearCard({
+  pressed,
+  onClick,
+  label,
+  value,
+  hint,
+}: {
+  pressed: boolean;
+  onClick: () => void;
+  label: string;
+  value: string;
+  hint: string;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={pressed}
+      onClick={onClick}
+      className={`flex h-full w-full flex-col rounded-xl border px-3 py-3 text-start shadow-sm transition ${
+        pressed
+          ? 'border-slate-900 bg-slate-900 text-white'
+          : 'border-slate-200 bg-white text-slate-900 hover:border-slate-400'
+      }`}
+    >
+      <span className={`text-xs ${pressed ? 'text-white/70' : 'text-slate-500'}`}>{label}</span>
+      <span className="mt-1 text-lg font-bold tabular-nums">{value}</span>
+      <span className={`mt-1 text-xs leading-relaxed ${pressed ? 'text-white/75' : 'text-slate-500'}`}>{hint}</span>
+    </button>
+  );
+}
+
+type SaleSortKey = 'date' | 'amount' | 'rooms' | 'area';
+
+interface SaleSort {
+  key: SaleSortKey;
+  dir: 'asc' | 'desc';
+}
+
+function SalesTable({
+  sales,
+  salesTotal,
+  heading,
+  caption,
+}: {
+  sales: HistorySale[];
+  salesTotal: number;
+  heading: string;
+  caption: string;
+}) {
+  const [sort, setSort] = useState<SaleSort>({ key: 'date', dir: 'desc' });
+  const [page, setPage] = useState(0);
+
+  const ordered = [...sales].sort((a, b) => compareSales(a, b, sort));
+  const pages = Math.max(1, Math.ceil(ordered.length / SALES_PAGE_SIZE));
+  const safePage = Math.min(page, pages - 1);
+  const start = safePage * SALES_PAGE_SIZE;
+  const rows = ordered.slice(start, start + SALES_PAGE_SIZE);
+
+  const choose = (key: SaleSortKey) => {
+    setSort((current) =>
+      current.key === key ? { key, dir: current.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'desc' },
+    );
+    setPage(0);
+  };
+
+  return (
+    <section className={panelClass}>
+      <h2 className="text-sm font-semibold text-slate-900">{heading}</h2>
+      {salesTotal > sales.length && (
+        <p className="mt-1 text-xs text-slate-500">
+          מוצגות {sales.length.toLocaleString('he-IL')} מתוך {salesTotal.toLocaleString('he-IL')}.
+        </p>
+      )}
+      <div className="mt-3 overflow-x-auto">
+        <table className="w-full min-w-[32rem] text-sm">
+          <caption className="sr-only">{caption}</caption>
+          <thead>
+            <tr className="border-b border-slate-200 text-xs text-slate-500">
+              <SortHeader label="תאריך" column="date" sort={sort} onSort={choose} />
+              <SortHeader label="חדרים" column="rooms" sort={sort} onSort={choose} />
+              <SortHeader label="שטח" column="area" sort={sort} onSort={choose} />
+              <SortHeader label="מחיר" column="amount" sort={sort} onSort={choose} />
+              <th scope="col" className="px-3 py-2 text-start font-medium">
+                למ"ר
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((sale, index) => (
+              <tr key={`${sale.date}-${sale.amount}-${sale.area ?? 0}-${start + index}`} className="border-b border-slate-100">
+                <td className="px-3 py-2 text-start text-slate-800">
+                  {formatDate(sale.date)}
+                  {sale.nature && <span className="mt-0.5 block text-xs text-slate-500">{sale.nature}</span>}
+                </td>
+                <td className="px-3 py-2 text-start tabular-nums">{sale.rooms === null ? '—' : sale.rooms}</td>
+                <td className="px-3 py-2 text-start tabular-nums">{sale.area === null ? '—' : `${sale.area} מ"ר`}</td>
+                <td className="px-3 py-2 text-start font-medium tabular-nums">{formatShekel(sale.amount)}</td>
+                <td className="px-3 py-2 text-start tabular-nums text-slate-600">
+                  {sale.perSqm === null ? '—' : formatShekel(sale.perSqm)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <SalesPager page={safePage} pages={pages} shown={ordered.length} onPage={setPage} />
+    </section>
+  );
+}
+
+function SortHeader({
+  label,
+  column,
+  sort,
+  onSort,
+}: {
+  label: string;
+  column: SaleSortKey;
+  sort: SaleSort;
+  onSort: (column: SaleSortKey) => void;
+}) {
+  const active = sort.key === column;
+  const Icon = !active ? ArrowUpDown : sort.dir === 'asc' ? ArrowUp : ArrowDown;
+  return (
+    <th
+      scope="col"
+      aria-sort={active ? (sort.dir === 'asc' ? 'ascending' : 'descending') : 'none'}
+      className="px-3 py-2 text-start font-medium"
+    >
+      <button
+        type="button"
+        onClick={() => onSort(column)}
+        className={`inline-flex items-center gap-1 rounded text-start ${active ? 'font-semibold text-slate-800' : 'hover:text-slate-800'}`}
+      >
+        {label}
+        <Icon className={`h-3.5 w-3.5 ${active ? 'text-slate-700' : 'text-slate-400'}`} aria-hidden />
+      </button>
+    </th>
+  );
+}
+
+function SalesPager({
+  page,
+  pages,
+  shown,
+  onPage,
+}: {
+  page: number;
+  pages: number;
+  shown: number;
+  onPage: (page: number) => void;
+}) {
+  const from = shown === 0 ? 0 : page * SALES_PAGE_SIZE + 1;
+  const to = Math.min(shown, (page + 1) * SALES_PAGE_SIZE);
+  return (
+    <nav aria-label="עימוד העסקאות" className="mt-3 flex flex-wrap items-center justify-between gap-3">
+      <p className="text-xs text-slate-500">
+        {from.toLocaleString('he-IL')}–{to.toLocaleString('he-IL')} מתוך {shown.toLocaleString('he-IL')}
+      </p>
+      {pages > 1 && (
+        <div className="flex flex-wrap items-center gap-1">
+          <PagerButton disabled={page === 0} onClick={() => onPage(page - 1)}>
+            הקודם
+          </PagerButton>
+          {Array.from({ length: pages }, (_, index) => (
+            <PagerButton key={index} current={index === page} onClick={() => onPage(index)}>
+              {(index + 1).toLocaleString('he-IL')}
+            </PagerButton>
+          ))}
+          <PagerButton disabled={page === pages - 1} onClick={() => onPage(page + 1)}>
+            הבא
+          </PagerButton>
+        </div>
+      )}
+    </nav>
+  );
+}
+
+function PagerButton({
+  children,
+  onClick,
+  disabled = false,
+  current = false,
+}: {
+  children: string;
+  onClick: () => void;
+  disabled?: boolean;
+  current?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-current={current ? 'page' : undefined}
+      className={`rounded-lg px-2.5 py-1.5 text-sm ${
+        current
+          ? 'bg-slate-900 font-medium text-white'
+          : 'text-slate-700 hover:bg-slate-100 disabled:text-slate-300 disabled:hover:bg-transparent'
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
+function dealCount(count: number): string {
+  return count === 1 ? 'עסקה אחת' : `${count.toLocaleString('he-IL')} עסקאות`;
+}
+
+/** Newest year is first. One year has no span to draw. */
+function yearSpan(years: { year: number }[]): string {
+  if (years.length === 0) return '';
+  const newest = years[0]?.year;
+  const oldest = years[years.length - 1]?.year;
+  if (newest === undefined || oldest === undefined || newest === oldest) return String(newest ?? '');
+  return `${oldest}–${newest}`;
+}
+
+function compareSales(a: HistorySale, b: HistorySale, sort: SaleSort): number {
+  const sign = sort.dir === 'asc' ? 1 : -1;
+  const left = saleSortValue(a, sort.key);
+  const right = saleSortValue(b, sort.key);
+  if (left === null && right === null) return 0;
+  if (left === null) return 1;
+  if (right === null) return -1;
+  if (left < right) return -sign;
+  if (left > right) return sign;
+  return 0;
+}
+
+function saleSortValue(sale: HistorySale, key: SaleSortKey): string | number | null {
+  if (key === 'date') return sale.date;
+  if (key === 'amount') return sale.amount;
+  if (key === 'rooms') return sale.rooms;
+  return sale.area;
 }
