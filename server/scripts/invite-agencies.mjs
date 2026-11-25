@@ -11,7 +11,8 @@
  * domain, not a separate mailbox. Replies come back through Cloudflare's
  * forward because that is where the domain's mail is delivered.
  *
- * After you enter the addresses, it sends them.
+ * After you enter the addresses, it sends them. An address already in
+ * data/agency-invites-sent.json is sent again only if you answer yes.
  *
  *   node scripts/invite-agencies.mjs
  *
@@ -85,14 +86,35 @@ function parseAddresses(raw) {
   return { addresses, rejected };
 }
 
-async function askForAddresses() {
-  const rl = createInterface({ input: stdin, output: stdout });
+/** Latest send time for each address, or an empty map when nothing has gone out. */
+function alreadySent() {
+  if (!existsSync(sentFile)) return new Map();
+  const raw = readFileSync(sentFile, 'utf8').trim();
+  if (!raw) return new Map();
+  let rows;
   try {
-    const answer = await rl.question('Addresses to invite, separated by commas: ');
-    return answer;
-  } finally {
-    rl.close();
+    rows = JSON.parse(raw);
+  } catch {
+    console.error(`Could not read ${sentFile}.`);
+    process.exit(1);
   }
+  if (!Array.isArray(rows)) return new Map();
+  const sent = new Map();
+  for (const row of rows) {
+    const email = typeof row?.email === 'string' ? row.email.trim().toLowerCase() : '';
+    if (!email) continue;
+    const at = typeof row.sentAt === 'string' ? row.sentAt : '';
+    const prev = sent.get(email);
+    if (!prev || at > prev) sent.set(email, at);
+  }
+  return sent;
+}
+
+function wantsAgain(answer) {
+  const value = answer.trim().toLowerCase();
+  if (value === 'yes' || value === 'y') return true;
+  if (value === 'no' || value === 'n') return false;
+  return null;
 }
 
 function remember(entry) {
@@ -234,28 +256,74 @@ function escapeHtml(value) {
 
 async function main() {
   loadEnv(resolve(root, 'server/.env'));
+  const rl = createInterface({ input: stdin, output: stdout });
+  // One iterator for every answer. A fresh `question` after the first drops a line
+  // that is already waiting, and the script exits without a yes or a no.
+  const lines = rl[Symbol.asyncIterator]();
+  const ask = async (prompt) => {
+    stdout.write(prompt);
+    const { value, done } = await lines.next();
+    return done ? null : value;
+  };
+  try {
+    const raw = await ask('Addresses to invite, separated by commas: ');
+    if (raw === null) {
+      console.error('No addresses given.');
+      process.exit(1);
+    }
+    const { addresses, rejected } = parseAddresses(raw);
+    if (rejected.length > 0) {
+      console.error(`Not an address: ${rejected.join(', ')}`);
+      process.exit(1);
+    }
+    if (addresses.length === 0) {
+      console.error('No addresses given.');
+      process.exit(1);
+    }
 
-  const { addresses, rejected } = parseAddresses(await askForAddresses());
-  if (rejected.length > 0) {
-    console.error(`Not an address: ${rejected.join(', ')}`);
-    process.exit(1);
-  }
-  if (addresses.length === 0) {
-    console.error('No addresses given.');
-    process.exit(1);
-  }
+    const names = namesByAddress();
+    const batch = addresses.map((email) => ({ email, name: names.get(email.toLowerCase()) ?? null }));
 
-  const names = namesByAddress();
-  const batch = addresses.map((email) => ({ email, name: names.get(email.toLowerCase()) ?? null }));
+    console.log(`${batch.length} address${batch.length === 1 ? '' : 'es'}:`);
+    for (const row of batch) console.log(`  ${row.email}${row.name ? `  ${row.name}` : ''}`);
+    console.log(`\n${letter(batch[0].name).text}\n`);
 
-  console.log(`${batch.length} address${batch.length === 1 ? '' : 'es'}:`);
-  for (const row of batch) console.log(`  ${row.email}${row.name ? `  ${row.name}` : ''}`);
-  console.log(`\n${letter(batch[0].name).text}\n`);
+    const sent = alreadySent();
+    const kept = [];
+    for (const row of batch) {
+      const at = sent.get(row.email.toLowerCase());
+      if (!at) {
+        kept.push(row);
+        continue;
+      }
+      const when = at.slice(0, 10);
+      let again = null;
+      while (again === null) {
+        const reply = await ask(
+          `Already sent to ${row.email}${when ? ` on ${when}` : ''}. Send again? (yes/no) `,
+        );
+        if (reply === null) {
+          console.error('No answer. Not sending.');
+          process.exit(1);
+        }
+        again = wantsAgain(reply);
+        if (again === null) console.log('Answer yes or no.');
+      }
+      if (again) kept.push(row);
+      else console.log(`skipped ${row.email}`);
+    }
+    if (kept.length === 0) {
+      console.log('Nothing to send.');
+      return;
+    }
 
-  for (const row of batch) {
-    const id = await deliver(row.email, row.name);
-    remember({ email: row.email, name: row.name, resendId: id, sentAt: new Date().toISOString() });
-    await sleep(800);
+    for (const row of kept) {
+      const id = await deliver(row.email, row.name);
+      remember({ email: row.email, name: row.name, resendId: id, sentAt: new Date().toISOString() });
+      await sleep(800);
+    }
+  } finally {
+    rl.close();
   }
 }
 
