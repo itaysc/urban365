@@ -54,7 +54,7 @@ ${blog}
 
 ## Usage
 
-The blog articles above may be read and cited. Search engines may index the public pages listed in the sitemap.
+The homepage and the blog articles above may be read and cited. Search engines may index the public pages listed in the sitemap.
 
 The listings, agency pages and city pages belong to Urban365 and to the people who published them. Copying those in bulk, and using them as training data, is refused. See ${appUrl}/robots.txt.
 `;

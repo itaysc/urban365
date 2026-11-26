@@ -44,11 +44,11 @@ const CLOSED = [
 ];
 
 /**
- * Answer engines. They may read the blog and the llms.txt files, and nothing else.
+ * Answer engines. They may read the homepage, the blog and the llms.txt files.
  *
  * The listings, city pages and agency pages stay closed: those belong to the people
- * who published them. The blog is written to be found, including by a model that
- * answers from it, so refusing these crawlers would hide the pages.
+ * who published them. The homepage says what the site is, and the blog is written to
+ * be found, including by a model that answers from it.
  */
 const READERS = [
   'GPTBot',
@@ -61,8 +61,14 @@ const READERS = [
   'cohere-ai',
 ];
 
-/** What an answer engine is allowed to fetch. Everything else on the site stays shut. */
-const READER_RULES = ['Allow: /llms.txt', 'Allow: /llms-full.txt', 'Allow: /blog', 'Disallow: /'];
+/**
+ * What an answer engine is allowed to fetch. Everything else on the site stays shut.
+ *
+ * `Allow: /$` is the homepage and nothing under it. The `$` is the end of the path, so
+ * `/` matches and `/nadlan` does not. A plain `Allow: /` would open the whole site,
+ * because it is the same length as `Disallow: /` and the allow wins the tie.
+ */
+const READER_RULES = ['Allow: /$', 'Allow: /llms.txt', 'Allow: /llms-full.txt', 'Allow: /blog', 'Disallow: /'];
 
 /**
  * Crawlers that copy the site in bulk. None of them sends a visitor here, and unlike
@@ -101,12 +107,14 @@ export function robotsTxt(appUrl: string): string {
     'Allow: /',
     ...closedRules,
     '',
-    '# Google AI training stays opted out of the listings. The blog is published to be',
-    '# read, so it is open here too. This opt-out does not affect Google Search rankings.',
+    '# Google AI training stays opted out of the listings. The homepage and the blog are',
+    '# published to be read, so they are open here too. This opt-out does not affect',
+    '# Google Search rankings.',
     'User-agent: Google-Extended',
     ...READER_RULES,
     '',
-    '# Answer engines may read the blog and the llms.txt files. Nothing else.',
+    '# Answer engines may read the homepage, the blog and the llms.txt files.',
+    '# `Allow: /$` is the homepage only. City pages and listings stay shut.',
     ...READERS.flatMap((agent) => [`User-agent: ${agent}`, ...READER_RULES, '']),
     '# Refused outright: bulk scrapers.',
     ...REFUSED.flatMap((agent) => [`User-agent: ${agent}`, 'Disallow: /', '']),

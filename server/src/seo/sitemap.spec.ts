@@ -64,14 +64,17 @@ describe('robotsTxt', () => {
     expect(groupFor(robotsTxt(APP), 'Googlebot')).not.toContain('Google-Extended');
   });
 
-  it('lets answer engines read the blog and nothing else', () => {
+  it('lets answer engines read the homepage and the blog, and shuts the rest', () => {
     const txt = robotsTxt(APP);
 
     for (const agent of ['GPTBot', 'ClaudeBot', 'PerplexityBot', 'Google-Extended']) {
       const group = groupFor(txt, agent);
+      expect(group, agent).toContain('Allow: /$');
+      expect(group, agent).not.toMatch(/^Allow: \/$/mu);
       expect(group, agent).toContain('Allow: /blog');
       expect(group, agent).toContain('Allow: /llms.txt');
       expect(group, agent).toMatch(/^Disallow: \/$/mu);
+      expect(group, agent).not.toContain('Allow: /nadlan');
     }
   });
 

@@ -129,7 +129,7 @@ async function checkRobots() {
     error('robots.txt does not opt out of Google AI training (Google-Extended)');
   }
 
-  // Answer engines may read the blog. Keep this list in step with READERS in sitemap.ts.
+  // Answer engines may read the homepage and the blog. Keep this list in step with READERS in sitemap.ts.
   const READERS = [
     'GPTBot', 'ChatGPT-User', 'OAI-SearchBot', 'ClaudeBot', 'Claude-Web', 'anthropic-ai',
     'PerplexityBot', 'cohere-ai', 'Google-Extended',
@@ -137,6 +137,8 @@ async function checkRobots() {
   for (const agent of READERS) {
     const group = groups.get(agent);
     if (!group?.disallow.includes('/')) error(`robots.txt does not close the rest of the site to ${agent}`);
+    if (!group?.allow.includes('/$')) error(`robots.txt does not let ${agent} read the homepage`);
+    if (group?.allow.includes('/')) error(`robots.txt opens the whole site to ${agent}`);
     if (!group?.allow.includes('/blog')) error(`robots.txt does not let ${agent} read the blog`);
     if (!group?.allow.includes('/llms.txt')) error(`robots.txt does not let ${agent} read llms.txt`);
   }
