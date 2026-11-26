@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import { Injectable, Logger } from '@nestjs/common';
 import { Prisma, Section as DbSection, type Listing } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service.js';
@@ -20,6 +21,8 @@ function listingWithoutImages<T extends { coverImageUrl: unknown; imageUrls: unk
 }
 
 const asDate = (v: string | undefined | null): Date | null => (v ? new Date(v) : null);
+
+const newPreviewToken = (): string => randomBytes(18).toString('base64url');
 
 /**
  * Persists a scrape into Postgres. Everything is keyed on yad2's own identifiers
@@ -149,6 +152,13 @@ export class AgencyRepository {
         },
       });
 
+      // Nobody at an office that has not been approved agreed to be on the site. What is
+      // imported for it waits as drafts behind a private link until they do.
+      const claimed = agency.status === 'active';
+      if (!claimed && !agency.previewToken) {
+        await tx.agency.update({ where: { id: agency.id }, data: { previewToken: newPreviewToken() } });
+      }
+
       for (const member of team) {
         const yad2Id = member.id === null ? null : String(member.id);
         const data = {
@@ -212,6 +222,7 @@ export class AgencyRepository {
           create: {
             token: asset.token,
             ...row,
+            status: claimed ? 'published' : 'draft',
             coverImageUrl: null,
             imageUrls: [],
             imagesCount: 0,
@@ -284,14 +295,25 @@ export class AgencyRepository {
     }, { timeout, maxWait: 15_000 });
   }
 
-  /** Rebuilds the API shape from the stored rows. */
-  async getAgency(agencyId: string, section: Section): Promise<AgencyResult | null> {
+  /**
+   * Rebuilds the API shape from the stored rows. Published listings only, unless the
+   * caller is staff: drafts of an office nobody claimed are not public yet.
+   */
+  async getAgency(
+    agencyId: string,
+    section: Section,
+    opts: { drafts?: boolean } = {},
+  ): Promise<AgencyResult | null> {
     const agency = await this.prisma.agency.findUnique({
       where: { yad2Id: agencyId },
       include: {
         brokers: { orderBy: { activeAssetsCount: 'desc' } },
         listings: {
-          where: { section: toDbSection(section), delistedAt: null },
+          where: {
+            section: toDbSection(section),
+            delistedAt: null,
+            ...(opts.drafts ? { status: { in: ['published', 'draft'] } } : { status: 'published' }),
+          },
           orderBy: { lastSeenAt: 'desc' },
         },
         runs: {

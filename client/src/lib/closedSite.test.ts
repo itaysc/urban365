@@ -13,6 +13,11 @@ describe('guestMayBrowse', () => {
     expect(guestMayBrowse('/viewing/seller/abc')).toBe(true);
   });
 
+  it('keeps an office preview link, which is authorised by the token', () => {
+    expect(guestMayBrowse('/preview/abc')).toBe(true);
+    expect(guestMayBrowse('/preview')).toBe(false);
+  });
+
   it('keeps the agency directory, which the home page links to', () => {
     expect(guestMayBrowse('/agencies')).toBe(true);
     expect(guestMayBrowse('/agencies/some-office')).toBe(true);

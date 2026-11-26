@@ -62,6 +62,7 @@ const PREFIXES: [string, string][] = [
   ['/app/listings/', 'עריכת נכס'],
   ['/agency/', 'עמוד הסוכנות'],
   ['/viewing/', 'אישור ביקור'],
+  ['/preview/', 'תצוגה מקדימה'],
 ];
 
 export function titleForPath(pathname: string): string | null {

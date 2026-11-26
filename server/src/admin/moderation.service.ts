@@ -159,6 +159,7 @@ export class ModerationService {
         where: { agencyId, status: 'pending', NOT: { userId } },
         data: { status: 'suspended' },
       }),
+      ...this.publishImported(agencyId, now),
     ]);
 
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
@@ -575,6 +576,7 @@ export class ModerationService {
               where: { agencyId, status: 'pending', NOT: { userId } },
               data: { status: 'suspended' },
             }),
+            ...this.publishImported(agencyId, now),
           ]
         : []),
       this.prisma.agencyClaim.updateMany({
@@ -680,6 +682,21 @@ export class ModerationService {
     await Promise.all(storageKeys.map((key) => this.storage.deleteObject(key)));
 
     this.logger.log(`User ${userId} deleted by ${adminId}`);
+  }
+
+  /**
+   * What was imported for the office while nobody there had agreed, put on the site
+   * now that someone has. Drafts the office wrote itself are not touched.
+   */
+  private publishImported(agencyId: string, now: Date) {
+    const imported = { agencyId, source: 'yad2' as const, status: 'draft' as const };
+    return [
+      this.prisma.listing.updateMany({
+        where: { ...imported, publishedAt: null },
+        data: { publishedAt: now },
+      }),
+      this.prisma.listing.updateMany({ where: imported, data: { status: 'published' } }),
+    ];
   }
 
   private async requireUser(userId: string) {

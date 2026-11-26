@@ -143,6 +143,9 @@ model Agency {
   yad2Id String? @unique
   /// Public URL segment, assigned when the agency is activated.
   slug   String? @unique
+  /// The secret in a page only this office is meant to open: what was imported for it,
+  /// still unpublished, so they can see it before agreeing to anything going public.
+  previewToken String? @unique
 
   status          AgencyStatus @default(unclaimed)
   contactEmail    String?

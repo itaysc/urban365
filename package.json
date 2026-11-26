@@ -17,6 +17,7 @@
     "invite:agencies": "npm run invite:agencies --prefix server",
     "import:yad2": "npm run import:yad2 --prefix server",
     "import:yad2:images": "npm run import:yad2:images --prefix server",
+    "import:preview": "npm run import:preview --prefix server",
     "build": "npm run build:server && npm run build:client",
     "build:client": "cd client && npm run build",
     "build:server": "cd server && npm run build",

@@ -19,6 +19,7 @@
     "import:cache": "node dist/scripts/import-cache.js",
     "import:yad2": "npm run build && node dist/scripts/import-yad2-prod.js",
     "import:yad2:images": "npm run build && node dist/scripts/import-yad2-prod.js --images",
+    "import:preview": "npm run build && node dist/scripts/import-yad2-preview.js",
     "grant:admin": "node dist/scripts/grant-admin.js",
     "invite:agencies": "node scripts/invite-agencies.mjs",
     "seed:dev-agency": "node dist/scripts/seed-dev-agency.js",

@@ -39,8 +39,8 @@ export class Yad2Service {
   }
 
   /** Postgres is the store; the JSON files are only a raw backup of each run. */
-  async getCached(agencyId: string, section: Section): Promise<AgencyResult | null> {
-    return this.repository.getAgency(agencyId, section);
+  async getCached(agencyId: string, section: Section, opts: { drafts?: boolean } = {}): Promise<AgencyResult | null> {
+    return this.repository.getAgency(agencyId, section, opts);
   }
 
   listCached() {

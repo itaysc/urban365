@@ -10,6 +10,7 @@ import { AuthLayout } from '@/pages/auth/AuthLayout';
 import { attachAgency, type AgencyLookupResult } from '@/services/auth';
 import { PhoneField } from '@/components/ui/PhoneField';
 import { hasCallablePhone } from '@/lib/phone';
+import { usePreviewClaim } from '@/hooks/usePreviewClaim';
 import type { AgencyVertical } from '@/types/auth';
 
 /**
@@ -25,6 +26,7 @@ export function AgencyClaimPage() {
   const navigate = useNavigate();
 
   const [claimed, setClaimed] = useState<AgencyLookupResult | null>(null);
+  usePreviewClaim(setClaimed);
   const [agencyName, setAgencyName] = useState('');
   const [vertical, setVertical] = useState<AgencyVertical>('real_estate');
   const [phone, setPhone] = useState('');

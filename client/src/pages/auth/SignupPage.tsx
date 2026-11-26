@@ -14,6 +14,7 @@ import { AuthLayout } from '@/pages/auth/AuthLayout';
 import type { AgencyLookupResult } from '@/services/auth';
 import { PhoneField } from '@/components/ui/PhoneField';
 import { hasCallablePhone } from '@/lib/phone';
+import { usePreviewClaim } from '@/hooks/usePreviewClaim';
 import type { AgencyVertical } from '@/types/auth';
 
 const PASSWORD_MIN = 10;
@@ -27,6 +28,7 @@ export function SignupPage() {
   // Claiming an agency we already scraped, rather than creating an empty one.
   const [claimed, setClaimed] = useState<AgencyLookupResult | null>(null);
   const [vertical, setVertical] = useState<AgencyVertical>('real_estate');
+  const claimToken = usePreviewClaim(setClaimed);
 
   const formik = useFormik({
     initialValues: {
@@ -93,7 +95,10 @@ export function SignupPage() {
       */}
       <div className="flex flex-col gap-4">
         <TermsNotice />
-        <GoogleButton returnTo="/agency/claim" label="הרשמה עם Google" />
+        <GoogleButton
+          returnTo={claimToken ? `/agency/claim?claim=${encodeURIComponent(claimToken)}` : '/agency/claim'}
+          label="הרשמה עם Google"
+        />
 
         {googleAvailable && (
           <div className="flex items-center gap-3">

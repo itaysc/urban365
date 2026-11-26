@@ -19,11 +19,9 @@
  * Both ask which user and which section. Neither picks a user for you.
  *   npm run import:yad2 --prefix server -- --email someone@example.com --section forsale --yes
  */
-import { readFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { createInterface } from 'node:readline/promises';
-import { fileURLToPath } from 'node:url';
 import { Logger, Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
@@ -39,9 +37,7 @@ import { Yad2Module } from '../yad2/yad2.module.js';
 import { Yad2Service } from '../yad2/yad2.service.js';
 import { parseAgencyInput } from '../yad2/yad2.transform.js';
 import { SECTIONS, type AgencyDump, type Section } from '../yad2/yad2.types.js';
-
-const CDP_URL = 'http://127.0.0.1:9222';
-const serverRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
+import { assertChrome, dbHost, isLocalDb, loadProdEnv, serverRoot } from './prod-env.js';
 
 /** Only what the scrape needs. The full app would also start the mail and match timers. */
 @Module({
@@ -68,62 +64,6 @@ interface Candidate {
   firstName: string;
   lastName: string;
   offices: Office[];
-}
-
-function loadProdEnv(): void {
-  const envPath = path.join(serverRoot, '.prod.env');
-  let text: string;
-  try {
-    text = readFileSync(envPath, 'utf8');
-  } catch {
-    console.error(`Missing ${envPath}. Copy the Railway Postgres URLs into it first.`);
-    process.exit(1);
-  }
-
-  for (const line of text.split('\n')) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith('#')) continue;
-    const eq = trimmed.indexOf('=');
-    if (eq === -1) continue;
-    const key = trimmed.slice(0, eq).trim();
-    let value = trimmed.slice(eq + 1).trim();
-    if (
-      (value.startsWith('"') && value.endsWith('"')) ||
-      (value.startsWith("'") && value.endsWith("'"))
-    ) {
-      value = value.slice(1, -1);
-    }
-    process.env[key] = value;
-  }
-
-  // The Chrome is on this machine. A URL from the file would point the scrape elsewhere.
-  process.env.YAD2_CDP_URL = CDP_URL;
-}
-
-function isLocalDb(url: string | undefined): boolean {
-  return !url || /localhost|127\.0\.0\.1|REPLACE_ME/.test(url);
-}
-
-function dbHost(url: string): string {
-  try {
-    return new URL(url).host;
-  } catch {
-    return '(unparsed database url)';
-  }
-}
-
-async function assertChrome(): Promise<void> {
-  try {
-    const res = await fetch(`${CDP_URL}/json/version`, { signal: AbortSignal.timeout(3000) });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  } catch {
-    console.error(
-      `Chrome is not listening on ${CDP_URL}.\n` +
-        'From the repo root run: npm run chrome:debug\n' +
-        'Open yad2 in that window and pass the check, then run this again.',
-    );
-    process.exit(1);
-  }
 }
 
 function argValue(args: string[], name: string): string | undefined {

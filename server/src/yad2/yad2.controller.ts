@@ -1,7 +1,9 @@
 import { BadRequestException, Body, Controller, Get, Header, NotFoundException, Param, Post, Query, Res } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { Response } from 'express';
+import { CurrentUser } from '../auth/decorators/current-user.decorator.js';
 import { Public } from '../auth/decorators/public.decorator.js';
+import type { Principal } from '../auth/types/principal.js';
 import { PlatformAdmin } from '../auth/decorators/roles.decorator.js';
 import { ScrapeAgencyDto } from './dto/scrape-agency.dto.js';
 import { buildCsv, csvFilename, type CsvKind } from './yad2.csv.js';
@@ -9,6 +11,8 @@ import { Yad2Service } from './yad2.service.js';
 import { SECTIONS, type Section } from './yad2.types.js';
 
 const CSV_KINDS: CsvKind[] = ['assets', 'team', 'agency'];
+
+const isStaff = (principal: Principal | undefined): boolean => principal?.platformRole === 'admin';
 
 /**
  * Platform staff by default, because the routes that *scrape* can start a Playwright
@@ -53,7 +57,7 @@ export class Yad2Controller {
     const section = body.section ?? parsed.section ?? 'forsale';
 
     if (!body.refresh) {
-      const cached = await this.yad2.getCached(parsed.agencyId, section);
+      const cached = await this.yad2.getCached(parsed.agencyId, section, { drafts: true });
       if (cached) return { status: 'done' as const, jobId: null, result: cached };
     }
 
@@ -77,9 +81,13 @@ export class Yad2Controller {
   /** The public agency page: cached data only, and 404 when we have none. */
   @Public()
   @Get('agency/:agencyId')
-  async getAgency(@Param('agencyId') agencyId: string, @Query('section') section?: string) {
+  async getAgency(
+    @Param('agencyId') agencyId: string,
+    @CurrentUser() principal: Principal | undefined,
+    @Query('section') section?: string,
+  ) {
     const chosen = (SECTIONS.includes(section as Section) ? section : 'forsale') as Section;
-    const cached = await this.yad2.getCached(agencyId, chosen);
+    const cached = await this.yad2.getCached(agencyId, chosen, { drafts: isStaff(principal) });
     if (!cached) throw new BadRequestException(`Nothing cached for agency ${agencyId} (${chosen}).`);
     return cached;
   }
@@ -97,6 +105,7 @@ export class Yad2Controller {
     @Param('agencyId') agencyId: string,
     @Param('kind') kind: string,
     @Res({ passthrough: true }) res: Response,
+    @CurrentUser() principal: Principal | undefined,
     @Query('section') section?: string,
   ): Promise<string> {
     if (!CSV_KINDS.includes(kind as CsvKind)) {
@@ -104,7 +113,7 @@ export class Yad2Controller {
     }
 
     const chosen = (SECTIONS.includes(section as Section) ? section : 'forsale') as Section;
-    const result = await this.yad2.getCached(agencyId, chosen);
+    const result = await this.yad2.getCached(agencyId, chosen, { drafts: isStaff(principal) });
     if (!result) throw new NotFoundException(`Nothing cached for agency ${agencyId} (${chosen}).`);
 
     res.setHeader('Content-Disposition', `attachment; filename="${csvFilename(result, kind as CsvKind)}"`);

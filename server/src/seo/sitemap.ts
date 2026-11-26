@@ -35,6 +35,7 @@ const CLOSED = [
   '/saved',
   '/alerts',
   '/viewing/',
+  '/preview/',
   '/login',
   '/signup',
   '/accept-invite',

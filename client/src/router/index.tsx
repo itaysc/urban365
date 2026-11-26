@@ -2,6 +2,7 @@ import { SavedPage } from '@/pages/SavedPage';
 import { AlertsPage } from '@/pages/AlertsPage';
 import { SellerViewingPage } from '@/pages/SellerViewingPage';
 import { ViewingPage } from '@/pages/ViewingPage';
+import { AgencyPreviewPage } from '@/pages/AgencyPreviewPage';
 import { AccessibilityPage, PrivacyPage, TermsPage } from '@/pages/LegalPage';
 import { Navigate, Outlet, ScrollRestoration, createBrowserRouter, useParams } from 'react-router-dom';
 import { ClosedSiteGate } from '@/auth/ClosedSiteGate';
@@ -125,6 +126,8 @@ export const router = createBrowserRouter([
   // deliberately different, because the two people are answering different questions.
   { path: '/viewing/seller/:token', element: <SellerViewingPage /> },
   { path: '/viewing/:token', element: <ViewingPage /> },
+  // An invited office's own listings, before they agree to publish. The token is the way in.
+  { path: '/preview/:token', element: <AgencyPreviewPage /> },
   { path: '/terms', element: <TermsPage /> },
   { path: '/policy', element: <PrivacyPage /> },
   /*

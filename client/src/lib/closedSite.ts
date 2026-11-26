@@ -27,6 +27,8 @@ export function guestMayBrowse(pathname: string): boolean {
   if (OPEN_WHEN_CLOSED.has(pathname)) return true;
   // Token in the path is the authorisation. The customer has never signed in.
   if (pathname.startsWith('/viewing/')) return true;
+  // The same for an invited office's private preview.
+  if (pathname.startsWith('/preview/')) return true;
   // The public list of offices, and each office. Linked from the home page.
   if (pathname === '/agencies' || pathname.startsWith('/agencies/')) return true;
   // The calculator in the same bar.
