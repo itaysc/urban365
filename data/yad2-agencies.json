@@ -8,6 +8,7 @@
       "listings": 720,
       "area": "Ramla / Lod, and a separate Holon office",
       "email": "success@remax.co.il",
+      "yad2Url": "https://www.yad2.co.il/realestate/agency/6135542/forsale",
       "alternateEmail": "Efrattibi@gmail.com",
       "emailSource": "https://global.remax.com/en/offices/israel/holon/remax-success-2-%D7%A8%D7%99%D7%9E%D7%A7%D7%A1-success-2/5143",
       "alternateEmailSource": "https://www.remax-success.co.il/%D7%A6%D7%95%D7%A8-%D7%A7%D7%A9%D7%A8-%D7%A8%D7%99%D7%9E%D7%A7%D7%A1-%D7%9C%D7%95%D7%93-%D7%A8%D7%9E%D7%9C%D7%94-%D7%91%D7%90%D7%A8-%D7%99%D7%A2%D7%A7%D7%91",
@@ -19,6 +20,7 @@
       "area": "Tel Aviv, Ibn Gabirol 52",
       "email": "info@remax-ocean.com",
       "website": "http://www.remax-ocean.com/",
+      "yad2Url": "https://www.yad2.co.il/realestate/agency/5691165/forsale",
       "emailSource": "Published business listing for RE/MAX Ocean. The RE/MAX office page hides the address behind email-the-office.",
       "note": null
     },
@@ -28,6 +30,7 @@
       "area": "Beer Sheva, Yitzhak Nafha 25",
       "email": "plus@remax.co.il",
       "website": "https://remaxplus.co.il/contact-us/",
+      "yad2Url": "https://www.yad2.co.il/realestate/agency/801815/forsale",
       "emailSource": "https://remaxplus.co.il/contact-us/",
       "note": "Office brand is RE/MAX Plus, which presents itself as Remax Beer Sheva."
     },
@@ -37,6 +40,7 @@
       "area": "Haifa, Sderot Moriah 125",
       "email": "nadlanchaifa@gmail.com",
       "website": "https://megurimltd.co.il/",
+      "yad2Url": "https://www.yad2.co.il/realestate/agency/2632672/forsale",
       "emailSource": "https://megurimltd.co.il/",
       "note": null
     },
@@ -46,6 +50,7 @@
       "area": "Beer Sheva and Tel Aviv",
       "email": "citynmd@gmail.com",
       "website": "https://eretz-ir.co.il/",
+      "yad2Url": "https://www.yad2.co.il/realestate/agency/8675275/forsale",
       "emailSource": "https://eretz-ir.co.il/%D7%A6%D7%95%D7%A8-%D7%A7%D7%A9%D7%A8/",
       "note": null
     },
@@ -65,6 +70,7 @@
       "email": "office@commercialnadlan.co.il",
       "alternateEmail": "shimritnadlan@gmail.com",
       "website": "https://commercialnadlan.co.il/",
+      "yad2Url": "https://www.yad2.co.il/realestate/agency/6904843/commercial",
       "emailSource": "https://commercialnadlan.co.il/%D7%A6%D7%95%D7%A8-%D7%A7%D7%A9%D7%A8/",
       "note": "Both addresses are on the same contact page."
     },
@@ -74,6 +80,7 @@
       "area": "Beer Sheva",
       "email": null,
       "website": "https://chen-group.co.il/",
+      "yad2Url": "https://www.yad2.co.il/realestate/agency/7834636/forsale",
       "emailSource": null,
       "note": "Phone is published; no email."
     },
@@ -82,6 +89,7 @@
       "listings": 188,
       "area": "Netanya, Ramat Poleg",
       "email": null,
+      "yad2Url": "https://www.yad2.co.il/realestate/agency/6965415/forsale",
       "emailSource": null,
       "note": "Agent addresses on RE/MAX are masked. No full office inbox."
     },
@@ -91,6 +99,7 @@
       "area": "Petah Tikva",
       "email": "office@ronlandsman.co.il",
       "website": "http://www.ronlandsman.co.il/",
+      "yad2Url": "https://www.yad2.co.il/realestate/agency/6710067/forsale",
       "emailSource": "Published business listing for Landsman, Petah Tikva.",
       "note": null
     },
@@ -108,6 +117,7 @@
       "area": "Krayot",
       "email": "remax.smart.office@gmail.com",
       "website": "https://remaxsmart.co.il/",
+      "yad2Url": "https://www.yad2.co.il/realestate/agency/4499385/forsale",
       "emailSource": "https://remaxsmart.co.il/about-us/",
       "note": null
     },
@@ -125,6 +135,7 @@
       "listings": 170,
       "area": null,
       "email": "eli.shmul@remax.co.il",
+      "yad2Url": "https://www.yad2.co.il/realestate/agency/5628636/forsale",
       "emailSource": "https://www.nadlans.net/contactus-broker/104",
       "note": "Agent contact page, not a confirmed office inbox."
     }
@@ -134,24 +145,28 @@
       "name": "RE/MAX Exclusive",
       "area": "Herzliya Pituach",
       "email": "exclusive@remax.co.il",
+      "yad2Url": "https://www.yad2.co.il/realestate/agency/5584694/forsale",
       "fromYad2FeaturedList": false
     },
     {
       "name": "RE/MAX STAR",
       "area": "Herzliya",
       "email": "star@remax.co.il",
+      "yad2Url": "https://www.yad2.co.il/realestate/agency/7831396/forsale",
       "fromYad2FeaturedList": false
     },
     {
       "name": "RE/MAX בעיר",
       "area": "Herzliya",
       "email": "asaf.reem@remax.co.il",
+      "yad2Url": "https://www.yad2.co.il/realestate/agency/2251658/forsale",
       "fromYad2FeaturedList": false
     },
     {
       "name": "RE/MAX ONE",
       "area": "Ra'anana",
       "email": "one.raanana@remax.co.il",
+      "yad2Url": "https://www.yad2.co.il/realestate/agency/1362875/forsale",
       "fromYad2FeaturedList": false
     },
     {
@@ -176,18 +191,21 @@
       "name": "אחוזת הנדל\"ן",
       "area": "Ra'anana",
       "email": "info@ahuzathanadlan.co.il",
+      "yad2Url": "https://www.yad2.co.il/realestate/agency/1095096/forsale",
       "fromYad2FeaturedList": false
     },
     {
       "name": "הר סלול",
       "area": "Petah Tikva",
       "email": "office@salul.co.il",
+      "yad2Url": "https://www.yad2.co.il/realestate/agency/9114710/forsale",
       "fromYad2FeaturedList": false
     },
     {
       "name": "נדל\"ן חיפה",
       "area": "Haifa",
       "email": "Info@nadlanhaifa.co.il",
+      "yad2Url": "https://www.yad2.co.il/realestate/agency/7919945/forsale",
       "fromYad2FeaturedList": false
     },
     {
@@ -195,6 +213,7 @@
       "network": "אנגלו-סכסון",
       "area": "Haifa, Sderot Wedgwood 16",
       "email": "haifa@anglo-saxon.co.il",
+      "yad2Url": "https://www.yad2.co.il/realestate/agency/2495555/forsale",
       "phone": "073-7028357",
       "emailSource": "https://www.anglo-saxon.co.il/branches/",
       "fromYad2FeaturedList": false
@@ -204,6 +223,7 @@
       "network": "אנגלו-סכסון",
       "area": "Haifa, Elhanan 3, Carmel Center",
       "email": "mhacarmel@anglo-saxon.co.il",
+      "yad2Url": "https://www.yad2.co.il/realestate/agency/18842/forsale",
       "phone": "073-7028320",
       "emailSource": "https://www.anglo-saxon.co.il/branches/",
       "fromYad2FeaturedList": false
@@ -240,6 +260,7 @@
       "network": "אנגלו-סכסון",
       "area": "Karmiel, Tzahal 91",
       "email": "karmiel@anglo-saxon.co.il",
+      "yad2Url": "https://www.yad2.co.il/realestate/agency/4083413/forsale",
       "phone": "073-7534778",
       "emailSource": "https://www.anglo-saxon.co.il/branches/",
       "fromYad2FeaturedList": false
@@ -249,6 +270,7 @@
       "network": "אנגלו-סכסון",
       "area": "Migdal HaEmek, Derech HaEmek 13",
       "email": "migdal@anglo-saxon.co.il",
+      "yad2Url": "https://www.yad2.co.il/realestate/agency/3008326/forsale",
       "phone": "073-7536488",
       "emailSource": "https://www.anglo-saxon.co.il/branches/",
       "fromYad2FeaturedList": false
@@ -258,6 +280,7 @@
       "network": "אנגלו-סכסון",
       "area": "Nahariya, Sderot Ga'aton 36",
       "email": "nahariya@anglo-saxon.co.il",
+      "yad2Url": "https://www.yad2.co.il/realestate/agency/6696688/forsale",
       "phone": "073-7533768",
       "emailSource": "https://www.anglo-saxon.co.il/branches/",
       "fromYad2FeaturedList": false
@@ -267,6 +290,7 @@
       "network": "אנגלו-סכסון",
       "area": "Nesher, commercial center shop 10",
       "email": "nesher@anglo-saxon.co.il",
+      "yad2Url": "https://www.yad2.co.il/realestate/agency/27603/forsale",
       "phone": "073-7533350",
       "emailSource": "https://www.anglo-saxon.co.il/branches/",
       "fromYad2FeaturedList": false
@@ -276,6 +300,7 @@
       "network": "אנגלו-סכסון",
       "area": "Akko, Ben Ami 24",
       "email": "akko@anglo-saxon.co.il",
+      "yad2Url": "https://www.yad2.co.il/realestate/agency/3029199/forsale",
       "phone": "073-7584639",
       "emailSource": "https://www.anglo-saxon.co.il/branches/",
       "fromYad2FeaturedList": false
@@ -285,6 +310,7 @@
       "network": "אנגלו-סכסון",
       "area": "Afula, HaParsa 6",
       "email": "afula@anglo-saxon.co.il",
+      "yad2Url": "https://www.yad2.co.il/realestate/agency/6380807/forsale",
       "phone": "073-7028860",
       "emailSource": "https://www.anglo-saxon.co.il/branches/",
       "fromYad2FeaturedList": false
@@ -294,6 +320,7 @@
       "network": "אנגלו-סכסון",
       "area": "Kiryat Motzkin, Sderot Moshe Goshen 91",
       "email": "krayot@anglo-saxon.co.il",
+      "yad2Url": "https://www.yad2.co.il/realestate/agency/6358700/forsale",
       "phone": "073-7027383",
       "emailSource": "https://www.anglo-saxon.co.il/branches/",
       "fromYad2FeaturedList": false
@@ -312,6 +339,7 @@
       "network": "אנגלו-סכסון",
       "area": "Hod HaSharon, Sokolov 4",
       "email": "hhasharo@anglo-saxon.co.il",
+      "yad2Url": "https://www.yad2.co.il/realestate/agency/1342681/forsale",
       "phone": "073-7026195",
       "emailSource": "https://www.anglo-saxon.co.il/branches/",
       "fromYad2FeaturedList": false
@@ -321,6 +349,7 @@
       "network": "אנגלו-סכסון",
       "area": "Herzliya, Uri Zvi Greenberg 20",
       "email": "herzliya@anglo-saxon.co.il",
+      "yad2Url": "https://www.yad2.co.il/realestate/agency/5374945/forsale",
       "phone": "073-7535016",
       "emailSource": "https://www.anglo-saxon.co.il/branches/",
       "fromYad2FeaturedList": false
@@ -330,6 +359,7 @@
       "network": "אנגלו-סכסון",
       "area": "Herzliya Pituach, Eli Landau 60",
       "email": "herzlpit@anglo-saxon.co.il",
+      "yad2Url": "https://www.yad2.co.il/realestate/agency/7457257/forsale",
       "phone": "073-7535674",
       "emailSource": "https://www.anglo-saxon.co.il/branches/",
       "fromYad2FeaturedList": false
@@ -339,6 +369,7 @@
       "network": "אנגלו-סכסון",
       "area": "Herzliya, Sderot Eli Landau 60",
       "email": "herzliyacom@anglo-saxon.co.il",
+      "yad2Url": "https://www.yad2.co.il/realestate/agency/7457257/commercial",
       "phone": "073-7533299",
       "emailSource": "https://www.anglo-saxon.co.il/branches/",
       "fromYad2FeaturedList": false
@@ -348,6 +379,7 @@
       "network": "אנגלו-סכסון",
       "area": "Hadera, Harav Ovadia Yosef 2",
       "email": "hadera@anglo-saxon.co.il",
+      "yad2Url": "https://www.yad2.co.il/realestate/agency/981093/forsale",
       "phone": "073-7533784",
       "emailSource": "https://www.anglo-saxon.co.il/branches/",
       "fromYad2FeaturedList": false
@@ -366,6 +398,7 @@
       "network": "אנגלו-סכסון",
       "area": "Tel Mond, HaDekel 54",
       "email": "telmond@anglo-saxon.co.il",
+      "yad2Url": "https://www.yad2.co.il/realestate/agency/7532069/forsale",
       "phone": "073-7022530",
       "emailSource": "https://www.anglo-saxon.co.il/branches/",
       "fromYad2FeaturedList": false
@@ -375,6 +408,7 @@
       "network": "אנגלו-סכסון",
       "area": "Netanya, HaMisgeret 3",
       "email": "natanya@anglo-saxon.co.il",
+      "yad2Url": "https://www.yad2.co.il/realestate/agency/8565575/forsale",
       "phone": "073-7028610",
       "emailSource": "https://www.anglo-saxon.co.il/branches/",
       "fromYad2FeaturedList": false
@@ -384,6 +418,7 @@
       "network": "אנגלו-סכסון",
       "area": "Pardes Hanna-Karkur, HaMoshav 42",
       "email": "pardeshana@anglo-saxon.co.il",
+      "yad2Url": "https://www.yad2.co.il/realestate/agency/82259/forsale",
       "phone": "073-7534575",
       "emailSource": "https://www.anglo-saxon.co.il/branches/",
       "fromYad2FeaturedList": false
@@ -393,6 +428,7 @@
       "network": "אנגלו-סכסון",
       "area": "Ramat HaSharon, served from Herzliya, Uri Zvi Greenberg 20",
       "email": "ramat.hasharon@anglo-saxon.co.il",
+      "yad2Url": "https://www.yad2.co.il/realestate/agency/5374945/forsale",
       "phone": "073-7026883",
       "emailSource": "https://www.anglo-saxon.co.il/branches/",
       "fromYad2FeaturedList": false
@@ -402,6 +438,7 @@
       "network": "אנגלו-סכסון",
       "area": "Ra'anana, Ben Gurion 5",
       "email": "raanana@anglo-saxon.co.il",
+      "yad2Url": "https://www.yad2.co.il/realestate/agency/910503/forsale",
       "phone": "073-7536451",
       "emailSource": "https://www.anglo-saxon.co.il/branches/",
       "fromYad2FeaturedList": false
@@ -411,6 +448,7 @@
       "network": "אנגלו-סכסון",
       "area": "Or Yehuda, Sderot Haim Bar Lev 10",
       "email": "or-yehuda-1@anglo-saxon.co.il",
+      "yad2Url": "https://www.yad2.co.il/realestate/agency/7652429/forsale",
       "phone": "073-7533895",
       "emailSource": "https://www.anglo-saxon.co.il/branches/",
       "fromYad2FeaturedList": false
@@ -429,6 +467,7 @@
       "network": "אנגלו-סכסון",
       "area": "Ramat Gan, Bialik 32",
       "email": "ramatgan@anglo-saxon.co.il",
+      "yad2Url": "https://www.yad2.co.il/realestate/agency/2277586/forsale",
       "phone": "073-7533410",
       "emailSource": "https://www.anglo-saxon.co.il/branches/",
       "fromYad2FeaturedList": false
@@ -438,6 +477,7 @@
       "network": "אנגלו-סכסון",
       "area": "Shoham, Carmel 6",
       "email": "shoham@anglo-saxon.co.il",
+      "yad2Url": "https://www.yad2.co.il/realestate/agency/424324/forsale",
       "phone": "073-7531544",
       "emailSource": "https://www.anglo-saxon.co.il/branches/",
       "fromYad2FeaturedList": false
@@ -456,6 +496,7 @@
       "network": "אנגלו-סכסון",
       "area": "Tel Aviv, Aliyat HaNoar 42",
       "email": "telavivs@anglo-saxon.co.il",
+      "yad2Url": "https://www.yad2.co.il/realestate/agency/55950/commercial",
       "phone": "073-7020409",
       "emailSource": "https://www.anglo-saxon.co.il/branches/",
       "fromYad2FeaturedList": false
@@ -474,6 +515,7 @@
       "network": "אנגלו-סכסון",
       "area": "Lod, Ganei Aviv, Arba Onot 16",
       "email": "ganeyaviv@anglo-saxon.co.il",
+      "yad2Url": "https://www.yad2.co.il/realestate/agency/5591378/forsale",
       "phone": "073-7533212",
       "emailSource": "https://www.anglo-saxon.co.il/branches/",
       "fromYad2FeaturedList": false
@@ -492,6 +534,7 @@
       "network": "אנגלו-סכסון",
       "area": "Modiin, Leshem 71",
       "email": "modiin@anglo-saxon.co.il",
+      "yad2Url": "https://www.yad2.co.il/realestate/agency/1856812/forsale",
       "phone": "073-7026277",
       "emailSource": "https://www.anglo-saxon.co.il/branches/",
       "fromYad2FeaturedList": false
@@ -501,6 +544,7 @@
       "network": "אנגלו-סכסון",
       "area": "Ness Ziona, Nordau 4",
       "email": "nesziona@anglo-saxon.co.il",
+      "yad2Url": "https://www.yad2.co.il/realestate/agency/5598047/forsale",
       "phone": "073-7533565",
       "emailSource": "https://www.anglo-saxon.co.il/branches/",
       "fromYad2FeaturedList": false
@@ -510,6 +554,7 @@
       "network": "אנגלו-סכסון",
       "area": "Rishon LeZion, Rothschild 45, Rothschild Mall",
       "email": "rishonlz@anglo-saxon.co.il",
+      "yad2Url": "https://www.yad2.co.il/realestate/agency/18064/forsale",
       "phone": "073-7536492",
       "emailSource": "https://www.anglo-saxon.co.il/branches/",
       "fromYad2FeaturedList": false
@@ -519,6 +564,7 @@
       "network": "אנגלו-סכסון",
       "area": "Rehovot, Beit HaPoalim 2",
       "email": "rehovot@anglo-saxon.co.il",
+      "yad2Url": "https://www.yad2.co.il/realestate/agency/21938/forsale",
       "phone": "073-7535671",
       "emailSource": "https://www.anglo-saxon.co.il/branches/",
       "fromYad2FeaturedList": false
@@ -528,6 +574,7 @@
       "network": "אנגלו-סכסון",
       "area": "Ramla, Sderot Herzl 55",
       "email": "ramla@anglo-saxon.co.il",
+      "yad2Url": "https://www.yad2.co.il/realestate/agency/1463528/forsale",
       "phone": "073-7545232",
       "emailSource": "https://www.anglo-saxon.co.il/branches/",
       "fromYad2FeaturedList": false
@@ -564,6 +611,7 @@
       "network": "אנגלו-סכסון",
       "area": "Jerusalem, Moshe Hess 3",
       "email": "jerusalem@anglo-saxon.co.il",
+      "yad2Url": "https://www.yad2.co.il/realestate/agency/694188/forsale",
       "phone": "073-7597880",
       "emailSource": "https://www.anglo-saxon.co.il/branches/",
       "fromYad2FeaturedList": false
@@ -573,6 +621,7 @@
       "network": "אנגלו-סכסון",
       "area": "Ashdod, HaKalanit 13",
       "email": "ashdod@anglo-saxon.co.il",
+      "yad2Url": "https://www.yad2.co.il/realestate/agency/3445182/forsale",
       "phone": "073-7536044",
       "emailSource": "https://www.anglo-saxon.co.il/branches/",
       "fromYad2FeaturedList": false
@@ -582,6 +631,7 @@
       "network": "אנגלו-סכסון",
       "area": "Ashkelon, KKL 3",
       "email": "ashkelon@anglo-saxon.co.il",
+      "yad2Url": "https://www.yad2.co.il/realestate/agency/917111/forsale",
       "phone": "073-7534672",
       "emailSource": "https://www.anglo-saxon.co.il/branches/",
       "fromYad2FeaturedList": false
@@ -591,6 +641,7 @@
       "network": "אנגלו-סכסון",
       "area": "Beer Sheva, Ben Gurion 15",
       "email": "Bsheva@anglo-saxon.co.il",
+      "yad2Url": "https://www.yad2.co.il/realestate/agency/2648042/forsale",
       "phone": "073-7027103",
       "emailSource": "https://www.anglo-saxon.co.il/branches/",
       "fromYad2FeaturedList": false
@@ -600,6 +651,7 @@
       "network": "אנגלו-סכסון",
       "area": "Arad, Sderot Hen 29",
       "email": "arad@anglo-saxon.co.il",
+      "yad2Url": "https://www.yad2.co.il/realestate/agency/8203603/forsale",
       "phone": "073-7027087",
       "emailSource": "https://www.anglo-saxon.co.il/branches/",
       "fromYad2FeaturedList": false
@@ -609,6 +661,7 @@
       "network": "אנגלו-סכסון",
       "area": "Kiryat Gat, Sderot Lachish 153",
       "email": "kiryat-gat@anglo-saxon.co.il",
+      "yad2Url": "https://www.yad2.co.il/realestate/agency/5501621/forsale",
       "phone": "073-7532264",
       "emailSource": "https://www.anglo-saxon.co.il/branches/",
       "fromYad2FeaturedList": false
@@ -620,6 +673,7 @@
       "email": "info@remax-gold.co.il",
       "phone": "052-646-1677",
       "website": "https://remax-gold.co.il/",
+      "yad2Url": "https://www.yad2.co.il/realestate/agency/7436934/forsale",
       "emailSource": "https://remax-gold.co.il/",
       "fromYad2FeaturedList": false
     },
@@ -640,6 +694,7 @@
       "email": "silver@remax.co.il",
       "phone": "09-8612595",
       "website": "https://remax-n.co.il/he",
+      "yad2Url": "https://www.yad2.co.il/realestate/agency/9205756/forsale",
       "emailSource": "https://remax-n.co.il/he",
       "fromYad2FeaturedList": false
     },
@@ -650,6 +705,7 @@
       "email": "matan100remax@gmail.com",
       "phone": "052-4442534",
       "website": "https://rea-me.co.il/",
+      "yad2Url": "https://www.yad2.co.il/realestate/agency/9126570/forsale",
       "emailSource": "https://rea-me.co.il/%D7%A6%D7%95%D7%A8-%D7%A7%D7%A9%D7%A8/",
       "note": "Published as the office contact for manager Matan Ezra.",
       "fromYad2FeaturedList": false
@@ -672,6 +728,7 @@
       "email": "office@century21jerusalem.com",
       "phone": "02-5672030",
       "website": "https://www.century21jerusalem.co.il/",
+      "yad2Url": "https://www.yad2.co.il/realestate/agency/303556/forsale",
       "emailSource": "https://www.century21jerusalem.co.il/contact/",
       "fromYad2FeaturedList": false
     },
@@ -701,6 +758,7 @@
       "email": "office@lafayette.co.il",
       "phone": "02-5666218",
       "website": "https://lafayette.co.il/",
+      "yad2Url": "https://www.yad2.co.il/realestate/agency/865126/forsale",
       "emailSource": "https://lafayette.co.il/",
       "fromYad2FeaturedList": false
     },
@@ -710,6 +768,7 @@
       "email": "info@topnadlan.co.il",
       "phone": "09-7407500",
       "website": "https://www.topnadlan.co.il/",
+      "yad2Url": "https://www.yad2.co.il/realestate/agency/694467/forsale",
       "emailSource": "https://www.topnadlan.co.il/",
       "fromYad2FeaturedList": false
     },

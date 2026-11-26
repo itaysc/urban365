@@ -66,6 +66,45 @@ export const unlinkAgencyYad2 = (agencyId: string) =>
 export const linkAgencyYad2 = (agencyId: string, input: string) =>
   api.post(`/admin/moderation/agencies/${agencyId}/link-yad2`, { input });
 
+/** An office kept off the site until someone there agrees, with what was imported for it. */
+export interface DraftAgency {
+  id: string;
+  name: string;
+  status: 'unclaimed' | 'pending';
+  yad2Id: string | null;
+  phone: string | null;
+  draftCount: number;
+  /** The private page the office is sent. Null until the preview import has run. */
+  previewPath: string | null;
+  lastImportedAt: string | null;
+}
+
+export interface DraftListing {
+  id: string;
+  section: 'forsale' | 'rent' | 'commercial';
+  price: number | null;
+  rooms: number | null;
+  squareMeter: number | null;
+  floor: number | null;
+  propertyType: string | null;
+  city: string | null;
+  neighborhood: string | null;
+  street: string | null;
+  houseNumber: number | null;
+  listingUrl: string | null;
+  updatedAt: string;
+}
+
+export async function fetchDraftAgencies(): Promise<DraftAgency[]> {
+  const { data } = await api.get<DraftAgency[]>('/admin/moderation/drafts');
+  return data;
+}
+
+export async function fetchDraftListings(agencyId: string): Promise<DraftListing[]> {
+  const { data } = await api.get<DraftListing[]>(`/admin/moderation/drafts/${agencyId}`);
+  return data;
+}
+
 export type ManagedUserRole = 'buyer' | 'agency' | 'admin';
 
 export interface ManagedUser {

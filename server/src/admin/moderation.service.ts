@@ -56,6 +56,35 @@ export interface PendingAgency {
   pendingOwner: { userId: string; email: string; name: string } | null;
 }
 
+/** An office kept off the site until someone there agrees, with what was imported for it. */
+export interface DraftAgency {
+  id: string;
+  name: string;
+  status: string;
+  yad2Id: string | null;
+  phone: string | null;
+  draftCount: number;
+  /** The private page the office is sent. Null until the preview import has run. */
+  previewPath: string | null;
+  lastImportedAt: string | null;
+}
+
+export interface DraftListing {
+  id: string;
+  section: string;
+  price: number | null;
+  rooms: number | null;
+  squareMeter: number | null;
+  floor: number | null;
+  propertyType: string | null;
+  city: string | null;
+  neighborhood: string | null;
+  street: string | null;
+  houseNumber: number | null;
+  listingUrl: string | null;
+  updatedAt: string;
+}
+
 function roleOf(person: { platformRole: string | null; accountType: string }): ManagedUserRole {
   if (person.platformRole === 'admin') return 'admin';
   return person.accountType === 'agency' ? 'agency' : 'buyer';
@@ -236,6 +265,59 @@ export class ModerationService {
       yad2Id: agency.yad2Id,
       publishedCount: agency._count.listings,
     }));
+  }
+
+  /** Offices nobody has claimed or been approved for yet, that have listings waiting as drafts. */
+  async draftAgencies(): Promise<DraftAgency[]> {
+    const drafts = { status: 'draft' as const };
+    const agencies = await this.prisma.agency.findMany({
+      where: { status: { in: ['unclaimed', 'pending'] }, listings: { some: drafts } },
+      orderBy: { name: 'asc' },
+      include: { _count: { select: { listings: { where: drafts } } } },
+    });
+    const latest = await this.prisma.listing.groupBy({
+      by: ['agencyId'],
+      where: { ...drafts, agencyId: { in: agencies.map((agency) => agency.id) } },
+      _max: { updatedAt: true },
+    });
+    const importedAt = new Map(latest.map((row) => [row.agencyId, row._max.updatedAt]));
+
+    return agencies.map((agency) => ({
+      id: agency.id,
+      name: agency.name,
+      status: agency.status,
+      yad2Id: agency.yad2Id,
+      phone: agency.phone,
+      draftCount: agency._count.listings,
+      previewPath: agency.previewToken ? `/preview/${agency.previewToken}` : null,
+      lastImportedAt: importedAt.get(agency.id)?.toISOString() ?? null,
+    }));
+  }
+
+  async draftListings(agencyId: string): Promise<DraftListing[]> {
+    const agency = await this.prisma.agency.findUnique({ where: { id: agencyId }, select: { id: true } });
+    if (!agency) throw new NotFoundException('הסוכנות לא נמצאה.');
+
+    const listings = await this.prisma.listing.findMany({
+      where: { agencyId, status: 'draft' },
+      orderBy: [{ section: 'asc' }, { price: { sort: 'desc', nulls: 'last' } }],
+      select: {
+        id: true,
+        section: true,
+        price: true,
+        rooms: true,
+        squareMeter: true,
+        floor: true,
+        propertyType: true,
+        city: true,
+        neighborhood: true,
+        street: true,
+        houseNumber: true,
+        listingUrl: true,
+        updatedAt: true,
+      },
+    });
+    return listings.map((listing) => ({ ...listing, updatedAt: listing.updatedAt.toISOString() }));
   }
 
   async suspend(agencyId: string, adminId: string): Promise<void> {

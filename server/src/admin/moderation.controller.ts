@@ -119,6 +119,17 @@ export class ModerationController {
     return this.moderation.directory(q);
   }
 
+  /** Offices kept off the site, with listings imported for them as drafts. */
+  @Get('drafts')
+  draftAgencies() {
+    return this.moderation.draftAgencies();
+  }
+
+  @Get('drafts/:agencyId')
+  draftListings(@Param('agencyId') agencyId: string) {
+    return this.moderation.draftListings(agencyId);
+  }
+
   @HttpCode(204)
   @Post('agencies/:id/vertical')
   async setVertical(@Param('id') id: string, @Body() dto: SetVerticalDto, @CurrentUser() admin: Principal) {

@@ -10,7 +10,7 @@
  * A listing already stored under the same Yad2 token is updated, and one that
  * already has photos is left as it is.
  *
- * Chrome has to be listening on port 9222 and already showing yad2 (npm run chrome:debug
+ * Chrome is started on port 9222 if it is not running (same as npm run chrome:debug
  * from the repo root). The database comes from server/.prod.env.
  *
  *   npm run import:yad2
@@ -37,7 +37,7 @@ import { Yad2Module } from '../yad2/yad2.module.js';
 import { Yad2Service } from '../yad2/yad2.service.js';
 import { parseAgencyInput } from '../yad2/yad2.transform.js';
 import { SECTIONS, type AgencyDump, type Section } from '../yad2/yad2.types.js';
-import { assertChrome, dbHost, isLocalDb, loadProdEnv, serverRoot } from './prod-env.js';
+import { ensureChrome, dbHost, isLocalDb, loadProdEnv, serverRoot } from './prod-env.js';
 
 /** Only what the scrape needs. The full app would also start the mail and match timers. */
 @Module({
@@ -340,7 +340,7 @@ async function main(): Promise<void> {
     return;
   }
 
-  if (!fromCache) await assertChrome();
+  if (!fromCache) await ensureChrome();
 
   process.chdir(serverRoot);
   const app = await NestFactory.createApplicationContext(ProdImportModule, { logger: ['error', 'warn', 'log'] });

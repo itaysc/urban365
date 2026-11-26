@@ -149,6 +149,8 @@ export const qk = {
     users: (q: string) => ['admin', 'users', q] as const,
     listings: ['admin', 'listings'] as const,
     invites: ['admin', 'invites'] as const,
+    drafts: ['admin', 'drafts'] as const,
+    draftListings: (agencyId: string) => ['admin', 'drafts', agencyId] as const,
   },
 
   /** Whether agencies may see yad2. Admins ignore the answer. */

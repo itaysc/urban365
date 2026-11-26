@@ -9,7 +9,7 @@
  * An office that already has an approved account is refused; use npm run import:yad2
  * for that, which writes into their live office.
  *
- * Chrome has to be listening on port 9222 and already showing yad2 (npm run chrome:debug
+ * Chrome is started on port 9222 if it is not running (same as npm run chrome:debug
  * from the repo root). The database comes from server/.prod.env.
  *
  *   npm run import:preview
@@ -32,7 +32,7 @@ import { Yad2Module } from '../yad2/yad2.module.js';
 import { Yad2Service } from '../yad2/yad2.service.js';
 import { parseAgencyInput } from '../yad2/yad2.transform.js';
 import { SECTIONS, type AgencyDump, type Section } from '../yad2/yad2.types.js';
-import { assertChrome, dbHost, isLocalDb, loadProdEnv, serverRoot } from './prod-env.js';
+import { ensureChrome, dbHost, isLocalDb, loadProdEnv, serverRoot } from './prod-env.js';
 
 const SITE = 'https://urban365.co.il';
 const previewsFile = path.resolve(serverRoot, '../data/agency-previews.json');
@@ -130,7 +130,7 @@ async function main(): Promise<void> {
     process.exitCode = 1;
     return;
   }
-  if (!fromCache) await assertChrome();
+  if (!fromCache) await ensureChrome();
 
   const rl = createInterface({ input: process.stdin, output: process.stdout });
   const ask = asker(rl);

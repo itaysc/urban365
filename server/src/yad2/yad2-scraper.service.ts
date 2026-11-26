@@ -217,9 +217,27 @@ export class Yad2ScraperService {
 
   /** Navigates to the agency page and reads its embedded payload. */
   private async loadAgencyPage(page: Page, agencyId: string, section: Section): Promise<RawAgencyData> {
-    await page.goto(agencyPageUrl(agencyId, section), { waitUntil: 'domcontentloaded', timeout: 60_000 });
+    const url = agencyPageUrl(agencyId, section);
+    const attempts = 3;
+    // The payload is in the HTML itself, so there is no need to wait for yad2's scripts
+    // and images, which can take minutes when the site is slow.
+    for (let attempt = 1; ; attempt++) {
+      let failure: string;
+      try {
+        const response = await page.goto(url, { waitUntil: 'commit', timeout: 60_000 });
+        const status = response?.status() ?? 0;
+        if (status < 500) break;
+        failure = `yad2 answered ${status}`;
+      } catch (e) {
+        failure = (e instanceof Error ? e.message : String(e)).split('\n')[0];
+      }
+      if (attempt === attempts) throw new Error(`Could not load ${url} after ${attempts} tries: ${failure}`);
+      this.logger.warn(`Loading ${url} failed (try ${attempt} of ${attempts}): ${failure}. Trying again.`);
+      await sleep(5_000 * attempt);
+    }
+
     try {
-      await page.waitForSelector('#__NEXT_DATA__', { state: 'attached', timeout: 30_000 });
+      await page.waitForSelector('#__NEXT_DATA__', { state: 'attached', timeout: 60_000 });
     } catch {
       const title = await page.title().catch(() => '');
       throw new BotCheckError(
@@ -266,12 +284,12 @@ export class Yad2ScraperService {
     }
 
     try {
-      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60_000 });
-      await page.waitForSelector('#__NEXT_DATA__', { state: 'attached', timeout: 30_000 });
+      await page.goto(url, { waitUntil: 'commit', timeout: 60_000 });
+      await page.waitForSelector('#__NEXT_DATA__', { state: 'attached', timeout: 60_000 });
       const data = await page.evaluate(
         () => JSON.parse(document.getElementById('__NEXT_DATA__')!.textContent!) as NextData,
       );
-      await page.goBack({ waitUntil: 'domcontentloaded' }).catch(() => undefined);
+      await page.goBack({ waitUntil: 'commit' }).catch(() => undefined);
       return data;
     } catch {
       throw lastError;

@@ -189,11 +189,12 @@ function makePreview(yad2Id) {
   return readPreviews().find((row) => row.yad2Id === yad2Id) ?? null;
 }
 
-function wantsAgain(answer) {
+function pick(answer, options) {
   const value = answer.trim().toLowerCase();
-  if (value === 'yes' || value === 'y') return true;
-  if (value === 'no' || value === 'n') return false;
-  return null;
+  const index = options.findIndex(
+    (option, i) => value === String(i + 1) || option.words.includes(value),
+  );
+  return index === -1 ? null : options[index].value;
 }
 
 function remember(entry) {
@@ -357,28 +358,37 @@ async function main() {
   // One iterator for every answer. A fresh `question` after the first drops a line
   // that is already waiting, and the script exits without a yes or a no.
   const lines = rl[Symbol.asyncIterator]();
-  const ask = async (prompt) => {
-    stdout.write(prompt);
+  const ask = async (question) => {
+    stdout.write(`\n${question}\n> `);
     const { value, done } = await lines.next();
     return done ? null : value;
   };
-  try {
+  const choose = async (question, options) => {
+    const menu = options.map((option, i) => `  ${i + 1}. ${option.label}`).join('\n');
     for (;;) {
-      const mode = await ask(`prod (send to the offices) or test (send to ${TEST_INBOX})? `);
-      if (mode === null) {
+      const reply = await ask(`${question}\n${menu}`);
+      if (reply === null) {
         console.error('No answer. Not sending.');
         process.exit(1);
       }
-      const value = mode.trim().toLowerCase();
-      if (value === 'prod' || value === 'p') break;
-      if (value === 'test' || value === 't') {
-        testing = true;
-        break;
-      }
-      console.log('Answer prod or test.');
+      const chosen = pick(reply, options);
+      if (chosen !== null) return chosen;
+      console.log(`Answer a number from 1 to ${options.length}.`);
     }
+  };
+  const yesNo = (question) =>
+    choose(question, [
+      { label: 'yes', words: ['yes', 'y'], value: true },
+      { label: 'no', words: ['no', 'n'], value: false },
+    ]);
 
-    const raw = await ask('Addresses to invite, separated by commas: ');
+  try {
+    testing = await choose('Where should the letters go?', [
+      { label: `test (send to ${TEST_INBOX})`, words: ['test', 't'], value: true },
+      { label: 'prod (send to the offices)', words: ['prod', 'p'], value: false },
+    ]);
+
+    const raw = await ask('Addresses to invite, separated by commas:');
     if (raw === null) {
       console.error('No addresses given.');
       process.exit(1);
@@ -410,18 +420,7 @@ async function main() {
         continue;
       }
       const when = at.slice(0, 10);
-      let again = null;
-      while (again === null) {
-        const reply = await ask(
-          `Already sent to ${row.email}${when ? ` on ${when}` : ''}. Send again? (yes/no) `,
-        );
-        if (reply === null) {
-          console.error('No answer. Not sending.');
-          process.exit(1);
-        }
-        again = wantsAgain(reply);
-        if (again === null) console.log('Answer yes or no.');
-      }
+      const again = await yesNo(`Already sent to ${row.email}${when ? ` on ${when}` : ''}. Send again?`);
       if (again) kept.push(row);
       else console.log(`skipped ${row.email}`);
     }
@@ -457,7 +456,7 @@ async function main() {
 
       for (;;) {
         const reply = await ask(
-          `Yad2 page of ${row.email}, to make its preview (number or URL, Enter for the general letter): `,
+          `Yad2 page of ${row.email}, to make its preview.\nType the Yad2 office number or link, or press Enter for the general letter.`,
         );
         if (reply === null) {
           console.error('No answer. Not sending.');

@@ -13,6 +13,7 @@ import {
   type PendingAgency,
 } from '@/services/admin';
 import { AgencyDirectory } from '@/pages/admin/AgencyDirectory';
+import { DraftAgencies } from '@/pages/admin/DraftAgencies';
 import { ListingReviewQueue } from '@/pages/admin/ListingReviewQueue';
 import { PlatformInvites } from '@/pages/admin/PlatformInvites';
 import { SupportPanel } from '@/pages/admin/SupportPanel';
@@ -22,6 +23,7 @@ const TABS = [
   { id: 'requests', label: 'בקשות' },
   { id: 'listings', label: 'נכסים' },
   { id: 'agencies', label: 'סוכנויות' },
+  { id: 'drafts', label: 'טיוטות' },
   { id: 'users', label: 'משתמשים' },
   { id: 'invites', label: 'הזמנות' },
   { id: 'support', label: 'תמיכה' },
@@ -140,6 +142,7 @@ export function ModerationPage() {
       {tab === 'invites' && <PlatformInvites />}
       {tab === 'listings' && <ListingReviewQueue />}
       {tab === 'agencies' && <AgencyDirectory />}
+      {tab === 'drafts' && <DraftAgencies />}
       {tab === 'users' && <UsersPage />}
       {tab === 'support' && <SupportPanel />}
 
