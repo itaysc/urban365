@@ -17,8 +17,8 @@ import { formatDate, formatShekel } from '@/lib/format';
 import { splitHouseNumber } from '@/lib/house-number';
 import { fetchMarketHistory, type HistorySale, type MarketHistory } from '@/services/market-history';
 
-/** How many recorded sales one page of the table shows. */
-const SALES_PAGE_SIZE = 20;
+/** Choices for how many recorded sales one page of the table shows. Ten is the start. */
+const PAGE_SIZES = [10, 20, 50] as const;
 
 /**
  * Recorded sales around a street, for someone with an account.
@@ -422,12 +422,13 @@ function SalesTable({
 }) {
   const [sort, setSort] = useState<SaleSort>({ key: 'date', dir: 'desc' });
   const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState<number>(PAGE_SIZES[0]);
 
   const ordered = [...sales].sort((a, b) => compareSales(a, b, sort));
-  const pages = Math.max(1, Math.ceil(ordered.length / SALES_PAGE_SIZE));
+  const pages = Math.max(1, Math.ceil(ordered.length / pageSize));
   const safePage = Math.min(page, pages - 1);
-  const start = safePage * SALES_PAGE_SIZE;
-  const rows = ordered.slice(start, start + SALES_PAGE_SIZE);
+  const start = safePage * pageSize;
+  const rows = ordered.slice(start, start + pageSize);
 
   const choose = (key: SaleSortKey) => {
     setSort((current) =>
@@ -437,7 +438,9 @@ function SalesTable({
   };
 
   return (
-    <section className={panelClass}>
+    // Flat on purpose. The usual card leans back, and a long table then reads as
+    // narrow at the top and wide at the bottom.
+    <section className="u365-card is-flat border border-white/80 p-5 sm:p-6">
       <h2 className="text-sm font-semibold text-slate-900">{heading}</h2>
       {salesTotal > sales.length && (
         <p className="mt-1 text-xs text-slate-500">
@@ -445,8 +448,15 @@ function SalesTable({
         </p>
       )}
       <div className="mt-3 overflow-x-auto">
-        <table className="w-full min-w-[32rem] text-sm">
+        <table className="w-full min-w-[36rem] table-fixed text-sm">
           <caption className="sr-only">{caption}</caption>
+          <colgroup>
+            <col className="w-[28%]" />
+            <col className="w-[12%]" />
+            <col className="w-[16%]" />
+            <col className="w-[24%]" />
+            <col className="w-[20%]" />
+          </colgroup>
           <thead>
             <tr className="border-b border-slate-200 text-xs text-slate-500">
               <SortHeader label="תאריך" column="date" sort={sort} onSort={choose} />
@@ -462,13 +472,13 @@ function SalesTable({
             {rows.map((sale, index) => (
               <tr key={`${sale.date}-${sale.amount}-${sale.area ?? 0}-${start + index}`} className="border-b border-slate-100">
                 <td className="px-3 py-2 text-start text-slate-800">
-                  {formatDate(sale.date)}
+                  <span className="whitespace-nowrap">{formatDate(sale.date)}</span>
                   {sale.nature && <span className="mt-0.5 block text-xs text-slate-500">{sale.nature}</span>}
                 </td>
-                <td className="px-3 py-2 text-start tabular-nums">{sale.rooms === null ? '—' : sale.rooms}</td>
-                <td className="px-3 py-2 text-start tabular-nums">{sale.area === null ? '—' : `${sale.area} מ"ר`}</td>
-                <td className="px-3 py-2 text-start font-medium tabular-nums">{formatShekel(sale.amount)}</td>
-                <td className="px-3 py-2 text-start tabular-nums text-slate-600">
+                <td className="whitespace-nowrap px-3 py-2 text-start tabular-nums">{sale.rooms === null ? '—' : sale.rooms}</td>
+                <td className="whitespace-nowrap px-3 py-2 text-start tabular-nums">{sale.area === null ? '—' : `${sale.area} מ"ר`}</td>
+                <td className="whitespace-nowrap px-3 py-2 text-start font-medium tabular-nums">{formatShekel(sale.amount)}</td>
+                <td className="whitespace-nowrap px-3 py-2 text-start tabular-nums text-slate-600">
                   {sale.perSqm === null ? '—' : formatShekel(sale.perSqm)}
                 </td>
               </tr>
@@ -476,7 +486,17 @@ function SalesTable({
           </tbody>
         </table>
       </div>
-      <SalesPager page={safePage} pages={pages} shown={ordered.length} onPage={setPage} />
+      <SalesPager
+        page={safePage}
+        pages={pages}
+        pageSize={pageSize}
+        shown={ordered.length}
+        onPage={setPage}
+        onPageSize={(size) => {
+          setPageSize(size);
+          setPage(0);
+        }}
+      />
     </section>
   );
 }
@@ -515,21 +535,42 @@ function SortHeader({
 function SalesPager({
   page,
   pages,
+  pageSize,
   shown,
   onPage,
+  onPageSize,
 }: {
   page: number;
   pages: number;
+  pageSize: number;
   shown: number;
   onPage: (page: number) => void;
+  onPageSize: (size: number) => void;
 }) {
-  const from = shown === 0 ? 0 : page * SALES_PAGE_SIZE + 1;
-  const to = Math.min(shown, (page + 1) * SALES_PAGE_SIZE);
+  const from = shown === 0 ? 0 : page * pageSize + 1;
+  const to = Math.min(shown, (page + 1) * pageSize);
   return (
     <nav aria-label="עימוד העסקאות" className="mt-3 flex flex-wrap items-center justify-between gap-3">
-      <p className="text-xs text-slate-500">
-        {from.toLocaleString('he-IL')}–{to.toLocaleString('he-IL')} מתוך {shown.toLocaleString('he-IL')}
-      </p>
+      <div className="flex flex-wrap items-center gap-3">
+        <p className="text-xs text-slate-500">
+          {from.toLocaleString('he-IL')}–{to.toLocaleString('he-IL')} מתוך {shown.toLocaleString('he-IL')}
+        </p>
+        <label className="flex items-center gap-2 text-xs text-slate-500">
+          בעמוד
+          <select
+            aria-label="כמה עסקאות בעמוד"
+            value={pageSize}
+            onChange={(event) => onPageSize(Number(event.target.value))}
+            className="rounded-lg border border-slate-300 bg-white px-2 py-1 text-sm text-slate-800"
+          >
+            {PAGE_SIZES.map((size) => (
+              <option key={size} value={size}>
+                {size.toLocaleString('he-IL')}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
       {pages > 1 && (
         <div className="flex flex-wrap items-center gap-1">
           <PagerButton disabled={page === 0} onClick={() => onPage(page - 1)}>
