@@ -1,12 +1,18 @@
 import { useEffect, useRef, useState, type RefObject } from 'react';
 import { useLocation } from 'react-router-dom';
 import { BookOpen, Landmark, LineChart, Search, Tag, Trash2, X, type LucideIcon } from 'lucide-react';
+import { useAuth } from '@/auth/auth-context';
 import { LoginDialog } from '@/components/auth/LoginDialog';
 import { formatPrice, formatShekel } from '@/lib/format';
 import sheet from './assistant.css?inline';
 import {
+  awaitingSignIn,
   clearHistory,
   confirmTool,
+  forgetAwaitingSignIn,
+  rememberAwaitingSignIn,
+  RESUME_AFTER_SIGN_IN,
+  waitingOnSignIn,
   displayChatText,
   stickAfterScroll,
   typeStep,
@@ -61,11 +67,17 @@ function useAssistantStyles(): void {
  */
 export function AssistantWidget() {
   const { pathname } = useLocation();
+  const { user, loading } = useAuth();
   const [signIn, setSignIn] = useState(false);
 
   return (
     <>
-      <AssistantPanel agentId="end-user" pathname={pathname} onSignIn={() => setSignIn(true)} />
+      <AssistantPanel
+        agentId="end-user"
+        pathname={pathname}
+        signedIn={loading ? null : user !== null}
+        onSignIn={() => setSignIn(true)}
+      />
       <LoginDialog open={signIn} onOpenChange={setSignIn} description="כדי לשמור נכס, חיפוש או מודעה צריך להתחבר." />
     </>
   );
@@ -91,10 +103,14 @@ export function AgencyAssistantWidget() {
  * `signInHref` is for a page that is not the app, where a dialog cannot open.
  * Links are real anchors either way: a search, a listing and a blog post are not
  * all routes of this router, and a click has to land on the page that serves them.
+ *
+ * `signedIn` is null while the session is still being read. Without it the panel
+ * cannot tell that a sign-in happened, and the request waits for the next message.
  */
 export function AssistantPanel({
   agentId = 'end-user',
   pathname,
+  signedIn,
   onSignIn,
   signInHref,
   hideOnPublic = true,
@@ -103,6 +119,7 @@ export function AssistantPanel({
 }: {
   agentId?: AssistantAgentId;
   pathname: string;
+  signedIn?: boolean | null;
   onSignIn?: () => void;
   signInHref?: string;
   hideOnPublic?: boolean;
@@ -206,6 +223,21 @@ export function AssistantPanel({
     node.scrollTop = node.scrollHeight;
   }, [messages, open]);
 
+  // A session that appears after the chat asked for one picks the request back up.
+  // Seen signed out first, or marked before a Google redirect — not merely loaded
+  // signed in, or every page of a signed-in visit would repeat it.
+  const sendRef = useRef<((seed?: string) => Promise<void>) | null>(null);
+  const seenSignedIn = useRef(signedIn);
+  const resume = useRef(false);
+  useEffect(() => {
+    if (signedIn === true && (seenSignedIn.current === false || awaitingSignIn(agentId))) resume.current = true;
+    if (signedIn != null) seenSignedIn.current = signedIn;
+    if (!resume.current || pending || !sendRef.current) return;
+    resume.current = false;
+    forgetAwaitingSignIn(agentId);
+    if (waitingOnSignIn(messages)) void sendRef.current(RESUME_AFTER_SIGN_IN);
+  }, [signedIn, pending, messages, agentId]);
+
   if (hideOnPublic && HIDDEN.some((pattern) => pattern.test(pathname))) return null;
 
   const clear = async () => {
@@ -279,6 +311,7 @@ export function AssistantPanel({
       setPending(false);
     }
   };
+  sendRef.current = send;
 
   const onConfirm = async (toolCallId: string, accept: boolean) => {
     if (pending || !conversationId.current) return;
@@ -462,11 +495,18 @@ export function AssistantPanel({
                   )}
                   {message.needsSignIn &&
                     (signInHref ? (
-                      <a className="u365-asst-signin" href={signInHref}>
+                      <a className="u365-asst-signin" href={signInHref} onClick={() => rememberAwaitingSignIn(agentId)}>
                         התחברות
                       </a>
                     ) : (
-                      <button type="button" className="u365-asst-signin" onClick={onSignIn}>
+                      <button
+                        type="button"
+                        className="u365-asst-signin"
+                        onClick={() => {
+                          rememberAwaitingSignIn(agentId);
+                          onSignIn?.();
+                        }}
+                      >
                         התחברות
                       </button>
                     ))}

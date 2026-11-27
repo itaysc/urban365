@@ -288,6 +288,49 @@ export function rememberTranscript(messages: AssistantMessage[], agentId: Assist
   }
 }
 
+function signInKey(agentId: AssistantAgentId): string {
+  return `nadlan:assistant:sign-in:${agentId}`;
+}
+
+/** What the chat says for the person once they are signed in, so the request goes on. */
+export const RESUME_AFTER_SIGN_IN = 'התחברתי. אפשר להמשיך.';
+
+/**
+ * Marks that the chat sent this tab to sign in.
+ *
+ * A Google sign-in reloads the page, so the panel that asked is gone by the time
+ * there is a session. The mark is what tells the new one to pick the request up.
+ */
+export function rememberAwaitingSignIn(agentId: AssistantAgentId = 'end-user'): void {
+  try {
+    window.sessionStorage.setItem(signInKey(agentId), '1');
+  } catch {
+    // A sign-in in this page still resumes. Only one through a redirect does not.
+  }
+}
+
+export function awaitingSignIn(agentId: AssistantAgentId = 'end-user'): boolean {
+  try {
+    return window.sessionStorage.getItem(signInKey(agentId)) === '1';
+  } catch {
+    return false;
+  }
+}
+
+export function forgetAwaitingSignIn(agentId: AssistantAgentId = 'end-user'): void {
+  try {
+    window.sessionStorage.removeItem(signInKey(agentId));
+  } catch {
+    // Nothing to clear is not a failure.
+  }
+}
+
+/** Whether the latest reply stopped on a sign-in. */
+export function waitingOnSignIn(messages: AssistantMessage[]): boolean {
+  const lastUser = messages.findLastIndex((message) => message.role === 'user');
+  return messages.slice(lastUser + 1).some((message) => message.needsSignIn);
+}
+
 export function forgetTranscript(agentId: AssistantAgentId = 'end-user'): void {
   try {
     window.sessionStorage.removeItem(transcriptKey(agentId));
