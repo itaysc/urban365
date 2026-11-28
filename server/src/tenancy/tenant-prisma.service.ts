@@ -1,10 +1,10 @@
 import { Injectable, Logger, type OnModuleDestroy, type OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@prisma/client';
 import { ClsService } from 'nestjs-cls';
 import type { DatabaseConfig } from '../config/configuration.js';
 import { connectWhenReady, POSTGRES_WAKE_BUDGET_MS } from '../prisma/connect-when-ready.js';
+import { postgresAdapter } from '../prisma/prisma.service.js';
 import type { TenantClsStore } from './cls.store.js';
 
 /** The transaction the interceptor opened for this request, stashed in CLS. */
@@ -42,7 +42,7 @@ export class TenantPrismaService implements OnModuleInit, OnModuleDestroy {
       );
     }
 
-    this.base = new PrismaClient({ adapter: new PrismaPg({ connectionString }) });
+    this.base = new PrismaClient({ adapter: postgresAdapter(connectionString, this.logger) });
     this.nodeEnv = config.get<string>('app.nodeEnv') ?? 'development';
   }
 

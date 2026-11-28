@@ -229,13 +229,27 @@ export class SeoController {
    */
   @Get()
   async home(@Req() req: Request, @Res() res: Response): Promise<void> {
-    const query = req.originalUrl.includes('?') ? req.originalUrl.slice(req.originalUrl.indexOf('?')) : '';
-    if (query.length > 1) {
-      res.redirect(301, `${this.appUrl}/search${query}`);
+    let url: URL;
+    try {
+      url = new URL(req.originalUrl || '/', 'http://localhost');
+    } catch {
+      url = new URL('/', 'http://localhost');
+    }
+    // `wake` is the reload count on the page served while Postgres is down. It is
+    // not a search, and it must not survive into the address once the page is up.
+    const waking = url.searchParams.has('wake');
+    url.searchParams.delete('wake');
+    const query = url.searchParams.toString();
+    if (query.length > 0) {
+      res.redirect(301, `${this.appUrl}/search?${query}`);
       return;
     }
 
     const [groups, links] = await Promise.all([this.cities.allByDistrict(), this.footer()]);
+    if (waking) {
+      res.set('Cache-Control', 'private, no-store').redirect(302, '/');
+      return;
+    }
     const html = renderHomePage(groups, this.appUrl, links, this.placeScript);
 
     res

@@ -5,17 +5,42 @@ import { PrismaClient } from '@prisma/client';
 import { connectWhenReady, POSTGRES_WAKE_BUDGET_MS } from './connect-when-ready.js';
 
 /**
+ * The pool the owner client and the tenant client both use.
+ *
+ * `keepAlive` is what notices a socket the server has already dropped. The idle
+ * timeout is pg's own default, named because a connection that sat through a sleep
+ * is the one the next request finds dead — and that failure is the generic 500.
+ */
+export function postgresAdapter(connectionString: string, logger: Logger): PrismaPg {
+  return new PrismaPg(
+    {
+      connectionString,
+      keepAlive: true,
+      idleTimeoutMillis: 10_000,
+      connectionTimeoutMillis: 10_000,
+    },
+    {
+      onPoolError: (error) => {
+        logger.warn(`Postgres dropped an idle connection (${error.message}).`);
+      },
+    },
+  );
+}
+
+/**
  * Prisma 7 takes its connection through a driver adapter rather than a url in the
  * schema, so the pool is built here from DATABASE_URL and handed to the client.
  */
 @Injectable()
 export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
-  private readonly logger = new Logger(PrismaService.name);
+  private readonly logger: Logger;
   private readonly nodeEnv: string;
 
   constructor(config: ConfigService) {
+    const logger = new Logger(PrismaService.name);
     const connectionString = config.getOrThrow<string>('database.url');
-    super({ adapter: new PrismaPg({ connectionString }) });
+    super({ adapter: postgresAdapter(connectionString, logger) });
+    this.logger = logger;
     this.nodeEnv = config.get<string>('app.nodeEnv') ?? 'development';
   }
 

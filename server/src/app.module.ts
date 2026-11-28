@@ -8,7 +8,7 @@ import { AlertsModule } from './alerts/alerts.module.js';
 import { LlmModule } from './llm/llm.module.js';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ClsModule } from 'nestjs-cls';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AdminModule } from './admin/admin.module.js';
@@ -29,7 +29,9 @@ import { SeoModule } from './seo/seo.module.js';
 import { SiteModule } from './site/site.module.js';
 import { SellerModule } from './seller/seller.module.js';
 import { MailModule } from './mail/mail.module.js';
+import { WakePageFilter } from './http/wake-page.filter.js';
 import { PrismaModule } from './prisma/prisma.module.js';
+import { QueryRetryInterceptor } from './prisma/query-retry.interceptor.js';
 import { TenancyModule } from './tenancy/tenancy.module.js';
 import { TenantInterceptor } from './tenancy/tenant.interceptor.js';
 import { AgentsModule } from './agents/agents.module.js';
@@ -74,6 +76,11 @@ import { Yad2Module } from './yad2/yad2.module.js';
   // Order matters: rate limit, then CSRF, then identity, then authorization.
   // A global JwtAuthGuard makes authentication the default; open routes say @Public().
   providers: [
+    // Outermost, so a failed read runs the whole chain again, tenant scope included.
+    // The front door is HTML proxied from this process; the browser shows whatever
+    // the first response was, and the client's retry never gets a chance to run.
+    { provide: APP_INTERCEPTOR, useClass: QueryRetryInterceptor },
+    { provide: APP_FILTER, useClass: WakePageFilter },
     // Runs after the guards, so req.principal already exists when the context is built.
     { provide: APP_INTERCEPTOR, useClass: TenantInterceptor },
     { provide: APP_GUARD, useClass: ThrottlerGuard },
