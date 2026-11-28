@@ -530,6 +530,10 @@ function buyerPhrase(value: string): string {
 }
 
 /** Turns a submitted sheet into the sentence the agent already knows how to read. */
+export function findChatAction(id: string): ChatAction | undefined {
+  return CHAT_CATEGORIES.flatMap((category) => category.items).find((item) => item.id === id);
+}
+
 export function actionText(name: string, data: Record<string, unknown>): string {
   if (name === 'submit_valuation') {
     const place = placeFrom(data);

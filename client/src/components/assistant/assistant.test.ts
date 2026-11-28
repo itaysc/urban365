@@ -2,16 +2,22 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   assistantOpensOnLoad,
   displayChatText,
+  forgetPendingAction,
   formatChatDate,
   forgetTranscript,
+  isListingForm,
+  pendingAction,
   rememberAssistantOpen,
+  rememberPendingAction,
   rememberTranscript,
   shownTranscript,
   stickAfterScroll,
   storedTranscript,
   typeStep,
+  withoutListingForm,
+  type AssistantMessage,
 } from './assistant';
-import { actionText, CHAT_CATEGORIES } from './chat-actions';
+import { actionText, CHAT_CATEGORIES, findChatAction } from './chat-actions';
 import { valuationReply } from './valuation-reply';
 
 describe('chat dates', () => {
@@ -121,6 +127,12 @@ describe('chat actions', () => {
     expect(said).toContain('הבניין מטופח');
   });
 
+  it('keeps the publish sheet on the listing surface', () => {
+    const listing = findChatAction('listing');
+    expect(listing?.intro).toBe('נפתח טיוטת מודעה.');
+    expect(listing?.card && isListingForm(listing.card)).toBe(true);
+  });
+
   it('opens the sell and buy guides inside the chat, with a link to the post', () => {
     const sell = CHAT_CATEGORIES.find((item) => item.id === 'sell')?.items.find((item) => item.id === 'sell-guide');
     const buy = CHAT_CATEGORIES.find((item) => item.id === 'buy')?.items.find((item) => item.id === 'buy-guide');
@@ -157,6 +169,35 @@ describe('chat transcript', () => {
     expect(shownTranscript(storedTranscript('end-user'), [])).toHaveLength(1);
     forgetTranscript('end-user');
     expect(storedTranscript('end-user')).toEqual([]);
+  });
+
+  it('drops a publish sheet that was opened before sign-in', () => {
+    const listing = findChatAction('listing');
+    if (!listing) throw new Error('listing');
+    const messages: AssistantMessage[] = [
+      { role: 'assistant', content: listing.intro, cards: [listing.card], needsSignIn: false },
+      { role: 'user', content: 'אני רוצה לפרסם דירה', cards: [], needsSignIn: false },
+    ];
+
+    const kept = messages.slice(1);
+    expect(withoutListingForm(messages, listing.intro)).toEqual(kept);
+    expect(withoutListingForm(kept, listing.intro)).toBe(kept);
+  });
+
+  it('remembers which sheet to open once the tab is signed in', () => {
+    const store = new Map<string, string>();
+    vi.stubGlobal('window', {
+      sessionStorage: {
+        getItem: (key: string) => store.get(key) ?? null,
+        setItem: (key: string, value: string) => store.set(key, value),
+        removeItem: (key: string) => store.delete(key),
+      },
+    });
+
+    rememberPendingAction('listing', 'end-user');
+    expect(pendingAction('end-user')).toBe('listing');
+    forgetPendingAction('end-user');
+    expect(pendingAction('end-user')).toBeNull();
   });
 
   it('keeps the open chat when the server copy has not arrived', () => {

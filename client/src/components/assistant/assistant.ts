@@ -292,8 +292,39 @@ function signInKey(agentId: AssistantAgentId): string {
   return `nadlan:assistant:sign-in:${agentId}`;
 }
 
+function pendingActionKey(agentId: AssistantAgentId): string {
+  return `nadlan:assistant:after-sign-in:${agentId}`;
+}
+
+/** The publish sheet, the one the menu opens. It is not shown until the person is signed in. */
+export function isListingForm(card: AssistantCard): boolean {
+  return card.type === 'a2ui' && card.surfaceId === 'listing';
+}
+
+/**
+ * Drops a publish sheet that was opened before sign-in.
+ *
+ * A message that was only that sheet is dropped with it, so "נפתח טיוטת מודעה"
+ * does not stay on screen with nothing under it. The same array comes back when
+ * there was nothing to drop.
+ */
+export function withoutListingForm(messages: AssistantMessage[], intro: string): AssistantMessage[] {
+  let changed = false;
+  const next = messages.flatMap((message) => {
+    if (!message.cards.some(isListingForm)) return [message];
+    changed = true;
+    const cards = message.cards.filter((card) => !isListingForm(card));
+    if (cards.length === 0 && (message.content === intro || message.content === '')) return [];
+    return [{ ...message, cards }];
+  });
+  return changed ? next : messages;
+}
+
 /** What the chat says for the person once they are signed in, so the request goes on. */
 export const RESUME_AFTER_SIGN_IN = 'התחברתי. אפשר להמשיך.';
+
+/** Said instead of the publish sheet, until there is a session to attach the draft to. */
+export const LISTING_SIGN_IN = 'כדי לפרסם מודעה צריך להתחבר.';
 
 /**
  * Marks that the chat sent this tab to sign in.
@@ -320,6 +351,31 @@ export function awaitingSignIn(agentId: AssistantAgentId = 'end-user'): boolean 
 export function forgetAwaitingSignIn(agentId: AssistantAgentId = 'end-user'): void {
   try {
     window.sessionStorage.removeItem(signInKey(agentId));
+  } catch {
+    // Nothing to clear is not a failure.
+  }
+}
+
+/** What the chat should open once this tab has a session. Survives the Google redirect. */
+export function rememberPendingAction(id: string, agentId: AssistantAgentId = 'end-user'): void {
+  try {
+    window.sessionStorage.setItem(pendingActionKey(agentId), id);
+  } catch {
+    // The sheet can still open if the sign-in stays on this page.
+  }
+}
+
+export function pendingAction(agentId: AssistantAgentId = 'end-user'): string | null {
+  try {
+    return window.sessionStorage.getItem(pendingActionKey(agentId));
+  } catch {
+    return null;
+  }
+}
+
+export function forgetPendingAction(agentId: AssistantAgentId = 'end-user'): void {
+  try {
+    window.sessionStorage.removeItem(pendingActionKey(agentId));
   } catch {
     // Nothing to clear is not a failure.
   }

@@ -6,13 +6,18 @@ import { LoginDialog } from '@/components/auth/LoginDialog';
 import { formatPrice, formatShekel } from '@/lib/format';
 import sheet from './assistant.css?inline';
 import {
-  awaitingSignIn,
   clearHistory,
   confirmTool,
   forgetAwaitingSignIn,
+  forgetPendingAction,
+  isListingForm,
+  LISTING_SIGN_IN,
+  pendingAction,
   rememberAwaitingSignIn,
+  rememberPendingAction,
   RESUME_AFTER_SIGN_IN,
   waitingOnSignIn,
+  withoutListingForm,
   displayChatText,
   stickAfterScroll,
   typeStep,
@@ -33,7 +38,7 @@ import {
   type AssistantMessage,
 } from './assistant';
 import { A2UISurface } from './A2UISurface';
-import { CHAT_CATEGORIES, type ChatAction } from './chat-actions';
+import { CHAT_CATEGORIES, findChatAction, type ChatAction } from './chat-actions';
 import { crmPageContext } from './page-context';
 
 const HIDDEN = [/^\/app(?:\/|$)/, /^\/admin(?:\/|$)/, /^\/login(?:\/|$)/, /^\/signup(?:\/|$)/, /^\/join(?:\/|$)/];
@@ -69,6 +74,7 @@ export function AssistantWidget() {
   const { pathname } = useLocation();
   const { user, loading } = useAuth();
   const [signIn, setSignIn] = useState(false);
+  const [signInTick, setSignInTick] = useState(0);
 
   return (
     <>
@@ -76,9 +82,15 @@ export function AssistantWidget() {
         agentId="end-user"
         pathname={pathname}
         signedIn={loading ? null : user !== null}
+        signInTick={signInTick}
         onSignIn={() => setSignIn(true)}
       />
-      <LoginDialog open={signIn} onOpenChange={setSignIn} description="כדי לשמור נכס, חיפוש או מודעה צריך להתחבר." />
+      <LoginDialog
+        open={signIn}
+        onOpenChange={setSignIn}
+        onSignedIn={() => setSignInTick((tick) => tick + 1)}
+        description="כדי לשמור נכס, חיפוש או מודעה צריך להתחבר."
+      />
     </>
   );
 }
@@ -111,6 +123,7 @@ export function AssistantPanel({
   agentId = 'end-user',
   pathname,
   signedIn,
+  signInTick = 0,
   onSignIn,
   signInHref,
   hideOnPublic = true,
@@ -120,6 +133,8 @@ export function AssistantPanel({
   agentId?: AssistantAgentId;
   pathname: string;
   signedIn?: boolean | null;
+  /** Bumps when the login dialog itself reports a session, including a login the auth flag already missed. */
+  signInTick?: number;
   onSignIn?: () => void;
   signInHref?: string;
   hideOnPublic?: boolean;
@@ -223,20 +238,61 @@ export function AssistantPanel({
     node.scrollTop = node.scrollHeight;
   }, [messages, open]);
 
-  // A session that appears after the chat asked for one picks the request back up.
-  // Seen signed out first, or marked before a Google redirect — not merely loaded
-  // signed in, or every page of a signed-in visit would repeat it.
+  // The publish sheet stays off the screen until there is a session. A session that
+  // arrives while a reply is still asking for one picks the request back up.
   const sendRef = useRef<((seed?: string) => Promise<void>) | null>(null);
-  const seenSignedIn = useRef(signedIn);
-  const resume = useRef(false);
+  const continued = useRef(false);
+  const listingIntro = findChatAction('listing')?.intro ?? '';
   useEffect(() => {
-    if (signedIn === true && (seenSignedIn.current === false || awaitingSignIn(agentId))) resume.current = true;
-    if (signedIn != null) seenSignedIn.current = signedIn;
-    if (!resume.current || pending || !sendRef.current) return;
-    resume.current = false;
+    if (signedIn !== false) return;
+    setMessages((current) => withoutListingForm(current, listingIntro));
+  }, [signedIn, listingIntro]);
+
+  useEffect(() => {
+    if (signedIn === false && pendingAction(agentId) === 'listing' && !waitingOnSignIn(messages)) {
+      rememberAwaitingSignIn(agentId);
+      stickToBottom.current = true;
+      setMessages((current) => [
+        ...current,
+        { role: 'assistant', content: LISTING_SIGN_IN, cards: [], needsSignIn: true, fresh: true },
+      ]);
+      return;
+    }
+
+    if (signedIn !== true) return;
+
+    // Asked for while signed out. It opens now, under the sign-in line, and the
+    // request waits until the sheet is filled.
+    if (pendingAction(agentId) === 'listing') {
+      forgetPendingAction(agentId);
+      forgetAwaitingSignIn(agentId);
+      const action = findChatAction('listing');
+      if (!action) return;
+      stickToBottom.current = true;
+      setMessages((current) => [
+        ...current.map((message) => (message.needsSignIn ? { ...message, needsSignIn: false } : message)),
+        { role: 'assistant', content: action.intro, cards: [action.card], needsSignIn: false, fresh: true },
+      ]);
+      return;
+    }
+
+    if (!waitingOnSignIn(messages)) {
+      forgetAwaitingSignIn(agentId);
+      return;
+    }
+    // Once per visit. A later sign-in in the same visit still shows the button.
+    if (!open || continued.current || pending || !sendRef.current) return;
+    continued.current = true;
     forgetAwaitingSignIn(agentId);
-    if (waitingOnSignIn(messages)) void sendRef.current(RESUME_AFTER_SIGN_IN);
-  }, [signedIn, pending, messages, agentId]);
+    stickToBottom.current = true;
+    setMessages((current) =>
+      withoutListingForm(
+        current.map((message) => (message.needsSignIn ? { ...message, needsSignIn: false } : message)),
+        listingIntro,
+      ),
+    );
+    void sendRef.current(RESUME_AFTER_SIGN_IN);
+  }, [signedIn, pending, messages, agentId, signInTick, listingIntro, open, pathname]);
 
   if (hideOnPublic && HIDDEN.some((pattern) => pattern.test(pathname))) return null;
 
@@ -249,6 +305,8 @@ export function AssistantPanel({
       conversationId.current = null;
       forgetConversation(agentId);
       forgetTranscript(agentId);
+      forgetPendingAction(agentId);
+      forgetAwaitingSignIn(agentId);
       setMessages([]);
       setConfirmingClear(false);
     } finally {
@@ -259,6 +317,18 @@ export function AssistantPanel({
   const showAction = (action: ChatAction) => {
     setCategory(null);
     stickToBottom.current = true;
+    if (action.id === 'listing' && signedIn !== true) {
+      rememberPendingAction('listing', agentId);
+      if (signedIn === false) {
+        rememberAwaitingSignIn(agentId);
+        setMessages((current) => [
+          ...withoutListingForm(current, action.intro),
+          { role: 'assistant', content: LISTING_SIGN_IN, cards: [], needsSignIn: true, fresh: true },
+        ]);
+      }
+      return;
+    }
+    forgetPendingAction(agentId);
     setMessages((current) => [
       ...current,
       { role: 'assistant', content: action.intro, cards: [action.card], needsSignIn: false, fresh: true },
@@ -268,6 +338,7 @@ export function AssistantPanel({
   const send = async (seed?: string) => {
     const text = (seed ?? draft).trim();
     if (!text || pending) return;
+    forgetPendingAction(agentId);
     stickToBottom.current = true;
     setCategory(null);
     setConfirmingClear(false);
@@ -448,6 +519,13 @@ export function AssistantPanel({
           >
             {messages.length === 0 && <p className="u365-asst-empty">{emptyPrompt}</p>}
             {messages.map((message, index) => {
+              const cards = signedIn === false ? message.cards.filter((card) => !isListingForm(card)) : message.cards;
+              const droppedSheet =
+                signedIn === false &&
+                cards.length === 0 &&
+                message.cards.some(isListingForm) &&
+                (message.content === listingIntro || message.content === '');
+              if (droppedSheet) return null;
               const thinking =
                 pending &&
                 index === messages.length - 1 &&
@@ -480,9 +558,9 @@ export function AssistantPanel({
                       </p>
                     )
                   )}
-                  {message.cards.length > 0 && (
+                  {cards.length > 0 && (
                     <div className="u365-asst-cards">
-                      {message.cards.map((card, cardIndex) => (
+                      {cards.map((card, cardIndex) => (
                         <CardView
                           key={cardIndex}
                           card={card}
@@ -493,7 +571,7 @@ export function AssistantPanel({
                       ))}
                     </div>
                   )}
-                  {message.needsSignIn &&
+                  {message.needsSignIn && signedIn !== true &&
                     (signInHref ? (
                       <a className="u365-asst-signin" href={signInHref} onClick={() => rememberAwaitingSignIn(agentId)}>
                         התחברות
